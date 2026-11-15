@@ -1674,7 +1674,12 @@ textarea:focus,select:focus{
 ::-webkit-scrollbar-corner{background:transparent;}
 
 /* ---- 8. 加载层：品牌图形自带柔光 ---- */
-.splash .cat svg{filter:drop-shadow(0 0 22px var(--glow));}
+/* 事故：原用 var(--glow)，而 --glow 在 :root[data-theme] 层写死成蓝色
+   （dark=rgba(10,132,255,.22) / light=rgba(0,114,239,.14)），不跟随强调色。
+   结果图标本体 currentColor 已跟色，但外圈 22px 光晕永远是蓝的，把图标映蓝，
+   即"启动动画最后一帧还是蓝色 icon"。改用 --accent-soft（每个 data-accent
+   都有对应值、跟随强调色），光晕随强调色走，蓝色彻底消失。 */
+.splash .cat svg{filter:drop-shadow(0 0 22px var(--accent-soft));}
 
 /* ---- 9. 无障碍 / 低配降级 ---- */
 @media (prefers-reduced-motion:reduce){
@@ -3915,9 +3920,9 @@ body::after{
         <button class="accent-dot" data-accent="brown" style="--dot:#AC8E68" title="棕" aria-label="棕色">棕</button>
         <button class="accent-dot" data-accent="graphite" style="--dot:#AEAEB2" title="石墨" aria-label="石墨色">石墨</button>
         <span class="accent-pop-label accent-pop-label-sep">中性色 · 浅色/护眼下会压成灰（白压到可读对比度必然是灰）</span>
-        <button class="accent-dot" data-accent="purewhite" style="--dot:#FFFFFF" title="纯白" aria-label="纯白">纯白</button>
-        <button class="accent-dot" data-accent="eyewhite" style="--dot:#FFFDF5" title="护眼白" aria-label="护眼白">护眼白</button>
-        <button class="accent-dot" data-accent="glasswhite" style="--dot:#E9E9EE" title="玻璃白" aria-label="玻璃白">玻璃白</button>
+        <button class="accent-dot" data-accent="purewhite" style="--dot:#F2F2F2" title="纯白" aria-label="纯白">纯白</button>
+        <button class="accent-dot" data-accent="eyewhite" style="--dot:#F0F0F0" title="护眼白" aria-label="护眼白">护眼白</button>
+        <button class="accent-dot" data-accent="glasswhite" style="--dot:#E6E6E6" title="玻璃白" aria-label="玻璃白">玻璃白</button>
       </div>
       </section>
 
