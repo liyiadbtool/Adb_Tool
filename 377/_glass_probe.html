@@ -3205,6 +3205,19 @@ body::after{
   width:calc(var(--tb-h) * .54);
   height:calc(var(--tb-h) * .54);
 }
+
+/* ---------------------------------------------------------------------------
+   §7 色板分组标签（参考 Edge 外观设置的分组思路）
+   Edge 的强调色列表里把 Light gray / Dark gray 和彩色混排，用户很难理解
+   "灰色也能当强调色"。我们的三白是同一个问题：3 个近白的点排在末尾，
+   不说明就只是"三个白点"。这里加一条分隔标签，把它们单独成一段。
+   ------------------------------------------------------------------------- */
+.accent-pop-label-sep{
+  margin-top:4px;
+  padding-top:6px;
+  border-top:1px solid var(--border);
+  line-height:1.45;
+}
 /* === V17 LAYER END === */
 </style>
 </head>
@@ -3892,6 +3905,7 @@ body::after{
         <button class="accent-dot" data-accent="indigo" style="--dot:#5E5CE6" title="靛" aria-label="靛色">靛</button>
         <button class="accent-dot" data-accent="brown" style="--dot:#AC8E68" title="棕" aria-label="棕色">棕</button>
         <button class="accent-dot" data-accent="graphite" style="--dot:#AEAEB2" title="石墨" aria-label="石墨色">石墨</button>
+        <span class="accent-pop-label accent-pop-label-sep">中性色 · 浅色/护眼下会压成灰（白压到可读对比度必然是灰）</span>
         <button class="accent-dot" data-accent="purewhite" style="--dot:#FFFFFF" title="纯白" aria-label="纯白">纯白</button>
         <button class="accent-dot" data-accent="eyewhite" style="--dot:#FFFDF5" title="护眼白" aria-label="护眼白">护眼白</button>
         <button class="accent-dot" data-accent="glasswhite" style="--dot:#E9E9EE" title="玻璃白" aria-label="玻璃白">玻璃白</button>
@@ -11624,6 +11638,7 @@ document.addEventListener('DOMContentLoaded', function (){
     setTimeout(boot, 0);
 })();
 /* === V16 JS END === */
+
 
 
 

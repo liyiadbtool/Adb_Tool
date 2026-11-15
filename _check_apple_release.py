@@ -76,6 +76,14 @@ for token in [b"V16 LAYER START", b"V16 JS START",
               b"v16QuickInput", b"v16-tabdrag", b"castOpenScrcpy",
               b"CastGrabRaw", b"CastEncodeJpeg"]:
     ck(token in exe, "U4 exe 含 A16 标记 " + token.decode("utf-8", "replace")[:40])
+# A17 轮标记：黑白灰图标 / 开合动效 / 强调色记忆 / 浅色边界 / 关闭看门狗 / scrcpy 内嵌
+for token in [b"V17 LAYER START", b"V17 JS START",
+              b"appmark-glyph", b"appmark-bg",
+              b"ce-stage", b"cast-embed", b"cm-embed",
+              b"v17CastEmbed", b"v17CastBuiltin", b"v17CastEmbedFail",
+              b"StartExitWatchdog", b"ScrcpyEmbedPlace", b"LaunchEmbedded",
+              b"v17open", b"winedge"]:
+    ck(token in exe, "U4 exe 含 A17 标记 " + token.decode("utf-8", "replace")[:40])
 # 无边框是代码而非字符串常量，不能靠搜 exe 字节；改为核源码 + 真机行为（_smoke_win.py 另有 12 项）
 _gw = rd(os.path.join(ROOT, "_cs", "GuiWeb.cs"))
 ck(b"FormBorderStyle.None" in _gw, "C# 源已设无边框（FormBorderStyle.None）")
@@ -116,12 +124,25 @@ for t in [u"Apple UI 全面替换", u"16. Apple UI", u"/snap/", u"单击结果�
     ck(t.encode("utf-8") in manual, "源手册含「%s」" % t)
 
 sys.stdout.write("\n== 三个 zip ==\n")
-for name, fn, need_ini, need_ffmpeg in [
-    ("完整版", "网联服务_Adb_Tool_完整版_20261115.zip", True, True),
-    ("最小版", "网联服务_Adb_Tool_最小版_20261115.zip", True, False),
-    ("单文件版", "网联服务_Adb_Tool_单文件版_20261115.zip", False, False),
+def _latest_zip(kind):
+    """按 kind 找最新的 zip，不硬编码日期。
+
+    原来这里写死 `..._20261115.zip`，出包日期一变就整段红 —— 那是测试的 bug 不是包的 bug。
+    A17 顺手修掉：A17 之后 zip 名也去掉了「网联服务_」前缀，所以匹配用 Adb_Tool_<kind>_*.zip。
+    """
+    import glob
+    cand = sorted(glob.glob(os.path.join(RELEASE, "Adb_Tool_%s_*.zip" % kind)))
+    if not cand:                       # 兼容旧包（改动前生成的）
+        cand = sorted(glob.glob(os.path.join(RELEASE, "*Adb_Tool_%s_*.zip" % kind)))
+    return cand[-1] if cand else ""
+
+
+for name, kind, need_ini, need_ffmpeg in [
+    ("完整版", "完整版", True, True),
+    ("最小版", "最小版", True, False),
+    ("单文件版", "单文件版", False, False),
 ]:
-    p = os.path.join(RELEASE, fn)
+    p = _latest_zip(kind)
     if not os.path.exists(p):
         ck(False, name + " zip 存在")
         continue
@@ -149,6 +170,8 @@ for name, fn, need_ini, need_ffmpeg in [
             ck(u"26. 显示选项".encode("utf-8") in m, name + " 内手册含 §26（A15）")
             # A16（2026-11-15 第五批）：窗口变形 / 弹窗互斥 / 投屏提速 / 偏好记忆 / tab 拖拽
             ck(u"27. 窗口变形".encode("utf-8") in m, name + " 内手册含 §27（A16）")
+            # A17（2026-11-15 第六批）：图标重做 / 开合动效 / 强调色记忆 / 内嵌投屏
+            ck(u"28. 图标重做".encode("utf-8") in m, name + " 内手册含 §28（A17）")
 
 sys.stdout.write("\n结论：%s（%d 项失败）\n" %
                  ("全部通过" if not fails else "有失败", len(fails)))

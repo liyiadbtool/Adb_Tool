@@ -14,9 +14,9 @@
     adb_log_gui\\dist\\                          本地完整包（含 ffmpeg，可录屏）
     adb_log_gui\\dist_min\\                      最小包（不含 ffmpeg）
     adb_log_gui\\dist_single\\                   单文件版（只有一个 exe，资源全内嵌）
-    release\\网联服务_Adb_Tool_完整版_<日期>.zip   分享用（含 ffmpeg，~100MB）
-    release\\网联服务_Adb_Tool_最小版_<日期>.zip   分享用（~0.4MB）
-    release\\网联服务_Adb_Tool_单文件版_<日期>.zip 单文件版（~1.4MB）
+    release\\Adb_Tool_完整版_<日期>.zip   分享用（含 ffmpeg，~100MB）
+    release\\Adb_Tool_最小版_<日期>.zip   分享用（~0.4MB）
+    release\\Adb_Tool_单文件版_<日期>.zip 单文件版（~1.4MB）
 
 为什么又多一个单文件版：
     最小版仍然是"exe + 3 个 dll + webview2\\ui.html + 2 个 ini"，发给别人时
@@ -172,9 +172,9 @@ def main():
 
     os.makedirs(RELEASE, exist_ok=True)
 
-    full_zip = os.path.join(RELEASE, "网联服务_Adb_Tool_完整版_%s.zip" % TAG)
-    min_zip = os.path.join(RELEASE, "网联服务_Adb_Tool_最小版_%s.zip" % TAG)
-    single_zip = os.path.join(RELEASE, "网联服务_Adb_Tool_单文件版_%s.zip" % TAG)
+    full_zip = os.path.join(RELEASE, "Adb_Tool_完整版_%s.zip" % TAG)
+    min_zip = os.path.join(RELEASE, "Adb_Tool_最小版_%s.zip" % TAG)
+    single_zip = os.path.join(RELEASE, "Adb_Tool_单文件版_%s.zip" % TAG)
 
     print("[pack] 完整版 zip ...")
     make_zip(DIST, full_zip)

@@ -546,3 +546,39 @@
 > - **A15-11 的 13 色不是终点** —— A16-04 扩到 16 色，三白在浅色下另有起算规则（A16-05）。
 
 新增校验入口：`_v16_checks.py`（78 条落点断言），已挂进 `verify_all.py` 的第 5.6 段；`_check_apple_release.py` 增加 15 个 A16 内嵌字节标记与手册 §27 检查。
+
+---
+
+## 22. A17 追加轮（2026-11-15 第 6 批，分母 v8 → v9）
+
+这一批是交付后反馈：八条 + 两条追加。三条是上一轮留下的尾巴（强调色记忆、关闭两次、开合动效），
+两条是新能力（icon 重做、scrcpy 内嵌）。
+
+| ID | 名称 | 状态 | 落点 |
+|---|---|---|---|
+| A17-01 | 强调色未记忆 | ✅ | 白名单原来在 `Program.cs` 与 `GuiWeb.cs` 各一份，扩 16 色时只改前者 → 收口成 `Prefix.ACCENTS` + `NormalizeAccent()`；`SaveAccentPreference` 不再"没 ini 就 return"；页面另存 `_prefs.accent`（`setAccent` 包一层 + `applyAllPrefs` 回填） |
+| A17-02 | 恢复开合动效（不碰窗口尺寸） | ✅ | `.frame.v17-in`（`scale(.93)→1`，260ms，**只动 transform**）+ `.v17-out`（130ms）；C# `PlayOutThen()` 播完才最小化/关闭；`v17InRestore()` 复位。A16 的"等 splash 消失再补 class"关掉（会晚 300ms 再放一次） |
+| A17-03 | 应用 icon 黑白灰 + 黑底 | ✅ | `_icon_v2.py`：`C_TOP #2E2E2E` / `C_BOT #050505`，右下压暗从 `[0,0.05,0.30]` 改纯黑（原偏蓝留下 15/255 饱和差）；全图最大饱和差 = 0 |
+| A17-04 | 页面图标与 ico 同源 | ✅ | `ui.html` 顶部 `<defs>` 只画一份 `#appmark-glyph`，启动层与标题栏各一个 `<use>`；启动层 `color:var(--accent)`，标题栏 `var(--mark-fg)` |
+| A17-05 | 浅色窗口边界不明显 | ✅ | `_v17.css` §2 三条：实边 `rgba(48,48,54,.72)`（原 .55）+ 顶高光 + 6px/24px 内阴影；深色不动 |
+| A17-06 | 直角改圆角 | ✅ | 侧栏 / 终端页 / 输入行各自成卡（8px 内缩 + 12px 圆角）；投屏页、文件页同步内缩，避免切页跳动 |
+| A17-07 | 关闭要点两次 | ✅ | 根因是 `OnFormClosing` 的清理（停 watcher / `CastStopAll` / `Thread.Abort`）卡在 adb 同步读上且跑在 UI 线程。改：播 130ms → `Hide()` → `BeginInvoke(Close)` → 看门狗 2.5s 硬退；`_closing` 拦住任务栏收起 |
+| A17-08 | 启动层高斯模糊渐变 + 图标跟随强调色 | ✅ | 网页层：三段竖向渐变（`--splash-g0/1/2`）+ 强调色光晕 `filter:blur(56px)`；C# `SplashPaint` 改 `PathGradientBrush`；图标取 `AccentColor()` |
+| A17-09 | scrcpy 内嵌到应用内 | ✅ | `SetParent` 把 scrcpy HWND 塞进 `_castHost` Panel（精确盖 `#ce-stage`）；页面按**比例**报区域；`--window-title` 唯一名 + `MainWindowHandle` 兜底；`CreateNoWindow=true`；stdout/stderr 抽干；切页 `castembedhide`；关窗 `ScrcpyEmbedStop` |
+| A17-10 | 内嵌/内置模式记忆 | ✅ | `_prefs.castMode`，进投屏页默认 `embed`；用户主动切内置后不再强行拉起 |
+| A17-11 | 任务栏图标 + 标题去前缀 | ✅ | `Text = "Adb_Tool"`；`TrySetCatIcon()` 读同目录 ico，缺失时 `ExtractAssociatedIcon` 兜底；`build_gui.bat` 保证 ico 进 dist |
+| A17-12 | 色板分组标签（参考 Edge） | ✅ | 13 彩色后插分隔线 + 「中性色 · 浅色/护眼下会压成灰」；见 `docs/参考-Edge主题设置与同类实现.md` §五 |
+| A17-13 | Edge 主题设置调研 | ✅ | `docs/参考-Edge主题设置与同类实现.md`：对齐项 / 差距 / 5 条建议（1 条已落地，4 条标注成本与风险） |
+
+> A17 共 13 项，全部落地。新增静态 id **8 个**（`appmark-bg` / `appmark-glyph` / `cast-embed` /
+> `cast-mode` / `ce-hint` / `ce-stage` / `cm-builtin` / `cm-embed`）、onclick **2 个**
+> （`v17CastEmbed` / `v17CastBuiltin`）、后端 kind **4 个**（`scrcpyembed` / `scrcpyembedstop` /
+> `castembedrect` / `castembedhide`），全部登记在 `_gate_invariants.py` 的 `A17_ADDS`。
+> **分母由 536 增至 537。**
+
+新增校验入口：`_v17_checks.py`（63 条落点断言），已挂进 `verify_all.py` 第 5.6 段（25 → 26 项）。
+
+> 两条被本批修正的旧结论：
+> - **A16-01 删掉开合动效是对的，但"没有动效"不是终态** —— A17-02 用渲染层 transform 把动效加回来了。
+> - **A16-12 给 scrcpy 加的 `--print-fps` 只服务"外部窗口"这种形态** —— 内嵌时反而要关掉（帧率数字给谁看？），
+>   见 `Scrcpy.LaunchEmbedded` 里的注释。
