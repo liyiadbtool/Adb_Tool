@@ -179,6 +179,40 @@
     for (var i = 0; i < 6; i++) if (EMBED.on[i]) syncSlot(i);
   });
 
+  /* ============ A19：全屏 / 退出全屏时，同步 scrcpy Panel 位置 ============
+     根因：CSS 的 .cast-cell.maxed 是 position:absolute;inset:0 浮层，只对 WebView2
+     里的 DOM 生效；scrcpy 的 SDL 窗口是 C# 原生 Panel，由 castembedrect 上报的
+     比例摆放，它不知道 CSS 全屏了。结果走 scrcpy 的格子点「⤢」后画面不放大、
+     或 Panel 还停在原格位置 —— 表现为"默认就全屏 / 放大后错位"。
+     修复：hook castEnterFull / castExitFull，布局稳定后重报该格（及其它 scrcpy 格）
+     的区域比例，让 C# 把 Panel 精确摆到全屏 / 还原位置。
+     非全屏的其它格发 0 区域 → C# 侧 ScrcpyEmbedPlace 识别为退化区域，隐藏 Panel。 */
+  var _castEnterFull0 = window.castEnterFull;
+  if (typeof _castEnterFull0 === 'function') {
+    window.castEnterFull = function (i) {
+      var r = _castEnterFull0.apply(this, arguments);
+      try {
+        for (var k = 0; k < 6; k++) {
+          if (k !== i && EMBED.on[k]) post('castembedrect', JSON.stringify({ slot: k, l: 0, t: 0, r: 0, b: 0 }));
+        }
+        setTimeout(function () { if (EMBED.on[i]) syncSlot(i); }, 60);
+      } catch (e) {}
+      return r;
+    };
+  }
+  var _castExitFull0 = window.castExitFull;
+  if (typeof _castExitFull0 === 'function') {
+    window.castExitFull = function () {
+      var r = _castExitFull0.apply(this, arguments);
+      try {
+        setTimeout(function () {
+          for (var k = 0; k < 6; k++) if (EMBED.on[k]) syncSlot(k);
+        }, 60);
+      } catch (e) {}
+      return r;
+    };
+  }
+
   /* ==================== §3 Edge 调研建议落地 ====================
      建议 1：色点 hover 显示 WCAG 对比度（把"白也能看清"从断言变成可见信任凭证）。
      建议 2：主题选择加迷你预览卡（真实令牌渲染明暗差异，不再纯文字按钮）。

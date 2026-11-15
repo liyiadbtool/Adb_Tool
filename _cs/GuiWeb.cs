@@ -3991,6 +3991,13 @@ namespace AdbLogExport.Gui
             _embT[slot] = JsonNum(data, "t", _embT[slot]);
             _embR[slot] = JsonNum(data, "r", _embR[slot]);
             _embB[slot] = JsonNum(data, "b", _embB[slot]);
+            // A19：区域退化成零（r<=l 或 b<=t，全屏时其它格发 0 区域）→ 隐藏该 Panel，
+            // 而不是摆成 32px 残影浮在全屏画面上。
+            if (_embR[slot] - _embL[slot] <= 0.001 || _embB[slot] - _embT[slot] <= 0.001)
+            {
+                if (_castHost[slot] != null) _castHost[slot].Visible = false;
+                return;
+            }
             Rectangle cr = ClientRectangle;
             int x = (int)Math.Round(cr.Width * _embL[slot]);
             int y = (int)Math.Round(cr.Height * _embT[slot]);

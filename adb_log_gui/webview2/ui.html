@@ -3183,8 +3183,11 @@ body::after{
      · 标题栏：纯白。它是品牌标记，跟着强调色会和旁边的状态圆点抢注意力
    底（#2E2E2E→#050505 圆角方）由 #appmark-bg 渐变画，两处一致。
    ------------------------------------------------------------------------- */
-.appmark{ color:var(--mark-fg); }
-.splash .appmark{ color:var(--accent); }
+.appmark{ color:var(--accent); }
+/* A19：标题栏图标与启动层图标统一跟强调色（用户确认"图标要跟色"），
+   消除"启动层蓝图标 → 主界面白图标"的交接跳变。
+   图标图形画在深色 #appmark-bg 矩形上，深/浅主题下都用强调色本身，
+   与启动层一致，不再出现最后一帧跳色。 */
 /* 标题栏里那颗更小，圆角按比例缩，不然 18px 下 22/100 的圆角几乎看不出 */
 .tb-logo .appmark{
   width:calc(var(--tb-h) * .54);
@@ -3211,31 +3214,45 @@ body::after{
    边框宽度恒定不跳（未选中用透明边框，跟色点的做法一致）。
    ------------------------------------------------------------------------- */
 .set-seg .theme-card{
-  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
-  padding:6px;border-radius:9px;
+  /* A19 修复：主题卡必须保留 THEME_ICON 图标（月亮/太阳/眼睛），文字与图标横排居中。
+     上一版 flex-direction:column + align-items:flex-start 把图标挤到上方、文字靠左偏下，
+     还让 ::before/::after 迷你预览卡占了图标位。 */
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  padding:8px 6px;border-radius:9px;
   border:1px solid var(--border);
   background:var(--surface);
-  text-align:left;
+  text-align:center;
+  min-height:44px;
 }
 .set-seg .theme-card:hover{ border-color:var(--border-strong); }
 .set-seg .theme-card.on{
   border-color:var(--accent);
   box-shadow:0 0 0 1px var(--accent);
 }
+/* 图标行：svg + 文字横排居中，恢复"图标+文字并排"布局 */
+.theme-card .tc-ic{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  position:relative;z-index:1;
+}
+.theme-card .tc-ic svg{ width:15px;height:15px;flex:0 0 auto; }
+/* 迷你预览窗口卡：绝对定位铺在卡片底部当装饰背景，不参与 flex 流、不占图标位 */
 .theme-card::before{
-  content:"";display:block;width:100%;height:34px;border-radius:6px;
-  /* 迷你窗口：顶部深色标题条 + 浅色内容区 + 一条强调色进度 */
+  content:"";position:absolute;left:6px;right:6px;bottom:4px;height:18px;
+  border-radius:4px;
   background:
-    linear-gradient(180deg, var(--theme-card-bar) 0%, var(--theme-card-bar) 34%, transparent 34%),
+    linear-gradient(180deg, var(--theme-card-bar) 0%, var(--theme-card-bar) 40%, transparent 40%),
     var(--surface-2);
   box-shadow:inset 0 0 0 1px var(--border);
-  position:relative;
+  opacity:.9;
+  pointer-events:none;
 }
 .theme-card::after{
-  content:"";display:block;width:40%;height:3px;border-radius:2px;
+  content:"";position:absolute;left:10px;right:52%;bottom:6px;height:2px;border-radius:1px;
   background:var(--accent);opacity:.9;
+  pointer-events:none;
 }
-.theme-card span{ font-size:12px;color:var(--text-dim); }
+.theme-card span{ font-size:12px;color:var(--text-dim);position:relative;z-index:1; }
 .theme-card.on span{ color:var(--text); }
 /* === V17 LAYER END === */
 </style>
@@ -9639,7 +9656,7 @@ function buildThemeSeg(){
   for (var i = 0; i < THEME_ORDER.length; i++){
     var k = THEME_ORDER[i];
     html += '<button type="button" data-theme="' + k + '" onclick="setThemeByName(\'' + k + '\')">'
-          + THEME_ICON[k] + '<span>' + names[k] + '</span></button>';
+          + '<span class="tc-ic">' + THEME_ICON[k] + '<span>' + names[k] + '</span></span></button>';
   }
   box.innerHTML = html;
 }
@@ -11712,6 +11729,7 @@ document.addEventListener('DOMContentLoaded', function (){
 
 
 
+
 /* === V17 JS START ===
    A17（2026-11-15 第 6 批）— 行为层
      §1 开合动效的触发（打开 / 收起 / 恢复）
@@ -11892,6 +11910,40 @@ document.addEventListener('DOMContentLoaded', function (){
   window.addEventListener('v17layout', function () {
     for (var i = 0; i < 6; i++) if (EMBED.on[i]) syncSlot(i);
   });
+
+  /* ============ A19：全屏 / 退出全屏时，同步 scrcpy Panel 位置 ============
+     根因：CSS 的 .cast-cell.maxed 是 position:absolute;inset:0 浮层，只对 WebView2
+     里的 DOM 生效；scrcpy 的 SDL 窗口是 C# 原生 Panel，由 castembedrect 上报的
+     比例摆放，它不知道 CSS 全屏了。结果走 scrcpy 的格子点「⤢」后画面不放大、
+     或 Panel 还停在原格位置 —— 表现为"默认就全屏 / 放大后错位"。
+     修复：hook castEnterFull / castExitFull，布局稳定后重报该格（及其它 scrcpy 格）
+     的区域比例，让 C# 把 Panel 精确摆到全屏 / 还原位置。
+     非全屏的其它格发 0 区域 → C# 侧 ScrcpyEmbedPlace 识别为退化区域，隐藏 Panel。 */
+  var _castEnterFull0 = window.castEnterFull;
+  if (typeof _castEnterFull0 === 'function') {
+    window.castEnterFull = function (i) {
+      var r = _castEnterFull0.apply(this, arguments);
+      try {
+        for (var k = 0; k < 6; k++) {
+          if (k !== i && EMBED.on[k]) post('castembedrect', JSON.stringify({ slot: k, l: 0, t: 0, r: 0, b: 0 }));
+        }
+        setTimeout(function () { if (EMBED.on[i]) syncSlot(i); }, 60);
+      } catch (e) {}
+      return r;
+    };
+  }
+  var _castExitFull0 = window.castExitFull;
+  if (typeof _castExitFull0 === 'function') {
+    window.castExitFull = function () {
+      var r = _castExitFull0.apply(this, arguments);
+      try {
+        setTimeout(function () {
+          for (var k = 0; k < 6; k++) if (EMBED.on[k]) syncSlot(k);
+        }, 60);
+      } catch (e) {}
+      return r;
+    };
+  }
 
   /* ==================== §3 Edge 调研建议落地 ====================
      建议 1：色点 hover 显示 WCAG 对比度（把"白也能看清"从断言变成可见信任凭证）。

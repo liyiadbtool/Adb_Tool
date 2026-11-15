@@ -7,7 +7,7 @@
 
 ## 最后更新
 
-2026-11-16 01:15 · A18（第 7 批：七条反馈 + 两件收尾）已落地并过门禁
+2026-11-16 01:58 · A19（四条：投屏全屏交互 / 图标跟色 / 主题图标恢复 / 交接总纲）已落地并过门禁
 
 ---
 
@@ -29,26 +29,24 @@
 
 ---
 
-## 本轮做了什么（A18）
+## 本轮做了什么（A19）
 
 | # | 需求 | 落点 |
 |---|---|---|
-| 1 | 验证 SSH + 接手指南 | SSH 公钥已生效；GitHub 仓库 `liyiadbtool/Adb_Tool` **还没建**（见下一步）。产出 `docs/明天到公司继续开发.md` |
-| 2 | 各分屏用 scrcpy 内嵌 | 六格（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）各自内嵌 scrcpy；删掉单屏全窗口宿主、全屏弹窗、「外部」按钮；`castToggle` 有 scrcpy 走 `v17CastEmbed(i,id)`、没有回退 `castBuiltinFallback(i)`；C# `_castHost[6]` 数组化 |
-| 3 | 应用图标 | 源码/二进制已全换黑白灰（7 档 ico 全嵌入、饱和差=0）；用户看到的旧图标是 **Windows 图标缓存**，非代码问题 |
-| 4 | 启动闪一帧蓝 | 根因：`data-accent="blue"` 写死，prefs 回填前先渲染默认蓝。`OnCoreReady` 里 `AddScriptToExecuteOnDocumentCreatedAsync` 首帧前就同步 theme/accent；`DrawLogo` 换成 100 视窗同源图形 |
-| 5 | 精简完整版 | 成品 zip 只含运行必需 + 一份使用手册，不夹带交付说明/调研/截图（见 `docs/明天到公司继续开发.md` §七） |
-| 6 | 启动更白更模糊 | 渐变提亮（`#3C3E45→#26282E→#121316`）+ 光晕 blur 56→78px + 加白雾层；C# `PaintSplashBackdrop` 同步 |
-| 7 | Edge 建议落地 | 建议1 色点 hover 显对比度、建议2 主题预览卡、建议3 按设备序列号记强调色（`_prefs.accentByDevice`）、建议4 设置重排（主题→强调色→显示→字体）；建议5（自定义hex）不做 |
+| 1 | 投屏全屏交互修复 | scrcpy 内嵌默认小屏；点「⤢」扩全屏、底部缩略条切换。`_v17.js` hook `castEnterFull`/`castExitFull` 重报 Panel 区域；`_cs/GuiWeb.cs` `ScrcpyEmbedPlace` 识别退化区域（r<=l 或 b<=t）隐藏 Panel |
+| 2 | 图标跟色 + 消除交接跳变 | `_v17.css` `.appmark{ color:var(--accent) }` 统一跟色，删旧 `.splash .appmark` 覆盖；标题栏与启动层图标颜色一致，不再"蓝跳白" |
+| 3 | 主题图标恢复 + 文字居中 | `_v17.css` `.theme-card` 恢复图标+文字横排居中，迷你预览卡改绝对定位装饰（不占图标位）；`ui.html` `buildThemeSeg` 图标包 `.tc-ic` |
+| 4 | 交接总纲文档 | 产出 `docs/AI开发交接总纲.md`（喂给其它设备 AI 的全量规则/红线/历史经验/技术/测试/UI 约定） |
+
+门禁状态：26 项 0 失败（A17 落点 64/64、功能清单 52/52）。
 
 ---
 
 ## 下一步（按优先级）
 
-1. **在 GitHub 建仓库**（30 秒）：https://github.com/new → 名字 `Adb_Tool` → Private → 不勾初始化 → Create。然后 `git push -u origin main`。SSH key 已生效，只差仓库。
-2. **真机验收**（必须人工）：六格 scrcpy 内嵌是否"可点击、跟手"；启动是否还闪蓝；强调色重启是否保持；图标（刷新缓存后）是否黑白灰。
-3. **刷新图标缓存**（若还看到旧图标）：取消固定 → 重新固定，或重启资源管理器。
-4. 出包：`python release.py` → 组装 `Desktop\Adb_Tool_成品_V18_<时间戳>`（精简：运行文件 + 一份交付说明，不带截图/调研文档）。
+1. **GitHub 已就位**（用户已建仓库）：`git push -u origin main` 首次推送即可。
+2. **真机验收**（必须人工）：投屏全屏/切换交互；启动图标是否跟色且无跳变；主题卡图标与居中是否恢复。
+3. 出包：`python release.py` → 组装 `Desktop\Adb_Tool_成品_V19_<时间戳>`。
 
 ---
 

@@ -122,9 +122,10 @@ chk("③ 页面图形与 ico 同源（defs 里只画一份，#appmark-glyph）",
     'id="appmark-glyph"' in s and 'id="appmark-bg"' in s)
 chk("③ 启动层与标题栏都用 <use> 引用同一份图形",
     s.count('href="#appmark-glyph"') == 2, "count=%d" % s.count('href="#appmark-glyph"'))
-chk("③ 标题栏图标是纯白（品牌标记，不跟强调色抢注意力）",
-    ".appmark{ color:var(--mark-fg); }" in v17css)
-chk("③ 启动层图标跟随强调色", ".splash .appmark{ color:var(--accent); }" in v17css)
+chk("③ 标题栏与启动层图标统一跟强调色（A19：消除交接跳变）",
+    ".appmark{ color:var(--accent); }" in v17css)
+chk("③ 不再有启动层单独跟色的旧规则（已并入 .appmark 统一跟色）",
+    ".splash .appmark{ color:var(--accent); }" not in v17css)
 chk("③ C# 会把内嵌 ico 设为窗体图标（任务栏 / Alt+Tab 都用新图）",
     "TrySetCatIcon();" in guiweb
     and 'Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_Tool.ico")' in guiweb
@@ -245,7 +246,7 @@ chk("⑩ V17 只注入了一份（注入脚本幂等，重复跑不会叠层）"
 chk("⑩ 顺序 V14 → V15 → V16 → V17",
     s.index("V15 LAYER END") < s.index("V16 LAYER START") < s.index("V17 LAYER START"))
 chk("⑩ .appmark 样式在注入后的 css 里（不只是源文件）",
-    ".appmark{ color:var(--mark-fg); }" in css)
+    ".appmark{ color:var(--accent); }" in css)
 
 bad = [r for r in rows if not r[1]]
 for name, ok, detail in rows:
