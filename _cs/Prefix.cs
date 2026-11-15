@@ -74,10 +74,12 @@ namespace AdbLogExport
                 case "indigo": return 0x5E5CE6;
                 case "brown": return 0xAC8E68;
                 case "graphite": return 0xAEAEB2;
-                // 三白在深色主题下就是白 / 暖白 / 冷白；启动层底是近黑，直接给亮值
-                case "purewhite": return 0xFFFFFF;
-                case "eyewhite": return 0xFFFDF5;
-                case "glasswhite": return 0xE9E9EE;
+                // 三白在深色主题下是接近纯白的中性灰白；启动层底是近黑，直接给中性亮值。
+                // A19：glasswhite 原 0xE9E9EE 带冷蓝调、eyewhite 原 0xFFFDF5 带暖黄调，
+                // 画在深色图标底上分别显蓝/显黄，统一改成中性灰白（与 _gen_accent.py 一致）。
+                case "purewhite": return 0xF2F2F2;
+                case "eyewhite": return 0xF0F0F0;
+                case "glasswhite": return 0xE6E6E6;
                 default: return 0x0A84FF;
             }
         }

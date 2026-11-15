@@ -1529,7 +1529,8 @@
             "v17close",
             "--splash-g0",
             "--winedge:rgba(48,48,54,.72);",
-            ".appmark{ color:var(--accent); }"
+            ".appmark{ color:var(--mark-fg); }",
+            ".splash .appmark{ color:var(--accent); }"
           ]
         }
       ],

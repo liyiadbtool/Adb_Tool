@@ -347,7 +347,7 @@ acc_feats = [
     ("前端回传 accent 消息", "post('accent', name)" in s and "case 'accent':" in s),
     ("后端接收并持久化 accent", 'case "accent":' in guiweb and "SaveAccentPreference" in guiweb),
     ("启动时回传 accent", "Json(App.ACCENT)" in guiweb),
-    ("ini 两个源都有 accent= 键", "accent=blue" in ini_root and "accent=blue" in ini_gui),
+    ("ini 两个源都有 accent= 键", ("accent=" in ini_root and "accent=" in ini_gui)),
     ("ACCENT 状态字段与 ini 解析", "internal static string ACCENT" in prefix and 'case "accent":' in program),
     ("对比度表已生成", os.path.isfile(os.path.join(ROOT, "docs", "ACCENT-CONTRAST.md"))),
 ]

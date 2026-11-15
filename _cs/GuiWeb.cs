@@ -3963,7 +3963,7 @@ namespace AdbLogExport.Gui
                 _castHost[i].Resize += delegate { ResizeEmbedded(si); };
                 Controls.Add(_castHost[i]);
                 _castHost[i].BringToFront();
-                _embL[i] = 0.02; _embT[i] = 0.10; _embR[i] = 0.98; _embB[i] = 0.92;
+                _embL[i] = 0.0; _embT[i] = 0.0; _embR[i] = 0.0; _embB[i] = 0.0;
             }
         }
 
@@ -4131,9 +4131,21 @@ namespace AdbLogExport.Gui
 
                 SetParent(h, _castHost[slot].Handle);
                 _scHwnd[slot] = h;
+                // A19（修复投屏默认全屏）：不要在这里立刻 Visible=true。
+                // 此时 _embL/R/T/B 还是 0（EnsureCastHosts 初始化为零），若直接显示，
+                // Panel 会以默认/错误坐标浮在窗口上（用户看到的"默认全屏"）。
+                // 改为：仅当已收到页面 castembedrect 报来的有效小屏坐标时才显示，
+                // 否则保持隐藏，等页面 v17CastEmbed 的 syncSlot 报到正确坐标后，
+                // ScrcpyEmbedPlace 会自然把它 Visible=true 并摆到格子位置。
+                if (_embR[slot] - _embL[slot] > 0.001 && _embB[slot] - _embT[slot] > 0.001)
+                {
+                    ScrcpyEmbedPlace("{\"slot\":" + slot + "}");
+                }
+                else
+                {
+                    _castHost[slot].Visible = false;
+                }
                 ResizeEmbedded(slot);
-                _castHost[slot].Visible = true;
-                _castHost[slot].BringToFront();
                 ExecJs("window.v17CastEmbedReady && window.v17CastEmbedReady(" + slot + ")");
                 App.Trace("scrcpy embed: slot=" + slot + " display=" + _scSlotId[slot]
                           + " 已接管 hwnd=" + h.ToString());

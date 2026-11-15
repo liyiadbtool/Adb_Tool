@@ -53,11 +53,13 @@ APPLE = {
     "graphite": ("#8E8E93", "#AEAEB2"),
     # A16：用户要的三种白。深色下就是白本身；浅色 / 护眼下由 adapt() 压到
     # "刚好 3:1" 的银灰 —— 白色对白底是 1:1，不压就不是颜色了。
-    # 三个起点亮度略不同（#FFFFFF / #FFFDF5 / #E9E9EE），压完之后自然分成
-    # 三档灰，用户仍能分辨。
-    "purewhite": ("#FFFFFF", "#FFFFFF"),
-    "eyewhite":  ("#FFFDF5", "#FFFDF5"),
-    "glasswhite": ("#E9E9EE", "#E9E9EE"),
+    # 三个起点亮度略不同，压完之后自然分成三档灰，用户仍能分辨。
+    # A19（修复）：深色主题下三白统一改成"接近纯白的中性灰白"，去掉冷/暖调。
+    #   原 glasswhite #E9E9EE 带冷蓝灰调，画在深色 #appmark-bg 上视觉显蓝，
+    #   是"加载动画图标显蓝"的元凶。改中性灰白后不再偏蓝。
+    "purewhite": ("#FFFFFF", "#F2F2F2"),
+    "eyewhite":  ("#F5F5F5", "#F0F0F0"),
+    "glasswhite": ("#E6E6E6", "#E6E6E6"),
 }
 # 三套明暗的表面色（与 ui.html :root 定义一致）
 SURFACE = {"dark": ("#1c1c1e", "#ffffff", "#1d1d1f"),
@@ -69,7 +71,7 @@ SWATCH = {"blue": "#0A84FF", "cyan": "#64D2FF", "teal": "#40C8E0",
           "orange": "#FF9F0A", "red": "#FF453A", "pink": "#FF375F",
           "purple": "#BF5AF2", "indigo": "#5E5CE6", "brown": "#AC8E68",
           "graphite": "#AEAEB2",
-          "purewhite": "#FFFFFF", "eyewhite": "#FFFDF5", "glasswhite": "#E9E9EE"}
+          "purewhite": "#F2F2F2", "eyewhite": "#F0F0F0", "glasswhite": "#E6E6E6"}
 
 
 def rgb(h):
