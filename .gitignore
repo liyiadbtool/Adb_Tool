@@ -24,6 +24,9 @@ adb_log_gui/ffmpeg.exe
 logs/
 gui_error.log
 
+# ---- 飞书交付临时副本（每次发版从成品目录拷过来，不是源文件）----
+_feishu/
+
 # ---- 编辑器 / 系统 ----
 .vscode/
 .idea/
