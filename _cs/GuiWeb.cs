@@ -1061,19 +1061,54 @@ namespace AdbLogExport.Gui
                 {
                     _web.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
-                    // A18：启动"闪一帧蓝色 UI"的根因与修复。
+                    // A18/A21：启动"最后一帧蓝色 icon"的根因与彻底修复。
                     //
-                    // 根因：ui.html 里 <html data-theme="dark" data-accent="blue"> 是写死的，
-                    // 主题和强调色要等页面脚本跑起来、发 themeget、C# 回 theme/accent、
-                    // applyTheme/applyAccent 生效 —— 中间这几百毫秒里，网页加载层(#splash)
-                    // 的光晕用的是**默认蓝**，用户没存蓝时就会看到"蓝一帧再跳成自己选的颜色"。
-                    // 原生遮罩那一段没这个问题（SplashPaint 直接读 App.AccentArgb()）。
+                    // 根因：ui.html 里 <html data-theme="dark" data-accent="blue"> 是写死的。
+                    // 启动层(#splash)图标的颜色 = currentColor = var(--accent)，
+                    // 而 --accent 由 data-accent 决定。在用户保存的强调色（如 glasswhite）
+                    // 被回填之前，data-accent 还是写死的 blue → 图标本体 + 外圈光晕
+                    // 全部是蓝色。之前的修法只在 DocumentCreated 时用 JS 改 data-accent，
+                    // 但那个脚本的执行时机晚于浏览器对 <html> 初始属性的首帧样式计算，
+                    // 于是"启动动画最后一帧"仍能看到蓝色 —— 用户连报多轮都没根治。
                     //
-                    // 修复：DocumentCreated 时就同步改掉 <html> 的 data-theme/data-accent，
-                    // 在 body 和任何脚本绘制之前生效，首帧光晕即正确的强调色，没有蓝帧。
+                    // 彻底修复：不依赖任何 JS 时序，在 Navigate 之前直接把 ui.html 源文件里
+                    // 写死的 data-accent / data-theme **字符串替换**成用户保存的真实值，
+                    // 写到一个临时副本再加载。这样 HTML 源本身的第一帧就是正确强调色，
+                    // 无论脚本何时执行都不会再有蓝帧。保留 DocumentCreated 脚本作为双保险
+                    // （防止替换失败时仍回退默认蓝）。
                     string acc = App.NormalizeAccent(App.ACCENT);
                     string thm = App.THEME;
                     if (thm != "light" && thm != "eye") thm = "dark";
+
+                    string uiPathForLoad = _uiPath;
+                    try
+                    {
+                        string html = System.IO.File.ReadAllText(_uiPath, System.Text.Encoding.UTF8);
+                        // 只替换 <html> 标签开头的两个属性值；用正则兜住属性顺序/引号差异。
+                        string replaced = System.Text.RegularExpressions.Regex.Replace(
+                            html,
+                            "(<html[^>]*?data-theme=\")([^\"]*)(\")",
+                            "$1" + thm + "$3",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        replaced = System.Text.RegularExpressions.Regex.Replace(
+                            replaced,
+                            "(<html[^>]*?data-accent=\")([^\"]*)(\")",
+                            "$1" + acc + "$3",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (replaced != html)
+                        {
+                            string tmp = System.IO.Path.Combine(
+                                System.IO.Path.GetTempPath(),
+                                "adb_Tool_ui_" + System.Diagnostics.Process.GetCurrentProcess().Id + ".html");
+                            System.IO.File.WriteAllText(tmp, replaced, new System.Text.UTF8Encoding(false));
+                            uiPathForLoad = tmp;
+                            App.Trace("accent: 已把 ui.html 默认 data-accent 替换为 " + acc
+                                      + "（临时副本 " + tmp + "）");
+                        }
+                    }
+                    catch (Exception exx) { App.Trace("accent: 替换 ui.html 默认值失败 " + exx.Message); }
+
+                    // 双保险：DocumentCreated 时再同步改一次（若上面替换没生效，仍有这一层兜底）
                     _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
                         "(function(){ var d=document.documentElement; " +
                         "d.setAttribute('data-theme','" + thm + "'); " +
@@ -1082,8 +1117,8 @@ namespace AdbLogExport.Gui
                     // 防止 WebView2 缓存旧版 ui.html：file:// 内容改动后
                     // 不刷新会一直显示上一次的界面（用户看到蓝色图标就是缓存）。
                     // 用时间戳 query 让每次加载都走新 URL。
-                    string url = new Uri(_uiPath).AbsoluteUri;
-                    url += "?v=" + System.IO.File.GetLastWriteTimeUtc(_uiPath).Ticks;
+                    string url = new Uri(uiPathForLoad).AbsoluteUri;
+                    url += "?v=" + System.IO.File.GetLastWriteTimeUtc(uiPathForLoad).Ticks;
                     _web.CoreWebView2.Navigate(url);
 
                     // WebView2 内部 HWND 重建后，把原生遮罩重新置顶，
@@ -3921,6 +3956,7 @@ namespace AdbLogExport.Gui
         private string[] _scTitle;
         private int[] _scSlotId;           // 每槽当前投的 displayId
         private double[] _embL, _embT, _embR, _embB;
+        private int[] _scRetry;            // A21：每槽 scrcpy 启动失败重试计数（设备瞬间掉线时救一次）
 
         [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
         private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -3954,6 +3990,7 @@ namespace AdbLogExport.Gui
             _scSlotId = new int[CAST_SLOTS];
             _embL = new double[CAST_SLOTS]; _embT = new double[CAST_SLOTS];
             _embR = new double[CAST_SLOTS]; _embB = new double[CAST_SLOTS];
+            _scRetry = new int[CAST_SLOTS];
             for (int i = 0; i < CAST_SLOTS; i++)
             {
                 _castHost[i] = new Panel();
@@ -4039,6 +4076,7 @@ namespace AdbLogExport.Gui
             ScrcpyEmbedStop(slot);
 
             EnsureCastHosts();
+            _scRetry[slot] = 0;   // A21：每次用户主动开启都重置重试计数
             // 标题必须唯一：FindWindow 是按标题找的，多个实例同名会认错窗口
             _scTitle[slot] = "AdbToolCast_" + Process.GetCurrentProcess().Id + "_"
                            + Environment.TickCount.ToString();
@@ -4066,14 +4104,53 @@ namespace AdbLogExport.Gui
                     _scPoll[cs].Stop();
                     return;
                 }
-                // 进程先退出了：把原因带回去，页面会自动降级到内置通道
+                // 进程先退出了：设备可能瞬间掉线（无线 adb 常见），先自动重试一次，
+                // 重试仍失败才把真实原因带回去、降级到内置通道。
                 try
                 {
                     if (_scProc[cs] == null || _scProc[cs].HasExited)
                     {
                         _scPoll[cs].Stop();
-                        ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + cs +
-                               ",'scrcpy 启动后退出（可能没装 scrcpy 或设备不支持该屏）')");
+                        int exitCode = 0;
+                        try { exitCode = _scProc[cs].ExitCode; } catch { }
+                        string real = Scrcpy.EmbedErr(_scProc[cs] == null ? 0 : _scProc[cs].Id);
+                        bool devDisconnect = real.IndexOf("disconnect", StringComparison.OrdinalIgnoreCase) >= 0
+                                          || real.IndexOf("no device", StringComparison.OrdinalIgnoreCase) >= 0
+                                          || real.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                        // A21 自动重试：设备瞬间掉线是无线 adb 的常态，重试一次往往能救回来。
+                        // 只在"设备掉线类"原因下重试（不是配置/版本错误），且每槽最多重试 2 次，
+                        // 避免设备彻底拔掉时无限拉起 scrcpy。
+                        if (devDisconnect && _scRetry[cs] < 2)
+                        {
+                            _scRetry[cs]++;
+                            App.Trace("scrcpy embed: slot=" + cs + " 设备掉线，自动重试 "
+                                      + _scRetry[cs] + "/2（" + real.Trim() + "）");
+                            // 复用本次的 slot/id 重新启动，不重新走 ScrcpyEmbedStop 的整条链路
+                            string err2 = "";
+                            Process p2 = Scrcpy.LaunchEmbedded(_scSlotId[cs], _scTitle[cs], out err2);
+                            if (p2 != null)
+                            {
+                                Scrcpy.ForgetEmbedErr(_scProc[cs] == null ? 0 : _scProc[cs].Id);
+                                try { if (_scProc[cs] != null) _scProc[cs].Dispose(); } catch { }
+                                _scProc[cs] = p2;
+                                _scHwnd[cs] = IntPtr.Zero;
+                                tries = 0;
+                                _scPoll[cs].Start();   // 继续轮询等新进程的窗口
+                                return;
+                            }
+                        }
+
+                        string why = "scrcpy 启动后退出（退出码 " + exitCode + "）";
+                        if (real.Length > 0)
+                        {
+                            // 把 scrcpy 自己打印的关键原因（如 "Device disconnected"）暴露给用户
+                            string first = real;
+                            int nl = first.IndexOf('\n');
+                            if (nl > 0) first = first.Substring(0, nl);
+                            why = "scrcpy 退出：" + first.Trim();
+                        }
+                        ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + cs + "," + Json(why) + ")");
                         return;
                     }
                 }
@@ -4174,6 +4251,7 @@ namespace AdbLogExport.Gui
                 if (_scProc[slot] != null && !_scProc[slot].HasExited) _scProc[slot].Kill();
             }
             catch { }
+            try { if (_scProc[slot] != null) Scrcpy.ForgetEmbedErr(_scProc[slot].Id); } catch { }
             try { if (_scProc[slot] != null) _scProc[slot].Dispose(); } catch { }
             _scProc[slot] = null;
             try { if (_castHost[slot] != null) _castHost[slot].Visible = false; } catch { }

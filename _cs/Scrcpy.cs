@@ -48,6 +48,32 @@ namespace AdbLogExport
         private static string _cachedPath;
         private static string _cachedVer = "";
 
+        // A21：内嵌 scrcpy 的 stderr 累积器（按 pid 存），失败时把真实原因带回去。
+        // 之前 BeginErrorReadLine 只 += delegate{} 空处理，scrcpy 启动后立刻退出
+        // （最常见是"Device disconnected"）时，原因被吞掉，用户只看到"scrcpy 连接中"
+        // 却不知道是设备掉线。现在失败路径能读到 scrcpy 自己打印的原因。
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, System.Text.StringBuilder>
+            _embedErr = new System.Collections.Concurrent.ConcurrentDictionary<int, System.Text.StringBuilder>();
+
+        /// <summary>取某 pid 的内嵌 scrcpy stderr 前几行（用于失败诊断）。</summary>
+        internal static string EmbedErr(int pid)
+        {
+            System.Text.StringBuilder sb;
+            if (_embedErr.TryGetValue(pid, out sb) && sb != null)
+            {
+                string s = sb.ToString();
+                if (s.Length > 500) s = s.Substring(s.Length - 500);
+                return s.Trim();
+            }
+            return "";
+        }
+
+        internal static void ForgetEmbedErr(int pid)
+        {
+            System.Text.StringBuilder sb;
+            _embedErr.TryRemove(pid, out sb);
+        }
+
         internal static void ClearCache()
         {
             _cachedPath = null;
@@ -484,7 +510,24 @@ namespace AdbLogExport
                 p.Start();
                 try
                 {
-                    p.ErrorDataReceived += delegate { };
+                    System.Text.StringBuilder errAcc = new System.Text.StringBuilder();
+                    _embedErr[p.Id] = errAcc;
+                    p.ErrorDataReceived += delegate(object s, DataReceivedEventArgs ea)
+                    {
+                        if (ea.Data != null)
+                        {
+                            if (errAcc.Length < 8000) errAcc.AppendLine(ea.Data);
+                            if (ea.Data.IndexOf("fps", StringComparison.OrdinalIgnoreCase) >= 0
+                                || ea.Data.IndexOf("disconnect", StringComparison.OrdinalIgnoreCase) >= 0
+                                || ea.Data.IndexOf("ERROR", StringComparison.OrdinalIgnoreCase) >= 0
+                                || ea.Data.IndexOf("WARN", StringComparison.OrdinalIgnoreCase) >= 0)
+                                App.Trace("scrcpy embed[" + p.Id + "]: " + ea.Data.Trim());
+                        }
+                    };
+                    p.OutputDataReceived += delegate(object s, DataReceivedEventArgs ea)
+                    {
+                        if (ea.Data != null && errAcc.Length < 8000) errAcc.AppendLine(ea.Data);
+                    };
                     p.BeginErrorReadLine();
                     p.BeginOutputReadLine();
                 }

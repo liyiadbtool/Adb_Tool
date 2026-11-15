@@ -234,9 +234,11 @@ body::after{
    边框宽度恒定不跳（未选中用透明边框，跟色点的做法一致）。
    ------------------------------------------------------------------------- */
 .set-seg .theme-card{
-  /* A19 修复：主题卡必须保留 THEME_ICON 图标（月亮/太阳/眼睛），文字与图标横排居中。
-     上一版 flex-direction:column + align-items:flex-start 把图标挤到上方、文字靠左偏下，
-     还让 ::before/::after 迷你预览卡占了图标位。 */
+  /* A20 修复：删掉底部 ::before 迷你预览窗与 ::after 强调色细条。
+     那两层绝对定位装饰压在卡片底部，min-height:44px 时会把「图标+文字」叠印在一起
+     （用户实测截图：黑夜/白天/护眼三张卡的文字都被底部横条压住，形似乱码）。
+     现在回归干净布局：图标+文字居中，选中态用 accent 底 + on-accent 字 + accent 边框，
+     一眼可辨且不再重叠。 */
   position:relative;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   padding:8px 6px;border-radius:9px;
@@ -245,9 +247,10 @@ body::after{
   text-align:center;
   min-height:44px;
 }
-.set-seg .theme-card:hover{ border-color:var(--border-strong); }
+.set-seg .theme-card:hover{ border-color:var(--accent); }
 .set-seg .theme-card.on{
   border-color:var(--accent);
+  background:var(--accent);
   box-shadow:0 0 0 1px var(--accent);
 }
 /* 图标行：svg + 文字横排居中，恢复"图标+文字并排"布局 */
@@ -256,22 +259,7 @@ body::after{
   position:relative;z-index:1;
 }
 .theme-card .tc-ic svg{ width:15px;height:15px;flex:0 0 auto; }
-/* 迷你预览窗口卡：绝对定位铺在卡片底部当装饰背景，不参与 flex 流、不占图标位 */
-.theme-card::before{
-  content:"";position:absolute;left:6px;right:6px;bottom:4px;height:18px;
-  border-radius:4px;
-  background:
-    linear-gradient(180deg, var(--theme-card-bar) 0%, var(--theme-card-bar) 40%, transparent 40%),
-    var(--surface-2);
-  box-shadow:inset 0 0 0 1px var(--border);
-  opacity:.9;
-  pointer-events:none;
-}
-.theme-card::after{
-  content:"";position:absolute;left:10px;right:52%;bottom:6px;height:2px;border-radius:1px;
-  background:var(--accent);opacity:.9;
-  pointer-events:none;
-}
 .theme-card span{ font-size:12px;color:var(--text-dim);position:relative;z-index:1; }
-.theme-card.on span{ color:var(--text); }
+.theme-card.on span{ color:var(--on-accent); }
+.theme-card.on .tc-ic svg{ stroke:var(--on-accent); }
 /* === V17 LAYER END === */

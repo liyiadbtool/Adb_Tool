@@ -136,7 +136,13 @@
     EMBED.on[slot] = false;
     cellScrcpy(slot, false);
     cellIdle(slot, 'scrcpy 没起来');
-    try { toast('「' + (CAST_NAMES[slot] || ('屏' + slot)) + '」scrcpy 没起来：' + (why || '未知原因') + '，已回退内置抓帧'); } catch (e) {}
+    /* A21：同步更新 castMeta 文案，不再停在误导性的"scrcpy 连接中…"。
+       这样右上角会显示真实原因（如"scrcpy 退出：Device disconnected"），
+       用户一眼知道是设备掉线还是 scrcpy 本身的问题。 */
+    try {
+      if (typeof castMeta === 'function') castMeta(slot, (why || 'scrcpy 没起来') + ' · 已回退内置抓帧');
+    } catch (e) {}
+    try { toast('「' + (CAST_NAMES[slot] || ('屏' + slot)) + '」' + (why || 'scrcpy 没起来') + '，已回退内置抓帧'); } catch (e) {}
     /* 回退：让该格走内置抓帧通道 */
     try {
       if (typeof window.castBuiltinFallback === 'function') window.castBuiltinFallback(slot);
