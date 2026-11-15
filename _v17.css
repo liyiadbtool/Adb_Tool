@@ -10,11 +10,13 @@
    （css_body 用正则会剥掉 :root 块和注释，剩下的地方再出现 #xxx 就报错）。
    所以启动层渐变的三个停靠点、投屏画布底色、图标前景色都在这里命名。 */
 :root{
-  --splash-g0:#1a1a20;
-  --splash-g1:#101014;
-  --splash-g2:#070709;
+  --splash-g0:#3C3E45;
+  --splash-g1:#26282E;
+  --splash-g2:#121316;
+  --splash-fog:rgba(255,255,255,.075);
   --stage-bg:#000000;
   --mark-fg:#FFFFFF;
+  --theme-card-bar:rgba(0,0,0,.28);
 }
 
 /* ---------------------------------------------------------------------------
@@ -158,56 +160,39 @@ body::after{
     linear-gradient(180deg, var(--splash-g0) 0%, var(--splash-g1) 52%, var(--splash-g2) 100%);
   background-color:var(--splash-g2);
 }
-/* 光晕单独一层做 blur —— CSS 的 filter 比多层 radial 更接近"高斯模糊"的观感 */
+/* 光晕单独一层做 blur —— CSS 的 filter 比多层 radial 更接近"高斯模糊"的观感。
+   A18：用户要"再白一点、更渐变一点、高斯模糊再多点"，所以三处都往上走：
+     · 令牌 --splash-g0/g1/g2 整条提亮（见 §0）
+     · 光晕半径 blur 56→78px、不透明度 .16→.26（铺得更开才像被大半径模糊过）
+     · 新增 ::after 一层极淡白雾，压在彩光之上，做出磨砂玻璃而不是彩色灯箱 */
 .splash::before{
   content:"";
   position:absolute;inset:-10%;
   background:
-    radial-gradient(closest-side at 50% 44%, var(--accent) 0%, transparent 70%),
-    radial-gradient(closest-side at 30% 76%, var(--accent) 0%, transparent 70%);
-  opacity:.16;
-  filter:blur(56px) saturate(1.1);
+    radial-gradient(closest-side at 50% 42%, var(--accent) 0%, transparent 72%),
+    radial-gradient(closest-side at 28% 78%, var(--accent) 0%, transparent 70%);
+  opacity:.26;
+  filter:blur(78px) saturate(1.08);
+  pointer-events:none;
+}
+.splash::after{
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(70% 58% at 50% 36%, var(--splash-fog) 0%, transparent 76%);
   pointer-events:none;
 }
 .splash .cat{ position:relative; z-index:1; }
 .splash .tip{ position:relative; z-index:1; }
 
 /* ---------------------------------------------------------------------------
-   §5 内嵌投屏（需求 追加-1）
-   画布本身是 C# 的 Panel（SetParent 把 scrcpy 的 SDL 窗口塞进去），
-   这里只负责"占位框 + 边框 + 空态提示"：Panel 会精确盖在 #ce-stage 上。
+   §5 内嵌投屏（A18 起：每格一块 scrcpy）
+   画布是每格 .cast-view 自身 —— C# 侧按该格的窗口比例，用 SetParent 把
+   scrcpy 的 SDL 窗口塞进一个 Panel，精确盖在这块区域上（ScrcpyEmbed*）。
+   scrcpy 不可用的格子自动回退内置抓帧（MJPEG）。
+   这里只给"正在用 scrcpy 的格子"一个视觉标记，别的不需要。
    ------------------------------------------------------------------------- */
-.cast-embed{
-  flex:1;min-height:0;display:flex;flex-direction:column;
-  padding:0 0 8px;
-}
-.ce-stage{
-  flex:1;min-height:0;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:var(--stage-bg);
-  overflow:hidden;
-}
-.ce-note{
-  flex:0 0 auto;display:flex;align-items:center;gap:8px;
-  padding:6px 2px 0;font-size:12px;color:var(--text-faint);
-}
-.ce-note .k{
-  font-family:var(--font-mono);
-  color:var(--text-dim);
-}
-.cast-mode{
-  display:inline-flex;align-items:center;gap:2px;
-  padding:2px;border-radius:8px;background:var(--surface-2);
-  border:1px solid var(--border);
-}
-.cast-mode button{
-  height:24px;padding:0 10px;border:none;border-radius:6px;background:transparent;
-  color:var(--text-dim);font-size:12px;cursor:pointer;
-}
-.cast-mode button.on{
-  background:var(--accent);color:var(--on-accent);font-weight:600;
-}
+.cast-cell.scrcpy .cast-meta{ color:var(--accent); font-weight:600; }
+
 
 /* ---------------------------------------------------------------------------
    §6 应用图标：黑白灰（需求 3 / 追加-2）
@@ -238,4 +223,38 @@ body::after{
   border-top:1px solid var(--border);
   line-height:1.45;
 }
+
+/* ---------------------------------------------------------------------------
+   §8 Edge 调研建议落地（A18）
+   建议 2：主题三选加迷你预览卡 —— 每个主题按钮变成一张小窗口缩略图，
+   用该主题的真实令牌渲染（--surface / --text / --accent），选中态仍走 .on，
+   边框宽度恒定不跳（未选中用透明边框，跟色点的做法一致）。
+   ------------------------------------------------------------------------- */
+.set-seg .theme-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+  padding:6px;border-radius:9px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  text-align:left;
+}
+.set-seg .theme-card:hover{ border-color:var(--border-strong); }
+.set-seg .theme-card.on{
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent);
+}
+.theme-card::before{
+  content:"";display:block;width:100%;height:34px;border-radius:6px;
+  /* 迷你窗口：顶部深色标题条 + 浅色内容区 + 一条强调色进度 */
+  background:
+    linear-gradient(180deg, var(--theme-card-bar) 0%, var(--theme-card-bar) 34%, transparent 34%),
+    var(--surface-2);
+  box-shadow:inset 0 0 0 1px var(--border);
+  position:relative;
+}
+.theme-card::after{
+  content:"";display:block;width:40%;height:3px;border-radius:2px;
+  background:var(--accent);opacity:.9;
+}
+.theme-card span{ font-size:12px;color:var(--text-dim); }
+.theme-card.on span{ color:var(--text); }
 /* === V17 LAYER END === */

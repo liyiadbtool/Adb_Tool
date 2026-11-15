@@ -151,6 +151,15 @@ A12_REMOVED = {
     "onclicks": set(["toggleTheme", "sendCmd", "toggleAccentPop"]),
     "ids": set(["theme-btn", "accent-btn", "accent-pick"]),
 }
+
+# A18 经批准删除（scrcpy 内嵌从"单屏全窗口"改成"每格一块"，功能迁移不是丢功能）：
+#   scrcpyOpen   → 每格的「外部」按钮删掉，scrcpy 直接内嵌到格子本身（castToggle 里 if(_sc.ok) 走 v17CastEmbed）
+#   cast-embed / ce-stage / ce-hint / cm-embed / cm-builtin / cast-mode  → 单屏全窗口宿主整体撤销，六格各自宿主
+A18_REMOVED = {
+    "kinds": set(),
+    "onclicks": set(["scrcpyOpen", "v17CastBuiltin", "castOpenScrcpy"]),
+    "ids": set(["cast-embed", "ce-stage", "ce-hint", "cm-embed", "cm-builtin", "cast-mode"]),
+}
 # 页签 / 页面允许"追加"（顺序不能变，新页签必须在这里登记）
 A12_TAB_ADD = ["text"]
 A12_PAGE_ADD = ["page-text"]
@@ -188,18 +197,18 @@ A16_ADDS = {
     "ids": set(),
 }
 
-# A17（2026-11-15 第 6 批）：内嵌 scrcpy 投屏。
-# 新增 8 个 DOM id（宿主画布 + 模式切换 + 图标图形定义）与 2 个 onclick，
-# 后端新增 4 个 kind（scrcpyembed / scrcpyembedstop / castembedrect / castembedhide），
-# 都是"页面 -> C# 单向下发"，没有反向回推 —— C# 回报状态走的是 ExecuteScriptAsync
-# 直接调页面的 window.v17CastEmbedReady / v17CastEmbedFail，不扩消息契约。
+# A17（2026-11-15 第 6 批）：内嵌 scrcpy 投屏（A18 起改为"每格一块"）。
+# A18 把单屏全窗口的宿主（#cast-embed / #ce-stage / #cm-embed / #cm-builtin）整个撤掉，
+# 改成投屏页 3×2 六格各自宿主（格子自带的 .cast-view 就是画面区，C# 按格比例 SetParent）。
+# 保留的契约：4 个 kind 不变（scrcpyembed 现在带 {slot,id} / scrcpyembedstop 带 {slot}
+# / castembedrect 带 {slot,l,t,r,b} / castembedhide 整体隐藏），
+# 页面入口函数换成 v17CastEmbed(slot,id) / v17CastEmbedStop(slot)。
 # 图标图形（#appmark-glyph / #appmark-bg）两条 id 不是"节点"而是 SVG defs 里的
 # 引用目标：改一处，启动层与标题栏一起变，所以必须登记、不能被当成随手写的 id 删掉。
 A17_ADDS = {
     "kinds": set(["scrcpyembed", "scrcpyembedstop", "castembedrect", "castembedhide"]),
-    "onclicks": set(["v17CastEmbed", "v17CastBuiltin"]),
-    "ids": set(["appmark-bg", "appmark-glyph", "cast-embed", "cast-mode",
-                "ce-hint", "ce-stage", "cm-builtin", "cm-embed"]),
+    "onclicks": set(["v17CastEmbed", "v17CastEmbedStop", "castBuiltinFallback"]),
+    "ids": set(["appmark-bg", "appmark-glyph"]),
 }
 
 A15_ADDS = {
@@ -231,7 +240,7 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A13_ADDS[k] and x not in A14_ADDS[k]
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
              and x not in A17_ADDS[k]]
-    bad_rm = [x for x in removed if x not in A12_REMOVED[k]]
+    bad_rm = [x for x in removed if x not in A12_REMOVED[k] and x not in A18_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,
         "基线 %d / 当前 %d；新增 %s；经批准删除 %s；违约删除 %s；未登记新增 %s" %

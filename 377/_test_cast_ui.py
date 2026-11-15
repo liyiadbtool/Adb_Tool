@@ -376,7 +376,8 @@ JS = r"""
       ok('点「外部」发 scrcpyopen', !!so, JSON.stringify(so));
       ok('scrcpyopen 带槽位与屏 id', !!so && so.slot === 0 && so.id === 0, JSON.stringify(so));
 
-      ok('每个格子都有「外部」按钮', !!document.getElementById('cast-sc-0'));
+      // A18：格子不再有「外部」按钮（scrcpy 已内嵌到每格）；开启即走 scrcpy 内嵌
+      ok('格子不再有「外部」按钮（scrcpy 已内嵌）', !document.getElementById('cast-sc-0'));
 
       // 回包提示不抛异常
       onScrcpyRes({ok:true, slot:0, id:0, msg:'已用 scrcpy 打开屏 0'});
@@ -455,9 +456,10 @@ JS = r"""
          typeof castRow === 'undefined' && typeof castRowId === 'undefined');
       ok('内建映射纯函数存在',
          typeof castDefaultId === 'function' && typeof castHasDisplay === 'function');
-      ok('castDefaultId 主屏槽0=0 / 后排屏槽2=1 / 其余=-1',
-         castDefaultId(0) === 0 && castDefaultId(2) === 1 &&
-         castDefaultId(1) === -1 && castDefaultId(3) === -1 && castDefaultId(4) === -1);
+      ok('castDefaultId 六格固定屏位映射（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）',
+         castDefaultId(0) === 0 && castDefaultId(1) === 4 &&
+         castDefaultId(2) === 1 && castDefaultId(3) === 3 &&
+         castDefaultId(4) === 9 && castDefaultId(5) === 10);
       ok('castHasDisplay 命中与缺失',
          castHasDisplay([{id:0},{id:1},{id:3}], 1) === true &&
          castHasDisplay([{id:0}], 1) === false &&

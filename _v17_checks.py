@@ -178,8 +178,8 @@ chk("⑦ _closing 会拦住「正在关还被点任务栏最小化」",
 # ============================================================================
 chk("⑧ 网页启动层是渐变而不是纯黑", "radial-gradient(60% 52% at 50% 44%" in v17css
     and "linear-gradient(180deg, var(--splash-g0)" in v17css)
-chk("⑧ 光晕单独一层做 blur（更像高斯模糊）",
-    "filter:blur(56px) saturate(1.1);" in v17css)
+chk("⑧ 光晕单独一层做 blur（A18：更大半径更像高斯模糊）",
+    "filter:blur(78px) saturate(1.08);" in v17css)
 chk("⑧ 渐变三个停靠点收进 :root 令牌（门禁要求组件区零硬编码色）",
     "--splash-g0:" in v17css and "--splash-g1:" in v17css and "--splash-g2:" in v17css)
 chk("⑧ C# 原生遮罩也同步改（否则先看到纯黑再看到渐变）",
@@ -190,19 +190,21 @@ chk("⑧ 原生遮罩的图标颜色取 App.ACCENT",
     "DrawLogo(g, AccentColor(), cx, cy, size);" in guiweb)
 
 # ============================================================================
-# 8. 追加-1：scrcpy 内嵌
+# 8. 追加-1：scrcpy 内嵌（A18 起：每格一块，不再是单屏全窗口）
 # ============================================================================
-chk("追加① 页面有内嵌占位区与模式切换",
-    'id="ce-stage"' in s and 'id="cast-embed"' in s
-    and 'id="cm-embed"' in s and 'id="cm-builtin"' in s)
-chk("追加① 页面按比例上报区域（不受 ZoomFactor / DPI 影响）",
-    "post('castembedrect'" in v17 and "r.left / W" in v17)
-chk("追加① 进入投屏页默认拉起内嵌（scrcpy 替代兜底）",
-    "if (EMBED.mode === 'embed') window.v17CastAutoEmbed();" in v17)
-chk("追加① 用户选的模式会被记住（不每次强行拉起）",
-    "rememberMode('builtin')" in v17 and "_prefs.castMode" in v17)
-chk("追加① C# 用 SetParent 把 scrcpy 窗口塞进 Panel",
-    "SetParent(h, _castHost.Handle);" in guiweb)
+chk("追加① 投屏页六格各自宿主（格子 .cast-view 即画面区，不再有单屏全窗口占位）",
+    'id="cast-grid"' in s and 'id="cast-embed"' not in s
+    and 'id="ce-stage"' not in s)
+chk("追加① 页面按格上报区域比例（不受 ZoomFactor / DPI 影响）",
+    "post('castembedrect'" in v17 and "r.left / W" in v17 and "slot: slot" in v17)
+chk("追加① 六格固定屏位映射（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）",
+    "var MAP = [0, 4, 1, 3, 9, 10];" in s)
+chk("追加① 有 scrcpy 时每格走内嵌、没有才回退内置抓帧",
+    "if (_sc.ok) {" in s and "window.v17CastEmbed(i, id);" in s)
+chk("追加① 某格 scrcpy 起不来会回退该格内置通道",
+    "function castBuiltinFallback(i)" in s and "castBuiltinFallback" in v17)
+chk("追加① C# 用 SetParent 把 scrcpy 窗口塞进每格 Panel",
+    "SetParent(h, _castHost[slot].Handle);" in guiweb)
 chk("追加① 接管时去掉标题栏/边框（否则内嵌里还有一个窗口框）",
     "style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);" in guiweb)
 chk("追加① scrcpy 用 --window-title 唯一命名，便于 FindWindow 认领",
@@ -212,14 +214,14 @@ chk("追加① 内嵌模式不弹控制台黑框（否则会被误认成主窗�
 chk("追加① 内嵌模式也抽干 stdout/stderr（4KB 管道写满会卡死画面）",
     "psi.RedirectStandardError = true;" in scrcpy and "BeginErrorReadLine()" in scrcpy)
 chk("追加① 找不到窗口时按 MainWindowHandle 兜底",
-    "h = _scProc.MainWindowHandle;" in guiweb)
-chk("追加① 切页会把内嵌藏起来（否则浮在别的页上）",
+    "h = _scProc[cs].MainWindowHandle;" in guiweb)
+chk("追加① 切页会把所有内嵌藏起来（否则浮在别的页上）",
     "post('castembedhide', '');" in v17 and 'case "castembedhide"' in guiweb)
-chk("追加① 窗口尺寸变化会重新摆 Panel",
-    "if (_castHost != null && _castHost.Visible) ScrcpyEmbedPlace(null);" in guiweb)
-chk("追加① 关窗会把内嵌 scrcpy 进程杀掉（不留在后台推流）",
+chk("追加① 窗口尺寸变化会重新摆每格 Panel",
+    "ScrcpyEmbedPlace(\"{\\\"slot\\\":" in guiweb)
+chk("追加① 关窗会把所有内嵌 scrcpy 进程杀掉（不留在后台推流）",
     "_closing = true;          // A17：任何关闭路径都置位，避免重复进清理" in guiweb
-    and "try { ScrcpyEmbedStop(); } catch { }" in guiweb)
+    and "ScrcpyEmbedStopAll()" in guiweb)
 chk("追加① 启动失败会回退内置通道并说明原因",
     "window.v17CastEmbedFail" in v17 and "v17CastEmbedFail" in guiweb)
 

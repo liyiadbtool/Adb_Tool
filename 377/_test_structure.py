@@ -146,9 +146,10 @@ JS = r"""
       ok('刷新屏位按钮已删除', !document.getElementById('cast-refresh-btn'));
       ok('内建屏位映射纯函数存在',
          typeof castDefaultId === 'function' && typeof castHasDisplay === 'function');
-      ok('castDefaultId 主屏槽0=0 / 后排屏槽2=1 / 其它=-1',
-         castDefaultId(0) === 0 && castDefaultId(2) === 1 &&
-         castDefaultId(1) === -1 && castDefaultId(3) === -1);
+      ok('castDefaultId 六格固定屏位映射（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）',
+         castDefaultId(0) === 0 && castDefaultId(1) === 4 &&
+         castDefaultId(2) === 1 && castDefaultId(3) === 3 &&
+         castDefaultId(4) === 9 && castDefaultId(5) === 10);
       ok('castHasDisplay 命中与缺失',
          castHasDisplay([{id:0},{id:1}], 1) === true &&
          castHasDisplay([{id:0}], 1) === false &&

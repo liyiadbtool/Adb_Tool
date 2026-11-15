@@ -670,7 +670,7 @@
             "function castDefaultId",
             "function castHasDisplay",
             "function castFillSelects",
-            "内置通道 1~5fps"
+            "var MAP = [0, 4, 1, 3, 9, 10];"
           ]
         }
       ],
@@ -1480,10 +1480,10 @@
             "V17 JS START",
             "id=\"appmark-glyph\"",
             "id=\"appmark-bg\"",
-            "id=\"ce-stage\"",
-            "id=\"cast-embed\"",
-            "id=\"cm-embed\"",
             "href=\"#appmark-glyph\"",
+            "var MAP = [0, 4, 1, 3, 9, 10];",
+            "if (_sc.ok) {",
+            "function castBuiltinFallback(i)",
             "window.v17Out = function",
             "window.v17InRestore = function"
           ]
@@ -1493,13 +1493,15 @@
           "has": [
             "StartExitWatchdog",
             "private void PlayOutThen(Action after)",
-            "SetParent(h, _castHost.Handle);",
+            "SetParent(h, _castHost[slot].Handle);",
             "ScrcpyEmbedPlace",
+            "ScrcpyEmbedStopAll",
             "case \"castembedhide\"",
             "App.NormalizeAccent",
             "Text = \"Adb_Tool\";",
             "TrySetCatIcon",
-            "PathGradientBrush"
+            "PathGradientBrush",
+            "AddScriptToExecuteOnDocumentCreatedAsync"
           ]
         },
         {

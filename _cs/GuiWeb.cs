@@ -588,10 +588,16 @@ namespace AdbLogExport.Gui
             // 最大化时这里会走「取消圆角」分支，正好避免全屏出现圆角。
             ApplyWindowCorner();
 
-            // A17：内嵌投屏是原生子窗口，不会跟着 HTML 重排，窗口一变就得重新摆
+            // A18：内嵌投屏是原生子窗口，不会跟着 HTML 重排，窗口一变就得重新摆。
+            // 每格重新按上次的比例摆一次（页面会再回报一次精确值，这里先粗摆防跳）。
             try
             {
-                if (_castHost != null && _castHost.Visible) ScrcpyEmbedPlace(null);
+                if (_castHost != null)
+                {
+                    for (int i = 0; i < CAST_SLOTS; i++)
+                        if (_castHost[i] != null && _castHost[i].Visible)
+                            ScrcpyEmbedPlace("{\"slot\":" + i + "}");
+                }
             }
             catch { }
         }
@@ -923,23 +929,37 @@ namespace AdbLogExport.Gui
                     using (Graphics bg = Graphics.FromImage(bmp))
                     {
                         bg.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        // ① 底：上浅下深的近黑竖向渐变（不是死黑，才有"有空间"的感觉）
+                        // ① 底：上浅下深的竖向渐变。
+                        //    A18：整体提亮一档（原来 #1A1A20→#070709 太黑，用户要"再白一点"），
+                        //    同时把中段拉到 #26282E —— 渐变在视觉上才有"过渡"，不是一块死黑。
                         using (System.Drawing.Drawing2D.LinearGradientBrush lg =
                             new System.Drawing.Drawing2D.LinearGradientBrush(
                                 new Rectangle(0, 0, w, h),
-                                Color.FromArgb(0x1A, 0x1A, 0x20),
-                                Color.FromArgb(0x07, 0x07, 0x09), 90f))
+                                Color.FromArgb(0x3C, 0x3E, 0x45),
+                                Color.FromArgb(0x12, 0x13, 0x16), 90f))
                         {
+                            System.Drawing.Drawing2D.ColorBlend cb =
+                                new System.Drawing.Drawing2D.ColorBlend(3);
+                            cb.Colors = new Color[] {
+                                Color.FromArgb(0x3C, 0x3E, 0x45),
+                                Color.FromArgb(0x26, 0x28, 0x2E),
+                                Color.FromArgb(0x12, 0x13, 0x16) };
+                            cb.Positions = new float[] { 0f, 0.52f, 1f };
+                            lg.InterpolationColors = cb;
                             bg.FillRectangle(lg, 0, 0, w, h);
                         }
-                        // ② 两团强调色光晕：主光在图标正后方，副光偏左下
+                        // ② 两团强调色光晕：主光在图标正后方，副光偏左下。
+                        //    A18：半径与 alpha 都加大 —— 用户要"高斯模糊再多点"，
+                        //    光晕铺得越开，越像被大半径模糊过的一张底图。
                         Color a = AccentColor();
                         float m = Math.Min(w, h);
-                        DrawGlow(bg, a, w * 0.50f, h * 0.44f, m * 0.58f, 58);
-                        DrawGlow(bg, a, w * 0.30f, h * 0.76f, m * 0.46f, 22);
-                        // ③ 四角压暗，把注意力收到中间
-                        DrawGlow(bg, Color.Black, w * 0.02f, h * 0.02f, m * 0.55f, 70);
-                        DrawGlow(bg, Color.Black, w * 0.98f, h * 0.98f, m * 0.55f, 70);
+                        DrawGlow(bg, a, w * 0.50f, h * 0.42f, m * 0.78f, 84);
+                        DrawGlow(bg, a, w * 0.28f, h * 0.78f, m * 0.62f, 40);
+                        // ③ 中央一层极淡白雾：压住上面的彩光，做出"磨砂玻璃"而不是"彩色灯箱"
+                        DrawGlow(bg, Color.White, w * 0.50f, h * 0.38f, m * 0.66f, 16);
+                        // ④ 四角压暗，把注意力收到中间（比 A17 轻，别又把画面压回黑）
+                        DrawGlow(bg, Color.Black, w * 0.02f, h * 0.02f, m * 0.60f, 42);
+                        DrawGlow(bg, Color.Black, w * 0.98f, h * 0.98f, m * 0.60f, 42);
                     }
                     _splashBg = bmp;
                     _splashBgKey = key;
@@ -967,56 +987,56 @@ namespace AdbLogExport.Gui
             }
         }
 
-        // 新图标（对应 ui.html 里 viewBox 0 0 24 24 的那段 SVG）
-        //   双弧 M6.6 4.6 A8 8 → M8.9 6.6 A4.5 4.5
-        //   屏幕 rect(2.6,8,18.8,10.6,r2.9)
-        //   ">" 折线 + "_" 横线 + 底座横线
+        // 启动层图形 —— A18 起与 ui.html 的 #appmark-glyph **完全同源**：
+        // 同一套 100×100 坐标、同样的四块（屏幕面板 / >_ / 双弧 / 底座）、同样的透明度。
+        //
+        // 为什么必须改：A17 把网页与 ico 换成 100 视窗的简化稿，但这个方法里还留着
+        // 24 视窗的旧几何（双弧+屏幕框那一版）。结果是**原生遮罩用旧图，网页 splash
+        // 用新图**，两者交接的那一帧图形轮廓会跳一下 —— 用户说的"闪一帧"里有一半是它。
         private void DrawLogo(Graphics g, Color c, float cx, float cy, float size)
         {
-            float s = size / 24f;
-            float ox = cx - 12f * s, oy = cy - 12f * s;
+            float s = size / 100f;
+            float ox = cx - 50f * s, oy = cy - 50f * s;
 
-            using (Pen p = new Pen(c, 1.7f * s))
-            using (SolidBrush b = new SolidBrush(c))
+            // ① 中控屏面板：fill 16% + 1.35 描边 30%（对应 <rect x13 y32 w74 h42 rx10>）
+            using (GraphicsPath scr = RoundedRect(ox + 13f * s, oy + 32f * s, 74f * s, 42f * s, 10f * s))
+            {
+                using (SolidBrush fb = new SolidBrush(Color.FromArgb(41, c)))
+                    g.FillPath(fb, scr);
+                using (Pen sp = new Pen(Color.FromArgb(77, c), Math.Max(1f, 1.35f * s)))
+                    g.DrawPath(sp, scr);
+            }
+
+            // ② 终端提示符 >_（唯一的一级高光，纯色不降透明度）
+            using (Pen p = new Pen(c, Math.Max(1.6f, 5.8f * s)))
             {
                 p.StartCap = System.Drawing.Drawing2D.LineCap.Round;
                 p.EndCap = System.Drawing.Drawing2D.LineCap.Round;
                 p.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
-
-                // 外弧：圆心 (12, 6.697) r=8，从 201.2° 顺时针 137.6°
-                using (GraphicsPath a1 = new GraphicsPath())
-                {
-                    a1.AddArc(ox + 4.0f * s, oy - 1.303f * s, 16f * s, 16f * s, 201.2f, 137.6f);
-                    g.DrawPath(p, a1);
-                }
-                // 内弧：圆心 (12, 7.838) r=4.5，从 223.5° 顺时针 133°
-                using (GraphicsPath a2 = new GraphicsPath())
-                {
-                    a2.AddArc(ox + 7.5f * s, oy + 3.338f * s, 9f * s, 9f * s, 223.5f, 133f);
-                    g.DrawPath(p, a2);
-                }
-                // 中控屏
-                using (GraphicsPath scr = RoundedRect(
-                    ox + 2.6f * s, oy + 8f * s, 18.8f * s, 10.6f * s, 2.9f * s))
-                {
-                    g.DrawPath(p, scr);
-                }
-                // >_
                 g.DrawLines(p, new PointF[] {
-                    new PointF(ox + 7.3f * s, oy + 11.8f * s),
-                    new PointF(ox + 10.2f * s, oy + 13.9f * s),
-                    new PointF(ox + 7.3f * s, oy + 16.0f * s)
+                    new PointF(ox + 33f * s, oy + 46f * s),
+                    new PointF(ox + 44f * s, oy + 53f * s),
+                    new PointF(ox + 33f * s, oy + 60f * s)
                 });
                 g.DrawLines(p, new PointF[] {
-                    new PointF(ox + 12.5f * s, oy + 16.0f * s),
-                    new PointF(ox + 15.8f * s, oy + 16.0f * s)
-                });
-                // 底座
-                g.DrawLines(p, new PointF[] {
-                    new PointF(ox + 9.1f * s, oy + 20.9f * s),
-                    new PointF(ox + 14.9f * s, oy + 20.9f * s)
+                    new PointF(ox + 56f * s, oy + 60f * s),
+                    new PointF(ox + 67f * s, oy + 60f * s)
                 });
             }
+
+            // ③ 信号双弧（圆心 50,27，半径 9 / 16，只画上半圆，透明度 55%）
+            using (Pen ap = new Pen(Color.FromArgb(140, c), Math.Max(1f, 3f * s)))
+            {
+                ap.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+                ap.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                g.DrawArc(ap, ox + 41f * s, oy + 18f * s, 18f * s, 18f * s, 180f, 180f);
+                g.DrawArc(ap, ox + 34f * s, oy + 11f * s, 32f * s, 32f * s, 180f, 180f);
+            }
+
+            // ④ 中控台底座（34% 白）
+            using (GraphicsPath led = RoundedRect(ox + 30f * s, oy + 79f * s, 40f * s, 4.5f * s, 2.25f * s))
+            using (SolidBrush lb = new SolidBrush(Color.FromArgb(87, c)))
+                g.FillPath(lb, led);
         }
 
         // 圆角矩形 path（GDI+ 无内置 RoundedRect，用 AddArc 拼）
@@ -1040,6 +1060,24 @@ namespace AdbLogExport.Gui
                 try
                 {
                     _web.CoreWebView2.Settings.IsZoomControlEnabled = false;
+
+                    // A18：启动"闪一帧蓝色 UI"的根因与修复。
+                    //
+                    // 根因：ui.html 里 <html data-theme="dark" data-accent="blue"> 是写死的，
+                    // 主题和强调色要等页面脚本跑起来、发 themeget、C# 回 theme/accent、
+                    // applyTheme/applyAccent 生效 —— 中间这几百毫秒里，网页加载层(#splash)
+                    // 的光晕用的是**默认蓝**，用户没存蓝时就会看到"蓝一帧再跳成自己选的颜色"。
+                    // 原生遮罩那一段没这个问题（SplashPaint 直接读 App.AccentArgb()）。
+                    //
+                    // 修复：DocumentCreated 时就同步改掉 <html> 的 data-theme/data-accent，
+                    // 在 body 和任何脚本绘制之前生效，首帧光晕即正确的强调色，没有蓝帧。
+                    string acc = App.NormalizeAccent(App.ACCENT);
+                    string thm = App.THEME;
+                    if (thm != "light" && thm != "eye") thm = "dark";
+                    _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                        "(function(){ var d=document.documentElement; " +
+                        "d.setAttribute('data-theme','" + thm + "'); " +
+                        "d.setAttribute('data-accent','" + acc + "'); })();");
 
                     // 防止 WebView2 缓存旧版 ui.html：file:// 内容改动后
                     // 不刷新会一直显示上一次的界面（用户看到蓝色图标就是缓存）。
@@ -1453,17 +1491,20 @@ namespace AdbLogExport.Gui
                     });
                     break;
 
-                // ---------------- A17：内嵌 scrcpy 投屏 ----------------
-                // 页面 -> 后端：scrcpyembed {data:"<displayId>"}  启动并接管
-                //              scrcpyembedstop                    停掉并还原
-                //              castembedrect {data:"{l,t,r,b}"}   区域比例
-                //              castembedhide                      只要隐藏（切页 / 最小化）
+                // ---------------- A18：内嵌 scrcpy 投屏（每格一块） ----------------
+                // 页面 -> 后端：scrcpyembed {data:"{slot,id}"}  启动并接管某格
+                //              scrcpyembedstop {data:"{slot}"}  停某格
+                //              castembedrect {data:"{slot,l,t,r,b}"}  某格区域比例
+                //              castembedhide                       只要隐藏（切页 / 最小化）
                 case "scrcpyembed":
                     ScrcpyEmbedStart(GetField(json, "data"));
                     break;
 
                 case "scrcpyembedstop":
-                    ScrcpyEmbedStop();
+                    {
+                        int ss = (int)JsonNum(GetField(json, "data"), "slot", 0);
+                        ScrcpyEmbedStop(ss);
+                    }
                     break;
 
                 case "castembedrect":
@@ -1471,7 +1512,7 @@ namespace AdbLogExport.Gui
                     break;
 
                 case "castembedhide":
-                    try { if (_castHost != null) _castHost.Visible = false; } catch { }
+                    ScrcpyEmbedHideAll();
                     break;
 
                 // ---------------- A15：日志等级（设备端 persist.log.tag） ----------------
@@ -3869,12 +3910,17 @@ namespace AdbLogExport.Gui
         // 系统 DPI 双重缩放，CSS px 换成客户区像素要乘两个系数，任一处不同步就错位；
         // 传 0~1 的比例则与缩放无关。
 
-        private Panel _castHost;
-        private Process _scProc;
-        private System.Windows.Forms.Timer _scPoll;
-        private IntPtr _scHwnd = IntPtr.Zero;
-        private string _scTitle = "";
-        private double _embL = 0.02, _embT = 0.10, _embR = 0.98, _embB = 0.92;
+        // A18：内嵌 scrcpy 从"单屏全窗口"改成"每格一块"。
+        // 投屏页 3×2 六格（主屏/副屏/后排屏/HUD/PHUD-B/PHUD-C），每格一个 scrcpy 进程、
+        // 一个宿主 Panel、一套句柄/标题/轮询，下标即槽位（0..5）。
+        private const int CAST_SLOTS = 6;
+        private Panel[] _castHost;
+        private Process[] _scProc;
+        private System.Windows.Forms.Timer[] _scPoll;
+        private IntPtr[] _scHwnd;
+        private string[] _scTitle;
+        private int[] _scSlotId;           // 每槽当前投的 displayId
+        private double[] _embL, _embT, _embR, _embB;
 
         [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
         private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -3897,47 +3943,63 @@ namespace AdbLogExport.Gui
             catch { }
         }
 
-        private void EnsureCastHost()
+        private void EnsureCastHosts()
         {
             if (_castHost != null) return;
-            _castHost = new Panel();
-            _castHost.BackColor = Color.Black;
-            _castHost.Visible = false;
-            _castHost.Resize += delegate { ResizeEmbedded(); };
-            Controls.Add(_castHost);
-            _castHost.BringToFront();
+            _castHost = new Panel[CAST_SLOTS];
+            _scProc = new Process[CAST_SLOTS];
+            _scPoll = new System.Windows.Forms.Timer[CAST_SLOTS];
+            _scHwnd = new IntPtr[CAST_SLOTS];
+            _scTitle = new string[CAST_SLOTS];
+            _scSlotId = new int[CAST_SLOTS];
+            _embL = new double[CAST_SLOTS]; _embT = new double[CAST_SLOTS];
+            _embR = new double[CAST_SLOTS]; _embB = new double[CAST_SLOTS];
+            for (int i = 0; i < CAST_SLOTS; i++)
+            {
+                _castHost[i] = new Panel();
+                _castHost[i].BackColor = Color.Black;
+                _castHost[i].Visible = false;
+                int si = i;   // 闭包捕获
+                _castHost[i].Resize += delegate { ResizeEmbedded(si); };
+                Controls.Add(_castHost[i]);
+                _castHost[i].BringToFront();
+                _embL[i] = 0.02; _embT[i] = 0.10; _embR[i] = 0.98; _embB[i] = 0.92;
+            }
         }
 
         /// <summary>把内嵌窗口铺满宿主 Panel（scrcpy 的 SDL 窗口会自己把画面缩放到这个尺寸）。</summary>
-        private void ResizeEmbedded()
+        private void ResizeEmbedded(int slot)
         {
             try
             {
-                if (_scHwnd == IntPtr.Zero || _castHost == null) return;
-                MoveWindow(_scHwnd, 0, 0,
-                    Math.Max(1, _castHost.ClientSize.Width),
-                    Math.Max(1, _castHost.ClientSize.Height), true);
+                if (slot < 0 || slot >= CAST_SLOTS) return;
+                if (_scHwnd[slot] == IntPtr.Zero || _castHost[slot] == null) return;
+                MoveWindow(_scHwnd[slot], 0, 0,
+                    Math.Max(1, _castHost[slot].ClientSize.Width),
+                    Math.Max(1, _castHost[slot].ClientSize.Height), true);
             }
             catch { }
         }
 
-        /// <summary>页面回报区域比例 → 摆宿主 Panel。窗口尺寸变了也走这里。</summary>
+        /// <summary>页面回报某槽的区域比例 → 摆宿主 Panel。窗口尺寸变了也走这里。</summary>
         private void ScrcpyEmbedPlace(string data)
         {
-            EnsureCastHost();
-            _embL = JsonNum(data, "l", _embL);
-            _embT = JsonNum(data, "t", _embT);
-            _embR = JsonNum(data, "r", _embR);
-            _embB = JsonNum(data, "b", _embB);
+            EnsureCastHosts();
+            int slot = (int)JsonNum(data, "slot", 0);
+            if (slot < 0 || slot >= CAST_SLOTS) slot = 0;
+            _embL[slot] = JsonNum(data, "l", _embL[slot]);
+            _embT[slot] = JsonNum(data, "t", _embT[slot]);
+            _embR[slot] = JsonNum(data, "r", _embR[slot]);
+            _embB[slot] = JsonNum(data, "b", _embB[slot]);
             Rectangle cr = ClientRectangle;
-            int x = (int)Math.Round(cr.Width * _embL);
-            int y = (int)Math.Round(cr.Height * _embT);
-            int w = Math.Max(96, (int)Math.Round(cr.Width * (_embR - _embL)));
-            int h = Math.Max(96, (int)Math.Round(cr.Height * (_embB - _embT)));
-            _castHost.Bounds = new Rectangle(x, y, w, h);
-            _castHost.Visible = true;
-            _castHost.BringToFront();
-            ResizeEmbedded();
+            int x = (int)Math.Round(cr.Width * _embL[slot]);
+            int y = (int)Math.Round(cr.Height * _embT[slot]);
+            int w = Math.Max(32, (int)Math.Round(cr.Width * (_embR[slot] - _embL[slot])));
+            int h = Math.Max(32, (int)Math.Round(cr.Height * (_embB[slot] - _embT[slot])));
+            _castHost[slot].Bounds = new Rectangle(x, y, w, h);
+            _castHost[slot].Visible = true;
+            _castHost[slot].BringToFront();
+            ResizeEmbedded(slot);
         }
 
         private static double JsonNum(string json, string key, double dflt)
@@ -3961,83 +4023,86 @@ namespace AdbLogExport.Gui
             return dflt;
         }
 
-        private void ScrcpyEmbedStart(string idStr)
+        private void ScrcpyEmbedStart(string data)
         {
-            int id = 0;
-            int.TryParse((idStr ?? "0").Trim(), out id);
+            int slot = (int)JsonNum(data, "slot", 0);
+            int id = (int)JsonNum(data, "id", 0);
+            if (slot < 0 || slot >= CAST_SLOTS) slot = 0;
 
-            ScrcpyEmbedStop();
+            ScrcpyEmbedStop(slot);
 
-            EnsureCastHost();
+            EnsureCastHosts();
             // 标题必须唯一：FindWindow 是按标题找的，多个实例同名会认错窗口
-            _scTitle = "AdbToolCast_" + Process.GetCurrentProcess().Id + "_"
-                       + Environment.TickCount.ToString();
+            _scTitle[slot] = "AdbToolCast_" + Process.GetCurrentProcess().Id + "_"
+                           + Environment.TickCount.ToString();
+            _scSlotId[slot] = id;
 
             string err = "";
-            Process p = Scrcpy.LaunchEmbedded(id, _scTitle, out err);
+            Process p = Scrcpy.LaunchEmbedded(id, _scTitle[slot], out err);
             if (p == null)
             {
-                ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + Json(err) + ")");
+                ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + slot + "," + Json(err) + ")");
                 return;
             }
-            _scProc = p;
-            _scHwnd = IntPtr.Zero;
+            _scProc[slot] = p;
+            _scHwnd[slot] = IntPtr.Zero;
 
             int tries = 0;
-            _scPoll = new System.Windows.Forms.Timer();
-            _scPoll.Interval = 120;
-            _scPoll.Tick += delegate
+            int cs = slot;
+            _scPoll[slot] = new System.Windows.Forms.Timer();
+            _scPoll[slot].Interval = 120;
+            _scPoll[slot].Tick += delegate
             {
                 tries++;
-                if (_scHwnd != IntPtr.Zero)
+                if (_scHwnd[cs] != IntPtr.Zero)
                 {
-                    _scPoll.Stop();
+                    _scPoll[cs].Stop();
                     return;
                 }
                 // 进程先退出了：把原因带回去，页面会自动降级到内置通道
                 try
                 {
-                    if (_scProc == null || _scProc.HasExited)
+                    if (_scProc[cs] == null || _scProc[cs].HasExited)
                     {
-                        _scPoll.Stop();
-                        ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail('scrcpy 启动后退出（" +
-                               "可能没装 scrcpy 或设备不支持该屏）')");
+                        _scPoll[cs].Stop();
+                        ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + cs +
+                               ",'scrcpy 启动后退出（可能没装 scrcpy 或设备不支持该屏）')");
                         return;
                     }
                 }
                 catch { }
 
-                IntPtr h = FindWindow(null, _scTitle);
+                IntPtr h = FindWindow(null, _scTitle[cs]);
                 if (h == IntPtr.Zero)
                 {
                     // 兜底：有的 scrcpy 版本会改窗口标题（或加后缀），按标题找不到时
                     // 用进程的主窗口句柄。内嵌模式已关掉控制台，所以主窗口就是视频窗。
                     try
                     {
-                        if (_scProc != null) h = _scProc.MainWindowHandle;
+                        if (_scProc[cs] != null) h = _scProc[cs].MainWindowHandle;
                     }
                     catch { }
                 }
                 if (h != IntPtr.Zero)
                 {
-                    AttachEmbedded(h);
-                    _scPoll.Stop();
+                    AttachEmbedded(cs, h);
+                    _scPoll[cs].Stop();
                     return;
                 }
                 // 8 秒还找不到窗口：多半是 scrcpy 版本太老，不认 --window-borderless
                 if (tries > 66)
                 {
-                    _scPoll.Stop();
-                    ScrcpyEmbedStop();
-                    ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail('没等到 scrcpy 窗口，" +
-                           "请升级到 scrcpy 2.x/3.x 以上')");
+                    _scPoll[cs].Stop();
+                    ScrcpyEmbedStop(cs);
+                    ExecJs("window.v17CastEmbedFail && window.v17CastEmbedFail(" + cs +
+                           ",'没等到 scrcpy 窗口，请升级到 scrcpy 2.x/3.x 以上')");
                 }
             };
-            _scPoll.Start();
+            _scPoll[slot].Start();
         }
 
         /// <summary>把 scrcpy 的顶层窗口变成宿主 Panel 的子窗口，并去掉系统边框。</summary>
-        private void AttachEmbedded(IntPtr h)
+        private void AttachEmbedded(int slot, IntPtr h)
         {
             try
             {
@@ -4057,13 +4122,14 @@ namespace AdbLogExport.Gui
                 style |= WS_CHILD | WS_VISIBLE;
                 SetWindowLong(h, GWL_STYLE, style);
 
-                SetParent(h, _castHost.Handle);
-                _scHwnd = h;
-                ResizeEmbedded();
-                _castHost.Visible = true;
-                _castHost.BringToFront();
-                ExecJs("window.v17CastEmbedReady && window.v17CastEmbedReady()");
-                App.Trace("scrcpy embed: 已接管 hwnd=" + h.ToString());
+                SetParent(h, _castHost[slot].Handle);
+                _scHwnd[slot] = h;
+                ResizeEmbedded(slot);
+                _castHost[slot].Visible = true;
+                _castHost[slot].BringToFront();
+                ExecJs("window.v17CastEmbedReady && window.v17CastEmbedReady(" + slot + ")");
+                App.Trace("scrcpy embed: slot=" + slot + " display=" + _scSlotId[slot]
+                          + " 已接管 hwnd=" + h.ToString());
             }
             catch (Exception ex)
             {
@@ -4071,26 +4137,40 @@ namespace AdbLogExport.Gui
             }
         }
 
-        private void ScrcpyEmbedStop()
+        private void ScrcpyEmbedStop(int slot)
         {
-            try { if (_scPoll != null) { _scPoll.Stop(); _scPoll.Dispose(); _scPoll = null; } } catch { }
+            if (slot < 0 || slot >= CAST_SLOTS) return;
+            try { if (_scPoll[slot] != null) { _scPoll[slot].Stop(); _scPoll[slot].Dispose(); _scPoll[slot] = null; } } catch { }
             try
             {
-                if (_scHwnd != IntPtr.Zero)
+                if (_scHwnd[slot] != IntPtr.Zero)
                 {
-                    SetParent(_scHwnd, IntPtr.Zero);
-                    _scHwnd = IntPtr.Zero;
+                    SetParent(_scHwnd[slot], IntPtr.Zero);
+                    _scHwnd[slot] = IntPtr.Zero;
                 }
             }
             catch { }
             try
             {
-                if (_scProc != null && !_scProc.HasExited) _scProc.Kill();
+                if (_scProc[slot] != null && !_scProc[slot].HasExited) _scProc[slot].Kill();
             }
             catch { }
-            try { if (_scProc != null) _scProc.Dispose(); } catch { }
-            _scProc = null;
-            try { if (_castHost != null) _castHost.Visible = false; } catch { }
+            try { if (_scProc[slot] != null) _scProc[slot].Dispose(); } catch { }
+            _scProc[slot] = null;
+            try { if (_castHost[slot] != null) _castHost[slot].Visible = false; } catch { }
+        }
+
+        private void ScrcpyEmbedStopAll()
+        {
+            if (_castHost == null) return;
+            for (int i = 0; i < CAST_SLOTS; i++) ScrcpyEmbedStop(i);
+        }
+
+        private void ScrcpyEmbedHideAll()
+        {
+            if (_castHost == null) return;
+            for (int i = 0; i < CAST_SLOTS; i++)
+                try { if (_castHost[i] != null) _castHost[i].Visible = false; } catch { }
         }
 
         // ---------------- 关闭清理 ----------------
@@ -4098,8 +4178,8 @@ namespace AdbLogExport.Gui
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _closing = true;          // A17：任何关闭路径都置位，避免重复进清理
-            // A17：内嵌的 scrcpy 是外部进程，不主动杀会留在后台继续推流
-            try { ScrcpyEmbedStop(); } catch { }
+            // A18：内嵌的 scrcpy 是外部进程，不主动杀会留在后台继续推流（每格一个）
+            try { ScrcpyEmbedStopAll(); } catch { }
             try { _tick.Stop(); } catch { }
 
             // 【需求6】停掉 track-devices 监听线程。

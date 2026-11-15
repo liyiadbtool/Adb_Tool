@@ -7,7 +7,7 @@
 
 ## 最后更新
 
-2026-11-16 00:20 · A17（第 6 批：八条需求 + 两条追加）已落地并过门禁
+2026-11-16 01:15 · A18（第 7 批：七条反馈 + 两件收尾）已落地并过门禁
 
 ---
 
@@ -18,40 +18,37 @@
 | 检查 | 命令 | 当前结果 |
 |---|---|---|
 | 全量门禁 | `python verify_all.py` | **26 项 / 0 失败** |
-| A17 落点 | `python _v17_checks.py` | 63 / 63 |
+| A17 落点 | `python _v17_checks.py` | 64 / 64 |
 | A16 落点 | `python _v16_checks.py` | 78 / 78 |
 | A15 落点 | `python _v15_checks.py` | 54 / 54 |
 | 功能清单 | `node _check_features.js` | 52 项通过 |
+| 功能不变量 | `python _gate_invariants.py` | 44 项 / 0 失败 |
 | 窗口原生 | `python _smoke_win.py` | 13 / 13 |
 | GUI 自检 | `adb_Tool.exe -guiSelfCheck`（由 verify_all 调用） | 46 条断言 0 失败 |
 | CLI 自检 | `adb_log_export.exe -selftest` | 489 条断言 0 失败 |
 
 ---
 
-## 本轮做了什么（A17）
+## 本轮做了什么（A18）
 
 | # | 需求 | 落点 |
 |---|---|---|
-| 1 | 强调色未记忆 | 白名单收口成 `_cs/Prefix.cs` 的 `ACCENTS`（单一来源）；`SaveAccentPreference` 不再"没 ini 就 return"；页面侧另存一份 `_prefs.accent` |
-| 2 | 恢复 dock 开合动效 | `_v17.css` `.v17-in/.v17-out`（只动 transform）；C# `PlayOutThen()` 播 130ms 再最小化/关闭 |
-| 3 | icon 改黑白灰 + 黑底 | `_icon_v2.py`（底 `#2E2E2E→#050505`，严格 R=G=B）；页面内联图形与 ico 同源（`#appmark-glyph`），启动层与标题栏共用 |
-| 4 | 浅色窗口边界 | `_v17.css` §2：实边 0.72 + 内高光 + 6px 内阴影 |
-| 5 | 直角改圆角 | `_v17.css` §1：侧栏/终端页/输入行各自成卡片（8px 内缩 + 12px 圆角） |
-| 6 | Edge 主题设置调研 | `docs/参考-Edge主题设置与同类实现.md`；落地「中性色」分组标签 |
-| 7 | 关闭要两次 | 先 `Hide()` 立即消失 → `BeginInvoke(Close)` 跑清理 → 看门狗 2.5s 硬退 |
-| 8 | 启动层高斯模糊渐变 + 图标跟随强调色 | `_v17.css` §4（`--splash-g0/1/2` + blur 光晕）；C# `SplashPaint` 同步 |
-| 追加1 | scrcpy 内嵌到应用内 | `SetParent` 把 scrcpy 窗口塞进 `_castHost` Panel；页面按比例报区域；进投屏页默认拉起、模式记忆 |
-| 追加2 | 换任务栏图标 + 去标题前缀 | `Text = "Adb_Tool"`；`TrySetCatIcon()` 读同目录 `adb_Tool.ico` |
+| 1 | 验证 SSH + 接手指南 | SSH 公钥已生效；GitHub 仓库 `liyiadbtool/Adb_Tool` **还没建**（见下一步）。产出 `docs/明天到公司继续开发.md` |
+| 2 | 各分屏用 scrcpy 内嵌 | 六格（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）各自内嵌 scrcpy；删掉单屏全窗口宿主、全屏弹窗、「外部」按钮；`castToggle` 有 scrcpy 走 `v17CastEmbed(i,id)`、没有回退 `castBuiltinFallback(i)`；C# `_castHost[6]` 数组化 |
+| 3 | 应用图标 | 源码/二进制已全换黑白灰（7 档 ico 全嵌入、饱和差=0）；用户看到的旧图标是 **Windows 图标缓存**，非代码问题 |
+| 4 | 启动闪一帧蓝 | 根因：`data-accent="blue"` 写死，prefs 回填前先渲染默认蓝。`OnCoreReady` 里 `AddScriptToExecuteOnDocumentCreatedAsync` 首帧前就同步 theme/accent；`DrawLogo` 换成 100 视窗同源图形 |
+| 5 | 精简完整版 | 成品 zip 只含运行必需 + 一份使用手册，不夹带交付说明/调研/截图（见 `docs/明天到公司继续开发.md` §七） |
+| 6 | 启动更白更模糊 | 渐变提亮（`#3C3E45→#26282E→#121316`）+ 光晕 blur 56→78px + 加白雾层；C# `PaintSplashBackdrop` 同步 |
+| 7 | Edge 建议落地 | 建议1 色点 hover 显对比度、建议2 主题预览卡、建议3 按设备序列号记强调色（`_prefs.accentByDevice`）、建议4 设置重排（主题→强调色→显示→字体）；建议5（自定义hex）不做 |
 
 ---
 
 ## 下一步（按优先级）
 
-1. **真机验收**（必须人工）：内嵌 scrcpy 在有设备时是否真的"可点击、跟手"；关闭是否一次就退；浅色下边界是否够清楚。
-   命令：`adb_log_gui\dist\adb_Tool.exe`，投屏页看是否自动接管。
-2. **Edge 调研里的建议 1**（低风险）：色点 `title` 补对比度数字，数值从 `_gen_accent.py` 输出。
-3. **Edge 调研里的建议 2/3**（中风险，单独一轮）：主题缩略预览卡；强调色按设备序列号记忆。
-4. 出包：`python release.py` → 组装 `Desktop\Adb_Tool_成品_V17_<时间戳>`（含交付说明 + `docs/shots/a17-*.png`）。
+1. **在 GitHub 建仓库**（30 秒）：https://github.com/new → 名字 `Adb_Tool` → Private → 不勾初始化 → Create。然后 `git push -u origin main`。SSH key 已生效，只差仓库。
+2. **真机验收**（必须人工）：六格 scrcpy 内嵌是否"可点击、跟手"；启动是否还闪蓝；强调色重启是否保持；图标（刷新缓存后）是否黑白灰。
+3. **刷新图标缓存**（若还看到旧图标）：取消固定 → 重新固定，或重启资源管理器。
+4. 出包：`python release.py` → 组装 `Desktop\Adb_Tool_成品_V18_<时间戳>`（精简：运行文件 + 一份交付说明，不带截图/调研文档）。
 
 ---
 

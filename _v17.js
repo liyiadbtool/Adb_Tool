@@ -47,24 +47,26 @@
     fr.classList.remove('v17-in');
   };
 
-  /* ==================== §2 内嵌 scrcpy ====================
+  /* ==================== §2 内嵌 scrcpy（每格一块） ====================
+     A18 改造：从"单屏全窗口"改成"投屏页 3×2 六格，每格一块 scrcpy"。
      为什么用 Panel 而不是 <video>：scrcpy 是 SDL 原生窗口，推的是 h264 流，
      客户端解码后直接画在自己的 HWND 上。我们能做的是把这个 HWND
      用 SetParent 塞进应用（C# 侧 _cs/GuiWeb.cs 的 ScrcpyEmbed*），
      这样鼠标事件天然由 scrcpy 处理 —— 点击 / 滑动 / 键盘全都是原生跟手，
      帧率就是 scrcpy 自己的帧率（h264，30~60fps），不经过截图轮询。
 
-     页面这边只负责两件事：
-       ① 告诉 C# 那块区域在窗口里的比例（用比例而不是像素：页面受 ZoomFactor
-          和 DPI 缩放影响，比例换算不会有误差）；
-       ② 切换 / 切页时同步显隐。 */
+     页面这边只负责：
+       ① 每格告诉 C# 它那块区域在窗口里的比例（用比例而非像素，避免 Zoom/DPI 错位）；
+       ② 开 / 停某格、切页时统一隐显。
 
-  var EMBED = { on: false, id: 0, mode: 'embed' };
+     降级：某格 scrcpy 起不来（没装 / 设备不支持该屏）→ 该格回退到内置抓帧，
+     并 toast 说明原因，其余格子不受影响。 */
 
-  /* 记住"用内嵌还是内置"——用户切到内置通道后再进投屏页，不要又强行拉起 scrcpy。
+  var EMBED = { on: [false, false, false, false, false, false] };
+
+  /* 记住"用内嵌还是内置"——用户切到内置通道后不要又强行拉起 scrcpy。
      存进 _prefs（跟字号/显示选项同一条持久化通道），重启也保持。 */
   function rememberMode(m) {
-    EMBED.mode = m;
     try {
       if (typeof _prefs === 'object' && _prefs) {
         _prefs.castMode = m;
@@ -73,128 +75,95 @@
     } catch (e) {}
   }
 
-  function embedRect() {
-    var st = $('ce-stage');
-    if (!st) return null;
-    var r = st.getBoundingClientRect();
+  /* 某格画面区的窗口比例（cell 的 .cast-view 矩形） */
+  function embedRect(slot) {
+    var v = document.querySelector('#cast-cell-' + slot + ' .cast-view');
+    if (!v) return null;
+    var r = v.getBoundingClientRect();
     var W = Math.max(1, window.innerWidth), H = Math.max(1, window.innerHeight);
     return { l: r.left / W, t: r.top / H, r: r.right / W, b: r.bottom / H };
   }
 
-  /* 把当前区域比例发给 C#；隐藏时发 hide，让 C# 把 Panel 藏起来 */
-  window.v17CastEmbedSync = function () {
-    var host = $('cast-embed');
-    if (!host || host.style.display === 'none') { post('castembedhide', ''); return; }
-    var r = embedRect();
+  /* 把某格区域比例发给 C#；隐藏时发 hide */
+  function syncSlot(slot) {
+    if (EMBED.on[slot] !== true) return;
+    var r = embedRect(slot);
     if (!r) return;
     post('castembedrect', JSON.stringify({
+      slot: slot,
       l: Math.round(r.l * 10000) / 10000,
       t: Math.round(r.t * 10000) / 10000,
       r: Math.round(r.r * 10000) / 10000,
       b: Math.round(r.b * 10000) / 10000
     }));
-  };
-
-  function setEmbedHint(txt) {
-    var h = $('ce-hint');
-    if (h) h.textContent = txt || '';
   }
 
-  /* 当前选中的屏位号（投屏页网格的选中项；没选过就按主屏 0） */
-  window.v17CurrentCastId = function () {
-    var i = (typeof _castMaxed !== 'undefined' && _castMaxed >= 0) ? _castMaxed : 0;
-    var id = 0;
-    try { id = (typeof castSelectedId === 'function') ? castSelectedId(i) : 0; } catch (e) { id = 0; }
-    return (typeof id === 'number' && id >= 0) ? id : 0;
-  };
+  function cellIdle(slot, txt) {
+    var el = document.getElementById('cast-idle-' + slot);
+    if (el) el.textContent = txt;
+  }
 
-  /* 打开内嵌：id = displayId（0 主屏 / 4 副驾 / 1 后排 / 3 HUD / 9 / 10） */
-  window.v17CastEmbed = function (id) {
-    var host = $('cast-embed');
-    if (!host) return;
+  function cellScrcpy(slot, on) {
+    var c = document.getElementById('cast-cell-' + slot);
+    if (c) c.classList.toggle('scrcpy', !!on);
+  }
+
+  /* 打开某格的内嵌 scrcpy。id = displayId（0 主屏 / 4 副驾 / 1 后排 / 3 HUD / 9 / 10） */
+  window.v17CastEmbed = function (slot, id) {
+    if (typeof slot !== 'number' || slot < 0 || slot > 5) slot = 0;
+    if (typeof id !== 'number' || id < 0) id = 0;
     if (typeof _online !== 'undefined' && !_online) { toast('设备未连接'); return; }
-    host.style.display = '';
-    EMBED.on = true;
-    EMBED.id = (typeof id === 'number') ? id : 0;
-    setEmbedHint('正在启动内嵌 scrcpy（h264 直连，可点击操作）…');
+
+    EMBED.on[slot] = true;
+    cellScrcpy(slot, true);
+    cellIdle(slot, '正在启动 scrcpy（h264 直连）…');
     rememberMode('embed');
-    post('scrcpyembed', String(EMBED.id));
+    post('scrcpyembed', JSON.stringify({ slot: slot, id: id }));
     /* 区域要先给一次，Panel 才知道摆在哪；之后靠 resize / 切页同步 */
-    setTimeout(function () { window.v17CastEmbedSync(); }, 30);
-    var grid = $('cast-grid');
-    if (grid) grid.style.display = 'none';
-    var strip = $('cast-strip');
-    if (strip) strip.style.display = 'none';
-    syncCastModeBtn();
+    setTimeout(function () { syncSlot(slot); }, 30);
   };
 
-  window.v17CastEmbedStop = function () {
-    EMBED.on = false;
-    post('scrcpyembedstop', '');
-    var host = $('cast-embed');
-    if (host) host.style.display = 'none';
-    setEmbedHint('');
-    var grid = $('cast-grid');
-    if (grid) grid.style.display = '';
-    var strip = $('cast-strip');
-    if (strip) strip.style.display = '';
-    syncCastModeBtn();
+  window.v17CastEmbedStop = function (slot) {
+    if (typeof slot !== 'number' || slot < 0 || slot > 5) slot = 0;
+    EMBED.on[slot] = false;
+    cellScrcpy(slot, false);
+    post('scrcpyembedstop', JSON.stringify({ slot: slot }));
   };
 
-  /* 内置抓帧通道（老路）：回到 MJPEG 网格 */
-  window.v17CastBuiltin = function () {
-    rememberMode('builtin');
-    window.v17CastEmbedStop();
-    if (typeof castRefreshStripFrames === 'function') { try { castRefreshStripFrames(); } catch (e) {} }
+  /* C# 回报：某格启动失败 → 该格回退内置通道并说明原因 */
+  window.v17CastEmbedFail = function (slot, why) {
+    if (typeof slot !== 'number' || slot < 0 || slot > 5) slot = 0;
+    EMBED.on[slot] = false;
+    cellScrcpy(slot, false);
+    cellIdle(slot, 'scrcpy 没起来');
+    try { toast('「' + (CAST_NAMES[slot] || ('屏' + slot)) + '」scrcpy 没起来：' + (why || '未知原因') + '，已回退内置抓帧'); } catch (e) {}
+    /* 回退：让该格走内置抓帧通道 */
+    try {
+      if (typeof window.castBuiltinFallback === 'function') window.castBuiltinFallback(slot);
+    } catch (e) {}
   };
 
-  function syncCastModeBtn() {
-    var b = $('cm-embed'), g = $('cm-builtin');
-    if (b) b.classList.toggle('on', !!EMBED.on);
-    if (g) g.classList.toggle('on', !EMBED.on);
-    var hint = $('cast-hint');
-    if (hint) {
-      hint.textContent = EMBED.on
-        ? '内嵌 scrcpy：h264 直连，30~60fps，可直接点击操作'
-        : '内置通道 1~5fps（看链路，无线 adb 更慢）；要流畅请切到「内嵌 scrcpy」';
-    }
-    var fps = $('cast-fps');
-    if (fps && EMBED.on) fps.textContent = '';
-  }
-
-  /* C# 回报：启动失败（没装 scrcpy / 找不到窗口）→ 自动降级并说明原因 */
-  window.v17CastEmbedFail = function (why) {
-    EMBED.on = false;
-    var host = $('cast-embed');
-    if (host) host.style.display = 'none';
-    var grid = $('cast-grid');
-    if (grid) grid.style.display = '';
-    var strip = $('cast-strip');
-    if (strip) strip.style.display = '';
-    syncCastModeBtn();
-    try { toast('内嵌投屏没起来：' + (why || '未知原因') + '，已回退内置通道'); } catch (e) {}
+  window.v17CastEmbedReady = function (slot) {
+    if (typeof slot !== 'number' || slot < 0 || slot > 5) slot = 0;
+    cellIdle(slot, 'scrcpy · 可点击操作');
   };
 
-  window.v17CastEmbedReady = function () {
-    setEmbedHint('画面已接管 · 鼠标点击 / 拖动直接作用在车机上');
-    syncCastModeBtn();
+  /* 全屏某格时，把其它格的 scrcpy 藏起来（否则会浮在全屏那格上） */
+  window.v17CastEmbedHide = function () {
+    post('castembedhide', '');
   };
 
-  /* 切页 / 改窗口大小时同步区域；离开投屏页就把 Panel 藏起来（否则会浮在别的页上） */
+  /* 切页 / 改窗口大小时同步区域；离开投屏页就把所有 Panel 藏起来 */
   var _switch0 = window.switchTab;
   if (typeof _switch0 === 'function') {
     window.switchTab = function (name) {
       var r = _switch0.apply(this, arguments);
       try {
         if (name === 'cast') {
-          /* 进投屏页：默认把内嵌 scrcpy 拉起来（用户要求"scrcpy 替代兜底"）。
-             已经在内嵌就只重报区域；上次主动选了内置就尊重用户选择。 */
           setTimeout(function () {
-            if (EMBED.on) { window.v17CastEmbedSync(); return; }
-            if (EMBED.mode === 'embed') window.v17CastAutoEmbed();
-            else window.v17CastEmbedSync();
+            for (var i = 0; i < 6; i++) if (EMBED.on[i]) syncSlot(i);
           }, 30);
-        } else if (EMBED.on) {
+        } else {
           post('castembedhide', '');
         }
       } catch (e) {}
@@ -203,30 +172,152 @@
   }
 
   window.addEventListener('resize', function () {
-    if (EMBED.on) window.v17CastEmbedSync();
+    for (var i = 0; i < 6; i++) if (EMBED.on[i]) syncSlot(i);
   });
   /* 字号（ZoomFactor）变化时布局会重排，区域必须重报 */
   window.addEventListener('v17layout', function () {
-    if (EMBED.on) window.v17CastEmbedSync();
+    for (var i = 0; i < 6; i++) if (EMBED.on[i]) syncSlot(i);
   });
 
-  /* 初次进入投屏页时，如果还没选过模式，默认走内嵌（用户要求：scrcpy 替代兜底） */
-  window.v17CastAutoEmbed = function () {
-    var host = $('cast-embed');
-    if (!host) return;
-    if (EMBED.on) return;
-    window.v17CastEmbed(window.v17CurrentCastId());
-  };
+  /* ==================== §3 Edge 调研建议落地 ====================
+     建议 1：色点 hover 显示 WCAG 对比度（把"白也能看清"从断言变成可见信任凭证）。
+     建议 2：主题选择加迷你预览卡（真实令牌渲染明暗差异，不再纯文字按钮）。
+     建议 3：强调色按设备序列号记忆（插 A8R 蓝、T09M 橙，一眼知道在测哪台）。
+     建议 4：设置项按 Edge 顺序（明暗 → 强调色 → 字体）重排。
+     建议 5（自定义 hex）明确不做，理由见 docs/参考-Edge主题设置与同类实现.md。 */
 
-  /* 回填上次选的模式（跟着 prefs 一起进来） */
-  var _pa0 = window.prefsApply;
-  window.prefsApply = function (b64) {
-    var r = _pa0 ? _pa0.apply(this, arguments) : undefined;
+  /* —— 建议 1：动态算对比度（跟随当前主题的 --accent / --surface）—— */
+  function hex2rgb(h) {
+    h = (h || '').trim();
+    if (h[0] === '#') h = h.slice(1);
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (h.length < 6) return null;
+    var n = parseInt(h.slice(0, 6), 16);
+    if (isNaN(n)) return null;
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function relLum(c) {
+    if (!c) return 0;
+    var f = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function contrast(a, b) {
+    var la = relLum(a), lb = relLum(b);
+    var hi = Math.max(la, lb), lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+  function accentContrastText(accentName) {
+    /* 先临时把 --accent 换成目标色，再读它和 --on-accent 的对比度。
+       用 CSS 变量读值，主题切换后自动跟着变，不用硬编码 48 条表。 */
+    var r = document.documentElement;
+    var prev = r.getAttribute('data-accent');
+    r.setAttribute('data-accent', accentName);
+    var cs = getComputedStyle(r);
+    var acc = hex2rgb(cs.getPropertyValue('--accent').trim());
+    var on = hex2rgb(cs.getPropertyValue('--on-accent').trim());
+    r.setAttribute('data-accent', prev || 'blue');
+    if (!acc || !on) return '';
+    var c = contrast(acc, on);
+    return c.toFixed(2) + ':1（AA' + (c >= 4.5 ? ' ✓' : ' ✗') + '）';
+  }
+  function armAccentContrast() {
+    var dots = document.querySelectorAll('.accent-dot');
+    for (var i = 0; i < dots.length; i++) {
+      (function (d) {
+        var name = d.getAttribute('data-accent') || 'blue';
+        var baseTitle = d.getAttribute('title') || d.textContent;
+        var armed = false;
+        d.addEventListener('mouseenter', function () {
+          try {
+            if (!armed) { d.setAttribute('data-orig-title', baseTitle); armed = true; }
+            d.setAttribute('title', baseTitle + ' · 文字对比度 ' + accentContrastText(name));
+          } catch (e) {}
+        });
+      })(dots[i]);
+    }
+  }
+  function tryArmContrast() {
+    if (document.querySelector('.accent-dot')) armAccentContrast();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryArmContrast);
+  else tryArmContrast();
+
+  /* —— 建议 2：主题按钮加迷你预览卡 ——
+     在 buildThemeSeg 之后补一层：每个主题按钮里塞一张小窗口缩略图，
+     用该主题的真实令牌（--surface/--text/--accent）渲染，选中态仍走 .on。 */
+  var _buildThemeSeg = window.buildThemeSeg;
+  if (typeof _buildThemeSeg === 'function') {
+    window.buildThemeSeg = function () {
+      var r = _buildThemeSeg.apply(this, arguments);
+      try {
+        var box = document.getElementById('set-theme');
+        if (box) {
+          var btns = box.querySelectorAll('button');
+          for (var i = 0; i < btns.length; i++) {
+            var t = btns[i].getAttribute('data-theme');
+            if (t) btns[i].classList.add('theme-card', 'tc-' + t);
+          }
+        }
+      } catch (e) {}
+      return r;
+    };
+  }
+
+  /* —— 建议 3：按设备序列号记强调色 ——
+     _prefs.accentByDevice = { '<serial>': '<accent>' }。
+     prefsApply 时若有当前序列号，就用它覆盖全局 accent；没有就退回全局。
+     C# 侧收到 device 变化会推 status，这里按 App.SERIAL 对应字段取名。 */
+  function deviceAccentKey() {
+    /* 序列号来源：setStatus 里存的全局 _dev（设备号）；取不到就空，退回全局色 */
     try {
-      var o = JSON.parse(b64dec(b64) || '{}');
-      if (o && (o.castMode === 'builtin' || o.castMode === 'embed')) EMBED.mode = o.castMode;
+      if (typeof _dev === 'string' && _dev) return _dev;
     } catch (e) {}
-    return r;
-  };
+    return '';
+  }
+  function applyDeviceAccent() {
+    try {
+      var k = deviceAccentKey();
+      if (!k || typeof _prefs !== 'object' || !_prefs) return;
+      var map = _prefs.accentByDevice;
+      if (!map || typeof map !== 'object') return;
+      var a = map[k];
+      if (typeof a === 'string' && a && typeof window.applyAccent === 'function') {
+        window.applyAccent(a);
+      }
+    } catch (e) {}
+  }
+  /* 记住"这台设备用这个强调色"：用户切强调色时，若已连设备就写进设备映射 */
+  var _setAccent0 = window.setAccent;
+  if (typeof _setAccent0 === 'function') {
+    window.setAccent = function (name) {
+      var r = _setAccent0.apply(this, arguments);
+      try {
+        var k = deviceAccentKey();
+        if (k && typeof _prefs === 'object' && _prefs) {
+          if (!_prefs.accentByDevice || typeof _prefs.accentByDevice !== 'object') _prefs.accentByDevice = {};
+          _prefs.accentByDevice[k] = name;
+          if (typeof window.prefsSave === 'function') window.prefsSave();
+        }
+      } catch (e) {}
+      return r;
+    };
+  }
+  /* prefs 回填后按设备覆盖一次；设备上线时（setStatus）也补一次 */
+  var _prefsApply0 = window.prefsApply;
+  if (typeof _prefsApply0 === 'function') {
+    window.prefsApply = function (b64) {
+      var r = _prefsApply0.apply(this, arguments);
+      try { applyDeviceAccent(); } catch (e) {}
+      return r;
+    };
+  }
+  var _setStatus0 = window.setStatus;
+  if (typeof _setStatus0 === 'function') {
+    window.setStatus = function (s) {
+      var r = _setStatus0.apply(this, arguments);
+      try { applyDeviceAccent(); } catch (e) {}
+      return r;
+    };
+  }
 })();
 /* === V17 JS END === */
