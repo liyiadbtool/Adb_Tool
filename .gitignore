@@ -12,8 +12,10 @@ release/
 ffmpeg.exe
 adb_log_gui/ffmpeg.exe
 
-# ---- 测试生成物：377/test_*.html 每次跑测试都会从 ui.html 重新生成 ----
+# ---- 测试生成物：每次跑测试都从 ui.html 重新生成，入库只会天天 dirty ----
 377/test_*.html
+377/_*_probe.html
+377/_dbg*.html
 
 # ---- 本机运行态：程序会往里写 accent= / prefs= / 设备信息 ----
 # 注意：adb_log_gui/adb_log_export.ini 是**构建用模板**，必须入库（见文件末尾的 ! 规则）
