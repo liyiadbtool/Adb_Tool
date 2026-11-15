@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- adb_Tool 应用图标源：与 ui.html 顶栏 / 加载层 / 任务栏四处同源。
+     24×24 坐标系，线宽 1.75，圆角矩形 r=4，终端提示符 >_。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="256" height="256">
+  <rect x="2.75" y="4.5" width="18.5" height="15" rx="4" fill="#0A84FF"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.5 9.75l3.25 2.5-3.25 2.5"/>
+    <path d="M12.75 15.25h3.75"/>
+  </g>
+</svg>

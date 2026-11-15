@@ -1,0 +1,31 @@
+# 换行与编码：这个项目最容易被 Git 改坏的地方
+#
+# 背景：仓库里同时存在
+#   · .bat / .cmd  —— Windows 批处理，**必须 CRLF**，且必须全 ASCII
+#                      （build_gui.bat 里有 /codepage:65001，中文注释会被 csc 当成源码吃掉）
+#   · .py / .js / .css / .html / .md —— 统一 LF + UTF-8，中文注释才不会在 diff 里花
+#   · .ico / .exe / .png / .zip —— 二进制，绝不能做换行转换
+#
+# 一句话：`* text=auto` 之后逐类覆盖，不要依赖本机 core.autocrlf。
+
+* text=auto
+
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+*.ini   text eol=crlf
+
+*.sh    text eol=lf
+*.py    text eol=lf
+*.js    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+
+*.ico   binary
+*.png   binary
+*.jpg   binary
+*.exe   binary
+*.zip   binary
+*.dll   binary

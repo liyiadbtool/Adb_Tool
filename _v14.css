@@ -1,0 +1,200 @@
+/* === V14 LAYER START === */
+/* ==========================================================================
+   A14 · 边界对比 / 图标尺寸 / 字体大小 / 下拉浮层
+   --------------------------------------------------------------------------
+   用户 8 条 UI 反馈（2026-11-15 第 3 批）：
+     1) 启动动画换成最新图标，颜色跟随强调色
+     2) 白天模式白底上"应用边界不清晰"
+     3) 左上角 icon 太小，要跟随布局与字体
+     4)(白天/护眼) 界面与功能按钮区分不明显
+     5) 黑夜模式下设置里的字体下拉，展开是白底白字
+     6) 删掉设置面板里两处中文（字体预览前缀 / 关于描述）
+     7) 黑夜模式下文本页编码、换行下拉同样白底
+     8) 设置里加字体大小（大/中/小），整页跟随
+   --------------------------------------------------------------------------
+   写法约定（改之前先读）：
+     · 只覆盖 **浅色 / 护眼** 两套主题的对比度：深色本来就没这个问题，
+       一起改会把已经很舒服的深色弄脏。
+     · 颜色只走令牌。需要新色值时写在 :root[data-theme=...] 里
+       （门禁「组件样式零硬编码色」只放过令牌定义段）。
+     · 本层必须排在 V13 层之后 —— 同特异性下靠顺序取胜。
+   ========================================================================== */
+
+/* ---------------- §1 浅色 / 护眼：把"看得见"修成"分得清" ----------------
+   诊断（对比截图）：
+     light 下 --border 只有 rgba(60,60,67,.29)，白卡片压在 #f2f2f7 底上，
+     1px 边框实测对比度不到 1.6:1，等于没有边；--edge 更是 .055。
+     按钮只有 hover 才变色，静止态和卡片一个面 —— 所以"功能按钮区分不明显"。
+   做法：边框提到 .44/.62（约 3:1，满足非文本对比度），
+         --edge 提到 .10，按钮给一层 --well 面（Apple 的 secondary fill）。 */
+:root[data-theme="light"]{
+  --border:rgba(60,60,67,.44);
+  --border-strong:rgba(60,60,67,.62);
+  --edge:rgba(0,0,0,.10);
+  --well:rgba(118,118,128,.12);
+  /* 卡片压在页面底上的落地投影：浅色下几乎全被 --border 抢戏，
+     这里给一个极轻的 y 偏移，让"卡片浮在底上"成立 */
+  --a14-lift:0 1px 2px rgba(0,0,0,.06),0 6px 16px -10px rgba(0,0,0,.18);
+  /* 卡片/面板的边框：A11 玻璃层把 .qcard 的 border 写成了 --edge（.055），
+     白底上等于没有边（实测 1.25:1）。这里单给一条卡片边令牌。 */
+  --a14-card-edge:rgba(60,60,67,.42);
+  /* 页面底：比 --bg 再深一级。#f2f2f7 与白卡只差 1.05:1，肉眼几乎分不开；
+     #e8e8ef 与白卡拉开 1.16:1，卡片才真正"浮"在底上。
+     注意必须留一点透明度：A11 玻璃层靠 .frame 半透明透出背后漂移的光雾，
+     写成不透明纯色会把光雾糊死（_check_glass.py 的护栏就是抓这个），
+     所以这里给 rgba，合成后仍落在 #eaeaf0 一带，明度差不变。 */
+  --a14-page:rgba(232,232,239,.88);
+  /* 次要文字（卡片说明 / 导航计数）实测只有 2.96:1，加深到 3.7:1 左右 */
+  --text-faint:rgba(60,60,67,.62);
+  --text-dim:rgba(60,60,67,.76);
+}
+:root[data-theme="eye"]{
+  /* 护眼底是暖白（#fdfaf3），原来 .28 的边框实测只有 1.4:1，
+     比白天还糊 —— 提到 .55 才够 2:1（暖色本身亮度高，得压得更狠）。 */
+  --border:rgba(120,105,75,.55);
+  --border-strong:rgba(120,105,75,.70);
+  --edge:rgba(80,66,40,.10);
+  --well:rgba(120,105,75,.10);
+  --a14-lift:0 1px 2px rgba(80,66,40,.08),0 6px 16px -10px rgba(80,66,40,.18);
+  --a14-card-edge:rgba(120,105,75,.50);
+  --a14-page:rgba(240,231,211,.90);
+  --text-faint:rgba(59,53,44,.64);
+  --text-dim:rgba(59,53,44,.80);
+}
+:root[data-theme="dark"]{
+  /* 深色本来没问题，卡片边沿用原来的 --edge，不动 */
+  --a14-card-edge:var(--edge);
+}
+
+/* 页面底：浅色下原来是"白框架 + 白卡片"，边框再怎么加粗也只是白上描线。
+   Apple 的分组式布局是「灰底 + 白卡」，所以把框架底压深一级（--a14-page），
+   卡片保持 --surface 纯白 —— 边界靠明度差成立，而不是只靠 1px 描边。
+   深色不动：深色本来就是深底浅卡，层次已经成立。 */
+[data-theme="light"] .frame,
+[data-theme="eye"] .frame{
+  background:var(--a14-page);
+}
+/* 右侧内容区与左侧导航都透出灰底，卡片/面板仍是白面 */
+[data-theme="light"] .quick-body,[data-theme="eye"] .quick-body,
+[data-theme="light"] .quick-grid,[data-theme="eye"] .quick-grid{
+  background:transparent;
+}
+
+/* 卡片 / 面板：把边框从 --edge（几乎透明）换成 --a14-card-edge。
+   投影保持玻璃层原来的 --shadow-card / --shadow-cell，别在这盖掉 rim。 */
+.qcard,
+.cast-cell,
+.fs-pane{
+  border-color:var(--a14-card-edge);
+}
+
+/* 按钮：静止态就有一层面（Apple 的 secondary fill），不再"只有 hover 才看得见" */
+[data-theme="light"] .btn,
+[data-theme="eye"] .btn,
+[data-theme="light"] .fs-ico,
+[data-theme="eye"] .fs-ico{
+  background:var(--well);
+  border-color:var(--border-strong);
+  box-shadow:inset 0 1px 0 var(--rim);
+}
+[data-theme="light"] .btn:hover,
+[data-theme="eye"] .btn:hover,
+[data-theme="light"] .fs-ico:hover,
+[data-theme="eye"] .fs-ico:hover{
+  background:var(--surface);
+  border-color:var(--accent);
+}
+/* primary 已经是强调色实心，别再叠 --well（会脏） */
+[data-theme="light"] .btn.primary,
+[data-theme="eye"] .btn.primary{ background:var(--accent); border-color:var(--accent); }
+
+/* 页签：未选中给一层白面 + 明显描边，选中保持强调色实心 */
+[data-theme="light"] .tab,
+[data-theme="eye"] .tab{ box-shadow:inset 0 1px 0 var(--rim); }
+
+/* 左侧导航：选中态原来用 --surface-2（和页面底同色，等于没选中）。
+   改成 --well 面 + 左侧 2px 强调色竖条，扫一眼就能定位当前分组。 */
+[data-theme="light"] .qnav-item.active,
+[data-theme="eye"] .qnav-item.active{
+  background:var(--well);
+  color:var(--text);
+  font-weight:600;
+  box-shadow:inset 2px 0 0 var(--accent);
+}
+/* 分组小标题（采集导出 / 开关调试…）：加粗加深，作为"分区"而不是"装饰" */
+[data-theme="light"] .qcat,
+[data-theme="eye"] .qcat{
+  color:var(--text-dim);
+  font-weight:700;
+  letter-spacing:.02em;
+}
+/* 输入框 / 下拉 / 搜索：静止态边框也提到 --border-strong 一级 */
+[data-theme="light"] .set-sel,
+[data-theme="eye"] .set-sel,
+[data-theme="light"] .qsearch,
+[data-theme="eye"] .qsearch{
+  border-color:var(--border-strong);
+  background:var(--surface);
+}
+
+/* 深色主题里也补一层"面"：不改颜色，只让按钮有立体边（用户没抱怨，保守处理） */
+[data-theme="dark"] .btn{ box-shadow:inset 0 1px 0 var(--rim); }
+
+/* ---------------- §2 标题栏图标：跟随布局与字体（需求 3） ----------------
+   原来写死 15px / 18px，标题栏高 42px 时明显偏小。
+   改成从 --tb-h 派生：42px 高 → 约 23px，和标题栏文字（13~14px）成比例。 */
+.tb-logo{ margin-right:2px; }
+.tb-logo svg{
+  width:calc(var(--tb-h) * .54);
+  height:calc(var(--tb-h) * .54);
+  display:block;
+}
+
+/* ---------------- §3 启动动画：最新图标 + 跟随强调色（需求 1） ----------------
+   图标本体在 HTML 里（与 ico 同源：中控屏 + >_ + 信号弧 + 底座），
+   这里只负责尺寸与颜色 —— 颜色用 --accent，跟着设置里的 9 色强调色走。 */
+.splash .cat{
+  width:120px;height:120px;
+  color:var(--accent);
+}
+.splash .cat svg{
+  filter:drop-shadow(0 0 24px var(--accent-soft)) drop-shadow(0 0 8px var(--accent-soft));
+}
+.splash .tip{ color:var(--text-dim); }
+
+/* ---------------- §4 原生下拉的浮层（需求 5/7） ----------------
+   黑夜模式下 <select> 展开的白底白字是 Chromium 原生弹层，CSS 改不动它的配色。
+   做法：拦下 select 的 mousedown，自己画一个用主题令牌的列表（_v14.js）。
+   下面这套样式就是那个浮层；color-scheme:inherit 让原生那层也至少跟着主题。 */
+select{ color-scheme:inherit; }
+.a14-selpop{
+  position:fixed;z-index:1400;
+  min-width:180px;max-width:min(420px,90vw);max-height:300px;overflow:auto;
+  padding:5px;border-radius:10px;
+  background:var(--surface);
+  border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-lg);
+  animation:a14pop .12s var(--ease);
+}
+@keyframes a14pop{ from{opacity:0;transform:translateY(-4px);} to{opacity:1;transform:none;} }
+.a14-selpop .it{
+  padding:8px 10px;border-radius:7px;
+  font-family:var(--font-ui);font-size:13px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;
+}
+.a14-selpop .it:hover{ background:var(--well); }
+.a14-selpop .it.on{ background:var(--accent-soft); color:var(--accent); font-weight:600; }
+
+/* ---------------- §5 字体大小分段控件（需求 8） ----------------
+   复用 .set-seg，只补一条"当前值"的显示位；缩放本身由 WebView2 的
+   ZoomFactor 执行（整页等比放大并重新排版），不用 CSS 逐条改字号。 */
+.set-fsize-row{ margin-top:10px; }
+.set-fsize-hint{
+  margin-top:6px;font-size:12px;color:var(--text-faint);line-height:1.5;
+}
+/* 三个按钮本身就用字的实际大小示意，不用再额外加图标 */
+#set-fsize button[data-fsize="s"]{ font-size:12px; }
+#set-fsize button[data-fsize="m"]{ font-size:13.5px; }
+#set-fsize button[data-fsize="l"]{ font-size:15.5px; }
+
+/* === V14 LAYER END === */

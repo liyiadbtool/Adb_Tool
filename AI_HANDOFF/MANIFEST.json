@@ -1,0 +1,513 @@
+{
+ "project": "adb_Tool / 网联服务_Adb_Tool",
+ "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
+ "count": 101,
+ "totalBytes": 1952207,
+ "files": [
+  {
+   "path": "377/_build_all.py",
+   "size": 1852,
+   "sha256": "3006490972ced350861dd74d78f56da2c3ac96827f6511d7ce61afd5584a2433"
+  },
+  {
+   "path": "377/_check_ui.js",
+   "size": 24887,
+   "sha256": "5b9debf109af60b398d4fa83261a17457a61bbbed8589be29ce061a1e92531a2"
+  },
+  {
+   "path": "377/_cmds_shot.txt",
+   "size": 13,
+   "sha256": "d8c64997889935e8439258fae7332805d9bc293f227200ce1156097fe9f1fa8f"
+  },
+  {
+   "path": "377/_cnw_host.cs",
+   "size": 593,
+   "sha256": "cee060e1541ae4323c2ac800ac814f52d1008c2fe0b0855f377ebe99292d976e"
+  },
+  {
+   "path": "377/_diag_windows.py",
+   "size": 3440,
+   "sha256": "a24403e39095d2f071afe5e8cd22fa22aea52e90c9dbfce03ade6135a9e3854c"
+  },
+  {
+   "path": "377/_measure_align.py",
+   "size": 6176,
+   "sha256": "e5a9fce1a2d6396f4cb3f6a0917e31c6f0d4bb7c157b8d8c803b8c59a36ce7a1"
+  },
+  {
+   "path": "377/_measure_text_align.py",
+   "size": 8018,
+   "sha256": "bdc9cf78ff3c24bf0a4285ddf7364689fe6768b80471a0b3d75f572282b789ab"
+  },
+  {
+   "path": "377/_probe_cnw.cs",
+   "size": 605,
+   "sha256": "b2f7e9486d595e153a1a1ef3adfd7b2eff07ccdd5c694d8643a5dc8a56b45437"
+  },
+  {
+   "path": "377/_probe_cnw.py",
+   "size": 6117,
+   "sha256": "62b1984bf7799414cd075292075be87245686e238e16ce43048e694b4002233e"
+  },
+  {
+   "path": "377/_shot_align.py",
+   "size": 5527,
+   "sha256": "a8f545cf755d00f69f3e4d1cee8a6f6d6b5cfdda7dabdfdc9bcca4356de57d46"
+  },
+  {
+   "path": "377/_shot_gui.py",
+   "size": 3283,
+   "sha256": "1a24f5601cca31a640200fdece8630a6e98304ab02089439de92b56a079b975d"
+  },
+  {
+   "path": "377/_shot_gui2.py",
+   "size": 4521,
+   "sha256": "97b9901681818dffa6dc607b3e01e0b2016eead73e89bda8ceaf5b046e8e7307"
+  },
+  {
+   "path": "377/_shot_new.py",
+   "size": 5479,
+   "sha256": "b4c03f698c4fc574e0e3ee194426c7228e56e1eb3eac2adf34bfe73613a41d8b"
+  },
+  {
+   "path": "377/_shot_pw.py",
+   "size": 3724,
+   "sha256": "fbd3b561c77dde672e709a5c83bf5be6025f8e1edca98236bc9dcef12738b483"
+  },
+  {
+   "path": "377/_shot_real_gui.py",
+   "size": 4440,
+   "sha256": "441cdadb9b2e008015109d2bcaf49ffa51a56356fe2a3d11d02ed73c1f4852b8"
+  },
+  {
+   "path": "377/_shot_vr.py",
+   "size": 3199,
+   "sha256": "2f734e79c255ef069fd37cf6fd23bf2ba83d3259faa84220ceaf0b4be052d1f4"
+  },
+  {
+   "path": "377/_shot_win.py",
+   "size": 4967,
+   "sha256": "4a9725e3292f176d2898038dc11d77a20804aea8753ecddfa9f1c681cf568393"
+  },
+  {
+   "path": "377/_test_apk_ui.py",
+   "size": 14312,
+   "sha256": "1676929ee6b051e71e436d3be03fe8737b5c2d92a2c26c897fb488b48fd867b1"
+  },
+  {
+   "path": "377/_test_batch_ui.py",
+   "size": 5687,
+   "sha256": "6925e23ae8dfa8c35cd4b910f22eb2f436dd5f01e3f54485149f07e2544b5a96"
+  },
+  {
+   "path": "377/_test_busy_lock.py",
+   "size": 6958,
+   "sha256": "514461bcf12f52f1d7ec635f6bd1db0b37afff04e6ec06af7adf49eb86026230"
+  },
+  {
+   "path": "377/_test_cast_ui.py",
+   "size": 22965,
+   "sha256": "929f1a5c90e341f411b915373b5e9138605d62224f8c4f3fd0829d570b5eeb1f"
+  },
+  {
+   "path": "377/_test_file_ui.py",
+   "size": 12898,
+   "sha256": "79512ae6a1fd06c5b1c37fabc11c409b737373cee69c113b553939075686999f"
+  },
+  {
+   "path": "377/_test_fs_search.py",
+   "size": 10352,
+   "sha256": "20ebf7a2aad5bb42926ed6ad4476cfdc632add8f8725292667504832b9280d28"
+  },
+  {
+   "path": "377/_test_no_window.py",
+   "size": 6642,
+   "sha256": "c1951bea9e167cc2bcfb8b34deb28c80a07de5414e557191468fc43f578972d9"
+  },
+  {
+   "path": "377/_test_rec_stop.py",
+   "size": 3846,
+   "sha256": "fd8d004e9cc0a39624473872f07ea7819c091d1b86bae1e73505a79289bcb38c"
+  },
+  {
+   "path": "377/_test_src_route.py",
+   "size": 10652,
+   "sha256": "ef86806f718dc386b56e3f6e2a96c0ec2f77b2cc803fc0856f0565dc09ccc9a9"
+  },
+  {
+   "path": "377/_test_structure.py",
+   "size": 7675,
+   "sha256": "df8062e6897186a2a29d8c66524f053cb357e269b2d420423dc0fc885a79f92d"
+  },
+  {
+   "path": "377/_test_ui_behavior.py",
+   "size": 39730,
+   "sha256": "ba188d306809c6dfaadb20869c1e3081d173c2a683dfb398e27d18d781a002eb"
+  },
+  {
+   "path": "377/_test_ux.py",
+   "size": 18496,
+   "sha256": "47787f951a5d4689f027119cb80ac937b4c4cf5dadb72aaf7675a87e981e592f"
+  },
+  {
+   "path": "377/_test_vr_ui.py",
+   "size": 8936,
+   "sha256": "837756153a8deeed1e5f259952c6ab2e7e58aaddf6290aa6d33f3155c526d80f"
+  },
+  {
+   "path": "377/_test_wadb_ui.py",
+   "size": 7132,
+   "sha256": "f27dbe901cfbcbd6978e8d995cab87806334b30004e981ebd8e76bb624b21d98"
+  },
+  {
+   "path": "AI_HANDOFF/00_START_HERE.md",
+   "size": 7774,
+   "sha256": "3b4a29a746010bb2326fc5a0f96af7e40c9d318ad2205cd08f219b411d0b768f"
+  },
+  {
+   "path": "AI_HANDOFF/01_AI_PROMPT.md",
+   "size": 9218,
+   "sha256": "167d2323064a44d75a9d410e4bbebd9225951953c12e19cc2d26dba62d7fb691"
+  },
+  {
+   "path": "AI_HANDOFF/02_PROJECT_MAP.md",
+   "size": 8875,
+   "sha256": "2335004dffa8ca700d548b1b435f5eb793de25f297a7caa5c33dc8799c65bb3e"
+  },
+  {
+   "path": "AI_HANDOFF/03_TROUBLESHOOTING.md",
+   "size": 7871,
+   "sha256": "3cb7ef6bf79b8a5edcc87ca8ecf7fbbc11f1c730330618758a21a8c703e140a9"
+  },
+  {
+   "path": "AI_HANDOFF/04_STATUS.md",
+   "size": 6051,
+   "sha256": "611a83eb4776290cf6f5da3052335ae85a7edd52c544e292026630ec74f837d0"
+  },
+  {
+   "path": "AI_HANDOFF/README.md",
+   "size": 2094,
+   "sha256": "8e6205bf27616b495d6e66fbcbcc7837eeba82807c372e972e7977108b325bbd"
+  },
+  {
+   "path": "AI_HANDOFF/make_manifest.py",
+   "size": 3306,
+   "sha256": "d904f82de662bba44df24d41ca68b969cd99aaa6caaf5bcb085d204142ad403d"
+  },
+  {
+   "path": "AI_HANDOFF/verify_handoff.py",
+   "size": 14520,
+   "sha256": "75d3b77b65f96300e93d951f6188bf73ed2baa03327df688780bf1eb5142007d"
+  },
+  {
+   "path": "HANDOFF.md",
+   "size": 43784,
+   "sha256": "9e6a0baeffd2344438117a4d5b4a597ffbadcd1cd8f99a9f8368eda065d27d3c"
+  },
+  {
+   "path": "_check_build_list.js",
+   "size": 2810,
+   "sha256": "0071e86097d5014a874603d2761845d496d016b93d136aff1df1ac3ba875c286"
+  },
+  {
+   "path": "_check_features.js",
+   "size": 3672,
+   "sha256": "5e0abe19be7953b8068e6726d288d06477a38d9867f703541cc4c6af42c1951e"
+  },
+  {
+   "path": "_check_features.json",
+   "size": 13705,
+   "sha256": "0e80ffbdd74d772a981e5fcbda117a0eb11d41ae81e103012ffbc0f46b058f53"
+  },
+  {
+   "path": "_cs/Adb.cs",
+   "size": 111516,
+   "sha256": "0d5ba979bbc4c3dbb95c36829da27c61a5c18b466033fc3f63e8d9b0b899081f"
+  },
+  {
+   "path": "_cs/AdbCmd.cs",
+   "size": 29253,
+   "sha256": "ed6892b50a4531eeb6ee6b6c3dd6b6384c90a245da384bc83fef0212fb368fce"
+  },
+  {
+   "path": "_cs/ApkCmds.cs",
+   "size": 10884,
+   "sha256": "eefc377689ea2a9c9786e5fd7e3bf1fe7912d8aad0d37865457b0393524fef5c"
+  },
+  {
+   "path": "_cs/ApkList.cs",
+   "size": 17232,
+   "sha256": "41c3536bd8b254eda624a707daee4181326b6853139f108242285b140c272ac0"
+  },
+  {
+   "path": "_cs/CarInfo.cs",
+   "size": 9521,
+   "sha256": "92127e923c8826e72a32e355a908f19e68ee192669f67d446cc08810ea177e08"
+  },
+  {
+   "path": "_cs/Cast.cs",
+   "size": 29598,
+   "sha256": "b1b65bd4a398966bd288385095b420ef4f6f846ae39526077b27e43e1c1a630d"
+  },
+  {
+   "path": "_cs/CmdRegistry.cs",
+   "size": 20910,
+   "sha256": "38f812793d36f8b049a9dddba516ec5f9205c3df8cc518c1550588debc7b5fde"
+  },
+  {
+   "path": "_cs/Common.cs",
+   "size": 5935,
+   "sha256": "e06fecdbeb111694e89d57c529b4ef56b36e7271d30326f407069b383025e69d"
+  },
+  {
+   "path": "_cs/DeviceWatcher.cs",
+   "size": 22875,
+   "sha256": "d8adc82eb369d796538311ecc1e9dd0aa648da8b6df49ed8deafd949ac7a768f"
+  },
+  {
+   "path": "_cs/Embed.cs",
+   "size": 12471,
+   "sha256": "43a7c88a8e7e1e7de7e5b9c5adbb16b66df89be32bcfd43993dcf225560b0434"
+  },
+  {
+   "path": "_cs/Env.cs",
+   "size": 12362,
+   "sha256": "972a816b42c9c293c6b8d46909cde2780f94949829456008b543b52d21a2c64e"
+  },
+  {
+   "path": "_cs/Ffmpeg.cs",
+   "size": 18220,
+   "sha256": "2ff1683de2e32f53bc3119adde6882c5b8db2838da47212f3f1a27757b1dabc2"
+  },
+  {
+   "path": "_cs/FileBrowser.cs",
+   "size": 42292,
+   "sha256": "047bf84072b4f98ba8bb88497a194dd38e7ec5d9af28e71c72cbb4300273e820"
+  },
+  {
+   "path": "_cs/GuiEntry.cs",
+   "size": 9668,
+   "sha256": "0460cda3b8c51ad1d8f5040b01718dca4d2069e80b28d57f35c47d13826bf65c"
+  },
+  {
+   "path": "_cs/GuiHeadless.cs",
+   "size": 10443,
+   "sha256": "a0f3769101d7605d96f3d0f00899346f8bf720c9427d606b6f48de26f151707f"
+  },
+  {
+   "path": "_cs/GuiMain.cs",
+   "size": 41639,
+   "sha256": "8734a96e9e22cf9e8dcbae155581353b3e0c3f7115d288272fdc9475100be93a"
+  },
+  {
+   "path": "_cs/GuiSelfCheck.cs",
+   "size": 17875,
+   "sha256": "b253c06c9e64e4dd8c0f353fa76db99096bd5c510809fa008a10a9f6c7f14af9"
+  },
+  {
+   "path": "_cs/GuiSink.cs",
+   "size": 12313,
+   "sha256": "00a9c17a048a5fad67cc2bbbcb4dabd86e0acddd7425101bf3eebc2aed6e553e"
+  },
+  {
+   "path": "_cs/GuiWeb.cs",
+   "size": 112601,
+   "sha256": "36ec4e6084c8a872cffce6eef3d38ebfbd476a1038a1f2247bd13390b456bae6"
+  },
+  {
+   "path": "_cs/Hdc.cs",
+   "size": 9680,
+   "sha256": "9e0a0a5af9c04c543ab501c8dc9527b5151354544836aa33f5b757bc3953c7a6"
+  },
+  {
+   "path": "_cs/LineEdit.cs",
+   "size": 28942,
+   "sha256": "acfddf55f105ce62c657e0cf62380f447c7d8df6e4b07c9cb1a40e852a66ba42"
+  },
+  {
+   "path": "_cs/PkgVer.cs",
+   "size": 48160,
+   "sha256": "638466326ba893315b4af94db107a4f54a99eb6440d4c415c837b76be0c91578"
+  },
+  {
+   "path": "_cs/Prefix.cs",
+   "size": 45651,
+   "sha256": "5c15bb59c8935be8e6db11b6461b5cf8c707108c3c3ddefb511120c468649f07"
+  },
+  {
+   "path": "_cs/Probe.cs",
+   "size": 14957,
+   "sha256": "e7e51e226466cd8011c3ff69ce942f6a7d2e93ce57f5bb214fb57aaf2d2259de"
+  },
+  {
+   "path": "_cs/Program.cs",
+   "size": 75561,
+   "sha256": "9eb55ffb931448f2409ab8b2f35776259ce6c2b2135dc1886a69e56e2f95a215"
+  },
+  {
+   "path": "_cs/Reconnect.cs",
+   "size": 48550,
+   "sha256": "cfb9f264f511eacb044aba12772d9106a773a48d4966f4f101439c05cfb93304"
+  },
+  {
+   "path": "_cs/Render.cs",
+   "size": 107103,
+   "sha256": "c398f5a0abd4b78cd2e3f7518073f5df57037ddf3046d4dc394de57dbf2ca4d1"
+  },
+  {
+   "path": "_cs/Root.cs",
+   "size": 6856,
+   "sha256": "e737cee2d4bae6c301c0ab2f1a7eda6ddabf6bf357285e9086767f0505e36e5b"
+  },
+  {
+   "path": "_cs/Scrcpy.cs",
+   "size": 14420,
+   "sha256": "ba42e4dec8a20159c88661d4e485a590d2636503b4bb2feb4b1cd7ee1573a85d"
+  },
+  {
+   "path": "_cs/Send.cs",
+   "size": 17934,
+   "sha256": "a6ba1b21a1fe3c977b022897d0c78fbc1e5e0df584d364149a4c5905c17e5d0d"
+  },
+  {
+   "path": "_cs/TaskCmds.cs",
+   "size": 53778,
+   "sha256": "de0cf4337633a0ffa266f3fec8691954de9b88e2078a4b448b4bcde1a3c0b6fe"
+  },
+  {
+   "path": "_cs/Voice.cs",
+   "size": 43094,
+   "sha256": "d47e4a29b2f8ac443a9c81f88a26708d2d85daa764a16af153a446dae91e522b"
+  },
+  {
+   "path": "_cs/Wireless.cs",
+   "size": 12682,
+   "sha256": "e7c8af040c19f7391dd01728623a5ec4b05fe805ab5d96507a604ee07dce8b4a"
+  },
+  {
+   "path": "_cs/build.bat",
+   "size": 5094,
+   "sha256": "1cc404f03193b70d6502b2d4cabcb21de2bdd46af1acead23cb5f7ee7155ba3e"
+  },
+  {
+   "path": "_cs/console_input_test/README.md",
+   "size": 2752,
+   "sha256": "402c1b9c9253cc828e0acd2ed6cff14e8629c09f8d18ea2bf74cc0a4d0ebc58e"
+  },
+  {
+   "path": "_cs/console_input_test/build_fake.bat",
+   "size": 302,
+   "sha256": "8dfc74c9c3ab1c20f55f171db7e32064e1bc34219af6aa3901546beba2c3e257"
+  },
+  {
+   "path": "_cs/console_input_test/check_mouse_mode.py",
+   "size": 2824,
+   "sha256": "07a16add8445bac2f1a89a46feb1a35689fcec9f68ddf4583a4817fe01ca1d41"
+  },
+  {
+   "path": "_cs/console_input_test/drive_console.py",
+   "size": 7134,
+   "sha256": "f0b4a8afe1feb2db5070e19a8deb8d964524ca9a52ff70ec19c32e7598e5c501"
+  },
+  {
+   "path": "_cs/console_input_test/fake_adb.cs",
+   "size": 291,
+   "sha256": "68c4ad1f13d515bfb7bd8af0d2555d19a2adafd90d0d7ccb05da28221c342503"
+  },
+  {
+   "path": "_cs/console_input_test/run_selftest_console.py",
+   "size": 1061,
+   "sha256": "de18fb62129145c666f3fde0558aca5e6c8b76444ae961f1342748682f281000"
+  },
+  {
+   "path": "_cs/console_input_test/test_input_features.py",
+   "size": 10004,
+   "sha256": "d26a99b2e929f57981fe150a821047ea52d13e9e9dc754e9f0ebb8a5d97a20b6"
+  },
+  {
+   "path": "_cs/reconnect_test/README.md",
+   "size": 2558,
+   "sha256": "f2757bb592a13c538075a5dbe925920cf1277ae330be3c51ec82b61f85dccbbe"
+  },
+  {
+   "path": "_cs/reconnect_test/hang_server.py",
+   "size": 1635,
+   "sha256": "e8ee0c80adaeee4740cf6a7799a79d29c77babe0cdfd71ec3452f4607a23d1e1"
+  },
+  {
+   "path": "_cs/verify_all_logic.py",
+   "size": 83920,
+   "sha256": "1fbf7a7f0ff94cfa671bb52cd6fda6e6b9da959bc5b431a611d6738fd0444ab5"
+  },
+  {
+   "path": "_cs/verify_logic.py",
+   "size": 6600,
+   "sha256": "7e70b2c429cc30b6462a1c27b9190ac8c55c21c0c49164040a16d04a87a8b4d8"
+  },
+  {
+   "path": "adb_log_export.ini",
+   "size": 7949,
+   "sha256": "ab1f9b9db6ec610059cabfbf4c309971246ca59942c0c846d0b79b2e8a3c3ccc"
+  },
+  {
+   "path": "adb_log_gui/adb_log_export.ini",
+   "size": 8147,
+   "sha256": "37716271de96ee937b8eab07d2adde59618367da46292b4522f5c8f28feb82fa"
+  },
+  {
+   "path": "adb_log_gui/build_gui.bat",
+   "size": 11926,
+   "sha256": "7708a45e73fe4531f29c0f3cc7211f273c2c4d152d9b10f3f0467fa7a13d315d"
+  },
+  {
+   "path": "adb_log_gui/cmds.ini",
+   "size": 11134,
+   "sha256": "ac444ca7b4294842a94e999ca018f7f1d2ab8e45ccc9a167ddcab61881fdfd18"
+  },
+  {
+   "path": "adb_log_gui/make_min.bat",
+   "size": 3544,
+   "sha256": "a15c12306c23a881e24fa936c37750130059cda4ab7ba28ed7894c3425e609e3"
+  },
+  {
+   "path": "adb_log_gui/webview2/ui.html",
+   "size": 249116,
+   "sha256": "38467658de7372838682af1cf47a3a8498fae8288e8536fb870b416d7fbbbe64"
+  },
+  {
+   "path": "cmds.ini",
+   "size": 11961,
+   "sha256": "51ffc3f12983cbbe3f15102ec208a3a4e0de9c227f5257d498c4aee3b53e2f0c"
+  },
+  {
+   "path": "docs/AI协作指南_提示语与实现步骤.md",
+   "size": 9812,
+   "sha256": "70990a19e7e2a40496895a730affef804bccf6b9232eed7359929a9737b72080"
+  },
+  {
+   "path": "docs/功能清单.md",
+   "size": 4734,
+   "sha256": "a8af5c26527fbd136ff04f8fa970ce51d31966753246fb23fa8589cd9d30f6aa"
+  },
+  {
+   "path": "docs/用户使用手册.md",
+   "size": 29257,
+   "sha256": "300988e5c5094e3260fc1b7151b13cdc4910db628b2e6df5d2144a0fbbbdf72d"
+  },
+  {
+   "path": "docs/项目规则.md",
+   "size": 4425,
+   "sha256": "3a236ce8cfa9ec16b905ece068a19b56fc4a3023249305e2965e9c59a04b8cdc"
+  },
+  {
+   "path": "release.py",
+   "size": 8364,
+   "sha256": "d0f6858f6baffedd30044f343b3f4c15f358b5a24b2af3b2ffd09d29643eafd4"
+  },
+  {
+   "path": "verify_all.py",
+   "size": 5885,
+   "sha256": "7505f33e95804267181ed80104162c2c6482b38080ef0a4d087597ccb5ffefdc"
+  }
+ ]
+}

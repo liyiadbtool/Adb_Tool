@@ -1,0 +1,33 @@
+# ---- 构建产物：能重新编出来的一律不入库 ----
+adb_log_gui/dist/
+adb_log_gui/dist_min/
+adb_log_gui/dist_single/
+adb_log_gui/webview2_tmp/
+release/
+*.exe
+*.zip
+*.7z
+
+# ---- 大二进制：105MB 的 ffmpeg 走「出包时拷」，不进 Git 历史 ----
+ffmpeg.exe
+adb_log_gui/ffmpeg.exe
+
+# ---- 测试生成物：377/test_*.html 每次跑测试都会从 ui.html 重新生成 ----
+377/test_*.html
+
+# ---- 本机运行态：程序会往里写 accent= / prefs= / 设备信息 ----
+# 注意：adb_log_gui/adb_log_export.ini 是**构建用模板**，必须入库（见文件末尾的 ! 规则）
+/adb_log_export.ini
+*.log
+logs/
+gui_error.log
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.swp
+
+# ---- AI 助手的本机记忆（含会话痕迹，不入库）----
+.workbuddy/memory/

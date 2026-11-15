@@ -1,0 +1,193 @@
+# -*- coding: utf-8 -*-
+"""verify_all.py — 交付前的一键总检查（规则 B6 的执行入口）
+
+顺序刻意从"便宜"到"贵"：
+    1. 编译列表完整（静态，毫秒级）
+    2. 功能清单落点（静态）
+    3. ui.html 静态自检
+    4. 页面结构（无头浏览器，检查四个页面父子关系/可见性）
+    5. 功能行为套件（10 个 DOM 测试）
+    6. CLI 自检（纯逻辑断言）
+    7. GUI 自检（起一次真实窗口，--fast 可跳过）
+
+用法：
+    python verify_all.py            # 全量
+    python verify_all.py --fast     # 跳过 GUI 自检
+
+约定：任何一项失败，退出码非 0；release.py 会据此拒绝打包。
+"""
+import os
+import re
+import subprocess
+import sys
+import time
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+GUI_DIR = os.path.join(ROOT, "adb_log_gui")
+PY = sys.executable
+EDGE_TESTS = [
+    ("_test_structure.py", "页面结构"),
+    ("_test_ui_behavior.py", "窗口与记录"),
+    ("_test_ux.py", "交互与输出区"),
+    ("_test_src_route.py", "输出路由"),
+    ("_test_busy_lock.py", "并发互斥"),
+    ("_test_batch_ui.py", "批量输出"),
+    ("_test_apk_ui.py", "APK 管理"),
+    ("_test_wadb_ui.py", "无线 adb"),
+    ("_test_file_ui.py", "文件管理"),
+    ("_test_fs_search.py", "文件搜索与监听"),
+    ("_test_cast_ui.py", "投屏"),
+]
+
+results = []
+
+
+def record(name, ok, detail):
+    results.append((name, ok, detail))
+    print(("  [OK]   " if ok else "  [XX]   ") + name + "  " + detail)
+
+
+def run(cmd, cwd, timeout, name, pick=None):
+    t0 = time.time()
+    try:
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout)
+    except subprocess.TimeoutExpired:
+        record(name, False, "超时 %ds" % timeout)
+        return False, ""
+    out = (p.stdout or "") + (p.stderr or "")
+    ok = (p.returncode == 0)
+    detail = ""
+    if pick:
+        m = re.search(pick, out)
+        if m:
+            detail = m.group(0).strip()
+    if not detail:
+        detail = "rc=%d" % p.returncode
+    if not ok:
+        # 失败时把子进程原始输出留一份：这里只打一行汇总，
+        # 具体是哪几条断言红的全在 out 里，丢掉就只能靠运气复现。
+        try:
+            safe = re.sub(r"[^\w\u4e00-\u9fa5]+", "_", name)
+            with open(os.path.join(ROOT, "_fail_%s.log" % safe), "w",
+                      encoding="utf-8") as f:
+                f.write(out)
+        except OSError:
+            pass
+    record(name, ok, detail)
+    return ok, out
+
+
+def main():
+    fast = "--fast" in sys.argv
+    print("== 1/7 编译列表 ==")
+    run(["node", os.path.join(ROOT, "_check_build_list.js")], ROOT, 60,
+        "编译列表（两个 bat 覆盖所有 .cs）", r"编译列表(完整|有 \d+ 处问题)")
+
+    print("== 2/7 功能清单 ==")
+    run(["node", os.path.join(ROOT, "_check_features.js")], ROOT, 60,
+        "功能清单落点", r"功能清单机检(通过|失败)（?\d* ?项?）?")
+
+    print("== 3/7 ui.html 静态自检 ==")
+    run(["node", os.path.join(ROOT, "377", "_check_ui.js")], os.path.join(ROOT, "377"), 90,
+        "ui.html 静态自检", r"静态自检(全部通过|失败 \d+ 项)")
+
+    print("== 4-5/7 页面结构与功能套件 ==")
+    for script, label in EDGE_TESTS:
+        ok, _ = run([PY, os.path.join(ROOT, "377", script)], os.path.join(ROOT, "377"), 240,
+                    label, r"通过 \d+ / \d+")
+        if not ok:
+            # 无头浏览器偶发启动失败（profile 锁 / 瞬时拒绝访问），重试一次再判红。
+            # 只对浏览器套件重试；逻辑类套件失败就是真失败，重试没意义。
+            print("        ↑ 重试一次（无头浏览器可能瞬时锁住）")
+            time.sleep(2)
+            results.pop()
+            run([PY, os.path.join(ROOT, "377", script)], os.path.join(ROOT, "377"), 240,
+                label, r"通过 \d+ / \d+")
+
+    print("== 5.5/7 根目录 DOM 实测 ==")
+    # 这几套不在 377/ 下（它们是按主题分文件维护的独立套件）：
+    #   _gate_invariants.py 冻结层对照（kind / onclick / DOM id / 页签 / 页面 / 消息桥）
+    #   _v15_checks.py      A15 落点（投屏六条、日志等级、设备管理、窗口原生行为）
+    #   _v16_checks.py      A16 落点（窗口不变形、弹窗 portal/互斥、16 色、投屏链路、偏好、tab 拖拽、9 条 adb）
+    #   _v17_checks.py      A17 落点（强调色记忆、开合动效、黑白灰图标、浅色边界、圆角、关闭一次、启动层渐变、scrcpy 内嵌）
+    #   _check_v12.py      自绘标题栏 / 设置 / 字体 / 帮助 / 文本页 / 文件页
+    #   _check_v13.py      四状态圆点 / 标题栏重组 / 终端多行顺序执行 / 输出区热区
+    #   _check_a14.py      网联服务分组 13 条 / 启动图标 / 浅色对比度 / 下拉浮层 / 字体大小
+    #   _check_accent_dom   16 色强调色与三套明暗的正交性
+    #   _check_glass.py     Liquid Glass 计算样式与性能护栏
+    #   _smoke_win.py       真机起窗：无边框、缩放、最大化不盖任务栏、无错误日志
+    for script, label in (("_check_v12.py", "v12 结构行为"),
+                          ("_check_v13.py", "v13 圆点与终端"),
+                          ("_check_a14.py", "a14 网联服务与UI"),
+                          ("_check_accent_dom.py", "16 色强调色 DOM"),
+                          ("_check_glass.py", "Liquid Glass"),
+                          ("_smoke_win.py", "窗口原生行为")):
+        run([PY, os.path.join(ROOT, script)], ROOT, 300, label, r"通过 \d+ / \d+")
+
+    print("== 5.6/7 冻结层与 A15/A16 落点 ==")
+    run([PY, os.path.join(ROOT, "_v15_checks.py")], ROOT, 120,
+        "A15 落点机检", r"通过 \d+ / \d+")
+    run([PY, os.path.join(ROOT, "_v16_checks.py")], ROOT, 120,
+        "A16 落点机检", r"通过 \d+ / \d+")
+    run([PY, os.path.join(ROOT, "_v17_checks.py")], ROOT, 120,
+        "A17 落点机检", r"通过 \d+ / \d+")
+    run([PY, os.path.join(ROOT, "_gate_invariants.py")], ROOT, 120,
+        "功能不变量对照", r"合计 \d+ 项，失败 \d+ 项")
+
+    print("== 6/7 CLI 自检 ==")
+    exe = os.path.join(ROOT, "adb_log_export.exe")
+    if not os.path.exists(exe):
+        record("CLI 自检", False, "缺 adb_log_export.exe")
+    else:
+        p = subprocess.run([exe, "-selftest"], cwd=ROOT, capture_output=True, timeout=300)
+        txt = p.stdout.decode("gbk", "replace")
+        ok_n = txt.count("[OK]")
+        fail_n = txt.count("[FAIL]")
+        record("CLI 自检", fail_n == 0 and ok_n > 0, "断言 %d 条，失败 %d" % (ok_n, fail_n))
+
+    print("== 7/7 GUI 自检 ==")
+    if fast:
+        record("GUI 自检", True, "已跳过（--fast）")
+    else:
+        gui_exe = os.path.join(GUI_DIR, "adb_Tool.exe")
+        log = os.path.join(os.environ.get("LOCALAPPDATA", ""), "adb_Tool", "logs", "gui_selfcheck.log")
+        try:
+            if os.path.exists(log):
+                os.remove(log)
+        except OSError:
+            pass
+        if not os.path.exists(gui_exe):
+            record("GUI 自检", False, "缺 adb_Tool.exe")
+        else:
+            subprocess.Popen([gui_exe, "--selfcheck"], cwd=GUI_DIR,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            ok_n = fail_n = 0
+            for _ in range(40):
+                time.sleep(1)
+                if os.path.exists(log):
+                    try:
+                        txt = open(log, encoding="utf-8-sig", errors="replace").read()
+                    except OSError:
+                        continue
+                    if "自检" in txt and ("通过" in txt or "[OK]" in txt):
+                        ok_n = txt.count("[OK]")
+                        fail_n = txt.count("[FAIL]")
+                        if ok_n + fail_n > 0:
+                            break
+            subprocess.run(["taskkill", "/F", "/IM", "adb_Tool.exe"],
+                           capture_output=True)
+            record("GUI 自检", fail_n == 0 and ok_n > 0, "断言 %d 条，失败 %d" % (ok_n, fail_n))
+
+    print("")
+    print("=" * 66)
+    bad = [r for r in results if not r[1]]
+    for name, ok, detail in results:
+        print(("  %-30s %s   %s" % (name, "PASS" if ok else "FAIL", detail)))
+    print("=" * 66)
+    print("  合计 %d 项，失败 %d 项" % (len(results), len(bad)))
+    return 0 if not bad else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

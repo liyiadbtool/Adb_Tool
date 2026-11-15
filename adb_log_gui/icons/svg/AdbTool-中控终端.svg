@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- adb_Tool 应用图标源：车载中控屏 + 终端提示符 + 信号弧。
+     与 adb_log_gui/adb_Tool.ico、顶栏/加载层内联 SVG 同源。
+     100×100 坐标系：圆角方 r22 / 中控屏 (13,32)-(87,74) r10 /
+     提示符线宽 5.8 / 信号弧 r9、r16 线宽 3 / 底座 (30,79)-(70,83.5) r2.25 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E2E2E"/>
+      <stop offset="1" stop-color="#050505"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.26" cy="0.08" r="0.82">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#bg)"/>
+  <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#hl)"/>
+  <rect x="13" y="32" width="74" height="42" rx="10" fill="#FFFFFF" fill-opacity="0.16"
+        stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="1.35"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M33 46 L44 53 L33 60"/>
+    <path d="M56 60 H67"/>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="3" stroke-linecap="round">
+    <path d="M41 27 A9 9 0 0 1 59 27"/>
+    <path d="M34 27 A16 16 0 0 1 66 27"/>
+  </g>
+  <rect x="30" y="79" width="40" height="4.5" rx="2.25" fill="#FFFFFF" fill-opacity="0.34"/>
+</svg>

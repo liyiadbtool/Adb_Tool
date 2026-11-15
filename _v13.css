@@ -1,0 +1,258 @@
+/* === V13 LAYER START === */
+/* ==========================================================================
+   A13 · 标题栏四圆点 / 尺寸自适应 / 终端多行 / 输出区热区
+   --------------------------------------------------------------------------
+   设计约束（改之前先读）：
+     1) 四点只画圆点、不显示任何文字 —— 语义靠 hover 即时 tooltip 承担，
+        所以 tooltip 必须是「即时」的，不能依赖原生 title 的 1 秒延迟。
+     2) 圆点直径 9px，命中区 26px（小于 24px 会难命中，这是底线）。
+     3) 颜色只走令牌：root/无线 = 强调色 or 置灰，日志 = 等级色，设备 = 在线色。
+        禁止在这里写死十六进制（门禁会查）。
+     4) 标题栏高度随窗口宽度线性变化（clamp 38~54），窗口按钮按同一定值派生，
+        不再各自写死，避免"按钮比标题栏还小/还大"。
+   ========================================================================== */
+
+:root{
+  /* 标题栏高度：38px 起步，随视口宽度线性长，封顶 54px。
+     46px 对应 1375px 视口（1100 宽窗口下约 42px，和 Windows 原生接近）。 */
+  --tb-h:clamp(38px, 24px + 1.6vw, 54px);
+  --tb-btn-w:calc(var(--tb-h) * 1.22);
+  --tb-dot:9px;
+  --tb-hit:26px;
+  --tb-tip-bg:var(--surface-2);
+  /* 门禁不许在组件样式里写字面量色，所以圆环/tooltip 阴影都提成令牌 */
+  --tb-dot-ring:rgba(0,0,0,.18);
+  --tb-tip-shadow:0 8px 24px rgba(0,0,0,.28);
+
+  /* V 级白点：深色下是白，浅色主题必须换成深灰，否则白点消失在白底上。
+     注意：这里必须按主题分别声明 —— V12 里 --lv-v 是挂在
+     :root[data-theme="dark"] 上的，特异性比裸 :root 高，裸覆盖根本不会生效。 */
+  --lv-v:#ffffff;
+}
+:root[data-theme="dark"]{ --lv-v:#ffffff; }
+:root[data-theme="light"]{ --lv-v:#3a3a3c; }
+:root[data-theme="eye"]{ --lv-v:#4a4238; }
+
+/* ---------------- §1 标题栏骨架 ---------------- */
+.titlebar{
+  height:var(--tb-h);
+  padding-left:12px;padding-right:0;
+  gap:0;
+  /* 玻璃层：原来挂在 .topbar 上，顶栏删掉后必须挪到标题栏，
+     否则「壳」的半透明模糊就断了（_check_glass 也会挂）。 */
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 -1px 0 var(--border);
+}
+.tb-drag{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:8px;
+  padding-right:2px;
+}
+/* 中间那段才是主要拖拽区：logo 和圆点之间、圆点和右侧之间都能拖 */
+.tb-drag-mid{flex:1 1 auto;align-self:stretch;min-width:24px;}
+
+.tb-logo svg{width:18px;height:18px;}
+
+/* ---------------- §2 四个状态圆点 ---------------- */
+.tb-status{
+  display:flex;align-items:center;
+  gap:2px;flex:0 0 auto;
+  align-self:stretch;
+}
+.tb-status > .rootpill,
+.tb-status > .wadb,
+.tb-status > .logpill,
+.tb-status > .device{
+  width:var(--tb-hit);height:var(--tb-hit);
+  min-width:0;padding:0;margin:0;
+  display:grid;place-items:center;
+  border:0;background:transparent;
+  border-radius:8px;
+  color:inherit;cursor:pointer;
+  transition:background .12s var(--ease-soft);
+}
+.tb-status > .wadb{display:inline-flex;}
+.tb-status > .rootpill:hover,
+.tb-status > .wadb:hover,
+.tb-status > .logpill:hover,
+.tb-status > .device:hover{ background:var(--well); }
+.tb-status > .rootpill:focus-visible,
+.tb-status > .wadb-btn:focus-visible,
+.tb-status > .logpill:focus-visible,
+.tb-status > .device:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px;
+}
+
+/* 圆点本体：四个点同一套尺寸/过渡，只有颜色不同 */
+.tb-status .rdot,
+.tb-status .wdot,
+.tb-status .logpill .dot,
+.tb-status .device .dot{
+  width:var(--tb-dot);height:var(--tb-dot);
+  border-radius:50%;
+  background:var(--text-faint);
+  flex:0 0 auto;
+  transition:background .12s,transform .12s var(--ease-soft),box-shadow .12s;
+}
+.tb-status > *:hover .rdot,
+.tb-status > *:hover .wdot,
+.tb-status > *:hover .dot,
+.tb-status > *:hover .logpill .dot{ transform:scale(1.25); }
+
+/* 文字全部藏起来 —— 用户要求「仅显示圆点不显示名称」 */
+.tb-status .rtxt,
+.tb-status .ltag,
+.tb-status .lv,
+.tb-status #wadb-txt,
+.tb-status .device .id,
+.tb-status .device .sep,
+.tb-status .device .soc{ display:none !important; }
+
+/* root：已 root 跟随强调色，未 root 置灰（不用红 —— 红留给"异常"） */
+.tb-status .rootpill.yes .rdot{
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.tb-status .rootpill.no .rdot{ background:var(--text-faint); }
+.tb-status .rootpill.off .rdot,
+.tb-status .rootpill.disabled .rdot{ background:var(--border); }
+.tb-status .rootpill.busy .rdot{ animation:rpulse 1s ease-in-out infinite; }
+.tb-status .rootpill.disabled{ cursor:default; }
+
+/* 无线：已连接跟随强调色，未连接置灰 */
+.tb-status .wadb-btn{
+  width:var(--tb-hit);height:var(--tb-hit);
+  padding:0;border:0;background:transparent;
+  display:grid;place-items:center;border-radius:8px;color:inherit;
+}
+.tb-status .wadb-btn .wdot{ background:var(--text-faint); }
+.tb-status .wadb-btn.on .wdot{
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.tb-status .wadb-btn.busy .wdot{ animation:rpulse 1s ease-in-out infinite; }
+
+/* 日志等级：V 白 / D 蓝 / I 绿 / W 黄 / E 红；未设置 = 灰边色 */
+.tb-status .logpill .dot{ background:var(--text-faint); }
+.tb-status .logpill[data-lv="V"] .dot{ background:var(--lv-v); }
+.tb-status .logpill[data-lv="D"] .dot{ background:var(--lv-d); }
+.tb-status .logpill[data-lv="I"] .dot{ background:var(--lv-i); }
+.tb-status .logpill[data-lv="W"] .dot{ background:var(--lv-w); }
+.tb-status .logpill[data-lv="E"] .dot{ background:var(--lv-e); }
+.tb-status .logpill[data-lv="none"] .dot{ background:var(--border); }
+/* V 是白点，深色下需要一点描边才不会糊在标题栏上 */
+.tb-status .logpill[data-lv="V"] .dot{
+  box-shadow:inset 0 0 0 1px var(--tb-dot-ring);
+}
+
+/* 设备：在线 = --ok，离线 = --err，未知 = 置灰（沿用原有 .dot 语义） */
+.tb-status .device .dot{ background:var(--ok); }
+.tb-status .device .dot.off{ background:var(--err); }
+.tb-status .device .dot.none{ background:var(--text-faint); }
+
+/* 无线弹窗：进标题栏后必须 fixed 定位（absolute 会被标题栏的堆叠上下文压住） */
+.tb-status .wadb-pop{
+  position:fixed;
+  z-index:135;
+  top:calc(var(--tb-h) + 6px);
+}
+
+/* ---------------- §3 右侧：运行指示 / 设置 / 窗口按钮 ---------------- */
+.tb-right{
+  display:flex;align-items:center;gap:4px;
+  flex:0 0 auto;
+  padding-left:6px;
+}
+.tb-right .set-btn{ width:calc(var(--tb-h) * .78); height:calc(var(--tb-h) * .72); }
+.tb-right .set-btn svg{ width:calc(var(--tb-h) * .42); height:calc(var(--tb-h) * .42); }
+.tb-right .runchip{ height:26px; }
+
+/* 窗口按钮：图标按按钮尺寸派生，不再写死 10px（写死就是"最大化后按钮显得小"） */
+.tb-btn{ width:var(--tb-btn-w); }
+.tb-btn svg{
+  width:calc(var(--tb-h) * .27);
+  height:calc(var(--tb-h) * .27);
+  stroke-width:1.15;
+}
+
+/* 角部缩放热区放大到 12px：窗口圆角会把四角裁掉一部分，
+   5px/9px 的热区在圆角处几乎点不到（A13 圆角带来的副作用）。 */
+.rz-nw,.rz-ne,.rz-sw,.rz-se{width:12px;height:12px;}
+
+/* ---------------- §4 即时 tooltip ---------------- */
+.tb-tip{
+  position:fixed;z-index:220;
+  padding:5px 10px;border-radius:8px;
+  font-size:12px;line-height:1.4;
+  color:var(--text);
+  background:var(--tb-tip-bg);
+  border:1px solid var(--border);
+  box-shadow:var(--tb-tip-shadow),inset 0 1px 0 var(--rim);
+  pointer-events:none;white-space:nowrap;
+  opacity:0;transform:translateY(-3px);
+  transition:opacity .12s var(--ease-soft),transform .12s var(--ease-soft);
+}
+.tb-tip.show{ opacity:1;transform:translateY(0); }
+
+/* ---------------- §5 终端：多行输入 + 图标按钮 ---------------- */
+#page-cmd .inputbar .field{
+  align-items:flex-start;      /* 多行时 `>` 提示符要贴首行，不能垂直居中 */
+  padding-top:6px;padding-bottom:6px;
+}
+#page-cmd .inputbar .field .pmt{
+  line-height:1.55;
+  padding-top:1px;
+}
+#page-cmd .inputbar textarea{
+  flex:1 1 auto;min-width:0;
+  resize:none;border:0;outline:none;background:transparent;
+  color:var(--text);
+  font-family:var(--font-mono);
+  font-size:13px;line-height:1.55;
+  padding:0;
+  max-height:calc(1.55em * 5);   /* 最多 5 行，再多内部滚动 */
+  overflow-y:auto;
+  white-space:pre-wrap;word-break:break-all;
+}
+#page-cmd .inputbar textarea::placeholder{ color:var(--text-faint); }
+
+/* 四个按钮只留图标：固定 34px 见方，多余宽度全部让给输入框 */
+#page-cmd .inputbar .btn{
+  width:34px;min-width:34px;height:34px;
+  padding:0;display:grid;place-items:center;flex:0 0 auto;
+}
+#page-cmd .inputbar .btn svg{ width:15px;height:15px; }
+#page-cmd .inputbar .btn.primary svg{ width:16px;height:16px; }
+
+/* ---------------- §6 输出区：点空白切换 ---------------- */
+/* 收起态：整条都能点开。原来是 ns-resize 光标，用户以为是拖拽条、不知道能点。 */
+.feedback .fb-collapsed-bar{ cursor:pointer; }
+.feedback .fb-collapsed-bar:hover{ background:var(--well); }
+.feedback .fb-collapsed-bar .fcb-arrow{ transition:transform .15s var(--ease-soft); }
+.feedback .fb-collapsed-bar:hover .fcb-arrow{ transform:translateY(-1px); }
+
+/* 展开态：表头这一行除按钮外都是"点击收起"热区 */
+.feedback .fb-head{ cursor:pointer; }
+.feedback .fb-head .fbtn,
+.feedback .fb-head button{ cursor:pointer; }
+.fb-head-hint{
+  margin-left:auto;margin-right:10px;
+  font-size:11px;color:var(--text-faint);
+  opacity:0;transition:opacity .15s var(--ease-soft);
+  pointer-events:none;white-space:nowrap;
+}
+.feedback .fb-head:hover .fb-head-hint{ opacity:.8; }
+
+/* ---------------- §7 设置：界面缩放 ---------------- */
+.set-zoom-row{ display:flex;align-items:center;gap:8px;margin-top:6px; }
+.set-zoom-row .set-sel{ flex:1 1 auto; }
+.set-zoom-val{
+  font-family:var(--font-mono);font-size:12.5px;
+  color:var(--text-dim);min-width:44px;text-align:right;
+}
+
+/* ---------------- §8 细节：页签上移后的衔接 ---------------- */
+/* 顶栏删掉后页签直接贴标题栏，靠这条内阴影和标题栏分开，避免两行糊成一片 */
+.tabs{ box-shadow:inset 0 -1px 0 var(--border); }
+/* === V13 LAYER END === */

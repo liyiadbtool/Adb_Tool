@@ -1,0 +1,241 @@
+/* === V17 LAYER START ===
+   A17（2026-11-15 第 6 批）— 圆角 / 浅色边界 / 开合动效 / 启动层渐变 / 内嵌投屏容器
+   这一层只做"看得见"的部分；C# 侧改动见 _cs/GuiWeb.cs 的 A17 段落。
+   注入顺序：V14 → V15 → V16 → V17，本层最后，同权重时以本层为准。
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   §0 本层新增的色值令牌
+   A15 的门禁「组件样式零硬编码色」只允许 :root 里出现色值字面量
+   （css_body 用正则会剥掉 :root 块和注释，剩下的地方再出现 #xxx 就报错）。
+   所以启动层渐变的三个停靠点、投屏画布底色、图标前景色都在这里命名。 */
+:root{
+  --splash-g0:#1a1a20;
+  --splash-g1:#101014;
+  --splash-g2:#070709;
+  --stage-bg:#000000;
+  --mark-fg:#FFFFFF;
+}
+
+/* ---------------------------------------------------------------------------
+   §1 直角 → 圆角（需求 5）
+   截图红框的三处：左侧分组侧栏、终端页输出区、终端底部输入行。
+   根因不是"忘了写 border-radius"，而是这些容器直接顶到窗口边缘 ——
+   窗口本身是圆角（DWM），里面的方块贴边就会在四个角形成硬碰硬的直角。
+   做法：整体内缩 8px，容器各自成一张"卡片"（1px 描边 + 12px 圆角）。
+   ------------------------------------------------------------------------- */
+#page-quick .quick-wrap{
+  padding:8px;
+  gap:8px;
+}
+#page-quick .quick-nav{
+  border:1px solid var(--border);
+  border-right:1px solid var(--border);   /* 覆盖 A15 的 border-right:1px（会画出断角） */
+  border-radius:12px;
+  background:var(--surface);
+}
+#page-quick .quick-body{
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  overflow:hidden;
+}
+
+#page-cmd .slots{
+  padding:8px;
+  gap:8px;
+}
+#page-cmd .slot{
+  border:1px solid var(--border);
+  border-bottom:1px solid var(--border);  /* 覆盖原来的 border-bottom，四边等宽才成"卡" */
+  border-radius:12px;
+  overflow:hidden;
+}
+#page-cmd .slot:last-child{ margin-bottom:0; }
+#page-cmd .inputbar{
+  padding:10px 8px 8px;
+  border-top:none;                        /* 卡片自己带边框，再加横线会重复 */
+  background:transparent;
+}
+#page-cmd .field{
+  border-radius:10px;
+  background:var(--surface);
+}
+
+/* 投屏页与文件页也一起收进去，否则四个页签的边距各不相同，切页会"跳"一下 */
+#page-cast .cast-wrap{ padding:8px; }
+#page-cast .cast-grid,
+#page-cast .cast-strip{
+  border-radius:12px;
+}
+#page-cast .cast-thumb{ border-radius:10px; }
+
+/* ---------------------------------------------------------------------------
+   §2 浅色主题的窗口边界（需求 4）
+   无边框窗口在浅色桌面里"看不出边"：DWM 阴影被 SetWindowRgn 裁掉了，
+   而内容底色 #f2f2f7 和白色桌面只差 4%。做法不改配色，只补两条边：
+     ① 内侧 1px 实描边（浅色下用 55% 的中性灰，够清楚又不脏）
+     ② 顶部 1px 高光（模拟受光面，让窗口"有厚度"）
+   深色主题不动 —— 它本来就有对比，加了反而显脏。
+   ------------------------------------------------------------------------- */
+:root[data-theme="light"],
+:root[data-theme="eye"]{
+  /* A17 加码：0.55 的 1px 边在 100% 缩放的浅色桌面上仍偏虚（截图里"看不出边"）。
+     改成 0.72 + 双环：外 1px 实边定轮廓，内 1px 亮边模拟玻璃厚度，
+     再加一圈 6px 的内阴影把四角压出转折 —— 三样叠起来比单纯加深更"立体"，
+     而且不会像纯黑描边那样显脏。 */
+  --winedge:rgba(48,48,54,.72);
+  --winedge-soft:rgba(48,48,54,.22);
+  --winhi:rgba(255,255,255,.95);
+}
+:root[data-theme="dark"]{
+  --winedge:rgba(255,255,255,.10);
+  --winedge-soft:rgba(255,255,255,.04);
+  --winhi:rgba(255,255,255,.06);
+}
+body::after{
+  content:"";
+  position:fixed;inset:0;z-index:9998;pointer-events:none;
+  border-radius:inherit;
+  box-shadow:inset 0 0 0 1px var(--winedge), inset 0 1px 0 var(--winhi);
+}
+/* 浅色下再把四个内角压一点暗，避免"白卡片直接切在白底上"没有转折 */
+:root[data-theme="light"] body::before,
+:root[data-theme="eye"] body::before{
+  box-shadow:inset 0 0 6px var(--winedge-soft), inset 0 0 24px var(--winedge-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   §3 开合动效（需求 2）
+   原则：只动渲染层，绝不动窗口尺寸 —— 改尺寸那条路就是 A16 修掉的"巴掌大窗口"。
+      · 开：.frame 加 .v17-in，scale(.93) + fade，260ms；由 hideSplash() 同帧触发，
+            和 splash 淡出叠在一起，看到的是"从中心略微放大展开"。
+      · 收：.frame 加 .v17-out，scale(.96) + fade，130ms；C# 播完再最小化 / Close。
+   用 CSS 触发（.frame.show 出现即播），不靠 JS 轮询 —— A16 那次等 splash gone
+   再补 class，结果动画在"已经全亮"之后才跑，看起来像闪一下。
+   ------------------------------------------------------------------------- */
+.frame.v16-in{
+  /* A16 那套"等 splash 走了再补 class"的触发会晚 300ms 再放一次动画，
+     表现是"先全亮、再闪一下"。这里把它彻底关掉，只留 v17open。 */
+  animation:none !important;
+}
+.frame.v17-in{
+  transform-origin:50% 46%;
+  animation:v17open .26s cubic-bezier(.2,.8,.2,1) both !important;
+}
+/* 只动 transform，不动 opacity —— 两个原因：
+   ① 底下是正在淡出的 splash，frame 自己再淡入就是"两段透明度相乘"，
+      会看到画面先灰后亮（A15 那版就踩过）；
+   ② 行为测试会读 frame 的 computed opacity，动画期间读到 0.001 会误判成
+      "frame 卡在半透明"（那正是 A15 修掉的 bug）。保持 opacity:1 最干净。 */
+@keyframes v17open{
+  from{ transform:scale(.93); }
+  to  { transform:none; }
+}
+.frame.v17-out{
+  transform-origin:50% 46%;
+  animation:v17close .13s cubic-bezier(.4,0,1,1) both;
+}
+@keyframes v17close{
+  from{ opacity:1;    transform:none; }
+  to  { opacity:.001; transform:scale(.965); }
+}
+@media (prefers-reduced-motion:reduce){
+  .frame.v17-in, .frame.v17-out{ animation:none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   §4 启动层：纯黑 → 高斯模糊渐变（需求 8）
+   网页层这里做一层"底"，C# 的原生遮罩（SplashPaint）也同步改了：
+   竖向深灰渐变 + 两团强调色光晕 + 四角压暗。
+   为什么要改 C#：WebView2 初始化那 0.5~2 秒显示的是原生绘制的遮罩，
+   只改 CSS 的话用户先看到纯黑、再看到渐变，反而更怪。
+   ------------------------------------------------------------------------- */
+.splash{
+  background:
+    radial-gradient(60% 52% at 50% 44%, var(--accent-soft) 0%, transparent 72%),
+    radial-gradient(46% 40% at 30% 76%, var(--accent-soft) 0%, transparent 78%),
+    linear-gradient(180deg, var(--splash-g0) 0%, var(--splash-g1) 52%, var(--splash-g2) 100%);
+  background-color:var(--splash-g2);
+}
+/* 光晕单独一层做 blur —— CSS 的 filter 比多层 radial 更接近"高斯模糊"的观感 */
+.splash::before{
+  content:"";
+  position:absolute;inset:-10%;
+  background:
+    radial-gradient(closest-side at 50% 44%, var(--accent) 0%, transparent 70%),
+    radial-gradient(closest-side at 30% 76%, var(--accent) 0%, transparent 70%);
+  opacity:.16;
+  filter:blur(56px) saturate(1.1);
+  pointer-events:none;
+}
+.splash .cat{ position:relative; z-index:1; }
+.splash .tip{ position:relative; z-index:1; }
+
+/* ---------------------------------------------------------------------------
+   §5 内嵌投屏（需求 追加-1）
+   画布本身是 C# 的 Panel（SetParent 把 scrcpy 的 SDL 窗口塞进去），
+   这里只负责"占位框 + 边框 + 空态提示"：Panel 会精确盖在 #ce-stage 上。
+   ------------------------------------------------------------------------- */
+.cast-embed{
+  flex:1;min-height:0;display:flex;flex-direction:column;
+  padding:0 0 8px;
+}
+.ce-stage{
+  flex:1;min-height:0;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:var(--stage-bg);
+  overflow:hidden;
+}
+.ce-note{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  padding:6px 2px 0;font-size:12px;color:var(--text-faint);
+}
+.ce-note .k{
+  font-family:var(--font-mono);
+  color:var(--text-dim);
+}
+.cast-mode{
+  display:inline-flex;align-items:center;gap:2px;
+  padding:2px;border-radius:8px;background:var(--surface-2);
+  border:1px solid var(--border);
+}
+.cast-mode button{
+  height:24px;padding:0 10px;border:none;border-radius:6px;background:transparent;
+  color:var(--text-dim);font-size:12px;cursor:pointer;
+}
+.cast-mode button.on{
+  background:var(--accent);color:var(--on-accent);font-weight:600;
+}
+
+/* ---------------------------------------------------------------------------
+   §6 应用图标：黑白灰（需求 3 / 追加-2）
+   图形与 adb_log_gui/adb_Tool.ico 同源，放在 ui.html 顶部的 <defs> 里（#appmark-glyph），
+   两处 <use> 引用同一份：启动层 + 标题栏。
+   颜色全走 currentColor，所以只在这里决定"谁跟着强调色、谁固定白"：
+     · 启动层：跟随强调色（需求 8 明确要求）
+     · 标题栏：纯白。它是品牌标记，跟着强调色会和旁边的状态圆点抢注意力
+   底（#2E2E2E→#050505 圆角方）由 #appmark-bg 渐变画，两处一致。
+   ------------------------------------------------------------------------- */
+.appmark{ color:var(--mark-fg); }
+.splash .appmark{ color:var(--accent); }
+/* 标题栏里那颗更小，圆角按比例缩，不然 18px 下 22/100 的圆角几乎看不出 */
+.tb-logo .appmark{
+  width:calc(var(--tb-h) * .54);
+  height:calc(var(--tb-h) * .54);
+}
+
+/* ---------------------------------------------------------------------------
+   §7 色板分组标签（参考 Edge 外观设置的分组思路）
+   Edge 的强调色列表里把 Light gray / Dark gray 和彩色混排，用户很难理解
+   "灰色也能当强调色"。我们的三白是同一个问题：3 个近白的点排在末尾，
+   不说明就只是"三个白点"。这里加一条分隔标签，把它们单独成一段。
+   ------------------------------------------------------------------------- */
+.accent-pop-label-sep{
+  margin-top:4px;
+  padding-top:6px;
+  border-top:1px solid var(--border);
+  line-height:1.45;
+}
+/* === V17 LAYER END === */

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>应用图标方案 · adb_Tool</title>
+<style>
+:root{ --bg:#0d1117; --card:#161b22; --border:#2a313a; --text:#f0f4f8; --dim:#8b949e; }
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei UI",system-ui,sans-serif;padding:32px 24px;}
+h1{font-size:20px;margin:0 0 6px;}
+.sub{color:var(--dim);font-size:13px;margin-bottom:28px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:20px;}
+.cell{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:12px;transition:border-color .2s,transform .2s;}
+.cell:hover{border-color:#3fb99b;transform:translateY(-3px);}
+.badge{width:86px;height:86px;border-radius:22px;display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+.badge svg{width:46px;height:46px;}
+.name{font-size:13px;font-weight:600;}
+.no{font-size:11px;color:var(--dim);}
+.desc{font-size:11px;color:var(--dim);text-align:center;line-height:1.5;}
+
+/* 各方案配色 */
+.g1{background:linear-gradient(145deg,#3fb99b,#1e9e82);}
+.g2{background:linear-gradient(145deg,#58a6ff,#316dca);}
+.g3{background:linear-gradient(145deg,#2a313a,#0d1117);border:1px solid #3fb99b;}
+.g4{background:linear-gradient(145deg,#8b5cf6,#6d28d9);}
+.g5{background:linear-gradient(145deg,#f0f4f8,#cbd5e1);}
+.g6{background:linear-gradient(145deg,#0ea5e9,#0369a1);}
+.g7{background:linear-gradient(145deg,#3fb99b,#0d1117);}
+.g8{background:linear-gradient(145deg,#f59e0b,#d97706);}
+.g9{background:linear-gradient(145deg,#1e293b,#0f172a);border:1px solid #3fb99b;}
+.g10{background:linear-gradient(145deg,#ec4899,#be185d);}
+.g11{background:linear-gradient(145deg,#3fb99b,#58a6ff);}
+.g12{background:radial-gradient(circle at 30% 30%,#3fb99b,#0d1117);}
+</style>
+</head>
+<body>
+<h1>应用图标方案 · adb_Tool</h1>
+<div class="sub">元素：adb + 测试 · 风格：简约·时尚·大气 · 共 12 个方案，选出喜欢的告诉我编号</div>
+<div class="grid">
+
+<!-- 1 终端窗口 + 播放/测试勾 -->
+<div class="cell">
+  <div class="badge g1"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="36" height="32" rx="6"/><path d="M14 18l5 5-5 5"/><path d="M24 28h8"/></svg></div>
+  <div class="name">终端命令</div><div class="desc">终端窗口+命令提示符，最直白的 adb 语义</div><div class="no">方案 1</div>
+</div>
+
+<!-- 2 Android机器人简化 + 勾 -->
+<div class="cell">
+  <div class="badge g2"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 22a4 4 0 014-4h20a4 4 0 014 4v10a4 4 0 01-4 4H14a4 4 0 01-4-4z"/><circle cx="18" cy="26" r="1.6" fill="#fff"/><circle cx="30" cy="26" r="1.6" fill="#fff"/><path d="M14 18l-4-5M34 18l4-5"/></svg></div>
+  <div class="name">安卓机器人</div><div class="desc">简化的 Android 机器头+天线，一眼认出安卓测试</div><div class="no">方案 2</div>
+</div>
+
+<!-- 3 黑猫（工具吉祥物） -->
+<div class="cell">
+  <div class="badge g3"><svg viewBox="0 0 48 48" fill="none" stroke="#3fb99b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20v10a6 6 0 006 6h20a6 6 0 006-6V20"/><path d="M14 20l-2-9 9 5M34 20l2-9-9 5"/><circle cx="19" cy="26" r="1.4" fill="#3fb99b"/><circle cx="29" cy="26" r="1.4" fill="#3fb99b"/><path d="M24 29l-1.2 1.4h2.4z" fill="#3fb99b"/></svg></div>
+  <div class="name">黑猫</div><div class="desc">深色底+青绿猫脸，工具吉祥物风格</div><div class="no">方案 3</div>
+</div>
+
+<!-- 4 放大镜 + 对勾（测试/验证） -->
+<div class="cell">
+  <div class="badge g4"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><circle cx="21" cy="21" r="11"/><path d="M29 29l8 8"/><path d="M16.5 21l3.5 3.5 7-7" stroke-width="2.2"/></svg></div>
+  <div class="name">检测对勾</div><div class="desc">放大镜+对勾，测试验证的经典表达</div><div class="no">方案 4</div>
+</div>
+
+<!-- 5 黑白终端提示符 >_ -->
+<div class="cell">
+  <div class="badge g5"><svg viewBox="0 0 48 48"><rect x="4" y="6" width="40" height="36" rx="7" fill="#1f2833"/><path d="M12 16l6 6-6 6" fill="none" stroke="#3fb99b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 28h10" stroke="#f0f4f8" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+  <div class="name">提示符 &gt;_</div><div class="desc">浅色底+深终端，`&gt;_` 提示符是命令行的灵魂</div><div class="no">方案 5</div>
+</div>
+
+<!-- 6 USB数据线 + 节点 -->
+<div class="cell">
+  <div class="badge g6"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="14" r="5"/><path d="M24 19v6"/><path d="M14 30h20"/><path d="M14 36h20"/><rect x="17" y="25" width="14" height="5" rx="2.5"/></svg></div>
+  <div class="name">连接调试</div><div class="desc">连接头+信号，表示设备连接的测试</div><div class="no">方案 6</div>
+</div>
+
+<!-- 7 斜切终端 + 对勾徽章 -->
+<div class="cell">
+  <div class="badge g7"><svg viewBox="0 0 48 48" fill="none" stroke="#3fb99b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="36" height="32" rx="7"/><path d="M14 18l5 5-5 5" stroke="#fff"/><path d="M24 28h8" stroke="#fff"/></svg></div>
+  <div class="name">青绿终端</div><div class="desc">青绿底+白终端，清爽大气</div><div class="no">方案 7</div>
+</div>
+
+<!-- 8 闪电 + 测试（快速测试） -->
+<div class="cell">
+  <div class="badge g8"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M26 6L12 28h10l-4 14 16-22H24z" fill="#fff" stroke="none"/></svg></div>
+  <div class="name">闪电</div><div class="desc">闪电代表快速测试执行</div><div class="no">方案 8</div>
+</div>
+
+<!-- 9 深色终端 + 下划光标 -->
+<div class="cell">
+  <div class="badge g9"><svg viewBox="0 0 48 48"><rect x="4" y="6" width="40" height="36" rx="7" fill="#0f172a"/><path d="M12 16l6 6-6 6" fill="none" stroke="#3fb99b" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 28h8" stroke="#f0f4f8" stroke-width="2.6" stroke-linecap="round"/><path d="M22 32h10" stroke="#3fb99b" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+  <div class="name">深蓝终端</div><div class="desc">深色终端+青绿下划光标，科技感</div><div class="no">方案 9</div>
+</div>
+
+<!-- 10 心形 + 电路（测试用心） -->
+<div class="cell">
+  <div class="badge g10"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 40S8 30 8 19a8 8 0 0114-5.5A8 8 0 0140 19c0 11-16 21-16 21z"/><path d="M24 24l-2 2M18 30l3-3M30 30l-3-3"/></svg></div>
+  <div class="name">用心测试</div><div class="desc">心+电路节点，测试=用心守护质量</div><div class="no">方案 10</div>
+</div>
+
+<!-- 11 渐变终端 + 复选 -->
+<div class="cell">
+  <div class="badge g11"><svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="36" height="32" rx="7"/><path d="M14 18l5 5-5 5"/><path d="M32 20l-8 8-3-3"/></svg></div>
+  <div class="name">渐变终端复选</div><div class="desc">青绿到蓝渐变，命令+通过校验</div><div class="no">方案 11</div>
+</div>
+
+<!-- 12 圆环 + 中心点（目标测试） -->
+<div class="cell">
+  <div class="badge g12"><svg viewBox="0 0 48 48" fill="none" stroke="#3fb99b" stroke-width="2.6" stroke-linecap="round"><circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="6" fill="#3fb99b"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/></svg></div>
+  <div class="name">目标靶环</div><div class="desc">圆环+中心点，精准测试定位</div><div class="no">方案 12</div>
+</div>
+
+</div>
+</body>
+</html>

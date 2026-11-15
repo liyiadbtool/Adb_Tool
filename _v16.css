@@ -1,0 +1,39 @@
+/* === V16 LAYER START === */
+/* ==========================================================================
+   A16 样式
+     §1 tab 拖拽（被拖的那颗、整条 tab 栏的拖拽态）
+     §2 搜索结果里"显示前 80 条"的说明不需要额外样式，这里只收拾拖拽
+   ========================================================================== */
+
+/* 拖拽期间：整条 tab 栏禁选中，避免拖动时把文字刷蓝；
+   被拖的 tab 抬起一点（缩放 + 投影），其余 tab 用 --ease 平滑让位 */
+body.v16-tabdrag,
+body.v16-tabdrag *{
+  user-select:none !important;
+  -webkit-user-select:none !important;
+  cursor:grabbing !important;
+}
+
+.tabs .tab{
+  transition:transform var(--dur-fast) var(--ease),
+             background-color var(--dur-fast) var(--ease),
+             color var(--dur-fast) var(--ease);
+}
+
+.tabs .tab.v16-dragging{
+  position:relative;
+  z-index:5;
+  transform:scale(1.04);
+  box-shadow:var(--shadow-lg);
+  background:var(--surface-2);
+  cursor:grabbing;
+  /* 拖拽中不要有过渡，否则跟手感会被拖慢半拍 */
+  transition:none;
+}
+
+/* 拖拽时不要触发翻页动画（两个 transform 会打架） */
+body.v16-tabdrag .page{
+  animation:none !important;
+}
+
+/* === V16 LAYER END === */

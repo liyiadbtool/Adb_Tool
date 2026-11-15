@@ -1,0 +1,321 @@
+/* === V15 LAYER START === */
+/* ==========================================================================
+   A15 · 界面修整（搜索框白边 / 页签边界与间距 / 导航边界 / 翻页 /
+              日志等级与设备管理浮层 / 主题扩展 / 字体列表分组）
+
+   为什么单独一层：V12/V13/V14 都是"追加覆盖、不重写"，改写既有规则容易
+   把先前几轮调好的对比度推翻。这里同样只覆盖必须改的那几条，并注明原因。
+   ========================================================================== */
+
+/* ---------------- §1 搜索框：白边真实成因 ----------------
+   A13 层给 .qsearch *外壳* 刷了 background:var(--surface)：
+     [data-theme="light"] .qsearch{ border-color:...; background:var(--surface); }
+   而 .qsearch 只是个 display:flex 的包装盒、没有圆角。白色底就从里面那个
+   胶囊输入框的四角后面露出来 —— 用户圈的就是这圈白边。
+   正确做法：外壳完全透明，只给 input 一个"凹陷面"（--surface-2），
+   这也是 Apple 表单控件的做法：输入框比卡片低一层，而不是和卡片同色。 */
+[data-theme="light"] .qsearch,
+[data-theme="eye"] .qsearch{
+  border-color:transparent;
+  background:transparent;
+}
+.qsearch{ background:transparent; }
+.qsearch input{
+  background:var(--surface-2);
+  border-color:var(--a14-card-edge);
+  transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease);
+}
+.qsearch input:focus{
+  background:var(--surface);
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.qsearch input::placeholder{ color:var(--text-faint); }
+
+/* ---------------- §2 页签：边界 + 呼吸 ----------------
+   浅色下 backdrop-filter 模糊的是纯色底 —— 模糊纯色还是纯色，
+   玻璃效果退化成"一块跟页面底差不多的白块"，边界因此糊掉。
+   所以：浅色/护眼走实体面（白底 + 2.2:1 边框 + 落地投影），
+        深色保留玻璃（深色背后有漂移光雾，模糊才有意义），但补一条可见描边。 */
+/* 下面这四块是**令牌定义段**，允许出现字面色值 —— 组件规则一律只引用变量。
+   新增的 --v15-* / --swatch-* 就是为本轮组件服务的，作用域跟三套主题走。 */
+:root[data-theme="dark"]{
+  --v15-edge:rgba(235,235,245,.17);
+  --v15-tabshadow:0 1px 0 rgba(255,255,255,.05) inset,0 10px 26px -18px rgba(0,0,0,.9);
+  --v15-popedge:rgba(235,235,245,.20);
+  --v15-tabs-bg:rgba(28,28,30,.72);
+  --v15-tab-idle:rgba(235,235,245,.86);
+  --v15fold-a:rgba(0,0,0,.42);
+  --v15fold-b:rgba(0,0,0,.12);
+  --v15fold-c:rgba(0,0,0,0);
+  --swatch-ring:rgba(235,235,245,.30);
+  --swatch-check-shadow:0 0 1px rgba(0,0,0,.90);
+}
+:root[data-theme="light"],
+:root[data-theme="eye"]{
+  --v15-edge:var(--a14-card-edge);
+  --v15-tabshadow:0 1px 2px rgba(60,60,67,.06),0 10px 24px -16px rgba(60,60,67,.35);
+  --v15-popedge:var(--a14-card-edge);
+  --v15-tabs-bg:var(--surface);
+  --v15-tab-idle:rgba(60,60,67,.82);
+  --v15fold-a:rgba(0,0,0,.22);
+  --v15fold-b:rgba(0,0,0,.06);
+  --v15fold-c:rgba(0,0,0,0);
+  --swatch-ring:rgba(60,60,67,.28);
+  --swatch-check-shadow:0 0 1px rgba(0,0,0,.35);
+}
+:root[data-theme="eye"]{ --v15-tab-idle:rgba(59,53,44,.86); }
+
+.tabs{
+  margin:12px 18px 10px;
+  padding:6px;
+  gap:6px;
+  border:1px solid var(--v15-edge);
+  border-radius:16px;
+  box-shadow:var(--v15-tabshadow);
+  background:var(--v15-tabs-bg);
+}
+[data-theme="light"] .tabs,
+[data-theme="eye"] .tabs{
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
+
+/* 间距：14 → 18，光标热区更大；高度 34 → 36，和标题栏的 42 拉开层次 */
+.tabs .tab{
+  height:36px;
+  padding:0 18px;
+  gap:7px;
+  border-radius:11px;
+  font-weight:500;
+}
+.tabs .tab + .tab{ margin-left:0; }
+/* 未选中提高一档：浅色下原来用 --text-dim(.72)，白底上偏灰 */
+.tabs .tab:not(.active){ color:var(--v15-tab-idle); }
+.tabs .tab.active{ box-shadow:var(--shadow-sm),0 6px 16px -12px var(--accent); }
+.tabs .tab svg{ width:15px; height:15px; }
+
+/* ---------------- §3 左侧导航：边界 + 选中态 ----------------
+   原来 border-right 用的是 --edge（alpha .10，浅色下约 1.1:1），等于没有分界。
+   底色用 --chrome（半透明白）压在灰底上，也和卡片分不开。 */
+.quick-nav{
+  background:var(--surface);
+  border-right:1px solid var(--v15-edge);
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+}
+.quick-nav .qnav-item{ border-radius:8px; }
+.quick-nav .qnav-item.active{
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-weight:600;
+  box-shadow:inset 3px 0 0 var(--accent);
+}
+.quick-nav .qnav-item .qcnt{
+  min-width:22px;text-align:right;font-variant-numeric:tabular-nums;
+}
+
+/* ---------------- §4 页签翻页（按方向） ----------------
+   用户要的方向感：左→右 = 从左下角翻过去；右→左 = 从右下角翻回来。
+   做法用的是"绕竖轴旋转 + 折角阴影"，不是真卷曲：
+     真卷曲要把内容光栅化（StPageFlip / turn.js 都是 Canvas 逐帧重绘），
+     后果是文字不可选中、每切一次整页重绘、和现有滚动区打架 —— 不值。
+   旋转轴放在 bottom-left / bottom-right，观感就是"页角先起"。
+
+   注意：transform 会成为 fixed 后代（设置面板 / 帮助 / 文件弹窗）的包含块，
+   所以动画结束必须把 class 摘掉，不能挂着 will-change 不放。 */
+.main{ perspective:1700px; perspective-origin:50% 38%; }
+.page{ position:relative; }
+.page.active{ animation:none; }          /* 让位给下面的方向动画 */
+
+.page.v15-flip-next,
+.page.v15-flip-prev{
+  backface-visibility:hidden;
+  will-change:transform,opacity;
+}
+.page.v15-flip-next{ transform-origin:left bottom; animation:v15flipNext .36s cubic-bezier(.22,.72,.12,1) both; }
+.page.v15-flip-prev{ transform-origin:right bottom; animation:v15flipPrev .36s cubic-bezier(.22,.72,.12,1) both; }
+
+@keyframes v15flipNext{
+  0%  { opacity:0; transform:rotateY(-34deg) translateX(-30px) scale(.988); }
+  55% { opacity:1; }
+  100%{ opacity:1; transform:none; }
+}
+@keyframes v15flipPrev{
+  0%  { opacity:0; transform:rotateY(34deg) translateX(30px) scale(.988); }
+  55% { opacity:1; }
+  100%{ opacity:1; transform:none; }
+}
+
+/* 折角阴影：从翻起的那一侧扫过去，让"纸在动"这件事被看见 */
+.page.v15-flip-next::after,
+.page.v15-flip-prev::after{
+  content:"";
+  position:absolute; inset:0; z-index:6; pointer-events:none;
+  border-radius:inherit;
+}
+.page.v15-flip-next::after{
+  background:linear-gradient(104deg,var(--v15fold-a) 0%,var(--v15fold-b) 18%,var(--v15fold-c) 46%);
+  animation:v15foldOut .36s var(--ease) both;
+}
+.page.v15-flip-prev::after{
+  background:linear-gradient(256deg,var(--v15fold-a) 0%,var(--v15fold-b) 18%,var(--v15fold-c) 46%);
+  animation:v15foldOut .36s var(--ease) both;
+}
+@keyframes v15foldOut{ 0%{opacity:1;} 100%{opacity:0;} }
+@media (prefers-reduced-motion:reduce){
+  .page.v15-flip-next,.page.v15-flip-prev{ animation:none !important; }
+  .page.v15-flip-next::after,.page.v15-flip-prev::after{ display:none; }
+}
+
+/* ---------------- §5 日志等级 / 设备管理：浮层与即时提示 ----------------
+   交互照无线 adb 那套：hover 看、click 进深层。
+   hover 提示不能用原生 title（1 秒才出，且不能多行），所以自己画。 */
+.v15-tip{
+  position:fixed; z-index:1500; max-width:320px;
+  padding:8px 10px; border-radius:9px;
+  background:var(--surface); color:var(--text);
+  border:1px solid var(--v15-popedge);
+  box-shadow:var(--shadow-lg);
+  font-size:12px; line-height:1.55;
+  pointer-events:none;
+  animation:v15tipIn .12s var(--ease) both;
+}
+@keyframes v15tipIn{ from{opacity:0;transform:translateY(-3px);} to{opacity:1;transform:none;} }
+.v15-tip b{ font-weight:600; }
+.v15-tip .k{ color:var(--text-faint); }
+.v15-tip .mono{ font-family:var(--font-mono); font-size:11.5px; }
+
+/* A16：弹窗改 body 级 portal（JS 里 attachPop 设 position:fixed + left/top）。
+   这里只留尺寸和外观，定位交给 placePop 算 —— 不再靠 right:0/top:100% 贴锚点，
+   因为那两个值只有在"弹窗是徽章后代"时才成立，而那个结构正是被裁剪的根因。
+   显示/隐藏用 .on 类：内联 display:'' 会落回 CSS 的 display:none，不可靠。 */
+.v15-pop{
+  display:none;
+  width:288px; padding:10px;
+  border-radius:12px;
+  background:var(--surface);
+  border:1px solid var(--v15-popedge);
+  box-shadow:var(--shadow-lg);
+  max-height:calc(100vh - 20px);
+  overflow:auto;
+}
+.v15-pop.on{ display:block; animation:apple-in .16s var(--ease) both; }
+.v15-pop .v15-h{
+  font-size:11px; color:var(--text-faint); letter-spacing:.4px;
+  padding:2px 4px 8px;
+}
+.v15-pop .v15-row{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 8px; border-radius:8px;
+  font-size:12.5px; cursor:pointer;
+  transition:background var(--dur-fast) var(--ease);
+}
+.v15-pop .v15-row:hover{ background:var(--surface-2); }
+.v15-pop .v15-row.on{ background:var(--accent-soft); color:var(--accent); font-weight:600; }
+.v15-pop .v15-row .v15-sub{ margin-left:auto; font-size:11px; color:var(--text-faint); font-weight:400; }
+.v15-pop .v15-row .v15-dot{
+  width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--text-faint);
+}
+.v15-pop .v15-row .v15-dot.ok{ background:var(--ok); }
+.v15-pop .v15-row .v15-dot.err{ background:var(--err); }
+.v15-pop .v15-sep{ height:1px; background:var(--border); margin:7px 2px; }
+.v15-pop .v15-acts{ display:flex; gap:6px; padding:2px; }
+.v15-pop .v15-acts .btn{ flex:1; height:28px; font-size:12px; }
+.v15-pop .v15-note{
+  font-size:11px; color:var(--text-faint); line-height:1.55;
+  padding:8px 4px 2px;
+}
+/* 等级五段（V/D/I/W/E）：像 iOS 的分段控件一样窄 */
+.v15-lvseg{ display:flex; gap:4px; padding:2px 4px 6px; }
+.v15-lvseg button{
+  flex:1; height:28px; border-radius:8px; cursor:pointer;
+  border:1px solid var(--v15-popedge);
+  background:var(--surface-2); color:var(--text-dim);
+  font-family:var(--font-mono); font-size:12px; font-weight:600;
+}
+.v15-lvseg button:hover{ color:var(--text); }
+.v15-lvseg button.on{
+  background:var(--accent); border-color:var(--accent); color:var(--on-accent);
+}
+.v15-lvseg button[data-lv="V"].on{ background:var(--lv-v); border-color:var(--lv-v); }
+.v15-lvseg button[data-lv="D"].on{ background:var(--lv-d); border-color:var(--lv-d); }
+.v15-lvseg button[data-lv="I"].on{ background:var(--lv-i); border-color:var(--lv-i); }
+.v15-lvseg button[data-lv="W"].on{ background:var(--lv-w); border-color:var(--lv-w); }
+.v15-lvseg button[data-lv="E"].on{ background:var(--lv-e); border-color:var(--lv-e); }
+
+/* 可以让这两个东西点了 */
+#log-pill{ cursor:pointer; }
+#dev-badge{ cursor:pointer; }
+
+/* ---------------- §6 主题扩展 ----------------
+   OLED：纯黑底 + 卡片抬到 #0E0E10，纯黑上不再用模糊（没东西可模糊还费 GPU）。
+   护眼三档：只动页面底与卡片色温，不动文字色（文字对比度是算过的，别碰）。 */
+:root[data-theme="dark"][data-oled="1"]{
+  --bg:#000000; --surface:#0e0e10; --surface-2:#1a1a1c;
+  --glass:rgba(0,0,0,.88); --chrome:rgba(0,0,0,.90);
+}
+:root[data-theme="dark"][data-oled="1"] .tabs,
+:root[data-theme="dark"][data-oled="1"] .quick-nav{
+  -webkit-backdrop-filter:none; backdrop-filter:none;
+}
+:root[data-theme="dark"][data-oled="1"] .tabs{ background:#0e0e10; }
+
+:root[data-theme="eye"][data-eyelevel="light"]{
+  --bg:#fbf7ee; --surface:#fffefb; --surface-2:#f6efdf;
+  --a14-page:rgba(246,239,223,.90);
+}
+:root[data-theme="eye"][data-eyelevel="deep"]{
+  --bg:#f2e8d4; --surface:#fdf6e7; --surface-2:#e9dcc2;
+  --a14-page:rgba(232,220,196,.92);
+  --text:#332e26; --text-dim:rgba(51,46,38,.80); --text-faint:rgba(51,46,38,.60);
+}
+
+/* 主题切换的交叉淡入由 _v15.js 用"旧底色遮罩淡出"实现。
+   这里**不要**给 * 加 transition：颜色过渡期间 getComputedStyle 返回旧值，
+   门禁的对比度断言会全部读到上一套主题，实测会挂掉 3 条。 */
+
+/* ---------------- §7 字体列表：分组 + 未安装标记 ---------------- */
+.a14-selpop{ max-height:340px; }
+.a14-selpop .grp{
+  padding:7px 10px 4px;
+  font-size:10.5px; letter-spacing:.6px; color:var(--text-faint);
+  text-transform:uppercase;
+}
+.a14-selpop .it .meta{
+  float:right; margin-left:12px;
+  font-size:10.5px; color:var(--text-faint);
+}
+.a14-selpop .it.off{ opacity:.42; }
+.a14-selpop .it.off .meta{ color:var(--err); opacity:.9; }
+
+/* ---------------- §8 色板：13 个点排 5 列 ----------------
+   生成器已经把默认列数改成 5；这里补设置面板里的覆盖，
+   顺便让最后一行（3 个）左对齐而不是被拉散。 */
+.accent-pop{ grid-template-columns:repeat(4,40px); }
+.set-panel .accent-pop{
+  position:static; display:grid;
+  background:transparent; border:0; box-shadow:none;
+  padding:0; gap:8px;
+}
+.set-panel .accent-pop-label{ display:none; }
+
+/* A16：这两条"贴着徽章定位"的规则已经不需要 —— 弹窗挂到 body 后由
+   placePop() 按锚点 rect 算坐标，不再依赖徽章做定位祖先。
+   留着反而会误导下一个人去改徽章的 position。 */
+
+/* ---------------- §8 开场动效（A16：窗口一步到位，动效交给内容） ----------------
+   C# 侧已经删掉"把窗口缩到 168x100 再放大"的做法（那套会留下小窗口残局）。
+   观感靠这里补：内容 scale(.94)→1 + 淡入，transform-origin 在底部中间，
+   看起来仍是从下方"长出来"，但窗口尺寸全程不动。
+   动画结束态是 transform:none —— 不能留 transform，否则 fixed 后代的包含块会变。 */
+.frame.v16-in{ transform-origin:50% 100%; animation:v16open .20s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes v16open{
+  from{ opacity:.001; transform:scale(.94); }
+  to  { opacity:1;    transform:none; }
+}
+@media (prefers-reduced-motion:reduce){
+  .frame.v16-in{ animation:none; }
+}
+
+/* === V15 LAYER END === */

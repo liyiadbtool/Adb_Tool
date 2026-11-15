@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head><meta charset="utf-8"><title>组件状态墙（非生产文件）</title>
+<style>
+/* ============ adb_Tool · 简洁版 ============ */
+:root[data-theme="dark"] {
+  /* Apple 深色 = dimming 而非反转：#000 → #1C1C1E → #2C2C2E 三级抬升 */
+  --bg:#000000; --surface:#1c1c1e; --surface-2:#2c2c2e;
+  --border:rgba(84,84,88,.60); --border-strong:rgba(235,235,245,.30);
+  --text:#f5f5f7; --text-dim:rgba(235,235,245,.68); --text-faint:rgba(235,235,245,.46);
+  --accent:#0a84ff; --accent-soft:rgba(10,132,255,.16);
+  --ok:#30d158; --ok-soft:rgba(48,209,88,.16);
+  --err:#ff453a; --err-soft:rgba(255,69,58,.14); --err-soft-hover:rgba(255,69,58,.24);
+  --on-accent:#ffffff; --cast-stage:#000000;
+  --lv-v:#bf5af2; --lv-d:#0a84ff; --lv-i:#30d158; --lv-w:#ff9f0a; --lv-e:#ff453a;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.40); --shadow-md:0 4px 12px rgba(0,0,0,.48);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.62); --scrim:rgba(0,0,0,.62);
+  --glass:rgba(28,28,30,.72); color-scheme:dark;
+}
+:root[data-theme="eye"] {
+  /* 护眼 = Apple 浅色 + 暖白低蓝光变体（保留第三套，绝不合并） */
+  --bg:#fdfaf3; --surface:#fffdf7; --surface-2:#f6efe0;
+  --border:rgba(120,105,75,.28); --border-strong:rgba(120,105,75,.46);
+  --text:#3b352c; --text-dim:rgba(59,53,44,.76); --text-faint:rgba(59,53,44,.56);
+  --accent:#8a5a12; --accent-soft:rgba(138,90,18,.12);
+  --ok:#4f7d3a; --ok-soft:rgba(79,125,58,.12);
+  --err:#a63f3f; --err-soft:rgba(166,63,63,.10); --err-soft-hover:rgba(166,63,63,.20);
+  --on-accent:#fffdf7; --cast-stage:#000000;
+  /* 护眼态日志等级：暖调低蓝光变体；W 换成暖琥珀，不再沿用旧品牌棕 */
+  --lv-v:#6b46c1; --lv-d:#2f6f9c; --lv-i:#4f7d3a; --lv-w:#9a6a12; --lv-e:#a63f3f;
+  --shadow-sm:0 1px 2px rgba(80,66,40,.10); --shadow-md:0 4px 12px rgba(80,66,40,.14);
+  --shadow-lg:0 16px 40px rgba(80,66,40,.20); --scrim:rgba(48,40,26,.38);
+  --glass:rgba(255,253,247,.80); color-scheme:light;
+}
+:root[data-theme="light"] {
+  /* Apple 浅色：冷白系统底 + 纯白卡片；accent 加深以保白字 ≥4.5:1 */
+  --bg:#f2f2f7; --surface:#ffffff; --surface-2:#f2f2f7;
+  --border:rgba(60,60,67,.29); --border-strong:rgba(60,60,67,.46);
+  --text:#1d1d1f; --text-dim:rgba(60,60,67,.72); --text-faint:rgba(60,60,67,.54);
+  --accent:#0066cc; --accent-soft:rgba(0,102,204,.10);
+  --ok:#1a7f37; --ok-soft:rgba(26,127,55,.11);
+  --err:#c0362c; --err-soft:rgba(192,54,44,.10); --err-soft-hover:rgba(192,54,44,.20);
+  --on-accent:#ffffff; --cast-stage:#000000;
+  --lv-v:#8944ab; --lv-d:#0066cc; --lv-i:#1a7f37; --lv-w:#a35a00; --lv-e:#c0362c;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.08); --shadow-md:0 4px 12px rgba(0,0,0,.12);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.20); --scrim:rgba(0,0,0,.34);
+  --glass:rgba(255,255,255,.76); color-scheme:light;
+}
+:root{
+  /* 8pt 网格 / 连续圆角 / 语义化阴影 / 统一时长与曲线（工具型：≤300ms） */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-6:24px; --space-8:32px;
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-pill:999px;
+  --dur-fast:150ms; --dur:220ms;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --font-mono:"SF Mono","JetBrains Mono",Consolas,"Microsoft YaHei UI",monospace;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:var(--font-ui);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+  display:flex; overflow:hidden;
+  /* 问题1：按钮等 UI 元素不允许被选中复制，全局禁选 */
+  user-select:none;
+  -webkit-user-select:none;
+}
+/* 界面框架：默认隐藏，数据到了直接显示。
+   问题2（不要闪烁）：原来这里带 opacity .3s 过渡，与 splash 的 .45s 淡出
+   **同时**进行 —— 两层半透明叠在一起，中间时刻透出的是 body 的 --bg，
+   而框架本身是 --surface，两者不是同一个色，肉眼就是"闪一下"。
+   现在改成：框架瞬间显示（它在不透明 splash 底下，看不见切换），
+   只让 splash 单层淡出，颜色过渡只有一条曲线，不再闪烁。 */
+.frame{flex:1;display:flex;flex-direction:column;background:var(--surface);min-width:0;opacity:0;visibility:hidden;}
+.frame.show{opacity:1;visibility:visible;}
+
+/* 顶栏（品牌名已删，只留设备信息 + 操作按钮） */
+.topbar{height:52px;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+.device{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-dim);}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--ok);flex:0 0 auto;}
+.dot.off{background:var(--err);}
+.dot.none{background:var(--text-faint);}
+.device .id{font-family:Consolas,monospace;color:var(--text);font-weight:600;font-size:14px;}
+.device .sep{color:var(--text-faint);}
+.device .soc{color:var(--text-faint);font-family:Consolas,monospace;font-size:12px;}
+.spacer{flex:1;}
+
+/* root 指示按钮（问题3）：
+   未 root = 红，已 root = 绿，点击即执行 adb root 完成提权。
+   做成胶囊按钮而不是纯色块：旁边有文字，用户才知道能点。 */
+.rootpill{
+  display:inline-flex;align-items:center;gap:7px;
+  height:28px;padding:0 12px 0 9px;
+  border-radius:999px;cursor:pointer;
+  border:1px solid;font-size:12.5px;font-weight:600;
+  font-family:"Microsoft YaHei UI","PingFang SC",sans-serif;
+  transition:background .15s,border-color .15s,color .15s,transform .08s;
+  white-space:nowrap;user-select:none;-webkit-user-select:none;
+}
+.rootpill:active{transform:scale(.96);}
+/* 已连接但没有 root：红 */
+.rootpill.no{color:var(--err);border-color:var(--err);background:var(--err-soft);}
+.rootpill.no:hover{background:var(--err-soft-hover);}
+/* 设备断开：灰（不是红）—— 红代表"未 root"，而离线时我们并不知道 root 与否，
+   用灰色只表达"现在用不了"。 */
+.rootpill.off{color:var(--text-faint);border-color:var(--border-strong);background:transparent;}
+.rootpill.off .rdot{background:var(--text-faint);}
+/* 已 root：绿 */
+.rootpill.yes{color:var(--ok);border-color:var(--ok);background:var(--ok-soft);}
+.rootpill.yes:hover{background:var(--ok-soft);}
+/* 提权中：灰，不可点 */
+.rootpill.busy{color:var(--text-faint);border-color:var(--border-strong);background:transparent;pointer-events:none;cursor:default;}
+.rootpill .rdot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+.rootpill.busy .rdot{animation:rpulse 1s ease-in-out infinite;}
+@keyframes rpulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+/* 设备不在线时按钮无意义：置灰但仍然显示，让用户知道有这个能力 */
+.rootpill.disabled{opacity:.4;pointer-events:none;}
+
+/* ============ 无线 adb（2026-11-13，ROOT 右边） ============ */
+.wadb{position:relative;display:inline-flex;}
+.wadb-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  height:28px;padding:0 11px 0 9px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--border-strong);background:transparent;
+  color:var(--text-dim);font-size:12.5px;font-weight:600;
+  font-family:"Microsoft YaHei UI","PingFang SC",sans-serif;
+  white-space:nowrap;transition:color .15s,border-color .15s,background .15s;
+  user-select:none;-webkit-user-select:none;
+}
+.wadb-btn:hover{color:var(--text);border-color:var(--accent);}
+.wadb-btn.on{color:var(--ok);border-color:var(--ok);background:var(--ok-soft);}
+.wadb-btn.busy{color:var(--text-faint);pointer-events:none;}
+.wadb-btn .wdot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+.wadb-btn.busy .wdot{animation:rpulse 1s ease-in-out infinite;}
+.wadb-pop{
+  position:absolute;left:0;top:calc(100% + 8px);z-index:80;width:300px;
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;
+  box-shadow:var(--shadow-lg);padding:12px;
+  display:flex;flex-direction:column;gap:9px;
+}
+.wadb-pop input{
+  width:100%;height:32px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:13px;padding:0 10px;
+  outline:none;font-family:Consolas,monospace;
+}
+.wadb-pop input:focus{border-color:var(--accent);}
+.wadb-tip{font-size:11.5px;color:var(--text-faint);line-height:1.6;}
+.wadb-tip.err{color:var(--err);}
+.wadb-acts{display:flex;gap:8px;}
+.wadb-acts .btn{flex:1;}
+
+/* 需求7：设备日志等级徽章（ROOT 后面），纯状态显示，不可点击 */
+.logpill{
+  display:inline-flex;align-items:center;gap:6px;
+  height:28px;padding:0 10px;
+  border-radius:999px;
+  border:1px solid var(--border-strong);
+  background:transparent;
+  font-size:12px;font-weight:600;color:var(--text-dim);
+  font-family:Consolas,"Cascadia Mono",monospace;
+  white-space:nowrap;user-select:none;-webkit-user-select:none;
+}
+.logpill .ltag{font-size:11px;color:var(--text-faint);font-family:"Microsoft YaHei UI","PingFang SC",sans-serif;}
+.logpill .lv{color:var(--accent);}
+/* 需求：日志等级按 V/D/I/W/E 分色（2026-11-12） */
+.logpill[data-lv="V"] .lv{color:var(--lv-v);}
+.logpill[data-lv="D"] .lv{color:var(--lv-d);}
+.logpill[data-lv="I"] .lv{color:var(--lv-i);}
+.logpill[data-lv="W"] .lv{color:var(--lv-w);}
+.logpill[data-lv="E"] .lv{color:var(--lv-e);}
+.logpill[data-lv="V"]{border-color:var(--lv-v);}
+.logpill[data-lv="D"]{border-color:var(--lv-d);}
+.logpill[data-lv="I"]{border-color:var(--lv-i);}
+.logpill[data-lv="W"]{border-color:var(--lv-w);}
+.logpill[data-lv="E"]{border-color:var(--lv-e);}
+
+/* 顶栏图标按钮：极简，无边框，青绿色 */
+.icon-btn{
+  width:36px;height:36px;display:grid;place-items:center;
+  border:none;border-radius:8px;
+  background:transparent;cursor:pointer;
+  color:var(--accent);
+  transition:background .15s,transform .1s,color .15s;
+}
+.icon-btn:hover{background:var(--surface-2);color:var(--accent);}
+.icon-btn:active{transform:scale(.92);}
+.icon-btn svg{width:22px;height:22px;}
+
+/* 页签：座椅按钮样式（独立的分段胶囊按钮） */
+.tabs{height:52px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+.tab{
+  display:flex;align-items:center;justify-content:center;
+  height:32px;padding:0 18px;
+  border:1px solid var(--border);border-radius:999px;
+  background:var(--surface);color:var(--text-dim);
+  font-size:13px;cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s,transform .1s;
+}
+.tab:hover{color:var(--text);}
+.tab:active{transform:scale(.97);}
+.tab.active{
+  background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600;
+}
+.tab.active:hover{color:var(--on-accent);}
+
+/* 主体 */
+.main{flex:1;min-height:0;display:flex;flex-direction:column;}
+.page{flex:1;min-height:0;display:none;flex-direction:column;}
+.page.active{display:flex;}
+/* 需求1：多输入框槽位。slots 垂直堆叠，每个 slot = 输出区 + 输入行，等高均分 */
+.slots{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.slot{flex:1;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid var(--border);position:relative;}
+.slot:last-child{border-bottom:none;}
+/* 需求1·补充：删除输入框（每个槽右上角悬浮 ×）。
+   常显 opacity:.35 而不是纯 hover 才出现 —— 否则用户根本发现不了这个功能；
+   鼠标移入整个槽时变清晰，按钮自身 hover 转红。
+   background 必须给不透明底色：日志滚到顶部时按钮会压在首行文字上。 */
+.delbtn{position:absolute;top:8px;right:8px;z-index:3;width:22px;height:22px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-faint);background:var(--surface);border:1px solid var(--border);
+  border-radius:5px;cursor:pointer;opacity:.35;
+  transition:opacity .12s,color .12s,border-color .12s,background .12s;}
+.slot:hover .delbtn{opacity:1;}
+.delbtn:hover{color:var(--err);border-color:var(--err);background:var(--err-soft);}
+.delbtn svg{width:11px;height:11px;display:block;}
+.delbtn:disabled{opacity:0;pointer-events:none;}
+/* 只剩一个槽时不给删（至少要留一个输入框），整组隐藏 */
+.slots.one .delbtn{display:none;}
+/* 需求1：+ 号按钮（新增输入框），在输入框 > 左侧 */
+.addbtn{flex:0 0 auto;width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1;color:var(--text-dim);border:1px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;transition:border-color .12s,color .12s;}
+.addbtn:hover{color:var(--accent);border-color:var(--accent);}
+.addbtn:disabled{opacity:.4;pointer-events:none;}
+
+/* 日志区 */
+.logbox{flex:1;min-height:0;overflow:auto;padding:14px 20px;font-family:Consolas,"Cascadia Mono","Courier New",monospace;font-size:13px;line-height:1.75;user-select:text;-webkit-user-select:text;}
+/* 需求1·补充：多槽时给右上角删除按钮留出右侧空间。
+   删除按钮是绝对定位覆盖在日志区上的，日志向上滚动时**任意一行**都会
+   经过按钮正下方；只靠 background 不透明只能挡住，文字仍会被压住看不清。
+   所以直接在滚动容器上预留 44px（22 按钮 + 8 右边距 + 余量），
+   代价是长日志行少 24px 宽度，换取任何滚动位置都不与按钮重叠。 */
+.slots:not(.one) .logbox{padding-right:44px;}
+.logbox::-webkit-scrollbar{width:12px;}
+.logbox::-webkit-scrollbar-thumb{background:var(--border);border:4px solid transparent;background-clip:content-box;border-radius:8px;}
+.ln{white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;}
+.c-ok{color:var(--ok);}.c-err{color:var(--err);}.c-dim{color:var(--text-dim);}.c-faint{color:var(--text-faint);}.c-path{color:var(--text);}
+.echo{display:flex;gap:8px;margin:12px 0 3px;}
+.echo .pmt{color:var(--text-faint);}
+.echo .cmd{color:var(--text);font-weight:600;}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-faint);text-align:center;}
+.empty .t{font-size:14px;color:var(--text-dim);}
+.empty .d{font-size:13px;}
+/* 顶部进度条（终端页在执行时出现的那条 2px 流动线）。
+   【严重 bug 修复·问题8 的真凶】
+   原来这条规则写成裸 `.running{display:none}` —— 而指令卡片执行中
+   也是加 `running` 这个类名（.qcard.running）。两条规则撞在一起，
+   结果是：**卡片一点击就 display:none 整体消失**，等 endRun 移除类才回来。
+   这正是用户反馈的"按钮点击之后就消失了"。
+   现在把进度条改成专属类名 `.runbar`，与卡片的 `.qcard.running` 彻底分开。
+   （HTML 里对应的元素也一并改了 class） */
+.runbar{flex:0 0 auto;height:2px;background:var(--surface-2);display:none;}
+.runbar.on{display:block;}
+.runbar i{display:block;height:100%;width:30%;background:var(--accent);animation:run 1.2s ease-in-out infinite;}
+@keyframes run{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
+
+/* 输入行 */
+.inputbar{flex:0 0 auto;padding:12px 16px;border-top:1px solid var(--border);}
+.inputwrap{display:flex;align-items:center;gap:8px;}
+.field{flex:1;min-width:0;height:32px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
+.field:focus-within{border-color:var(--accent);}
+.field .pmt{font-family:Consolas,monospace;font-size:13px;color:var(--accent);white-space:nowrap;font-weight:600;}
+.field input{flex:1;min-width:0;height:100%;border:none;outline:none;background:none;color:var(--text);font-family:Consolas,monospace;font-size:13px;caret-color:var(--accent);user-select:text;-webkit-user-select:text;}
+.field input::placeholder{color:var(--text-faint);font-family:"Microsoft YaHei UI",sans-serif;}
+
+/* 按钮：缩小到 32px，与 13.5px 字体匹配，不显臃肿 */
+.btn{
+  flex:0 0 auto;height:32px;padding:0 12px;
+  display:inline-flex;align-items:center;gap:5px;
+  border:1px solid var(--border-strong);border-radius:6px;
+  background:var(--surface);color:var(--text);
+  font-family:inherit;font-size:13px;cursor:pointer;white-space:nowrap;
+  transition:background .15s,box-shadow .15s,transform .08s;
+}
+.btn svg{width:16px;height:16px;}
+.btn:hover{background:var(--surface-2);}
+.btn:active{transform:translateY(1px) scale(.98);}
+.btn.primary{background:transparent;border-color:var(--accent);color:var(--accent);font-weight:600;}
+.btn.primary:hover{background:var(--accent);color:var(--on-accent);filter:none;}
+.btn.primary:hover svg{color:var(--on-accent);}
+.btn.primary:active{transform:translateY(1px) scale(.98);}
+.btn.danger{color:var(--err);}
+.btn.danger:hover{background:var(--err-soft);border-color:var(--err);}
+.btn.ghost{border-color:var(--border-strong);background:none;color:var(--text-dim);}
+.btn.ghost:hover{background:var(--surface-2);color:var(--text);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* 指令页：侧边导航式 */
+.quick-wrap{flex:1;min-height:0;display:flex;overflow:hidden;}
+.quick-nav{flex:0 0 auto;width:176px;background:var(--surface);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
+.quick-nav::-webkit-scrollbar{width:10px;}
+.quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:6px;}
+.quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
+.qnav-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;}
+.qnav-item:hover{background:var(--surface-2);color:var(--text);}
+.qnav-item.active{background:var(--surface-2);color:var(--text);}
+.qnav-item .qdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.qnav-item .qcnt{margin-left:auto;font-size:11px;color:var(--text-faint);}
+
+.quick-body{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+/* 需求2：整体滑动容器。
+   原来只有 .quick-grid 可滚，而 .vr-panel 是 flex:0 0 auto（绝不收缩），
+   一旦窗口变矮，面板会吃掉全部高度、把 grid 压到 0，面板底部（发送按钮）
+   被 .quick-body 的 overflow:hidden 直接裁掉且无处可滚。
+   现在把 vr-panel + quick-grid 一起放进这个可滚容器：
+     · 面板**跟着一起滚**（用户要的"整体滑动"：所有内容同进同退）
+     · quick-grid 回归自然高度，不再被 flex 挤压
+   注意：面板不要 sticky。吸顶会让面板钉死在顶部、卡片只在底部露出一条，
+   滚动时看着像"输入框不能滑动"，这正是用户反馈的第二个问题。 */
+.quick-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
+.quick-scroll::-webkit-scrollbar{width:12px;}
+.quick-scroll::-webkit-scrollbar-thumb{background:var(--border);border:4px solid transparent;background-clip:content-box;border-radius:8px;}
+.quick-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 20px 10px;}
+.quick-head .qgname{font-size:14px;font-weight:600;}
+.quick-head .qgcount{font-size:12px;color:var(--text-faint);}
+/* 问题5：卡片太大 → 一行三个。
+   原来 1fr 1fr（两个）导致每张卡横跨半屏，文字少、留白多，很占地方。
+   三列后单卡宽度约 220~260px，正好放下一行标题 + 一行说明。
+   2026-11-11 调整：降级阈值从 900px 收紧到 660px —— 900px 太容易触发
+   （默认窗口 1100px，减掉左导航 176px 后内容区只剩 ~920px，稍微拖窄就
+   掉到两列，用户以为"一行三个"功能丢了）。660px 以下才降两列。 */
+.quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start;}
+@media (max-width:660px){
+  .quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+.quick-grid::-webkit-scrollbar{width:12px;}
+.quick-grid::-webkit-scrollbar-thumb{background:var(--border);border:4px solid transparent;background-clip:content-box;border-radius:8px;}
+/* 需求8：分组内分类小标题，横跨整行，与卡片视觉区分 */
+.qcat{
+  grid-column:1 / -1;
+  margin-top:8px;padding:2px 2px 2px;
+  font-size:12px;font-weight:600;letter-spacing:.5px;
+  color:var(--text-faint);
+}
+.qcat:first-child{margin-top:0;}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 14px;cursor:pointer;transition:border-color .12s,background .12s,transform .08s;user-select:none;-webkit-user-select:none;}
+.qcard:hover{border-color:var(--border-strong);background:var(--surface-2);}
+.qcard:active{transform:scale(.98);}
+.qcard .qhead{display:flex;align-items:center;gap:8px;margin-bottom:5px;min-width:0;}
+.qcard .qico{flex:0 0 auto;width:16px;height:16px;color:var(--text-faint);}
+.qcard .qico svg{width:16px;height:16px;display:block;}
+.qcard .qico svg.spin{animation:spin 1s linear infinite;transform-origin:center;transform-box:fill-box;}
+/* 需求3：标题单行省略号，超出用 … 截断，悬停 title 看全 */
+.qcard .qname{font-size:13px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* 需求3：说明单行省略号，卡片高度统一不再被长说明撑高 */
+.qcard .qcmd{font-size:12px;color:var(--text-faint);font-family:Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* 需要参数的卡片：右上角一个小「＋」徽章。
+   原来用 .qname::after{content:" …"}，看起来就是"标题被截断"（省略号在本界面
+   已经专指"文字太长"），语义完全错位。 */
+.qcard .qarg{
+  flex:0 0 auto;margin-left:2px;padding:0 3px;
+  font-size:10px;line-height:13px;font-weight:600;
+  color:var(--accent);border:1px solid var(--accent);border-radius:4px;
+}
+/* 执行中选中态（问题8）。
+   用户抱怨"按钮点击后消失"，根因不是 DOM 被删，而是三件事叠在一起：
+     1) .qcard.running{pointer-events:none} —— 卡片立刻"点不动"，
+        鼠标悬停不再有 :hover 反馈，观感就是失效了；
+     2) 图标从 ▶ 换成转圈，标题颜色也变，视觉上像换了个东西；
+     3) 命令短的话（截图/查询）几乎瞬间就复位，一闪而过更像"消失又出现"。
+   改法：执行中**保留原样**——不透明、不位移、边框只加亮一点，
+   图标转圈但尺寸位置完全不变，并在副标题末尾追加"执行中…"，
+   让"正在执行"成为一个附加状态而不是替代外观。
+   卡片禁用点击只在整个命令结束时解除（endRun → 移除 .running）。 */
+.qcard.running{border-color:var(--accent);background:var(--surface-2);}
+.qcard.running .qname{color:var(--accent);}
+.qcard.running .qcmd::after{content:" · 执行中…";color:var(--accent);}
+.qcard.running:not(.toggle){pointer-events:none;}
+/* 执行中断类型（toggle）：执行中仍可点击，再点 = 停止（需求7） */
+.qcard.toggle.running{pointer-events:auto;}
+.qcard.toggle.running .qcmd::after{content:" · 点击停止";}
+/* 图标态颜色（方案3）：待机灰 / 执行青绿 / 完成绿 / 失败红 */
+.qcard.running .qico{color:var(--accent);}
+.qcard.done{border-color:var(--ok);}
+.qcard.done .qico{color:var(--ok);}
+.qcard.error{border-color:var(--err);}
+.qcard.error .qico{color:var(--err);}
+/* 底部进度条（方案4，长任务卡片：HCI导出/录屏） */
+.qcard .qbar{display:none;height:2px;background:var(--surface-2);border-radius:1px;margin-top:9px;overflow:hidden;}
+.qcard.progress.running .qbar{display:block;}
+.qcard.progress.running .qbar i{display:block;height:100%;width:30%;background:var(--accent);animation:qrun 1.2s ease-in-out infinite;}
+.qcard.progress.done .qbar{display:block;}
+.qcard.progress.done .qbar i{display:block;height:100%;width:100%;background:var(--ok);}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes qrun{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
+
+/* ================= 反馈窗口（问题4 重做） =================
+   结构：上下拖动条 + 一行一条记录，每条记录内部再左右分栏
+        左：时间 + 指令（固定宽度，可调）  右：输出结果（占剩下的）
+   要求逐条对应：
+     · 时间、指令、结果、耗时 四项全部恢复 —— 时间+指令在左栏，
+       结果在右栏，耗时作为小标签贴在指令行尾部
+     · 输出占比大概一半，且可用鼠标拖动中间竖线调整
+     · 指令和输出超过一行都自动换行（word-break + pre-wrap）
+     · 后面的输出不覆盖前面的 —— 每条命令一个独立 .fb-row 块，
+       天然按顺序堆叠，不可能互相覆盖
+     · 支持滚动浏览 —— .fb-table 整体滚动 + 右栏过长时内部也独立滚动
+   -------------------------------------------------------- */
+/* 反馈窗口（输出区）—— 可拖拽高度，最小可收到只剩一条标题栏。
+   上一版 min-height:120px + 拖拽代码里的 Math.max(120,…) 是**双重下限**，
+   无论怎么往下拖都停在 120px，用户想"收到只剩一条"做不到。
+   现在下限由 FB_MIN(34px，正好是折叠栏高度) 单点控制：
+     · 正常态：.feedback 的 height 由拖拽写内联 style
+     · 收起态：加 .collapsed，内容区 display:none，只剩 34px 折叠栏
+   折叠栏常显（收起后它也是唯一可见的东西），点它可在收起/展开间切换。 */
+.feedback{flex:0 0 auto;height:40%;min-height:0;display:flex;flex-direction:column;border-top:1px solid var(--border);background:var(--surface-2);position:relative;
+  /* 左栏宽度：拖动竖线时只改这一个变量，所有记录 + 表头一起跟着变 */
+  --fb-left:20%;   /* 输出列约占 80%（用户 2026-11-14 要求） */}
+/* 折叠栏：与 .fb-resizer 并存于顶部。
+   收起后 resizer 会跟着内容一起消失，所以折叠栏自己也要能响应拖拽
+   （见下方 JS：从收起态往上拖 = 直接展开并跟随）。 */
+.fb-collapsed-bar{
+  flex:0 0 auto;height:34px;
+  display:none;align-items:center;gap:8px;
+  padding:0 16px;
+  font-size:12px;color:var(--text-faint);
+  cursor:ns-resize;user-select:none;-webkit-user-select:none;
+}
+.fb-collapsed-bar .fcb-arrow{display:grid;place-items:center;width:14px;height:14px;flex:0 0 auto;}
+.fb-collapsed-bar .fcb-arrow svg{width:12px;height:12px;display:block;transition:transform .15s;}
+.fb-collapsed-bar .fcb-txt{flex:0 0 auto;letter-spacing:.3px;}
+.fb-collapsed-bar .fcb-cnt{flex:1 1 auto;min-width:0;text-align:right;color:var(--text-faint);opacity:.8;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fb-collapsed-bar:hover{color:var(--text-dim);background:var(--surface);}
+/* 收起态：隐藏拖拽条和内容，只留折叠栏；高度压到折叠栏本身 */
+.feedback.collapsed{height:34px !important;}
+.feedback.collapsed .fb-collapsed-bar{display:flex;}
+.feedback.collapsed .fb-resizer,
+.feedback.collapsed .fb-table{display:none;}
+/* 收起态下折叠栏里的箭头指向上（提示"点我能展开"） */
+.feedback.collapsed .fcb-arrow svg{transform:rotate(180deg);}
+.fb-resizer{flex:0 0 auto;height:6px;cursor:ns-resize;background:transparent;}
+.fb-resizer:hover{background:var(--border-strong);}
+
+/* 表头：固定不滚动（sticky），告诉用户每列是什么。
+   与记录共享同一个宽度基准（--fb-left），所以两栏边界严丝合缝。
+
+   【对齐修复·需求1】原来表头左栏里并排放了「时间 指令 耗时」三个标签，
+   而一条记录左栏是**上下两行**（时间+徽章+耗时 一行、指令 一行），
+   标签横排、内容竖排，结构都不对应，怎么调都对不上 —— 这就是
+   "排列不对齐"的根因。
+
+   现在表头左栏复制记录的**同一套结构**：
+       第 1 行：时间(58px) 状态(38px) 耗时(62px，右对齐)
+       第 2 行：指令
+   宽度与记录里的 .t / .badge / .d 一字不差，所以每个标签都正对着
+   自己那一列字段，上下严格成列。右栏「输出」对记录的 .fb-right。 */
+/* 表头外框：border-left 用 2px 透明占位，原因见下 */
+.fb-head{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;padding:5px 16px;font-size:11px;line-height:14px;color:var(--text-faint);border-bottom:1px solid var(--border);border-left:2px solid transparent;background:var(--surface-2);}
+/* 【像素级对齐的关键】.fb-row 带 border-left:2px（成功/失败色条），
+   所以记录的内容盒 = 行宽 - 32(padding) - 2(border)。表头最初只在 .hl 上加
+   了那 2px，导致两者 flex-basis 46% 的**基数不同**，右栏起点差 0.9~1.1px。
+   现在把这 2px 挂到 .fb-head 上，两边内容盒完全一致，百分比才落在同一位置。 */
+.fb-head .hl{flex:0 0 var(--fb-left);min-width:0;display:flex;flex-direction:column;gap:2px;padding-right:10px;overflow:hidden;}
+/* 第 1 行：三个标签的宽度必须与记录里的 .t / .badge / .d 完全一致 */
+.fb-head .hl .h-meta{display:flex;align-items:center;min-width:0;white-space:nowrap;}
+.fb-head .hl .h-meta .h-t{flex:0 0 auto;width:58px;}
+.fb-head .hl .h-meta .h-b{flex:0 0 auto;width:38px;text-align:center;}
+.fb-head .hl .h-meta .h-d{flex:0 0 auto;width:62px;text-align:right;}
+/* 第 2 行：指令 */
+.fb-head .hl .h-c{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fb-head .h-sp{flex:0 0 13px;margin:0 3px;}
+.fb-head .h-s{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* 记录容器：整体可滚动（不覆盖、按顺序堆叠） */
+.fb-table{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
+.fb-table::-webkit-scrollbar{width:12px;}
+.fb-table::-webkit-scrollbar-thumb{background:var(--border);border:4px solid transparent;background-clip:content-box;border-radius:8px;}
+
+/* 一条记录：左右两栏，右栏宽度 = 100% - 左栏宽度（--fb-left 由拖动写进 style） */
+.fb-row{
+  display:flex;align-items:flex-start;
+  padding:6px 16px;
+  font-size:13px;
+  border-bottom:1px solid var(--border);
+  border-left:2px solid transparent;   /* 与表头同宽占位，保证两栏边界像素级一致 */
+  user-select:text;-webkit-user-select:text;cursor:default;
+}
+.fb-row:hover{background:var(--surface);}
+.fb-row.copied{background:var(--accent-soft);}
+/* 成功/失败色用左边框提示，不占正文宽度（2px 与表头 border-left 对齐） */
+.fb-row.ok{border-left:2px solid var(--ok);}
+.fb-row.err{border-left:2px solid var(--err);}
+/* 新完成的一条闪一下：从终端页跳过来时，靠它还原来不及定位 */
+@keyframes fbflash{
+  0%{background:var(--accent-soft);}
+  100%{background:transparent;}
+}
+.fb-row.flash{animation:fbflash 1.1s ease-out;}
+
+/* 左栏：时间行 + 指令
+   需求1（列对齐）：时间、耗时、状态徽章都在第一行，各自占**固定宽度**，
+   这样所有记录的这三个字段上下严格对齐成一列，不会因为"12 ms"比
+   "3241 ms"短就把后面的徽章挤得错位。
+   指令单独一行，字号略大，方便扫读。 */
+.fb-row .fb-left{
+  flex:0 0 var(--fb-left);min-width:0;
+  display:flex;flex-direction:column;gap:3px;
+  padding-right:10px;
+}
+.fb-row .fb-meta{display:flex;align-items:center;font-size:11px;color:var(--text-faint);min-width:0;}
+/* 时间：HH:mm:ss 定长，等宽字体，固定宽度保证竖直对齐 */
+.fb-row .fb-meta .t{flex:0 0 auto;width:58px;font-family:Consolas,monospace;white-space:nowrap;}
+/* 徽章：固定宽度，"成功"/"失败" 都是两字，宽度一致 */
+.fb-row .fb-meta .badge{
+  flex:0 0 auto;width:38px;text-align:center;
+  font-size:11px;padding:0 4px;border-radius:4px;line-height:15px;font-weight:600;
+  white-space:nowrap;
+}
+.fb-row .fb-meta .badge.ok{color:var(--ok);background:var(--accent-soft);}
+.fb-row .fb-meta .badge.err{color:var(--err);background:var(--err-soft);}
+/* 耗时：右对齐定宽，个位/万位数字都对齐在同一列 */
+.fb-row .fb-meta .d{
+  flex:0 0 auto;width:62px;text-align:right;
+  font-family:Consolas,monospace;white-space:nowrap;
+}
+/* 指令正文：定长截断 + 悬停看全文（需求1 字符限制）。
+   原因：指令可能是一条几百字符的长 shell，全展开会把整条记录撑得很高，
+   一屏只能看两三条，时间/耗时的列对齐也被拉长失真。
+   现在最多 2 行，超出用 … 省略；鼠标悬停 title 里给出完整原文，
+   双击仍然复制完整内容 —— 信息没丢，只是不再"糊满屏幕"。 */
+.fb-row .c{
+  font-family:Consolas,monospace;color:var(--text);font-size:13px;
+  line-height:1.45;
+  white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;
+}
+/* 中间分隔线：宽度必须与表头的 .h-sp 一致（13px + 左右 3px margin = 19px），
+   否则表头「输出」和记录右栏会整体错开 19px。
+   之前这条规则漏了 —— 元素宽度为 0，鼠标根本抓不到，导致"可拖动调整占比"实际失效。 */
+.fb-row .fb-split{
+  flex:0 0 13px;margin:0 3px;
+  align-self:stretch;
+  cursor:col-resize;
+  border-left:1px solid var(--border);
+  border-right:1px solid transparent;
+}
+.fb-row .fb-split:hover{border-left-color:var(--border-strong);}
+
+/* 输出区同样限高限行：超出内部滚动（不撑高整行）。
+   高度按"车机信息九项 + 分辨率 = 10 行"来定：
+   原来 132px（约 6 行）装不下 10 行，OPENID 和分辨率会被截在下面，
+   而滚动条默认不可见 —— 用户看到的就是"车机信息只出来 7 项"。
+   10 行 × 12.5px × 1.5 + 上下留白 ≈ 200px。 */
+.fb-row .fb-right{
+  flex:1 1 auto;min-width:0;
+  overflow-y:auto;overflow-x:hidden;
+  max-height:200px;
+  font-family:Consolas,monospace;font-size:12px;line-height:1.5;
+  color:var(--text-dim);
+  white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;
+  /* 常显滚动条占位（macOS 风格的 overlay 滚动条默认不占位、也不显眼），
+     这样"下面还有内容"这件事是看得见的 */
+  scrollbar-width:thin;
+}
+.fb-row .fb-right::-webkit-scrollbar{width:8px;}
+.fb-row .fb-right::-webkit-scrollbar-thumb{background:var(--border);border:2px solid transparent;background-clip:content-box;border-radius:5px;}
+.fb-row .fb-right .o-ok{color:var(--ok);}
+.fb-row .fb-right .o-err{color:var(--err);}
+.fb-row .fb-right .o-dim{color:var(--text-dim);}
+.fb-row .fb-right .o-faint{color:var(--text-faint);}
+/* 该条命令没有输出（比如纯动作类）时的占位 */
+.fb-row .fb-right .o-none{color:var(--text-faint);font-style:italic;}
+/* 输出还没到（执行中） */
+.fb-row .fb-right .o-wait{color:var(--text-faint);font-style:italic;}
+.fb-row .fb-right .o-wait::after{content:"…";animation:rpulse 1s ease-in-out infinite;}
+
+/* ================= 黑猫加载过渡层 ================= */
+/* 问题2（不要闪烁）：稳妥做法是"整层要么在、要么不在"。
+   原来的问题是 .45s 的 opacity 过渡期间，splash（半透明）下面露出的是
+   body 的 --bg，而框架是 --surface，两层颜色不一致 -> 淡出过程能看到
+   一次明暗跳变，也就是用户说的"过渡动画闪烁"。
+   这里改成：
+     1) opacity 过渡保留但**只淡出这一层**，框架在它底下已经是不透明且
+        完整显示的状态（见 .frame，去掉了自己的过渡）；
+     2) 淡出结束（transitionend）后再 display:none，彻底退场，
+        不留一个 pointer-events:none 的图层在那里参与合成；
+     3) 淡出期间 splash 用 will-change:opacity 单独提层，
+        避免和底下的滚动区域一起重绘产生抖帧。 */
+.splash{
+  position:fixed;inset:0;z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+  background:var(--bg);
+  opacity:1;
+  transition:opacity .28s ease;
+  will-change:opacity;
+}
+.splash.hide{opacity:0;pointer-events:none;}
+.splash.gone{display:none;}
+.splash .cat{width:96px;height:96px;animation:breathe 2s ease-in-out infinite;}
+.splash .cat svg{width:100%;height:100%;}
+.splash .tip{font-size:13px;color:var(--text-faint);letter-spacing:.3px;}
+/* 呼吸：纯大小缩放，无光晕/无闪烁，只做柔和的大小起伏 */
+@keyframes breathe{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.08);}
+}
+
+/* 轻提示：底部浮一条（提权失败等一次性反馈） */
+#toast{
+  position:fixed;left:50%;bottom:26px;transform:translate(-50%,10px);
+  z-index:1200;
+  padding:9px 18px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border-strong);
+  color:var(--text);font-size:13px;
+  box-shadow:var(--shadow-lg);
+  opacity:0;transition:opacity .22s ease,transform .22s ease;
+  pointer-events:none;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translate(-50%,0);}
+
+/* ============ 语音助手输入区（需求1：迁移到指令「语音助手」分组内） ============ */
+.vr-panel{
+  /* 输入区随内容一起滚动（不再吸顶）。
+     上一版用 position:sticky 把输入区钉在顶部，本意是"边看卡片边输入"，
+     实际观感恰好相反：面板固定在顶、卡片只在底部露出一点，滚动时看到的是
+     "面板纹丝不动、后面的内容在它下面挤过去" —— 用户原话就是
+     "输入框不能滑动"。所以这里回归普通流式布局：
+     面板跟着 .quick-scroll 一起上下滚，滚到底就能完整看到所有卡片。 */
+  flex:0 0 auto;margin:0 20px 12px;padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  display:flex;flex-direction:column;gap:10px;
+}
+/* 文本输入 */
+.vr-field{display:flex;}
+.vr-input{
+  flex:1;min-height:64px;resize:vertical;
+  background:var(--surface-2);border:1px solid var(--border);
+  border-radius:6px;padding:10px 12px;
+  color:var(--text);font-size:14px;line-height:1.6;
+  font-family:"Microsoft YaHei UI","PingFang SC",sans-serif;
+  outline:none;user-select:text;-webkit-user-select:text;
+}
+.vr-input:focus{border-color:var(--accent);}
+.vr-input::placeholder{color:var(--text-faint);}
+/* 六个音区 */
+.vr-zones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.zone{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  height:40px;border-radius:6px;cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--border);
+  color:var(--text-dim);font-size:13px;font-weight:600;
+  font-family:"Microsoft YaHei UI","PingFang SC",sans-serif;
+  transition:background .15s,border-color .15s,color .15s,transform .08s;
+}
+.zone:hover{color:var(--text);border-color:var(--border-strong);}
+.zone:active{transform:scale(.97);}
+.zone .zi{display:grid;place-items:center;}
+.zone .zi svg{width:18px;height:18px;}
+.zone.sel{
+  border-color:var(--accent);color:var(--accent);
+  background:var(--accent-soft);
+}
+.zone.sel .zi svg{color:var(--accent);}
+/* 底部动作行 */
+.vr-actions{display:flex;align-items:center;gap:12px;}
+.vr-local{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim);cursor:pointer;user-select:none;}
+.vr-local input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;}
+/* 语音输入/输出 互斥模式切换（2026-11-12） */
+.vr-modes{display:flex;gap:8px;margin-bottom:10px;}
+.vrmode{
+  flex:1;height:30px;border:1px solid var(--border);border-radius:6px;
+  background:var(--surface);color:var(--text-dim);font-size:13px;cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.vrmode:hover{color:var(--text);}
+.vrmode.sel{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
+
+/* 单点查询结果：键值两列 */
+.apk-detail{display:flex;flex-direction:column;gap:4px;padding:6px 2px;}
+.apk-drow{display:flex;gap:10px;font-size:12.5px;line-height:1.7;}
+.apk-dk{flex:0 0 74px;color:var(--text-faint);}
+.apk-dv{flex:1;min-width:0;color:var(--text);word-break:break-all;font-family:Consolas,monospace;}
+
+/* ============ 投屏（2026-11-13） ============ */
+.cast-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 14px;gap:10px;}
+.cast-head{display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0;flex-wrap:wrap;}
+.cast-fps{font-size:11.5px;color:var(--text-faint);font-family:Consolas,monospace;}
+/* 外部工具行（ffmpeg / scrcpy）：单独一行，避免把标题行挤爆 */
+.cast-tools{display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;flex-wrap:wrap;}
+.cast-toolsep{width:1px;height:14px;background:var(--border);flex:0 0 auto;}
+.btn.sm{height:22px;font-size:11.5px;padding:0 8px;}
+/* 录屏编码器状态：绿=可用、红=没找到/校验失败、灰=检测中 */
+.ff-enc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);
+  max-width:330px;min-width:0;overflow:hidden;}
+.ff-enc .dot{width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex:0 0 auto;}
+.ff-enc.ok .dot{background:var(--ok);}
+.ff-enc.bad .dot{background:var(--err);}
+.ff-enc .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cast-grid{flex:1;min-height:0;display:grid;position:relative;
+  grid-template-columns:var(--cc1, 1fr) var(--cc2, 1fr) 1fr;
+  grid-template-rows:var(--cr1, 1fr) 1fr;gap:10px;}
+/* 底部缩略条：全屏时显示其余已开启的路，点一下与全屏互换 */
+.cast-strip{display:none;flex:0 0 auto;gap:8px;overflow-x:auto;padding-top:2px;}
+.cast-strip.on{display:flex;}
+.cast-thumb{flex:0 0 auto;width:150px;height:84px;border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;position:relative;cursor:pointer;background:var(--cast-stage);}
+.cast-thumb:hover{border-color:var(--accent);}
+.cast-thumb img{width:100%;height:100%;object-fit:contain;display:block;}
+.cast-thumb .cap{position:absolute;left:0;right:0;bottom:0;font-size:10.5px;padding:1px 5px;
+  background:var(--scrim);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cast-thumb.off{opacity:1;border-style:dashed;}
+.cast-thumb-off{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface-2);}
+.cast-thumb-off .btn{height:22px;font-size:11.5px;padding:0 10px;}
+.cap-lite{font-size:10.5px;color:var(--text-faint);}
+/* 2026-11-15：底部缩略条每路的「停止」。常显，不用退出全屏就能关掉别路。
+   纯语义令牌；热区 28px 是缩略条 84px 高下的取舍（顶栏/主按钮仍按 44pt）。 */
+.cast-thumb-stop{position:absolute;top:4px;right:4px;z-index:2;width:28px;height:28px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--border-strong);border-radius:50%;
+  background:var(--surface);color:var(--text);font-size:17px;line-height:1;cursor:pointer;
+  box-shadow:var(--shadow-md);transition:background 150ms ease,border-color 150ms ease;}
+.cast-thumb-stop:hover{background:var(--err);border-color:var(--err);color:var(--on-accent);}
+.cast-thumb-stop:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* 最大化：用绝对定位浮层盖住，**不隐藏其它格子** ——
+   隐藏会让 <img> 的 multipart 流被浏览器挂起，恢复后要等下一帧，
+   看起来像"扩大之后别的投屏就断了"。*/
+.cast-cell.maxed{position:absolute;inset:0;z-index:20;
+  box-shadow:var(--shadow-lg);border-color:var(--accent);}
+.cast-grid.has-max .cast-split{display:none;}
+.cast-split{position:absolute;z-index:6;background:transparent;}
+.cast-split.v{width:10px;cursor:col-resize;top:0;bottom:0;}
+.cast-split.h{height:10px;cursor:row-resize;left:0;right:0;}
+.cast-split:hover{background:var(--accent-soft);}
+.cast-max{width:22px;height:22px;padding:0;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text-faint);
+  font-size:12px;line-height:1;cursor:pointer;flex:0 0 auto;}
+.cast-max:hover{color:var(--text);border-color:var(--border-strong);}
+.cast-cell{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.cast-cell.on{border-color:var(--accent);}
+.cast-cell.err{border-color:var(--err);}
+.cast-top{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+.cast-name{font-size:12.5px;font-weight:600;color:var(--text);flex:0 0 auto;}
+.cast-meta{flex:1;min-width:0;font-size:11px;color:var(--text-faint);font-family:Consolas,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
+.cast-dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint);flex:0 0 auto;}
+.cast-cell.on .cast-dot{background:var(--ok);}
+.cast-cell.rec .cast-dot{background:var(--err);animation:rpulse 1s ease-in-out infinite;}
+.cast-view{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:var(--cast-stage);position:relative;overflow:hidden;}
+.cast-view img{max-width:100%;max-height:100%;width:auto;height:auto;display:none;object-fit:contain;}
+.cast-view img.on{display:block;cursor:crosshair;}
+/* 点击涟漪：告诉用户"这一下已经点到设备上了" */
+.cast-ripple{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
+  border:2px solid var(--accent);pointer-events:none;animation:cripple .45s ease-out forwards;}
+@keyframes cripple{from{transform:scale(.4);opacity:.95;}to{transform:scale(2.2);opacity:0;}}
+.cast-idle{position:absolute;color:var(--text-faint);font-size:12px;text-align:center;padding:0 12px;line-height:1.8;}
+.cast-acts{display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--border);flex:0 0 auto;}
+.cast-acts select{flex:1;min-width:0;height:26px;background:var(--bg);color:var(--text-dim);
+  border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-family:inherit;outline:none;padding:0 4px;}
+.cast-acts .btn{height:26px;font-size:12px;padding:0 8px;}
+@keyframes rpulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+/* ============ 文件管理（2026-11-13） ============ */
+.fs-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 14px;gap:10px;}
+.fs-head{display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0;}
+.fs-title{font-size:13px;font-weight:600;color:var(--text);flex:0 0 auto;}
+.fs-hint{font-size:12px;color:var(--text-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fs-prog{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
+.fs-prog-bar{width:150px;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;}
+.fs-prog-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .12s;}
+.fs-prog-txt{font-size:11.5px;color:var(--text-dim);font-family:Consolas,monospace;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fs-panes{flex:1;min-height:0;display:flex;gap:6px;}
+/* 中间拖动条：可调左右两栏宽度（文件内容看不全时拉宽） */
+.fs-resizer{flex:0 0 6px;cursor:col-resize;border-radius:3px;background:transparent;}
+.fs-resizer:hover{background:var(--accent-soft);}
+.fs-pane{flex:1 1 0;min-width:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .12s,background .12s;}
+.fs-pane.drop-on{border-color:var(--accent);background:var(--accent-soft);}
+.fs-bar{display:flex;align-items:center;gap:6px;padding:8px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+.fs-ico{width:26px;height:26px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;flex:0 0 auto;padding:0;}
+.fs-ico:hover{color:var(--text);border-color:var(--border-strong);}
+.fs-crumb{flex:1;min-width:0;font-size:12px;color:var(--text-dim);font-family:Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
+.fs-cols{display:grid;grid-template-columns:1fr 74px 112px;gap:8px;padding:4px 10px;font-size:11px;color:var(--text-faint);border-bottom:1px solid var(--border);flex:0 0 auto;}
+.fs-cols span:nth-child(2),.fs-cols span:nth-child(3){text-align:right;}
+.fs-list{flex:1;min-height:0;overflow:auto;padding:4px;}
+.fs-row{display:grid;grid-template-columns:14px 1fr 74px 112px;gap:6px;align-items:center;height:30px;padding:0 8px;border-radius:6px;font-size:12.5px;color:var(--text-dim);cursor:default;user-select:none;-webkit-user-select:none;}
+/* 树形：箭头列固定 14px，缩进由行内 padding-left 控制 */
+.fs-row .fs-arw{font-size:10px;color:var(--text-faint);text-align:center;min-width:10px;}
+/* 每栏独立的搜索框：左栏只搜电脑、右栏只搜设备（各自一个输入框，互不影响） */
+.fs-search{flex:0 1 180px;min-width:96px;height:22px;padding:0 8px;margin-right:4px;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface-2);
+  color:var(--text);font-size:12px;outline:none;}
+.fs-search:focus{border-color:var(--accent);}
+.fs-search::placeholder{color:var(--text-faint);}
+/* 搜索结果：名称后面跟一段灰色父目录，方便区分同名文件 */
+.fs-row .srcdir{color:var(--text-faint);font-size:11px;margin-left:6px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.fs-info{padding:5px 10px;font-size:11.5px;color:var(--text-faint);}/* 拖拽落在哪个文件夹上：整行高亮（传输开始/结束都会清） */
+.fs-row.drop-target{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);}
+/* 名称列靠左，尽量多留空间显示文件名 */
+.fs-row .n{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;}
+.fs-row.dir{cursor:pointer;}
+.fs-more{padding:6px 10px;font-size:12px;color:var(--accent);cursor:pointer;}
+.fs-more:hover{text-decoration:underline;}
+.fs-row:hover{background:var(--surface-2);color:var(--text);}
+.fs-row.sel{background:var(--accent-soft);color:var(--text);}
+.fs-row .n{display:flex;align-items:center;gap:6px;min-width:0;}
+.fs-row .n .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fs-row .i{flex:0 0 auto;width:14px;text-align:center;font-size:12px;color:var(--text-faint);}
+.fs-row.dir .i{color:var(--accent);}
+.fs-row .sz,.fs-row .tm{text-align:right;font-family:Consolas,monospace;font-size:11.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fs-empty{padding:16px 12px;font-size:12px;color:var(--text-faint);line-height:1.8;}
+.fs-empty.err{color:var(--err);}
+.fs-acts{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex:0 0 auto;}
+.fs-act{flex:1;height:28px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-dim);font-size:12px;cursor:pointer;font-family:inherit;}
+.fs-act:hover{color:var(--text);border-color:var(--border-strong);}
+.fs-act.danger:hover{color:var(--err);border-color:var(--err);}
+.fs-mid{flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:20px;color:var(--text-faint);font-size:15px;}
+.fs-modal{position:fixed;inset:0;z-index:96;background:var(--scrim);display:flex;align-items:center;justify-content:center;}
+.fs-modal-box{width:380px;max-width:calc(100vw - 48px);background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-lg);}
+.fs-modal-box h4{margin:0;font-size:13px;color:var(--text);font-weight:600;}
+.fs-modal-box p{margin:0;font-size:12.5px;color:var(--text-dim);line-height:1.7;word-break:break-all;}
+.fs-modal-box input{height:32px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);padding:0 10px;font-size:13px;outline:none;font-family:inherit;}
+.fs-modal-box input:focus{border-color:var(--accent);}
+.fs-modal-acts{display:flex;gap:8px;justify-content:flex-end;}
+
+/* ============ APK 管理（指令页的「APK管理」分组） ============ */
+.apk-panel{
+  /* 这一组没有卡片，面板自己撑满可视高度：结果区越大，版本表越不用滚。
+     .quick-scroll 是普通块容器（不是 flex），所以 flex:1 在这里不生效，
+     得用百分比高度 —— 父容器高度由 flex 确定，百分比才解析得出来。 */
+  flex:0 0 auto;height:calc(100% - 12px);min-height:0;overflow:hidden;
+  margin:0 20px 12px;padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.apk-row{display:flex;align-items:center;gap:8px;min-width:0;}
+.apk-row .btn{height:32px;flex:0 0 auto;}
+/* 下拉容器：面板里唯一会"浮起来"的东西，因此自己带定位上下文 */
+.apk-select{position:relative;flex:1;min-width:0;}
+.apk-selbtn{
+  width:100%;height:32px;display:flex;align-items:center;gap:8px;
+  padding:0 10px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:13px;cursor:pointer;
+  font-family:inherit;text-align:left;
+  transition:border-color .12s;
+}
+.apk-selbtn:hover{border-color:var(--border-strong);}
+.apk-selbtn.open{border-color:var(--accent);}
+.apk-seltext{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.apk-seltext.ph{color:var(--text-faint);}
+.apk-caret{flex:0 0 auto;font-size:9px;color:var(--text-faint);}
+.apk-drop{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:70;
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:8px;
+  box-shadow:var(--shadow-lg);overflow:hidden;
+}
+.apk-filter{
+  width:100%;height:32px;border:none;border-bottom:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);font-size:13px;
+  padding:0 10px;outline:none;font-family:inherit;
+}
+.apk-list{max-height:240px;overflow-y:auto;padding:4px;}
+.apk-item{
+  display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:6px;
+  font-size:13px;color:var(--text-dim);cursor:pointer;
+}
+.apk-item:hover,.apk-item.hi{background:var(--surface-2);color:var(--text);}
+.apk-item.sel{color:var(--accent);}
+.apk-item .an{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.apk-item .ax{
+  flex:0 0 auto;width:20px;height:20px;padding:0;border:none;border-radius:4px;
+  background:none;color:var(--text-faint);cursor:pointer;font-size:13px;line-height:1;
+  opacity:0;transition:opacity .1s;
+}
+.apk-item:hover .ax{opacity:1;}
+.apk-item .ax:hover{color:var(--err);background:var(--surface);}
+.apk-empty{padding:12px 10px;font-size:12px;color:var(--text-faint);line-height:1.7;}
+.apk-front{
+  font-size:12px;color:var(--text-faint);min-width:0;flex:0 1 auto;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.apk-front b{color:var(--text-dim);font-weight:600;}
+.apk-lbl{font-size:12px;color:var(--text-faint);flex:0 0 auto;margin-right:2px;}
+/* 前台指令行：四条老指令完整保留，用 ghost 按钮弱化，避免和上面三个主操作抢注意力 */
+.apk-legacy{padding-top:2px;}
+.apk-legacy .btn{font-size:12px;padding:0 10px;}
+/* 结果区：动作输出是纯文本行，版本查询是有结构的块 */
+.apk-out{
+  /* flex-basis 必须是 0：写成 auto 时内容（几十条版本）会把盒子撑大，
+     把「查询全部版本」那一行顶到面板外面去（被下面的反馈区盖住）。
+     basis=0 后高度只由剩余空间决定，内容多了在自己内部滚。 */
+  flex:1 1 0;min-height:120px;overflow:auto;
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:10px 12px;
+  font-family:Consolas,"Cascadia Mono",monospace;font-size:12px;line-height:1.7;
+  color:var(--text-dim);white-space:pre-wrap;word-break:break-all;
+  user-select:text;-webkit-user-select:text;
+}
+.apk-out .o-ok{color:var(--ok);}
+.apk-out .o-err{color:var(--err);}
+.apk-out .o-dim{color:var(--text-dim);}
+.apk-out .o-faint{color:var(--text-faint);}
+/* 结果区按"段"累积：新指令新开一段，旧结果留在上面可以往回翻。
+   原来的做法是每次执行前清空，版本查询结果刚出来就被下一条指令冲掉。 */
+.apk-sec{padding:2px 0 8px;border-bottom:1px dashed var(--border);}
+.apk-sec:last-child{border-bottom:none;padding-bottom:2px;}
+.apk-sec-h{font-size:12px;color:var(--text-faint);padding:2px 0 4px;}
+.apk-sec-b{white-space:pre-wrap;word-break:break-all;}
+.av-wrap{white-space:normal;}
+.av-item{padding:8px 0;border-bottom:1px dashed var(--border);}
+.av-item:last-child{border-bottom:none;}
+.av-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.av-name{color:var(--text);font-weight:600;font-size:13px;}
+.av-ver{color:var(--accent);font-family:Consolas,monospace;font-size:12px;}
+.av-sub{display:block;margin-top:2px;color:var(--text-dim);font-size:12px;word-break:break-all;}
+.av-path{display:block;margin-top:1px;color:var(--text-faint);font-size:12px;word-break:break-all;}
+.av-item.miss .av-name{color:var(--text-faint);}
+.av-item.miss .av-ver{color:var(--err);}
+.apk-foot{display:flex;align-items:center;gap:10px;}
+.apk-sum{font-size:12px;color:var(--text-faint);}
+
+/* 管理列表浮层：增 / 删。下拉里看不到包名，所以这里必须两列都露出来 */
+.apk-mgr{position:fixed;inset:0;z-index:95;background:var(--scrim);display:flex;align-items:center;justify-content:center;}
+.apk-mgr-box{
+  width:560px;max-width:calc(100vw - 48px);max-height:72vh;
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.apk-mgr-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text);}
+.apk-mgr-head .x{margin-left:auto;width:24px;height:24px;border:none;border-radius:6px;background:none;color:var(--text-faint);font-size:16px;line-height:1;cursor:pointer;}
+.apk-mgr-head .x:hover{background:var(--surface-2);color:var(--text);}
+.apk-mgr-add{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.apk-mgr-add input{
+  flex:1;min-width:0;height:32px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:13px;padding:0 10px;outline:none;font-family:inherit;
+}
+.apk-mgr-add input:focus{border-color:var(--accent);}
+.apk-mgr-add input.pkg{flex:1.4;font-family:Consolas,monospace;font-size:12px;}
+.apk-mgr-list{flex:1;min-height:0;overflow-y:auto;padding:6px 8px;}
+.apk-mgr-row{display:flex;align-items:center;gap:10px;padding:7px 6px;border-radius:6px;font-size:13px;}
+.apk-mgr-row:hover{background:var(--surface-2);}
+.apk-mgr-row .mn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.apk-mgr-row .mp{flex:1.4;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-faint);font-family:Consolas,monospace;font-size:12px;}
+.apk-mgr-row .del{border:none;background:none;color:var(--text-faint);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:4px;}
+.apk-mgr-row .del:hover{color:var(--err);background:var(--surface);}
+.apk-mgr-empty{padding:18px 12px;color:var(--text-faint);font-size:12px;line-height:1.8;}
+
+/* ================= 2026-11-13 交互优化 ================= */
+/* 顶栏运行指示：任何页签都能看到"还在跑"并就地停止。
+   原来进度条只在终端页，切到指令页就完全看不出任务还在执行。 */
+.runchip{
+  display:none;align-items:center;gap:7px;height:28px;
+  padding:0 4px 0 10px;border:1px solid var(--accent);border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);
+  font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  user-select:none;-webkit-user-select:none;
+}
+.runchip.on{display:inline-flex;}
+.runchip .rcd{width:7px;height:7px;border-radius:50%;background:currentColor;animation:rpulse 1s ease-in-out infinite;flex:0 0 auto;}
+.runchip .rcs{font-family:Consolas,monospace;font-weight:600;opacity:.85;}
+.runchip .rcstop{display:grid;place-items:center;width:18px;height:18px;border-radius:9px;background:var(--accent);color:var(--on-accent);}
+.runchip:hover{filter:brightness(1.12);}
+
+/* "回到最新"浮标：贴底跟随被关掉之后，用户需要一条明确的回去路径 */
+.jumpbtn{
+  position:absolute;right:16px;bottom:66px;z-index:4;display:none;
+  align-items:center;gap:4px;height:24px;padding:0 9px;
+  border:1px solid var(--border-strong);border-radius:999px;
+  background:var(--surface);color:var(--text-dim);font-size:12px;cursor:pointer;
+  box-shadow:var(--shadow-sm);font-family:inherit;
+}
+.jumpbtn.on{display:inline-flex;}
+.jumpbtn:hover{color:var(--accent);border-color:var(--accent);}
+
+/* 指令搜索 */
+.quick-head{justify-content:flex-start;gap:10px;}
+.qsearch{display:flex;align-items:center;margin-left:auto;}
+.qsearch input{
+  width:200px;height:28px;padding:0 10px;
+  border:1px solid var(--border);border-radius:999px;
+  background:var(--bg);color:var(--text);
+  font-size:13px;font-family:inherit;outline:none;
+}
+.qsearch input:focus{border-color:var(--accent);}
+.qsearch input::placeholder{color:var(--text-faint);}
+.qcard .qhit{color:var(--accent);font-weight:600;}
+.qempty{grid-column:1 / -1;padding:28px 4px;text-align:center;color:var(--text-faint);font-size:13px;}
+
+/* 反馈区操作条 */
+.fb-acts{position:absolute;right:10px;top:3px;display:flex;gap:4px;z-index:3;}
+.fbtn{
+  height:20px;padding:0 7px;border:1px solid var(--border);border-radius:5px;
+  background:var(--surface-2);color:var(--text-faint);
+  font-size:11px;font-family:inherit;cursor:pointer;
+}
+.fbtn:hover{color:var(--text);border-color:var(--border-strong);}
+.fbtn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
+.feedback.feed-only-err .fb-row.ok{display:none;}
+.fb-head .h-s{padding-right:190px;}   /* 给右上角三个按钮留位，避免压住"输出"标签 */
+
+/* 滚动条：thumb 原来用 --border，12px 轨道里只剩 4px 可见，深色下几乎看不见。
+   输出区恰恰最需要"下面还有内容"的暗示，改成 strong + 更细的透明边（6px 可见）。 */
+.logbox::-webkit-scrollbar-thumb,
+.fb-table::-webkit-scrollbar-thumb,
+.quick-scroll::-webkit-scrollbar-thumb,
+.quick-grid::-webkit-scrollbar-thumb,
+.quick-nav::-webkit-scrollbar-thumb{
+  background:var(--border-strong);background-clip:content-box;border:3px solid transparent;
+}
+.fb-row .fb-right::-webkit-scrollbar-thumb{
+  background:var(--border-strong);background-clip:content-box;border:1px solid transparent;
+}
+
+/* 失败记录更醒目：只加左侧色条不够，折叠态下完全看不到，所以配 toast */
+#toast.t-err{border-color:var(--err);color:var(--err);}
+#toast.t-ok{border-color:var(--ok);color:var(--ok);}
+
+/* ============ 2026-11-15：网络模拟面板 / UI 对比页 / 状态栏占位 / 投屏禁拖拽 ============ */
+/* ---------- 网络模拟表单（参考 SynTestUtil 网络模拟页） ---------- */
+.ns-panel{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--border);
+  border-radius:10px;background:var(--surface);margin:0 0 12px;}
+.ns-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+.ns-lbl{font-size:12px;color:var(--text-dim);white-space:nowrap;flex:0 0 auto;}
+.ns-tip{font-size:11px;color:var(--text-faint);line-height:1.5;flex:1 1 260px;min-width:0;}
+.ns-panel input,.ns-panel select{
+  height:28px;background:var(--bg);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;font-size:12px;font-family:inherit;outline:none;padding:0 8px;}
+.ns-panel input:focus,.ns-panel select:focus{border-color:var(--accent);}
+.ns-panel select{min-width:150px;}
+.ns-panel input.ns-proxy{width:230px;font-family:Consolas,monospace;}
+.ns-env{padding-bottom:10px;border-bottom:1px solid var(--border);}
+.ns-grid{display:flex;flex-direction:column;gap:6px;}
+.ns-row{display:grid;grid-template-columns:1fr 150px 150px;gap:8px;align-items:center;}
+.ns-row.ns-ghead{color:var(--text-faint);font-size:11.5px;padding-bottom:2px;}
+.ns-row.ns-ghead span:not(:first-child){text-align:center;}
+.ns-row input{width:100%;}
+.ns-sep{width:1px;height:20px;background:var(--border);flex:0 0 auto;margin:0 2px;}
+.ns-acts{padding-top:10px;border-top:1px solid var(--border);}
+.ns-out{min-height:150px;max-height:280px;overflow:auto;background:var(--bg);
+  border:1px solid var(--border-strong);border-radius:8px;padding:9px 11px;
+  font-family:Consolas,monospace;font-size:11.5px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;}
+.ns-out-empty{color:var(--text-faint);font-family:inherit;}
+.ns-out .ns-o-t{color:var(--text-faint);}
+.ns-out .ns-o-c{color:var(--accent);}
+.ns-out .ns-o-e{color:var(--err);}
+
+/* ---------- UI 对比页（参考 SynTestUtil UI对比页） ---------- */
+.ui-wrap{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px 16px 14px;overflow-y:auto;}
+.ui-head{display:flex;align-items:center;gap:10px;flex:0 0 auto;flex-wrap:wrap;}
+.ui-form{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;background:var(--surface);}
+.ui-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
+.ui-lbl{font-size:12px;color:var(--text-dim);white-space:nowrap;flex:0 0 auto;}
+.ui-note{font-size:11px;color:var(--text-faint);white-space:nowrap;}
+.ui-path{flex:1 1 240px;min-width:120px;height:28px;background:var(--bg);color:var(--text);
+  border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:Consolas,monospace;
+  outline:none;padding:0 8px;overflow:hidden;text-overflow:ellipsis;}
+.ui-path:focus{border-color:var(--accent);}
+.ui-line input[type=range]{width:120px;accent-color:var(--accent);}
+.ui-opv{font-size:11.5px;color:var(--text-faint);font-family:Consolas,monospace;width:40px;}
+.ui-radio{font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
+.ui-radio input{accent-color:var(--accent);}
+.ui-thr{width:52px;height:24px;background:var(--bg);color:var(--text);border:1px solid var(--border);
+  border-radius:5px;font-size:12px;font-family:Consolas,monospace;padding:0 5px;outline:none;}
+.ui-stage{flex:1 1 300px;min-height:260px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ui-col{display:flex;flex-direction:column;min-width:0;min-height:0;gap:6px;}
+.ui-col-t{font-size:12px;color:var(--text-dim);flex:0 0 auto;}
+.ui-canvas{position:relative;flex:1;min-height:0;border:1px solid var(--border-strong);border-radius:8px;
+  background:var(--cast-stage);overflow:hidden;}
+.ui-canvas img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;pointer-events:none;-webkit-user-drag:none;user-drag:none;}
+.ui-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text-faint);font-size:12px;text-align:center;padding:12px;}
+.ui-result-form{flex:0 0 auto;}
+.ui-resultbox{flex:0 0 auto;min-height:110px;max-height:220px;position:relative;
+  border:1px solid var(--border-strong);border-radius:8px;background:var(--cast-stage);overflow:auto;}
+.ui-resultbox img{display:block;max-width:100%;max-height:200px;margin:0 auto;object-fit:contain;
+  -webkit-user-drag:none;user-drag:none;}
+
+/* ---------- 状态栏日志等级「未设置」占位（不再整块隐藏） ---------- */
+.logpill[data-lv="none"]{border-color:var(--border);}
+.logpill[data-lv="none"] .lv{color:var(--text-faint);}
+
+/* ---------- 投屏：禁掉浏览器原生图片拖拽（多余的拖拽预览图） ---------- */
+.cast-view img,.ui-canvas img,.ui-resultbox img{-webkit-user-drag:none;user-drag:none;}
+.cast-view,.ui-canvas,.ui-resultbox{-webkit-user-select:none;user-select:none;}
+
+/* 2026-11-15：搜索结果不再挂「进入 ⤵」按钮。
+   结果行本身按树节点的样子呈现（▸ 箭头 + hover），点一下就退出搜索、
+   展开祖先链进入树状结构，和未搜索时的交互一致。 */
+.fs-row[data-search="1"]{cursor:pointer;}
+.fs-row[data-search="1"] .fs-arw{color:var(--text-faint);font-size:11px;}
+
+/* ==========================================================================
+   Apple 设计系统覆盖层（2026-11-15）
+   来源：apple-design-family(HUB) / foundations / materials / tactics / motion /
+         finesse-ui(component-scope, redesign)
+   适用：Windows 桌面工具型界面 —— 动效近乎不可见、spring ≤300ms、
+         cinematic OFF、玻璃只给 chrome（顶栏 / 浮层 / 弹层），阅读面不透明。
+   约束：只加样式，不改任何 id / class 语义 / DOM 层级 / JS。
+   ========================================================================== */
+
+/* ---- 表现层基线：字号节奏、hairline、焦点环 ---- */
+html{ -webkit-font-smoothing:antialiased; }
+body{ letter-spacing:.01em; }
+button,input,select,textarea{ font-family:inherit; }
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+::selection{ background:var(--accent-soft); color:var(--text); }
+*::-webkit-scrollbar{ width:10px;height:10px; }
+*::-webkit-scrollbar-thumb{ background:var(--border-strong);border-radius:var(--r-pill);
+  border:2px solid transparent;background-clip:padding-box; }
+*::-webkit-scrollbar-thumb:hover{ background:var(--text-faint);background-clip:padding-box; }
+
+/* ---- 命中区：桌面窗口 52px 顶栏 / 34px 折叠栏放不下 44pt，
+   鼠标下保持 32px 最小高度（不撑破既有布局），触屏/粗指针下升到 44pt。
+   这是工具型桌面界面的显式取舍，见 RESKIN-FINAL-REPORT.md。 ---- */
+.tab,.btn,.icon-btn,.fbtn,.addbtn,.delbtn,.fs-ico,.cast-max{ min-height:32px; }
+@media (pointer:coarse){
+  .tab,.btn,.icon-btn,.fbtn,.addbtn,.delbtn,.fs-ico,.cast-max{ min-height:44px;min-width:44px; }
+}
+
+/* ---- 组件八态：default / hover / focus-visible / active / disabled / loading / error / success ---- */
+.tab,.btn,.icon-btn,.fbtn,.addbtn,.delbtn,.fs-ico,.cast-max,.qcard,.apk-act,
+.fs-act,.ns-btn,.ui-line .btn{
+  transition:background-color var(--dur-fast) var(--ease),
+             border-color var(--dur-fast) var(--ease),
+             color var(--dur-fast) var(--ease),
+             box-shadow var(--dur-fast) var(--ease),
+             transform var(--dur-fast) var(--ease),
+             opacity var(--dur-fast) var(--ease);
+}
+@media (hover:hover){
+  .btn:hover:not(:disabled),.fbtn:hover:not(:disabled),.fs-act:hover:not(:disabled),
+  .cast-max:hover:not(:disabled){ border-color:var(--accent); }
+  .qcard:hover{ border-color:var(--accent); box-shadow:var(--shadow-md); }
+  .tab:hover:not(.active){ color:var(--text); }
+}
+.btn:active:not(:disabled),.tab:active:not(:disabled),.icon-btn:active:not(:disabled),
+.fbtn:active:not(:disabled),.cast-max:active:not(:disabled){ transform:scale(.97); }
+.btn:disabled,.fbtn:disabled,.tab:disabled,.icon-btn:disabled,
+input:disabled,select:disabled,textarea:disabled{
+  opacity:.42;cursor:not-allowed;pointer-events:none;filter:grayscale(.35);
+}
+[aria-disabled="true"]{ opacity:.42;cursor:not-allowed; }
+.btn.primary,.tab.active{ box-shadow:var(--shadow-sm); }
+.btn.primary:focus-visible,.tab.active:focus-visible{ outline-offset:3px; }
+
+/* 视图五态：loading / empty / error / success（不改变内容，只统一外观） */
+.fs-empty,.fs-info,.ui-empty,.log-empty{ color:var(--text-faint); }
+.fs-empty.err,.fb-row.err .fb-meta,.toast.err{ color:var(--err); }
+.toast.ok,.fb-row .fb-meta .badge.ok{ color:var(--ok); }
+.spin{ animation:spin 900ms linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.qcard.running,.cast-cell.on{ border-color:var(--accent); }
+
+/* ---- 玻璃只给 chrome；阅读面保持不透明 ---- */
+.topbar,.apk-mgr-box,.fs-modal-box,.wadb-pop,.qsearch-pop,.ui-wrap .ui-form{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  backdrop-filter:blur(20px) saturate(180%);
+}
+.topbar{ box-shadow:inset 0 -1px 0 var(--border); }
+.fs-list,.fb-list,.logbox,.fs-pane,.ui-resultbox,.ui-canvas{ background:var(--surface); }
+.apk-mgr,.fs-modal{ background:var(--scrim); }
+
+/* ---- 圆角成体系：内嵌面半径 < 容器；hairline 边框不改 border-width ---- */
+.qcard,.fs-pane,.apk-mgr-box,.fs-modal-box,.cast-cell,.ui-canvas,.ui-resultbox{
+  border-radius:var(--r-md);
+}
+.tab.active,.rootpill,.wadb-pill,.logpill,.runchip{ border-radius:var(--r-pill); }
+.btn,.fbtn,.fs-act,.icon-btn,.addbtn,.delbtn{ border-radius:var(--r-sm); }
+.cast-thumb{ border-radius:var(--r-sm); }
+
+/* ---- 动效：≤300ms、可中断、只动 transform/opacity/颜色；来源相关展开 ---- */
+.toast,.apk-mgr-box,.fs-modal-box,.qsearch-pop{
+  animation:apple-in var(--dur) var(--ease) both;
+}
+@keyframes apple-in{ from{ opacity:0;transform:translateY(6px) scale(.985); }
+                     to{ opacity:1;transform:none; } }
+.splash{ transition:opacity var(--dur) var(--ease); }
+.feedback,.quick-scroll,.fs-list{ transition:opacity var(--dur-fast) var(--ease); }
+
+/* ---- 无障碍：三个独立偏好分别降级，不混淆 ---- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important; }
+  .spin{ animation:none; }
+}
+@media (prefers-reduced-transparency:reduce){
+  .topbar,.apk-mgr-box,.fs-modal-box,.wadb-pop,.qsearch-pop,.ui-wrap .ui-form{
+    -webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface);
+  }
+}
+@media (prefers-contrast:more){
+  :root[data-theme="dark"]{ --border:rgba(235,235,245,.62);--border-strong:rgba(235,235,245,.80);
+    --text-dim:rgba(235,235,245,.86);--text-faint:rgba(235,235,245,.70); }
+  :root[data-theme="light"]{ --border:rgba(60,60,67,.58);--border-strong:rgba(60,60,67,.78);
+    --text-dim:rgba(60,60,67,.88);--text-faint:rgba(60,60,67,.72); }
+  :root[data-theme="eye"]{ --border:rgba(120,105,75,.56);--border-strong:rgba(120,105,75,.76);
+    --text-dim:rgba(59,53,44,.90);--text-faint:rgba(59,53,44,.74); }
+  .btn,.tab,.qcard,.fs-pane{ border-color:var(--border-strong); }
+}
+/* 文字缩放 200%：允许换行，不截断主体内容 */
+.qcard .qname,.fs-row .n .t,.fb-row .fb-cmd{ white-space:normal;overflow-wrap:anywhere; }
+
+</style>
+<style>
+  body{margin:0;padding:24px;font-family:var(--font-ui);background:var(--bg);color:var(--text);}
+  h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:28px 0 10px}
+  .note{color:var(--text-dim);font-size:12px;line-height:1.7;margin:0 0 18px}
+  .warn{display:inline-block;padding:4px 10px;border:1px solid var(--err);
+        color:var(--err);background:var(--err-soft);border-radius:6px;font-size:12px;margin-bottom:16px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--border);padding:8px;text-align:left;vertical-align:middle}
+  th{background:var(--surface-2);color:var(--text-dim);font-weight:600;white-space:nowrap}
+  td:first-child{white-space:nowrap;color:var(--text-dim)}
+  .cell{min-height:44px;display:flex;align-items:center}
+  .is-hover{filter:brightness(1.12)}
+  .is-focus{outline:2px solid var(--accent);outline-offset:3px}
+  .is-active{transform:scale(.97)}
+  .is-disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+  .is-loading{opacity:.7}
+  .is-error{border-color:var(--err)!important;box-shadow:0 0 0 2px var(--err-soft)}
+  .is-success{border-color:var(--ok)!important;box-shadow:0 0 0 2px var(--ok-soft)}
+  .vstate{padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+  .vstate.err{color:var(--err)} .vstate.success{color:var(--ok)}
+  .vstate.disabled{opacity:.45} .vstate.empty{color:var(--text-faint)}
+  .themebar{position:sticky;top:0;z-index:5;background:var(--glass);padding:10px 0;margin-bottom:8px}
+  .themebar button{margin-right:8px}
+</style></head><body>
+<h1>adb_Tool · 组件状态墙</h1>
+<div class="warn">非生产文件 · 仅用于审核，不进任何成品包</div>
+<p class="note">
+  本页内嵌的是 <code>adb_log_gui/webview2/ui.html</code> 当前真实的 &lt;style&gt;，
+  不是复刻版样式。切主题按钮改的是 <code>data-theme</code>，用于逐套核对三态。
+  组件八态中 <code>hover / focus-visible / active / disabled / loading / error / success</code>
+  由本页的 <code>.is-*</code> 类模拟（浏览器无法对同一个元素强制这些伪类），
+  产品里对应的真实规则见 ui.html 的 Apple 覆盖层。
+  生成：<code>python _make_preview.py</code>。
+</p>
+<div class="themebar">
+  <button class="btn" onclick="document.documentElement.dataset.theme='dark'">dark</button>
+  <button class="btn" onclick="document.documentElement.dataset.theme='light'">light</button>
+  <button class="btn" onclick="document.documentElement.dataset.theme='eye'">eye</button>
+</div>
+<h2>1. 组件八态（15 个代表组件 × 8 态）</h2>
+<table><thead><tr><th>组件</th><th>default</th><th>hover</th><th>focus-visible</th><th>active</th><th>disabled</th><th>loading</th><th>error</th><th>success</th></tr></thead><tbody>
+<tr><td>C-01 root 胶囊</td><td><div class="cell "><span class="rootpill no">未 root</span></div></td><td><div class="cell is-hover"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-focus"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-active"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-disabled"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-loading"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-error"><span class="rootpill no">未 root</span></div></td><td><div class="cell is-success"><span class="rootpill no">未 root</span></div></td></tr>
+<tr><td>C-02 无线胶囊</td><td><div class="cell "><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-hover"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-focus"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-active"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-disabled"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-loading"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-error"><span class="wadb-btn on">无线</span></div></td><td><div class="cell is-success"><span class="wadb-btn on">无线</span></div></td></tr>
+<tr><td>C-03 日志等级徽章</td><td><div class="cell "><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-hover"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-focus"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-active"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-disabled"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-loading"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-error"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td><td><div class="cell is-success"><span class="logpill" data-lv="W"><span class="lv">W</span></span></div></td></tr>
+<tr><td>C-04 runchip</td><td><div class="cell "><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-hover"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-focus"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-active"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-disabled"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-loading"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-error"><span class="runchip"><span>执行中 00:03</span></span></div></td><td><div class="cell is-success"><span class="runchip"><span>执行中 00:03</span></span></div></td></tr>
+<tr><td>C-05 .tab 页签</td><td><div class="cell "><button class="tab active">指令</button></div></td><td><div class="cell is-hover"><button class="tab active">指令</button></div></td><td><div class="cell is-focus"><button class="tab active">指令</button></div></td><td><div class="cell is-active"><button class="tab active">指令</button></div></td><td><div class="cell is-disabled"><button class="tab active">指令</button></div></td><td><div class="cell is-loading"><button class="tab active">指令</button></div></td><td><div class="cell is-error"><button class="tab active">指令</button></div></td><td><div class="cell is-success"><button class="tab active">指令</button></div></td></tr>
+<tr><td>C-06 .btn 主按钮</td><td><div class="cell "><button class="btn primary">执行</button></div></td><td><div class="cell is-hover"><button class="btn primary">执行</button></div></td><td><div class="cell is-focus"><button class="btn primary">执行</button></div></td><td><div class="cell is-active"><button class="btn primary">执行</button></div></td><td><div class="cell is-disabled"><button class="btn primary">执行</button></div></td><td><div class="cell is-loading"><button class="btn primary">执行</button></div></td><td><div class="cell is-error"><button class="btn primary">执行</button></div></td><td><div class="cell is-success"><button class="btn primary">执行</button></div></td></tr>
+<tr><td>C-07 .icon-btn</td><td><div class="cell "><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-hover"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-focus"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-active"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-disabled"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-loading"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-error"><button class="icon-btn" title="主题">☾</button></div></td><td><div class="cell is-success"><button class="icon-btn" title="主题">☾</button></div></td></tr>
+<tr><td>C-09 quick-search</td><td><div class="cell "><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-hover"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-focus"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-active"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-disabled"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-loading"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-error"><input class="qsearch-input" placeholder="搜索指令…"></div></td><td><div class="cell is-success"><input class="qsearch-input" placeholder="搜索指令…"></div></td></tr>
+<tr><td>C-10 快捷卡片</td><td><div class="cell "><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-hover"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-focus"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-active"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-disabled"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-loading"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-error"><div class="qcard"><div class="qt">一键截图</div></div></div></td><td><div class="cell is-success"><div class="qcard"><div class="qt">一键截图</div></div></div></td></tr>
+<tr><td>C-12 树节点</td><td><div class="cell "><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-hover"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-focus"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-active"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-disabled"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-loading"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-error"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td><td><div class="cell is-success"><div class="fs-row dir"><span class="fs-arw">▸</span><span class="n">logcat</span></div></div></td></tr>
+<tr><td>C-14 反馈表行</td><td><div class="cell "><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-hover"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-focus"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-active"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-disabled"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-loading"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-error"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td><td><div class="cell is-success"><div class="fb-row"><span class="fb-meta">成功 · 12 ms</span></div></div></td></tr>
+<tr><td>C-15 折叠栏</td><td><div class="cell "><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-hover"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-focus"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-active"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-disabled"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-loading"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-error"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td><td><div class="cell is-success"><div class="fb-collapsed-bar">输出 · 3 条记录</div></div></td></tr>
+<tr><td>C-19 弹层按钮</td><td><div class="cell "><button class="btn ghost">取消</button></div></td><td><div class="cell is-hover"><button class="btn ghost">取消</button></div></td><td><div class="cell is-focus"><button class="btn ghost">取消</button></div></td><td><div class="cell is-active"><button class="btn ghost">取消</button></div></td><td><div class="cell is-disabled"><button class="btn ghost">取消</button></div></td><td><div class="cell is-loading"><button class="btn ghost">取消</button></div></td><td><div class="cell is-error"><button class="btn ghost">取消</button></div></td><td><div class="cell is-success"><button class="btn ghost">取消</button></div></td></tr>
+<tr><td>C-23 缩略条停止</td><td><div class="cell "><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-hover"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-focus"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-active"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-disabled"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-loading"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-error"><button class="cast-thumb-stop" title="停止">×</button></div></td><td><div class="cell is-success"><button class="cast-thumb-stop" title="停止">×</button></div></td></tr>
+<tr><td>C-24 搜索结果行</td><td><div class="cell "><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-hover"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-focus"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-active"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-disabled"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-loading"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-error"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td><td><div class="cell is-success"><div class="fs-row" data-search="1"><span class="fs-arw">▸</span>report.docx</div></div></td></tr>
+</tbody></table>
+<h2>2. 视图五态</h2>
+<table><thead><tr><th>状态</th><th>表现</th></tr></thead><tbody>
+<tr><td>loading</td><td><div class="vstate loading">正在读取设备信息…</div></td></tr>
+<tr><td>empty</td><td><div class="vstate empty">暂无记录</div></td></tr>
+<tr><td>error</td><td><div class="vstate error">读取失败：设备未连接，请检查 USB 调试</div></td></tr>
+<tr><td>success</td><td><div class="vstate success">已读取 9 项车机信息</div></td></tr>
+<tr><td>disabled</td><td><div class="vstate disabled">离线，功能不可用</div></td></tr>
+</tbody></table>
+</body></html>

@@ -1,0 +1,1539 @@
+{
+  "note": "功能清单的可机检版本。每条功能登记：关键落点（文件 + 必须出现的代码片段）+ 验证入口（测试文件）。_check_features.js 逐条核对，任一落点消失就红灯。新增功能必须在这里登记，否则视为'未受保护'。",
+  "features": [
+    {
+      "id": "page.cmd",
+      "desc": "终端页（原指令输入）：多槽输入、历史、输出留在本页不跳页",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-cmd\"",
+            "data-tab=\"cmd\"",
+            "function buildSlots",
+            "function slotHTML"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"cmd\""
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_src_route.py",
+        "377/_test_ui_behavior.py"
+      ]
+    },
+    {
+      "id": "page.quick",
+      "desc": "指令页（原快捷指令）：卡片分组、搜索、反馈区手动展开",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-quick\"",
+            "data-tab=\"quick\"",
+            "id=\"quick-grid\"",
+            "function runQuick"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"quick\""
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ui_behavior.py",
+        "377/_test_batch_ui.py"
+      ]
+    },
+    {
+      "id": "page.file",
+      "desc": "文件管理页：树形展开、拖到文件夹行、字节级进度",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-file\"",
+            "function fsWalk",
+            "function fsToggle",
+            "function fsCollapseAll",
+            "fs-more"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"fslist\"",
+            "case \"fscopy\"",
+            "PushFsProgBytes"
+          ]
+        },
+        {
+          "file": "_cs/FileBrowser.cs",
+          "has": [
+            "FsLocalList",
+            "FsCopyUpStream",
+            "FsCopyDownStream"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_file_ui.py"
+      ]
+    },
+    {
+      "id": "page.cast",
+      "desc": "投屏页：6 槽、点击投屏、全屏+底部缩略条+互换、拖动调大小、录制",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-cast\"",
+            "function castToggle",
+            "function castTap",
+            "function castEnterFull",
+            "function castSwapFull",
+            "cast-strip"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"caststart\"",
+            "case \"casttap\"",
+            "case \"castrec\""
+          ]
+        },
+        {
+          "file": "_cs/Cast.cs",
+          "has": [
+            "CastGrabPng",
+            "CastRecordStart",
+            "multipart/x-mixed-replace"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "ui.feedback-manual",
+      "desc": "输出区只由用户打开（不再自动展开），表头可收起",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"fb-collapse-btn\"",
+            "function collapseFeed",
+            "function feedFit"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ux.py"
+      ]
+    },
+    {
+      "id": "ui.apk-panel",
+      "desc": "APK 管理面板：列表、三动作、批量版本、分段结果",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"apk-panel\"",
+            "function apkQueryVersions",
+            "function apkRunCmd",
+            "function renderApkVers"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"apkact\"",
+            "case \"apkver\"",
+            "case \"apkfront\"",
+            "case \"apkcmd\""
+          ]
+        },
+        {
+          "file": "_cs/ApkCmds.cs",
+          "has": [
+            "class"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_apk_ui.py"
+      ]
+    },
+    {
+      "id": "ui.wadb",
+      "desc": "无线 adb：tcpip 连接、瞬断抑制",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "function onWadb",
+            "function toggleWadb",
+            "function wadbConnect"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"wadb\""
+          ]
+        },
+        {
+          "file": "_cs/Wireless.cs",
+          "has": [
+            "WadbSuppressed"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_wadb_ui.py"
+      ]
+    },
+    {
+      "id": "core.reconnect",
+      "desc": "设备插拔自动重连 + 重连后复核 root",
+      "anchors": [
+        {
+          "file": "_cs/DeviceWatcher.cs",
+          "has": [
+            "ReadExact",
+            "Decide(",
+            "SocketErrorCode"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "StartDeviceWatch",
+            "SettleRootState"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ux.py"
+      ]
+    },
+    {
+      "id": "core.export",
+      "desc": "截图/录屏/日志导出与落点规则",
+      "anchors": [
+        {
+          "file": "_cs/TaskCmds.cs",
+          "has": [
+            "DoShotSilent",
+            "OutDir(\"shot\")"
+          ]
+        },
+        {
+          "file": "_cs/CmdRegistry.cs",
+          "has": [
+            "screencap"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ui_behavior.py"
+      ]
+    },
+    {
+      "id": "file.shortcuts",
+      "desc": "「此电脑」顶层：桌面/下载/文档 + 盘符",
+      "anchors": [
+        {
+          "file": "_cs/FileBrowser.cs",
+          "has": [
+            "FsLocalShortcuts",
+            "\"桌面\"",
+            "\"下载\"",
+            "\"文档\""
+          ]
+        },
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "'shortcut'"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_file_ui.py"
+      ]
+    },
+    {
+      "id": "ui.theme",
+      "desc": "三套主题：黑夜(绿月亮)/白天(太阳)/护眼(眼睛)，可切换并持久化",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "data-theme=\"eye\"",
+            "THEME_ORDER",
+            "function applyTheme",
+            "THEME_ICON"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "THEME = \"dark\""
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "themeget",
+            "SaveThemePreference"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ux.py"
+      ]
+    },
+    {
+      "id": "ui.tab-order",
+      "desc": "页签顺序 指令→终端→文件→投屏→UI→文本（默认落在「指令」）；每个页签带线性图标",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "data-tab=\"quick\" onclick=\"switchTab('quick')\"",
+            "data-tab=\"cmd\" onclick=\"switchTab('cmd')\"",
+            "data-tab=\"file\" onclick=\"switchTab('file')\"",
+            "data-tab=\"cast\" onclick=\"switchTab('cast')\"",
+            "data-tab=\"ui\" onclick=\"switchTab('ui')\"",
+            "data-tab=\"text\" onclick=\"switchTab('text')\"",
+            "<span>文本</span>"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_structure.py"
+      ]
+    },
+    {
+      "id": "apk.kill-pid",
+      "desc": "Kill前台应用（kill -9）+ 版本/前台查询显示 pid（无则不显示）",
+      "anchors": [
+        {
+          "file": "_cs/PkgVer.cs",
+          "has": [
+            "DoKillFront",
+            "AttachPids",
+            "SplitPsLine"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "killfront",
+            "sysnight"
+          ]
+        },
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "Kill前台应用",
+            "pid ' + r.pid"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "\\\"pid\\\":"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_apk_ui.py"
+      ]
+    },
+    {
+      "id": "cast.six-slots",
+      "desc": "投屏 6 槽（含 HUD，默认 display 3）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "CAST_SLOTS = 6",
+            "'HUD'"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "voice.log",
+      "desc": "语音日志只保留 讲话内容= / 【TTS】 两类行（:vr log）",
+      "anchors": [
+        {
+          "file": "_cs/Voice.cs",
+          "has": [
+            "internal static void VrLog",
+            "讲话内容=",
+            "【TTS】"
+          ]
+        },
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "语音日志"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_vr_ui.py"
+      ]
+    },
+    {
+      "id": "apk.front-only",
+      "desc": "前台查询只保留 :front（:pkg now 迁移提示），输出含 pid",
+      "anchors": [
+        {
+          "file": "_cs/PkgVer.cs",
+          "has": [
+            "DoNowRetired",
+            "DoFront",
+            "pid       "
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "DoNowRetired"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_apk_ui.py"
+      ]
+    },
+    {
+      "id": "apk.query-detail",
+      "desc": "APK 面板「查询」按钮：名称/版本/包名/路径/pid",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "apk-btn-query",
+            "function apkQuerySel"
+          ]
+        },
+        {
+          "file": "_cs/PkgVer.cs",
+          "has": [
+            "Kv(\"进程号\"",
+            "pidof"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_apk_ui.py"
+      ]
+    },
+    {
+      "id": "single.exe",
+      "desc": "单文件版：ui.html / WebView2 dll / 默认 ini 内嵌进 exe，外置优先",
+      "anchors": [
+        {
+          "file": "_cs/Embed.cs",
+          "has": [
+            "HookAssemblyResolve",
+            "PrepareNativeLoader",
+            "PrepareUiHtml",
+            "EnsureIniDefaults"
+          ]
+        },
+        {
+          "file": "adb_log_gui/build_gui.bat",
+          "has": [
+            "adb.ui.html",
+            "adb.WebView2Loader.dll",
+            "adb.default.ini"
+          ]
+        },
+        {
+          "file": "release.py",
+          "has": [
+            "dist_single",
+            "单文件版"
+          ]
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "rec.ffmpeg",
+      "desc": "录屏编码器 ffmpeg：四级查找 + -version 校验 + 选择框 + 写回 ini",
+      "anchors": [
+        {
+          "file": "_cs/Ffmpeg.cs",
+          "has": [
+            "LvIni",
+            "LvExe",
+            "LvPath",
+            "LvCommon",
+            "ParseVersion",
+            "internal static bool Validate"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"ffmpegpick\"",
+            "PushFfmpegResult"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "DoFfmpeg"
+          ]
+        },
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"ff-enc\"",
+            "function onFfmpegStat",
+            "function ffmpegPick"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "fs.search",
+      "desc": "文件页搜索：左右各自独立（左只搜电脑、右只搜设备）+ 设备连接监听自动重拉",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"fs-q-local\"",
+            "id=\"fs-q-dev\"",
+            "function fsSearchRun",
+            "function renderFsSearch",
+            "function fsReveal",
+            "function fsOnDeviceOnline"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"fssearch\"",
+            "RunFsSearch",
+            "PushFsSearch"
+          ]
+        },
+        {
+          "file": "_cs/FileBrowser.cs",
+          "has": [
+            "FsLocalSearch",
+            "FsDeviceSearch",
+            "FS_SEARCH_CANCEL"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_fs_search.py"
+      ]
+    },
+    {
+      "id": "rec.scrcpy",
+      "desc": "外挂 scrcpy：探针 → 独立窗口接入 → 缺失时降级回内置截帧通道",
+      "anchors": [
+        {
+          "file": "_cs/Scrcpy.cs",
+          "has": [
+            "ParseVersion",
+            "internal static bool Validate",
+            "internal static bool Launch"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"scrcpyopen\"",
+            "PushScrcpyRes"
+          ]
+        },
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"sc-enc\"",
+            "function scrcpyOpen",
+            "onScrcpyRes"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "quick.syntest",
+      "desc": "SynTestUtil 复用：原「测试工具箱」11 卡并入「指令执行」并按三类分组；命令全在 cmds.ini",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "name:'指令执行'",
+            "cat:'日志与取证'",
+            "cat:'显示与信息'",
+            "cat:'配置入口'",
+            "cmd:'stlogall'",
+            "cmd:'stweakoff'"
+          ]
+        },
+        {
+          "file": "cmds.ini",
+          "has": [
+            "[cmd.stlogall]",
+            "[cmd.stproxyoff]",
+            "[cmd.stweak]",
+            "[cmd.stoffline]"
+          ]
+        },
+        {
+          "file": "docs/SynTestUtil命令对照与用法.md",
+          "has": [
+            "实现协议",
+            "未确认项"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ui_behavior.py"
+      ]
+    },
+    {
+      "id": "page.ui",
+      "desc": "UI 对比页（投屏右侧）：参考 SynTestUtil UI对比，纯前端 Canvas 叠加/像素差异/结果导出，不新增 C# kind",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-ui\"",
+            "data-tab=\"ui\"",
+            "id=\"ui-resultbox\"",
+            "function uiDiffPixels",
+            "function uiCompareRun",
+            "function uiOpenResult"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_structure.py"
+      ]
+    },
+    {
+      "id": "quick.netsim",
+      "desc": "网络模拟改为参考图样式参数表单面板（panel:'netsim'），命令仍走 post('quick',cmd)",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "panel:'netsim'",
+            "id=\"netsim-panel\"",
+            "function nsWeakCmd",
+            "function nsApplyPreset",
+            "function nsRun"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ui_behavior.py"
+      ]
+    },
+    {
+      "id": "cast.builtin-rows",
+      "desc": "投屏主屏/后排屏内建屏位映射（castDefaultId/castHasDisplay），删除前排/后排/刷新位三按钮，进页面自动探测",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "function castDefaultId",
+            "function castHasDisplay",
+            "function castFillSelects",
+            "内置通道 1~5fps"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_structure.py",
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "cast.tap-smooth",
+      "desc": "点击投屏流畅化：前端 25ms 同槽去重/分辨率兜底/涟漪自清理；后端丢弃式队列+tap 后 Kick 立刻抓一帧",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "_castTapLast",
+            "draggable=\"false\"",
+            "animationend"
+          ]
+        },
+        {
+          "file": "_cs/Cast.cs",
+          "has": [
+            "AutoResetEvent Kick",
+            "internal static void CastKick",
+            "s.Kick.WaitOne(600)"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "CAST_TAP_PEND",
+            "CastTapWorker",
+            "App.CastKick(slot)"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "cast.no-drag",
+      "desc": "投屏 <img> 禁拖拽 ghost：draggable=false + -webkit-user-drag:none + cast-view dragstart 兜底",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "-webkit-user-drag:none",
+            "v.addEventListener('dragstart'"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "ui.loglevel-none",
+      "desc": "顶栏日志等级：在线但取不到 persist.log.tag 时显示灰色「未设置」占位，离线才隐藏",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            ".logpill[data-lv=\"none\"]",
+            "pill.setAttribute('data-lv', 'none')",
+            "el.textContent = '未设置'"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ux.py"
+      ]
+    },
+    {
+      "id": "fs.search-click",
+      "desc": "文件搜索结果不再挂「进入 ⤵」按钮；点击结果行即退出搜索、展开祖先链进入树状结构，与未搜索时树交互一致",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "data-search=\"1\"",
+            "点击结果进入树状结构",
+            "function fsOpenSearchDir",
+            ".fs-row[data-search=\"1\"]",
+            "getAttribute('data-search')"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_fs_search.py"
+      ]
+    },
+    {
+      "id": "cfg.cmds_sync",
+      "desc": "GUI 打包源 adb_log_gui/cmds.ini 与项目根 cmds.ini 同步（st* 系列；单文件版内嵌默认也取自这里）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/cmds.ini",
+          "has": [
+            "[cmd.stlogall]",
+            "[cmd.stproxyon]",
+            "[cmd.stweak]",
+            "[cmd.stoffline]"
+          ]
+        },
+        {
+          "file": "cmds.ini",
+          "has": [
+            "[cmd.stlogall]",
+            "[cmd.stweakoff]"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ui_behavior.py"
+      ]
+    },
+    {
+      "id": "cast.strip-snap",
+      "desc": "投屏超过 2 路后底部缩略条不再黑屏：底部改走 /snap 单帧短连接，不占 /live 长连接池；1 秒轮询只换 img.src 不重建 DOM",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "function castRefreshStripFrames",
+            "/snap/' + i",
+            "castRefreshStripFrames();   // 2026-11-15"
+          ]
+        },
+        {
+          "file": "_cs/Cast.cs",
+          "has": [
+            "path.StartsWith(\"/snap/\"",
+            "Content-Type: image/jpeg",
+            "Connection: close"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "cast.strip-stop",
+      "desc": "全屏投屏时底部缩略条每路补「停止」按钮，不用退出全屏即可关闭别路（事件委托 [data-stop]）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "cast-thumb-stop",
+            "data-stop=\"' + i + '\"",
+            "closest('[data-stop]')"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_cast_ui.py"
+      ]
+    },
+    {
+      "id": "apple.tokens",
+      "desc": "Apple 三态语义令牌：dark/light/eye 各 17 角色 + 系统字体栈 + 8pt 网格 + 连续圆角 + 三套无障碍降级；THEME_ORDER 不变",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "--bg:#000000; --surface:#1c1c1e; --surface-2:#2c2c2e",
+            "--bg:#fdfaf3; --surface:#fffdf7",
+            "--accent:#0066cc;",
+            "--font-ui:-apple-system",
+            "prefers-reduced-transparency",
+            "prefers-contrast:more",
+            "var THEME_ORDER = ['dark', 'light', 'eye']"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_ux.py"
+      ]
+    },
+    {
+      "id": "apple.icons",
+      "desc": "图标专项 v2：应用图标重做为「车载中控 + 测试工程师 + 联网」——圆角方深蓝对角渐变 + 柔光，中控屏玻璃面板内嵌终端提示符 >_，屏顶 wifi 圆点双弧，屏下中控台底座；多尺寸美术分级（16px 去弧、24/32 单弧加粗、48+ 全细节），7 尺寸 ico 与顶栏/加载层/任务栏同源",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "中控屏终端标识",
+            "M33 46 L44 53 L33 60",
+            "stroke-linejoin=\"round\"",
+            "<g transform=\"scale(1.5)\">"
+          ]
+        },
+        {
+          "file": "adb_log_gui/icons/svg/Apple终端标识.svg",
+          "has": [
+            "viewBox=\"0 0 24 24\"",
+            "#0A84FF",
+            "终端提示符"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_structure.py"
+      ]
+    },
+    {
+      "id": "cfg.ico_sync",
+      "desc": "外置窗口图标随包同步：build_gui.bat / make_min.bat / release.py 三个入口都把 adb_Tool.ico 拷进 dist / dist_min / dist_single，避免窗口图标与 exe 内嵌 /win32icon 不同源（2026-11-15 出包核验发现漏拷）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/build_gui.bat",
+          "has": [
+            "copy /y \"%~dp0adb_Tool.ico\"",
+            "\"%DIST%\\adb_Tool.ico\""
+          ]
+        },
+        {
+          "file": "adb_log_gui/make_min.bat",
+          "has": [
+            "copy /y \"%~dp0adb_Tool.ico\"",
+            "\"%DIST%\\adb_Tool.ico\""
+          ]
+        },
+        {
+          "file": "release.py",
+          "has": [
+            "DIST_SINGLE, \"adb_Tool.ico\"",
+            "TrySetCatIcon"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_apple_release.py"
+      ]
+    },
+    {
+      "id": "accent.picker",
+      "desc": "9 色强调色（红/黄/蓝/白/紫/黑/绿/橙/粉）：2026-11-15 第二轮起从顶栏搬进设置抽屉（需求 5：主题/颜色/图标全部收进设置）。只覆盖 --accent/--accent-soft/--on-accent，明暗背景仍由 data-theme 独立管理",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "class=\"accent-pop\"",
+            "data-accent=\"pink\"",
+            "function applyAccent(",
+            "case 'accent': applyAccent(",
+            "id=\"set-theme\""
+          ]
+        },
+        {
+          "file": "_gen_accent.py",
+          "has": [
+            "ACCENT LAYER START",
+            "--on-accent",
+            "docs/ACCENT-CONTRAST.md"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_accent_dom.py",
+        "_gen_accent.py"
+      ]
+    },
+    {
+      "id": "accent.persistence",
+      "desc": "强调色持久化：ini 写 accent=，重启后由 themeget 一并回推 accent；C# 侧白名单校验，非法值回退 blue（与 theme 三态互不覆盖）",
+      "anchors": [
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "internal static string ACCENT"
+          ]
+        },
+        {
+          "file": "_cs/Program.cs",
+          "has": [
+            "ACCENT = av"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"accent\":",
+            "SaveAccentPreference",
+            "\\\"kind\\\":\\\"accent\\\""
+          ]
+        },
+        {
+          "file": "adb_log_export.ini",
+          "has": [
+            "accent=blue"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_accent_dom.py"
+      ]
+    },
+    {
+      "id": "custom.cmd",
+      "desc": "自定义 ADB 指令：名称(必填)/说明(选填)/命令三输入框 → 卡片墙一键下发；命令支持换行按序执行、失败跳过且原生回显进输出框；官方节点延时(自定义 ms)与循环(重复上一条 n 次)，第一行禁节点、节点必须间隔命令；配置以 base64 不透明 blob 落到 %LOCALAPPDATA%\\adb_Tool\\custom_cmds.b64",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"custom-panel\"",
+            "id=\"custom-mgr\"",
+            "function customValidate(",
+            "function customExpand(",
+            "function customRun(",
+            "case 'customcmds':",
+            "customsave"
+          ]
+        },
+        {
+          "file": "_cs/CustomStore.cs",
+          "has": [
+            "custom_cmds.b64",
+            "MAX_LEN"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"customlist\":",
+            "case \"customsave\":"
+          ]
+        },
+        {
+          "file": "_cs/build.bat",
+          "has": [
+            "CustomStore.cs"
+          ]
+        }
+      ],
+      "tests": [
+        "377/_test_custom_cmd.py"
+      ]
+    },
+    {
+      "id": "ui.glass",
+      "desc": "Liquid Glass 玻璃层：body::before 四团光雾 52s 漂移作为 living backdrop；顶栏/侧栏/页签胶囊用 backdrop-filter 玻璃 + 顶部镜面 rim；卡片半透明面 + 落地投影 + hover 抬升（卡片不用 blur，性能护栏）；弹窗 pop-in；reduced-motion / reduced-transparency 全退化",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "GLASS LAYER START",
+            "animation:bgDrift",
+            "--chrome-solid",
+            "--shadow-card",
+            "prefers-reduced-transparency",
+            "backdrop-filter:blur(26px)"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_glass.py"
+      ]
+    },
+    {
+      "id": "perf.crash-guard",
+      "desc": "性能与闪退护栏：GUI 模式禁止 q/quit/exit 走 Environment.Exit（任务栏里工具突然消失的根因）；CastLoop / CastTapWorker / FireReconnect / PumpOutput 全部最外层 try-catch；screencap 的 CopyTo 加 8 秒超时 + Kill 防僵尸 adb；关窗 CastStopAll；标题栏深色属性号 20 失败回退 19",
+      "anchors": [
+        {
+          "file": "_cs/Program.cs",
+          "has": [
+            "internal static volatile bool GUI_MODE",
+            "界面模式下不执行退出命令"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "App.GUI_MODE = true",
+            "catch (Exception ex) { GuiEntry.Dump(\"PumpOutput\", ex); }",
+            "App.CastStopAll();",
+            "DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, ref val, sizeof(int));"
+          ]
+        },
+        {
+          "file": "_cs/Cast.cs",
+          "has": [
+            "p.WaitForExit(8000)",
+            "screencap 超时被杀",
+            "CastLoop 崩溃"
+          ]
+        },
+        {
+          "file": "_cs/DeviceWatcher.cs",
+          "has": [
+            "重连线程异常",
+            "finally"
+          ]
+        },
+        {
+          "file": "_cs/CustomStore.cs",
+          "has": [
+            "基目录"
+          ]
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "ui.titlebar",
+      "desc": "自绘标题栏：去系统边框（FormBorderStyle.None），标题栏画在页面里 —— 颜色走主题令牌、字体跟随全局字体设置。拖动/双击最大化/最小化/最大化/关闭接回系统原生行为；边缘缩放由页面热区发位移、C# 套到窗口矩形（无 WS_THICKFRAME 时 NC 拖拽无效，实测过）；最大化限制在屏幕工作区不盖任务栏。对应需求 1/2/8（原生标题栏深浅色下都是纯黑、字体改不了）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"titlebar\"",
+            "id=\"tb-status\"",
+            ".rz-n{",
+            "function tbDrag(",
+            "function setWinMax(",
+            "installResizeZones"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "FormBorderStyle = FormBorderStyle.None",
+            "case \"windrag\":",
+            "case \"winresize2\":",
+            "case \"winmin\":",
+            "case \"winmax\":",
+            "case \"winclose\":",
+            "\\\"kind\\\":\\\"winstate\\\"",
+            "case \"winresizeend\":"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "ui.settings",
+      "desc": "设置抽屉（右上角齿轮）：主题三态 / 9 色强调色 / 字体 / 使用说明入口 / 关闭应用。偏好写 ini（theme= / accent= / prefs=），重启保持。对应需求 5/8",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"settings-btn\"",
+            "id=\"set-mask\"",
+            "id=\"set-theme\"",
+            "id=\"set-font\"",
+            "onclick=\"appClose()\"",
+            "function toggleSettings("
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"prefsave\":",
+            "case \"themeget\":"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "internal static string PREFS"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "ui.font",
+      "desc": "全局字体切换：内置 Inter 与 JetBrains Mono（OFL 开源，base64 内嵌离线可用）+ 系统 Noto Sans SC / 等线 / 楷体 / 宋体 / 黑体 + 自定义字体名。改的是 :root 的 --font-ui（等宽另给 --font-mono），标题栏、顶栏、卡片、帮助全部跟随。对应需求 6/8",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "V12 FONTS START",
+            "font-family:'Inter'",
+            "font-family:'JetBrains Mono'",
+            "function applyFont(",
+            "function setFont(",
+            "FONT_LIST"
+          ]
+        },
+        {
+          "file": "_v12_fonts.css",
+          "has": [
+            "@font-face",
+            "base64"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "help.panel",
+      "desc": "使用说明面板：12 章（快速上手/顶栏/指令/终端/文件/投屏/UI 对比/文本/自定义/设置/快捷键/FAQ），指令目录由 quickGroups 运行时扫描生成，左侧目录 + 搜索过滤；颜色与字体跟随用户设置。对应需求 7",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"help-mask\"",
+            "id=\"help-toc\"",
+            "id=\"help-doc\"",
+            "id=\"help-search\"",
+            "function helpCmdCatalog(",
+            "HELP_SECS",
+            "function helpSearch("
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "text.editor",
+      "desc": "文本页（Notepad++ 风格）：多文档页签、新建/打开/保存/另存为、撤销重做、查找替换（区分大小写/全部替换）、跳行、行号、自动换行、字号、编码（UTF-8/BOM/GBK/UTF-16LE）与换行符（CRLF/LF）原样保留、状态栏行列/选中/长度。C# 侧 textopen/textsave 负责真实读写，2MB 上限。对应需求 4",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"page-text\"",
+            "id=\"tx-edit\"",
+            "id=\"tx-gutter\"",
+            "id=\"tx-find\"",
+            "function txSave(",
+            "function txReplaceAll(",
+            "function txGutter("
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"textopen\":",
+            "case \"textsave\":",
+            "private void ReadTextFile(",
+            "UTF-8 BOM",
+            "GBK"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "fs.pane-tools",
+      "desc": "文件页：⇄ 支持左右换边（持久化）、表头列宽可鼠标拖动并双击复位（表头与行共用 --w-name/--w-size 变量）、UI 对比结果图无图时显示空态不再出现破图。对应需求 9/10/11",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"fs-swap\"",
+            "class=\"fs-grip\"",
+            "function fsColDown(",
+            "function fsSwapSides(",
+            "function uiResultImgErr(",
+            "--w-name"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v12.py"
+      ]
+    },
+    {
+      "id": "ui.v13",
+      "desc": "A13：标题栏 root/无线/日志/设备 四点化（只画圆点 + 即时 tooltip）、窗口圆角（Win11 DWM / Win10 Region）与跨屏最大化、终端 textarea 换行与多行顺序执行、输出区点空白展开收起。对应需求 1-9 + 指令界面 2 条",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "id=\"tb-status\"",
+            "id=\"log-dot\"",
+            "fbHeadToggle = function",
+            "txAutoGrow = taAutoGrow",
+            "V13 LAYER START",
+            "V13 JS START"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "WM_GETMINMAXINFO",
+            "DWMWA_WINDOW_CORNER_PREFERENCE",
+            "SetWindowRgn"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_v13.py",
+        "_smoke_win.py"
+      ]
+    },
+    {
+      "id": "ui.wsvc",
+      "desc": "网联服务分组（2026-11-15 第2批）：紧跟「指令执行」，13 条 —— 后台入口（AI智能推荐/配置中心/支付宝/上传日志）、日志导出（支付宝/微信小程序/车载微信，落桌面logcat日期目录）、星河云埋点（开关/查询/设置/设备ID）、云平台（埋点校验页/讯飞IOT）。纯 shell 的走 cmds.ini，其余是内置 :wsalipay/:wswmpf/:wswx/:sxlog/:wsdevid/:url",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "name:'网联服务'",
+            "cmd:':wsalipay'",
+            "cmd:':wswmpf'",
+            "cmd:':wswx'",
+            "cmd:':sxlog'",
+            "cmd:':wsdevid'",
+            "cmd:':url https://"
+          ]
+        },
+        {
+          "file": "cmds.ini",
+          "has": [
+            "[cmd.wsconfig]",
+            "[cmd.wsalipayset]",
+            "[cmd.wsalipayup]",
+            "group = 网联服务"
+          ]
+        },
+        {
+          "file": "_cs/TaskCmds.cs",
+          "has": [
+            "DoExportAlipayLog",
+            "DoExportWmpfLog",
+            "DoExportWxMsgLog",
+            "DoSxTraceOn",
+            "DoDeviceId",
+            "DoOpenUrl"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "DoSxTraceOn()",
+            "DoOpenUrl(arg)"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_a14.py"
+      ]
+    },
+    {
+      "id": "ui.a14",
+      "desc": "A14 UI 八条（2026-11-15 第3批）：启动动画换最新图标且跟随强调色、标题栏图标按 --tb-h 派生放大、白天/护眼边界与按钮对比度重调、原生下拉换成自绘浮层（深色不再白底白字）、设置里删两处中文、新增字体大小小/中/大（WebView2 ZoomFactor 整页跟随）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "V14 LAYER START",
+            "V14 JS START",
+            "id=\"set-fsize\"",
+            "a14-selpop",
+            "--a14-lift",
+            ".tb-logo svg"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"uizoom\"",
+            "ZoomFactor"
+          ]
+        }
+      ],
+      "tests": [
+        "_check_a14.py"
+      ]
+    },
+    {
+      "id": "ui.a15",
+      "desc": "A15 UI 四条（2026-11-15 第4批）：显示选项（跟随系统/OLED 纯黑/护眼三档）、日志等级面板（hover 看 + 点击设 persist.log.tag）、设备管理面板（hover 看 + 点击断开/切换）、投屏六条 scrcpy 快捷指令；另含强调色扩到 13 色（A16 再扩到 16，见 ui.a16）、页签翻页动效、字体 39 项五分组件、搜索框白边、下拉浮层滚动不再误关、点任务栏收起 + 窗口开合动效（A16 已改为不改窗口尺寸，见 ui.a16）、原生启动层换新图标",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "V15 LAYER START",
+            "V15 JS START",
+            "id=\"a15-sec-display\"",
+            "id=\"set-oled\"",
+            "id=\"set-eyelevel\"",
+            "id=\"v15-lvdev\"",
+            "id=\"v15-devrows\"",
+            "var ACCENT_ORDER = ['blue','cyan','teal','mint','green','yellow','orange','red','pink','purple','indigo','brown','graphite','purewhite','eyewhite','glasswhite'];",
+            ":scrcpy 0",
+            "v15-flip-next",
+            "v15-flip-prev"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "case \"logget\"",
+            "case \"logset\"",
+            "case \"devlist\"",
+            "case \"devswitch\"",
+            "case \"devdisconnect\"",
+            "WS_MINIMIZEBOX",
+            "EnsureSaneBounds",
+            "SplashPaint"
+          ]
+        },
+        {
+          "file": "_cs/TaskCmds.cs",
+          "has": [
+            "DoScrcpy"
+          ]
+        },
+        {
+          "file": "_cs/Scrcpy.cs",
+          "has": [
+            "internal static bool Launch(int displayId, string name, out string err)",
+            "Genymobile.scrcpy",
+            "ReadEnvFromRegistry"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "\"scrcpy\""
+          ]
+        }
+      ],
+      "tests": [
+        "_v15_checks.py"
+      ]
+    },
+    {
+      "id": "ui.a16",
+      "desc": "A16 UI 九条（2026-11-15 第5批）：① dock 打开窗口变小（去掉改窗口尺寸的开合动画，换窗口一步到位 + 内容 scale 淡入 + EnsureSaneBounds 兜底）② 强调色 13→16（纯白/护眼白/玻璃白，浅色与护眼下压成中性灰）③ 投屏六张卡并入「指令执行」，分类统一「投屏」④ 日志页/设备页弹窗改 body 级 fixed portal 并互斥 ⑤ 弹窗打开时不再冒 hover 提示 ⑥ 设备弹窗不再显示不全 ⑦ 投屏 raw 抓帧 + 本地 JPEG，首次抓帧两条路各测一次选快的；scrcpy 补画质参数并抽干 stderr ⑧ 偏好统一持久化（字号/日志等级/显示选项/tab 顺序）⑨ tab 可拖拽换位并记忆；另新增 9 条 adb 查询指令（版本/内存/密度/屏幕参数/AndroidID/版本/devices/start-server/kill-server）",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "V16 LAYER START",
+            "V16 JS START",
+            "var ACCENT_ORDER = ['blue','cyan','teal','mint','green','yellow','orange','red','pink','purple','indigo','brown','graphite','purewhite','eyewhite','glasswhite'];",
+            "data-accent=\"purewhite\"",
+            "data-accent=\"eyewhite\"",
+            "data-accent=\"glasswhite\"",
+            "cat:'系统查询'",
+            "cat:'投屏'",
+            "function castOpenScrcpy",
+            "v16QuickInput",
+            "attachPop",
+            "detachPop",
+            "closeAllPops",
+            "v16-tabdrag"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "EnsureSaneBounds",
+            "RefreshSane",
+            "ptMinTrackSize.X = MinimumSize.Width"
+          ]
+        },
+        {
+          "file": "_cs/Cast.cs",
+          "has": [
+            "CastGrabRaw",
+            "CastEncodeJpeg",
+            "CastGrabFrame",
+            "image/jpeg"
+          ]
+        },
+        {
+          "file": "_cs/Scrcpy.cs",
+          "has": [
+            "--max-size=1600",
+            "--max-fps=60",
+            "--video-bit-rate=16M",
+            "--print-fps"
+          ]
+        },
+        {
+          "file": "cmds.ini",
+          "has": [
+            "[cmd.adbver]",
+            "[cmd.windisp]",
+            "[cmd.aid]",
+            "[cmd.osver]",
+            "[cmd.devs]",
+            "[cmd.adbst]",
+            "[cmd.adbsp]"
+          ]
+        }
+      ],
+      "tests": [
+        "_v16_checks.py"
+      ]
+    },
+    {
+      "id": "ui.a17",
+      "desc": "A17 UI 八条 + 两条追加（2026-11-15 第6批）：① 强调色未记忆（根因是白名单在 GuiWeb/Program 各写一份，扩 16 色时只改一处 → 收口成 Prefix.ACCENTS 单一来源，并在 prefs 里再存一份）② 恢复 dock 打开/收起动效（只动渲染层 scale，窗口尺寸全程不变）③ 应用 icon 改黑白灰 + 黑底，页面内联图形与 ico 同源（#appmark-glyph 只画一份，启动层与标题栏共用）④ 浅色主题窗口边界加实边 + 内高光 + 内阴影 ⑤ 侧栏/终端页/输入行直角改圆角（8px 内缩 + 12px 圆角）⑦ 偶发关闭要点两次（先 Hide 再 Close，加退出看门狗）⑧ 启动层纯黑改高斯模糊渐变，图标跟随强调色（网页 + C# 原生遮罩同步）追加1 scrcpy 内嵌到应用内（SetParent 塞进 Panel，可点击、h264 原生帧率）追加2 任务栏图标换新、标题去掉「网联服务_」",
+      "anchors": [
+        {
+          "file": "adb_log_gui/webview2/ui.html",
+          "has": [
+            "V17 LAYER START",
+            "V17 JS START",
+            "id=\"appmark-glyph\"",
+            "id=\"appmark-bg\"",
+            "id=\"ce-stage\"",
+            "id=\"cast-embed\"",
+            "id=\"cm-embed\"",
+            "href=\"#appmark-glyph\"",
+            "window.v17Out = function",
+            "window.v17InRestore = function"
+          ]
+        },
+        {
+          "file": "_cs/GuiWeb.cs",
+          "has": [
+            "StartExitWatchdog",
+            "private void PlayOutThen(Action after)",
+            "SetParent(h, _castHost.Handle);",
+            "ScrcpyEmbedPlace",
+            "case \"castembedhide\"",
+            "App.NormalizeAccent",
+            "Text = \"Adb_Tool\";",
+            "TrySetCatIcon",
+            "PathGradientBrush"
+          ]
+        },
+        {
+          "file": "_cs/Prefix.cs",
+          "has": [
+            "internal static readonly string[] ACCENTS",
+            "internal static string NormalizeAccent",
+            "\"purewhite\", \"eyewhite\", \"glasswhite\""
+          ]
+        },
+        {
+          "file": "_cs/Scrcpy.cs",
+          "has": [
+            "internal static Process LaunchEmbedded",
+            "--window-title=",
+            "--window-borderless",
+            "psi.CreateNoWindow = true;",
+            "BeginErrorReadLine()"
+          ]
+        },
+        {
+          "file": "_v17.css",
+          "has": [
+            "v17open",
+            "v17close",
+            "--splash-g0",
+            "--winedge:rgba(48,48,54,.72);",
+            ".splash .appmark{ color:var(--accent); }"
+          ]
+        }
+      ],
+      "tests": [
+        "_v17_checks.py"
+      ]
+    }
+  ]
+}
