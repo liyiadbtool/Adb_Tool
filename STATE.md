@@ -7,7 +7,22 @@
 
 ## 最后更新
 
-2026-11-16 02:50 · A21（启动层图标去蓝 + 三白色点去蓝 + 专项运行时测试）已落地并过门禁
+2026-11-16 21:00 · A23（换机接力 + 交互走查修复 I3/I4/I5 + 新增交互一致性门禁，27→28 项）
+
+---
+
+## 本轮做了什么（A23）
+
+| # | 需求 | 落点 |
+|---|---|---|
+| 1 | 换机接力：新设备拉代码并跑通 | `C:\Users\zuo20\Desktop\Adb_Tool`；补根 `adb_log_export.ini`（`accent=blue`）修好 2 项门禁 |
+| 2 | 交互走查 I3：文本页 active 只由 V12 钩子补 | 主 `switchTab` 补 `page-text` 分支（`ui.html:4579`） |
+| 3 | 交互走查 I4：投屏状态轮询从不 clearInterval | 离开投屏页 `clearInterval`，回来 `castStartPoll()` 重启（`ui.html:4585/4599`） |
+| 4 | 交互走查 I5：投屏点黑边静默无反馈 | letterbox 点击给 toast，同槽 1.2s 节流（`ui.html:6949`）；手册同步 |
+| 5 | 新增交互一致性门禁 | `377/_test_interaction.py`（14 断言），并入 `verify_all.py`，门禁 27 → **28 项** |
+| 6 | 交付测试资产 | `docs/测试用例.md`（10 维度约 221 条）+ `docs/测试报告_20261116.md` |
+
+验收基线：**28 项 / 26 绿 / 2 红**（2 红为环境差异：系统透明效果关闭 → Liquid Glass 3 条；未装 winget scrcpy → GUI 自检 1 条）。
 
 ---
 
@@ -27,19 +42,29 @@
 
 ## 现在能跑吗
 
-**能。** 两个形态都编译通过，26 项门禁 0 失败。
+**能。** 两个形态都编译通过；门禁 28 项 / 26 绿 / 2 红（2 红为**环境差异**，非代码缺陷，见下）。
 
 | 检查 | 命令 | 当前结果 |
 |---|---|---|
-| 全量门禁 | `python verify_all.py` | **26 项 / 0 失败** |
+| 全量门禁 | `python verify_all.py` | **28 项 / 26 通过 / 2 环境失败** |
+| 交互一致性 | `python 377/_test_interaction.py` | 14 / 14 |
 | A17 落点 | `python _v17_checks.py` | 64 / 64 |
 | A16 落点 | `python _v16_checks.py` | 78 / 78 |
 | A15 落点 | `python _v15_checks.py` | 54 / 54 |
 | 功能清单 | `node _check_features.js` | 52 项通过 |
 | 功能不变量 | `python _gate_invariants.py` | 44 项 / 0 失败 |
 | 窗口原生 | `python _smoke_win.py` | 13 / 13 |
-| GUI 自检 | `adb_Tool.exe -guiSelfCheck`（由 verify_all 调用） | 46 条断言 0 失败 |
+| GUI 自检 | `adb_Tool.exe -guiSelfCheck`（由 verify_all 调用） | 45 条 / 1 失败（**缺 winget 版 scrcpy**） |
 | CLI 自检 | `adb_log_export.exe -selftest` | 489 条断言 0 失败 |
+
+**两条环境失败（换机器必复现，按此处理）：**
+
+1. `Liquid Glass 17/20` —— 系统「透明效果」关闭（`EnableTransparency=0`）→ Edge 报
+   `prefers-reduced-transparency: reduce` → 玻璃层按无障碍设计退化纯色。
+   **打开系统透明效果即转绿；不许改代码绕过（那等于取消无障碍降级）。**
+2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
+   winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
+
 
 ---
 
@@ -58,11 +83,19 @@
 
 ## 下一步（按优先级）
 
-1. **清 Windows 图标缓存**（dock 栏还显示旧蓝色云朵时，人工操作一次）：
+1. **接真机** 跑 `docs/测试用例.md` 的 D1(60) + D3(18) + D7(10) —— 当前最大覆盖缺口（约 60% 用例因无设备未执行）。
+2. **补两个环境项**（转绿即 28/28）：
+   - `winget install Genymobile.scrcpy` → GUI 自检转绿
+   - 打开系统「透明效果」→ Liquid Glass 转绿
+3. **架构偿还**（独立、低风险，按 `docs/测试报告_20261116.md` 第 5 节）：
+   - `GuiSelfCheck` 改测 WebView2 或明确标注定位（它现在只守老 WinForms 窗体）
+   - `Thread.Abort()` 换协作式取消（`GuiWeb.cs:4293`）
+   - `trimLog` 缓存 trim 节点（`ui.html:4151`，日志满 5000 行后的最大 DOM 热点）
+4. **清 Windows 图标缓存**（dock 栏还显示旧蓝色云朵时，人工操作一次）：
    - 删除任务栏 pin → 资源管理器重启（`taskkill /f /im explorer.exe && start explorer.exe`）→ 重新 pin
    - 或删除 `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db` 后重启资源管理器
-2. **真机验收**（必须人工）：启动动画图标是否不再显蓝；设置面板三白点是否中性灰白；投屏默认小屏、点「⤢」扩全屏、底部缩略条切换。
-3. 出包：`python release.py`（会自动重跑 27 项门禁），组装 `Desktop\Adb_Tool_成品_V21_<时间戳>`。
+5. **真机验收**（必须人工）：启动动画图标是否不再显蓝；设置面板三白点是否中性灰白；投屏默认小屏、点「⤢」扩全屏、底部缩略条切换。
+6. 出包：`python release.py`（会自动重跑 **28 项**门禁），组装 `Desktop\Adb_Tool_成品_V23_<时间戳>`；顺带验 D8 的 G-06~G-09（三形态）。
 
 ---
 
@@ -75,7 +108,7 @@ git --version        # >= 2.28
 # C# 编译器：C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe（系统自带，无需安装 SDK）
 ```
 
-- 本机用户名是中文（`C:\Users\李亦`），**不要在 .bat 里拼含中文的路径**；脚本里一律用 `%~dp0`。
+- 用户名可能是中文（历史上出现过 `C:\Users\李亦`），**不要在 .bat 里拼含中文的路径**；脚本里一律用 `%~dp0`。
 - Git Bash 里跑 .bat 要 `cmd //c "..."`；`build.bat` 末尾有 `pause`，必须 `< /dev/null`。
 - 编译输出是 GBK，管道里要看中文得 `| iconv -f GBK -t UTF-8`。
 

@@ -259,7 +259,10 @@
 :root[data-theme="dark"][data-oled="1"] .quick-nav{
   -webkit-backdrop-filter:none; backdrop-filter:none;
 }
-:root[data-theme="dark"][data-oled="1"] .tabs{ background:#0e0e10; }
+/* 2026-11-16 UI/UE 走查 #4：这里原来是 background:#0e0e10 硬编码，
+   违反 DESIGN.md 红线 4（组件规则不许出现 hex）。同块已把 --surface 定义为
+   #0e0e10，语义完全等价，改用令牌 —— 以后改 OLED 表面色只需动一处。 */
+:root[data-theme="dark"][data-oled="1"] .tabs{ background:var(--surface); }
 
 :root[data-theme="eye"][data-eyelevel="light"]{
   --bg:#fbf7ee; --surface:#fffefb; --surface-2:#f6efdf;

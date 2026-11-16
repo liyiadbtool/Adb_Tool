@@ -2884,7 +2884,10 @@ select{ color-scheme:inherit; }
 :root[data-theme="dark"][data-oled="1"] .quick-nav{
   -webkit-backdrop-filter:none; backdrop-filter:none;
 }
-:root[data-theme="dark"][data-oled="1"] .tabs{ background:#0e0e10; }
+/* 2026-11-16 UI/UE 走查 #4：这里原来是 background:#0e0e10 硬编码，
+   违反 DESIGN.md 红线 4（组件规则不许出现 hex）。同块已把 --surface 定义为
+   #0e0e10，语义完全等价，改用令牌 —— 以后改 OLED 表面色只需动一处。 */
+:root[data-theme="dark"][data-oled="1"] .tabs{ background:var(--surface); }
 
 :root[data-theme="eye"][data-eyelevel="light"]{
   --bg:#fbf7ee; --surface:#fffefb; --surface-2:#f6efdf;
@@ -4576,7 +4579,19 @@ function switchTab(name){
   if(pc) pc.classList.toggle('active', name === 'cast');
   var pu = document.getElementById('page-ui');
   if(pu) pu.classList.toggle('active', name === 'ui');
+  // 2026-11-16 交互走查 I3：文本页原本只靠 V12 的 switchTab 包装钩子补 .active，
+  // 主函数里没有这一支 —— 谁重构主函数，文本页就会静默打不开且不报错。
+  // 这里补成主函数自己的职责；V12 的钩子保留（幂等，同一个值）。
+  var pt2 = document.getElementById('page-text');
+  if(pt2) pt2.classList.toggle('active', name === 'text');
   _tab = name;
+  // 2026-11-16 交互走查 I4：投屏状态轮询以前从不 clearInterval，
+  // 离开投屏页后靠 `_tab !== 'cast'` 空转（每秒仍在跑回调）。
+  // 离开就停，回来由下面 cast 分支的 castStartPoll 重启（该函数幂等）。
+  if(name !== 'cast' && _cast && _cast.timer){
+    clearInterval(_cast.timer);
+    _cast.timer = null;
+  }
   // 需求2：切回指令页时回到顶部（滚动容器已上移，不会自动复位）
   if(name === 'quick'){
     var sc = document.getElementById('quick-scroll');
@@ -4586,6 +4601,8 @@ function switchTab(name){
     if(qs2) { try { qs2.blur(); } catch(e) {} }
   }else if(name === 'cast'){
     if(typeof castEnsureInit === 'function') castEnsureInit();
+    // I4：离开投屏页时轮询被停掉，回来要重启（castStartPoll 内部幂等）
+    if(typeof castStartPoll === 'function') castStartPoll();
   }else if(name === 'file'){
     // 首次进入才请求目录，避免启动就多两次 adb 往返
     if(typeof fsEnsureInit === 'function') fsEnsureInit();
@@ -6932,6 +6949,8 @@ function castMapPoint(clientX, clientY, rect, nw, nh, devW, devH){
 //      即使屏位探测没给 dim 也能正确换算坐标（删掉「刷新屏位」按钮后尤其重要）；
 //   3) 涟漪不再用 setTimeout 清理，改 animationend 自清理，连点时不堆定时器。
 var _castTapLast = [0,0,0,0,0,0];
+// I5：黑边提示的节流时间戳（每槽一份）
+var _castTapEdgeNote = [0,0,0,0,0,0];
 function castTap(i, ev){
   if (!_cast.on[i]) return;
   if (!_online) { toast('设备未连接'); return; }
@@ -6946,7 +6965,17 @@ function castTap(i, ev){
 
   var rect = img.getBoundingClientRect();
   var pt = castMapPoint(ev.clientX, ev.clientY, rect, img.naturalWidth, img.naturalHeight, devW, devH);
-  if (!pt) return;                    // 点在黑边，忽略
+  if (!pt) {
+    // 2026-11-16 交互走查 I5：点在 letterbox 黑边上原本静默 return，
+    // 用户看不到任何反馈，会判定"点了没反应 / 投屏点不动"。
+    // 这里给一次明确提示（同一槽 1.2s 内只提示一次，避免连点刷屏）。
+    var _now2 = Date.now();
+    if (_now2 - (_castTapEdgeNote[i] || 0) > 1200) {
+      _castTapEdgeNote[i] = _now2;
+      toast('点在画面外的黑边上，没有发送点击');
+    }
+    return;
+  }
 
   postObj({ kind: 'casttap', slot: i, x: pt.x, y: pt.y });
 
@@ -10583,6 +10612,11 @@ document.addEventListener('DOMContentLoaded', function (){
 })();
 /* === V14 JS END === */
 
+
+
+
+
+
 /* === V15 JS START === */
 /* ==========================================================================
    A15 · 交互层
@@ -11726,8 +11760,6 @@ document.addEventListener('DOMContentLoaded', function (){
     setTimeout(boot, 0);
 })();
 /* === V16 JS END === */
-
-
 
 /* === V17 JS START ===
    A17（2026-11-15 第 6 批）— 行为层

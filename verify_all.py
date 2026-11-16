@@ -38,6 +38,7 @@ EDGE_TESTS = [
     ("_test_fs_search.py", "文件搜索与监听"),
     ("_test_cast_ui.py", "投屏"),
     ("_test_accent_blue.py", "启动去蓝（光晕/色点）"),
+    ("_test_interaction.py", "交互一致性（页签/轮询/投屏坐标）"),
 ]
 
 results = []
