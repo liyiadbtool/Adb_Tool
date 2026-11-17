@@ -179,6 +179,19 @@ JS = r"""
         ok('提示节点已缓存到 box 上（O4）', !!box.__trimNote, box.__trimNote ? 'cached' : 'not cached');
       }
 
+      /* ---------- I. 窗口边界（bug2 回归） ---------- */
+      // 原生窗口圆角 = _cs/GuiWeb.cs 的 _cornerDip = 8（DIP），内描边必须同半径，
+      // 否则方角描边被圆角裁掉，四角出现断头 + 1px 台阶。
+      var after = getComputedStyle(document.body, '::after');
+      var rad = parseFloat(after.borderTopLeftRadius) || 0;
+      ok('窗口内描边圆角与原生一致（8px）', Math.abs(rad - 8) < 0.6, rad + 'px');
+      ok('内描边仍在（1px 内阴影）', after.boxShadow && after.boxShadow !== 'none',
+         (after.boxShadow || '').slice(0, 48));
+      document.documentElement.setAttribute('data-winmax', '1');
+      var radMax = parseFloat(getComputedStyle(document.body, '::after').borderTopLeftRadius) || 0;
+      ok('最大化时描边变方角（不残留圆弧）', radMax === 0, radMax + 'px');
+      document.documentElement.setAttribute('data-winmax', '0');
+
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
   }, 500);

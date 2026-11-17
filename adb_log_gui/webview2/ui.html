@@ -3083,17 +3083,32 @@ body.v16-tabdrag .page{
   --winedge-soft:rgba(255,255,255,.04);
   --winhi:rgba(255,255,255,.06);
 }
+/* 窗口圆角半径：与原生窗口保持一致。
+   源头是 _cs/GuiWeb.cs 的 _cornerDip = 8（DIP）。Win11 走 DWM 系统圆角（同为 8px），
+   Win10 走 SetWindowRgn(8 DIP)。两处都按 8 算，所以这里统一 8px。 */
+:root{ --win-radius:8px; }
+
 body::after{
   content:"";
   position:fixed;inset:0;z-index:9998;pointer-events:none;
-  border-radius:inherit;
+  /* 2026-11-17 bugfix（应用边界有问题）：
+     原写法是 border-radius:inherit —— 但 body 自己没有圆角（默认 0），
+     于是这圈 1px 内描边是**方角**，被原生 8px 圆角裁掉，
+     四个角表现为"描边走到角上突然断头 + 1px 台阶"。
+     现在用与原生一致的半径，描边与窗口轮廓重合。 */
+  border-radius:var(--win-radius);
   box-shadow:inset 0 0 0 1px var(--winedge), inset 0 1px 0 var(--winhi);
 }
+/* 最大化时窗口是方角，描边也必须跟着变方，否则四角各留一段圆角残弧 */
+:root[data-winmax="1"] body::after{ border-radius:0; }
 /* 浅色下再把四个内角压一点暗，避免"白卡片直接切在白底上"没有转折 */
 :root[data-theme="light"] body::before,
 :root[data-theme="eye"] body::before{
+  border-radius:var(--win-radius);
   box-shadow:inset 0 0 6px var(--winedge-soft), inset 0 0 24px var(--winedge-soft);
 }
+:root[data-winmax="1"][data-theme="light"] body::before,
+:root[data-winmax="1"][data-theme="eye"] body::before{ border-radius:0; }
 
 /* ---------------------------------------------------------------------------
    §3 开合动效（需求 2）
@@ -11817,6 +11832,7 @@ document.addEventListener('DOMContentLoaded', function (){
     setTimeout(boot, 0);
 })();
 /* === V16 JS END === */
+
 
 /* === V17 JS START ===
    A17（2026-11-15 第 6 批）— 行为层
