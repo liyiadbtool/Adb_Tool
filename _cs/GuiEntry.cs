@@ -61,15 +61,16 @@ namespace AdbLogExport.Gui
 
             Trace("进入 Main");
 
-            // ---- 自检模式：不显示窗口，只验证布局与控件装配 ----
-            // 用途：无人值守回归。GUI 的布局是纯计算，不需要人眼看，
-            // 把控件树和关键几何数据 dump 出来就能发现"比例不对/控件缺失"。
-            // 注意顺序：--selfcheck 必须排在 --exec 前面判断，
-            // 否则 "--exec ... --selfcheck" 会先被无头执行分支接走。
-            if (GuiHeadless.HasSelfCheck(args))
-            {
-                return GuiSelfCheck.Run();
-            }
+            // ---- 自检模式（2026-11-17 O6 改造）----
+            // 原来这里直接 return GuiSelfCheck.Run()，测的是 A12 之后就没再上过阵的
+            // 老 WinForms 窗体 GuiMain —— 对真实界面零覆盖，还会因为本机没装
+            // winget scrcpy 而误红。
+            // 现在只记一个标记，照常走真实启动链路（Embed 释放 → GuiBoot → WebView2
+            // → 加载 ui.html），页面就绪后由 GuiWeb 回调 GuiSelfCheck.RunOn() 做断言，
+            // 跑完自己关窗并把退出码带回来。
+            // 注意顺序：--selfcheck 必须先于 --exec 判断，否则 "--exec ... --selfcheck"
+            // 会被无头执行分支接走。
+            bool selfCheck = GuiHeadless.HasSelfCheck(args);
 
             // ---- 无头执行模式：把命令喂进 GUI 的真实管道，供等价性验证 ----
             // 与 --selfcheck 同理：不显示窗口，可进 CI。区别是它跑真命令，
@@ -126,6 +127,12 @@ namespace AdbLogExport.Gui
                     return 2;
                 }
                 GuiWeb f = new GuiWeb(uiPath);
+                if (selfCheck)
+                {
+                    // 自检：窗口移到屏幕外，不抢焦点，不显示任务栏按钮
+                    f.SelfCheckMode = true;
+                    f.ShowInTaskbar = false;
+                }
                 Trace("GuiWeb 构造完成，进入消息循环");
                 Application.Run(f);
                 Trace("消息循环结束（窗口已关闭）");
@@ -136,6 +143,12 @@ namespace AdbLogExport.Gui
                 MessageBox.Show("运行时错误：\r\n" + ex.Message,
                     "adb_Tool", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return 1;
+            }
+            // 自检模式的退出码由断言结果决定（0=全通过）
+            if (selfCheck)
+            {
+                Trace("自检退出码 = " + GuiSelfCheck.ExitCode);
+                return GuiSelfCheck.ExitCode;
             }
             Trace("Main 返回 0");
             return 0;

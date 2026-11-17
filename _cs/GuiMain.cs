@@ -975,15 +975,12 @@ namespace AdbLogExport.Gui
             base.OnFormClosing(e);
         }
 
-        // ==================== 八、自检支持（GuiSelfCheck 专用）====================
+        // ==================== 八、自检支持（历史遗留）====================
         //
-        // 只暴露"读几何/切换状态"的能力，不给外部改控件的手段 —— 自检要能
-        // 断言真实布局，所以这些访问器读的都是活控件，不是快照。
-
-        internal void RunSelfCheckBody(StringBuilder sb)
-        {
-            GuiSelfCheck.Body(this, sb);
-        }
+        // 2026-11-17：自检已改成测真实界面（GuiWeb + WebView2），
+        // 这里的 RunSelfCheckBody 是原先给 GuiSelfCheck.Body(this, sb) 用的入口，
+        // 那条链路已经不存在，所以删掉，只保留下面的只读访问器（防止别处引用）。
+        // 本类自 A12 起就不再是运行时界面，若确认无人引用可整体删除。
 
         internal Panel GetTopBar() { return _top; }
         internal Panel GetTabBar() { return _tabBar; }

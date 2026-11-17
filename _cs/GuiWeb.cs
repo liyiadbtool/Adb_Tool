@@ -43,6 +43,59 @@ namespace AdbLogExport.Gui
         private Panel _splashPanel;
         private System.Windows.Forms.Timer _splashTimer;
 
+        // ---------------- 自检通道（2026-11-17 O6） ----------------
+        // 目的：让 --selfcheck 测**真正在跑的界面**（GuiWeb + ui.html），
+        // 而不是 A12 之后就没再上过阵的 WinForms 老窗体 GuiMain。
+        // 打开方式：GuiEntry 在 --selfcheck 时不直接 return，而是照常建窗，
+        // 把 SelfCheckMode 置 true —— 复用真实启动链路（Embed 释放、GuiBoot、
+        // WebView2 初始化、页面加载），测出来的才是用户看到的东西。
+        internal bool SelfCheckMode = false;
+        private volatile bool _navDone = false;
+        private bool _selfCheckStarted = false;
+
+        internal bool NavDone { get { return _navDone; } }
+
+        // 页面就绪后延迟一拍再跑（splash 淡出 280ms + buildSlots 在 DOMContentLoaded）
+        private void StartSelfCheck()
+        {
+            if (_selfCheckStarted) return;
+            _selfCheckStarted = true;
+            System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
+            t.Interval = 800;
+            t.Tick += delegate
+            {
+                try { t.Stop(); t.Dispose(); } catch { }
+                try { GuiSelfCheck.RunOn(this); } catch (Exception ex) { GuiEntry.Dump("selfcheck", ex); }
+            };
+            t.Start();
+        }
+
+        // 把一段 JS 丢给页面执行，结果回 UI 线程。
+        // 自检专用：不参与任何业务逻辑，失败一律回空串而不是抛。
+        internal void EvalForSelfCheck(string js, Action<string> done)
+        {
+            try
+            {
+                if (_web == null || _web.CoreWebView2 == null) { done(""); return; }
+                System.Threading.Tasks.Task<string> task =
+                    _web.CoreWebView2.ExecuteScriptAsync(js);
+                task.ContinueWith(delegate(System.Threading.Tasks.Task<string> x)
+                {
+                    string r = "";
+                    try { r = x.Result; }
+                    catch (Exception ex) { GuiEntry.Dump("selfcheck eval", ex); }
+                    // 注意：不能写 (done)(r) —— C# 会把 (done) 当成类型做强制转换。
+                    try { done(r); }
+                    catch { }
+                }, System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
+            }
+            catch (Exception ex)
+            {
+                GuiEntry.Dump("selfcheck eval", ex);
+                try { done(""); } catch { }
+            }
+        }
+
         internal GuiWeb(string uiPath)
         {
             _uiPath = uiPath;
@@ -96,6 +149,13 @@ namespace AdbLogExport.Gui
         {
             try
             {
+                // 自检模式：窗口移到屏幕外。WebView2 需要真实 HWND 与消息泵才能
+                // 完成初始化，所以不能"不显示"；但也不能抢用户焦点。
+                if (SelfCheckMode)
+                {
+                    Location = new System.Drawing.Point(-8000, 0);
+                    return;
+                }
                 Screen primary = Screen.PrimaryScreen;
                 if (primary == null) return;
                 System.Drawing.Rectangle wa = primary.WorkingArea;
@@ -748,7 +808,9 @@ namespace AdbLogExport.Gui
             // 此时可安全撤掉原生遮罩，交给网页端的 splash 继续过渡。
             _web.NavigationCompleted += (s, e) =>
             {
+                _navDone = true;
                 FinishInvoke(RemoveSplashOverlay);
+                if (SelfCheckMode) FinishInvoke(StartSelfCheck);
             };
             // 【性能优化】原来 `CreateAsync(...).Result` 同步阻塞主线程，窗口白屏。
             // 改为纯异步:主线程立刻返回显示窗口+加载遮罩,运行时就绪后再加载页面。
