@@ -4151,17 +4151,25 @@ function bindLogScroll(){
 var MAX_LOG_LINES = 5000;
 function trimLog(box){
   if(box.childElementCount <= MAX_LOG_LINES + 1) return;
-  if(!box.querySelector('[data-trim="1"]')){
-    var note = document.createElement('div');
-    note.className = 'ln c-faint';
-    note.setAttribute('data-trim','1');
-    note.textContent = '（日志过长，已丢弃最早的部分）';
-    box.insertBefore(note, box.firstChild);
+  // O4（2026-11-17）：原来每追加一行就 querySelector('[data-trim="1"]') 一次，
+  // 属性选择器在 5000 节点的子树里没有索引 —— 满量后每行一次全量子树扫描，
+  // 是输出链路唯一的真实热点。这里把提示节点和它的下一条缓存到 box 上，
+  // 之后 O(1) 取到"该删的那一行"。
+  if(!box.__trimNote){
+    var note = box.querySelector('[data-trim="1"]');
+    if(!note){
+      note = document.createElement('div');
+      note.className = 'ln c-faint';
+      note.setAttribute('data-trim','1');
+      note.textContent = '（日志过长，已丢弃最早的部分）';
+      box.insertBefore(note, box.firstChild);
+    }
+    box.__trimNote = note;
   }
+  var noteEl = box.__trimNote;
+  if(noteEl.parentNode !== box){ box.__trimNote = null; return; }
   while(box.childElementCount > MAX_LOG_LINES + 1){
-    var f = box.firstElementChild;
-    if(!f) break;
-    if(f.getAttribute('data-trim') === '1') f = f.nextElementSibling;
+    var f = noteEl.nextElementSibling;   // 提示节点后面那条 = 最老的真实输出
     if(!f) break;
     box.removeChild(f);
   }
@@ -4629,7 +4637,12 @@ function run(slot){
   var inp = document.getElementById('cmd-input-' + slot);
   if(!inp) return;
   var cmd = inp.value.trim();
-  if(!cmd) return;
+  if(!cmd){
+    // O2（2026-11-17）：空输入直接 return 是"点了没反应"的典型。
+    // 只在用户主动回车时提示一次，且不落历史、不动 busy。
+    toast('请输入命令后再回车（输入 :h 看命令索引）');
+    return;
+  }
   // 需求1：每槽位独立互斥（并行多命令），只拦当前输入框自己的 busy
   if(_busy[slot]){
     toast('这个输入框的上一条指令还在执行，请稍候');
@@ -5954,6 +5967,9 @@ document.addEventListener('keydown', function(e){
   if((e.ctrlKey || e.metaKey) && k === '2'){ e.preventDefault(); switchTab('cmd'); return; }
   if((e.ctrlKey || e.metaKey) && k === '3'){ e.preventDefault(); switchTab('file'); return; }
   if((e.ctrlKey || e.metaKey) && k === '4'){ e.preventDefault(); switchTab('cast'); return; }
+  // O3（2026-11-17）：6 个页签补齐 Ctrl+5/6，与 1~4 对齐（原来 UI/文本页没有快捷键）
+  if((e.ctrlKey || e.metaKey) && k === '5'){ e.preventDefault(); switchTab('ui'); return; }
+  if((e.ctrlKey || e.metaKey) && k === '6'){ e.preventDefault(); switchTab('text'); return; }
   if(k === 'Escape'){
     var s = document.getElementById('quick-search');
     if(s && document.activeElement === s && s.value){ e.preventDefault(); clearQuickSearch(); }
@@ -6952,13 +6968,15 @@ var _castTapLast = [0,0,0,0,0,0];
 // I5：黑边提示的节流时间戳（每槽一份）
 var _castTapEdgeNote = [0,0,0,0,0,0];
 function castTap(i, ev){
-  if (!_cast.on[i]) return;
+  // O5（2026-11-17）：三种"点不动"的原因分流提示，不再统一静默 return。
+  // 原来前两种被同一个 return 吞掉，用户分不清是没开、掉线，还是点歪了。
+  if (!_cast.on[i]) { toast('这一格还没开启投屏，先点「开启」'); return; }
   if (!_online) { toast('设备未连接'); return; }
   var now = Date.now();
   if (now - (_castTapLast[i] || 0) < 25) return;
   _castTapLast[i] = now;
   var img = document.getElementById('cast-img-' + i);
-  if (!img || !img.naturalWidth) return;      // 还没收到第一帧
+  if (!img || !img.naturalWidth) { toast('还没收到这一格的画面，稍等再点'); return; }   // O5：同批分流
   var dim = _cast.dim[i];
   var devW = dim ? dim.w : img.naturalWidth;
   var devH = dim ? dim.h : img.naturalHeight;
@@ -9145,7 +9163,16 @@ function applyFont(id, silent){
     else { id = 'system'; f = fontById('system'); }
   }
   var r = document.documentElement;
-  r.style.setProperty('--font-ui', f.ui);
+  /* 2026-11-17 bugfix（字体切换不生效 / 反而坏掉）：
+     ① 只提供等宽的字体条目（consolas / roboto-mono 等）ui 为空。
+        原写法 `setProperty('--font-ui', undefined)` 会把自定义属性写成字面量
+        "undefined" —— 于是 var(--font-ui) 整条 font-family 变成非法值，
+        全站字体直接掉回浏览器默认（实测：切到 consolas 后 body 字族 = "undefined"）。
+        现在：ui 为空时**不动** --font-ui，只换等宽令牌。
+     ② 原实现无论装没装都 toast「字体已切换」。选了标「未安装」的字体时，
+        实际回退到微软雅黑，用户看到的是"切了没反应"。现在应用后做一次
+        canvas 测宽自检：目标字族与回退字族宽度一致 = 没生效，如实告知。 */
+  if (f.ui) r.style.setProperty('--font-ui', f.ui);
   if (f.mono) r.style.setProperty('--font-mono', f.mono);
   else r.style.removeProperty('--font-mono');
   r.setAttribute('data-font', id);
@@ -9155,7 +9182,36 @@ function applyFont(id, silent){
   var pv = $v12('set-font-preview');
   if (pv) pv.textContent = '车载语音测试 · Adb_Tool 12345 ABCdef';
   _prefs.font = id;
-  if (!silent) { prefsSave(); toast('字体已切换：' + (id === 'custom' ? _prefs.custom : f.name), 'ok'); }
+
+  if (!silent) {
+    if (fontReallyApplied(f.ui)) {
+      prefsSave();
+      toast('字体已切换：' + (id === 'custom' ? _prefs.custom : f.name), 'ok');
+    } else {
+      // 没生效：不写偏好，避免下次启动又"看起来没换成"
+      toast('「' + (id === 'custom' ? _prefs.custom : (f.name || id))
+            + '」在本机不可用（未安装或与回退字体同形），界面仍用系统字体', 'err');
+    }
+  }
+}
+
+/* 字体是否真的生效：拿一段中英混排，分别用「目标字族+回退」与「纯回退」量宽。
+   宽度一致说明目标字族没参与渲染（没装 / 与回退同形），此时保持原样不写偏好。
+   measure 为空或异常时一律当"生效"，不拦用户。 */
+function fontReallyApplied(uiStack){
+  if (!uiStack) return true;
+  try {
+    if (!window.__fontMeasure) window.__fontMeasure = document.createElement('canvas').getContext('2d');
+    var m = window.__fontMeasure;
+    if (!m) return true;
+    var PROBE = 'mmmmmmlliWWW车载语音测试0123ABC';
+    m.font = '64px monospace';
+    var w0 = m.measureText(PROBE).width;
+    m.font = '64px ' + uiStack;
+    var w1 = m.measureText(PROBE).width;
+    // 目标字族若生效，宽度与 monospace 一般不同；完全相同则视为未生效
+    return Math.abs(w1 - w0) > 0.5;
+  } catch (e) { return true; }
 }
 
 function setFont(id){
@@ -9359,6 +9415,7 @@ var HELP_SECS = [
     '<h3>快捷键</h3>' +
     '<table><tr><th>快捷键</th><th>作用</th></tr>' +
     '<tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>指令页搜索</td></tr>' +
+    '<tr><td><kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>6</kbd></td><td>切页签：指令 / 终端 / 文件 / 投屏 / UI / 文本</td></tr>' +
     '<tr><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td><td>终端清屏</td></tr>' +
     '<tr><td><kbd>↑</kbd>/<kbd>↓</kbd></td><td>终端历史命令</td></tr>' +
     '<tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>文本页新建</td></tr>' +

@@ -77,15 +77,15 @@ JS = r"""
       }catch(e){ err=e.message; }
       ok('switchTab 4 层包装链连切 36 次不抛异常', err===null, err);
 
-      /* ---------- C. Ctrl+1~4 ---------- */
-      var map={'1':'quick','2':'cmd','3':'file','4':'cast'};
+      /* ---------- C. Ctrl+1~6 ---------- */
+      var map={'1':'quick','2':'cmd','3':'file','4':'cast','5':'ui','6':'text'};
       var wrong=[];
       for(var key in map){
         var ev=new KeyboardEvent('keydown',{key:key,ctrlKey:true,bubbles:true,cancelable:true});
         document.dispatchEvent(ev);
         if(typeof _tab!=='undefined' && _tab!==map[key]) wrong.push('Ctrl+'+key+'->'+_tab);
       }
-      ok('Ctrl+1~4 映射到 指令/终端/文件/投屏', wrong.length===0, wrong.join(' ; '));
+      ok('Ctrl+1~6 映射到六个页签', wrong.length===0, wrong.join(' ; '));
 
       /* ---------- D. 投屏轮询启停 ---------- */
       switchTab('cast');
@@ -128,6 +128,56 @@ JS = r"""
          /castTapEdgeNote\[i\]/.test(document.documentElement.innerHTML) ||
          /_castTapEdgeNote/.test(window.castTap ? window.castTap.toString() : ''),
          '未找到接线');
+
+      /* ---------- G. 字体切换（bug1 回归） ---------- */
+      var sel2 = document.getElementById('set-font');
+      var vf0 = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim();
+      var monoId = null;
+      for (var fi=0; fi<FONT_LIST.length; fi++)
+        if (FONT_LIST[fi].mono && !FONT_LIST[fi].ui) { monoId = FONT_LIST[fi].id; break; }
+      if (monoId && sel2){
+        sel2.value = monoId;
+        sel2.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+      var vf1 = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim();
+      ok('切「只提供等宽」的字体不写坏 --font-ui',
+         vf1 !== 'undefined' && vf1 !== '', (monoId||'none')+' => ["'+vf1.slice(0,40)+'"]');
+      ok('切等宽类字体不改动界面字族',
+         vf1 === vf0, 'before["'+vf0.slice(0,30)+'"] after["'+vf1.slice(0,30)+'"]');
+
+      // 正常字体仍应生效（用内置 Inter，必然存在）
+      if (sel2){
+        sel2.value = 'inter';
+        sel2.dispatchEvent(new Event('change', {bubbles:true}));
+      }
+      var vf2 = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim();
+      ok('切到内置 Inter 能改 --font-ui', /Inter/i.test(vf2), vf2.slice(0,40));
+      ok('字体生效判定函数可用', typeof fontReallyApplied === 'function', typeof fontReallyApplied);
+
+      /* ---------- H. 日志裁剪（O4 回归） ---------- */
+      var box = document.getElementById('logbox-0');
+      var built = 0;
+      if (box){
+        var limit = (typeof MAX_LOG_LINES === 'number') ? MAX_LOG_LINES : 5000;
+        var total = limit + 60;
+        for (var li=0; li<total; li++){
+          var dv = document.createElement('div');
+          dv.className = 'ln'; dv.textContent = 'L' + li;
+          box.appendChild(dv);
+          trimLog(box);          // 每行都裁一次 = 真实路径
+          built++;
+        }
+        ok('日志行数被裁到上限附近', box.childElementCount <= limit + 2,
+           'children=' + box.childElementCount + ' limit=' + limit);
+        var firstEl = box.firstElementChild;
+        ok('裁剪提示固定在首位且只一条',
+           firstEl && firstEl.getAttribute('data-trim') === '1' &&
+           box.querySelectorAll('[data-trim="1"]').length === 1,
+           firstEl ? firstEl.className : 'null');
+        ok('最新一行没被误删', box.lastElementChild && box.lastElementChild.textContent === 'L' + (built-1),
+           box.lastElementChild ? box.lastElementChild.textContent : 'null');
+        ok('提示节点已缓存到 box 上（O4）', !!box.__trimNote, box.__trimNote ? 'cached' : 'not cached');
+      }
 
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
