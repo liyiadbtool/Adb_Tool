@@ -4286,11 +4286,38 @@ namespace AdbLogExport.Gui
             // 2026-11-15 闪退修复：关窗时显式停掉所有投屏采集线程与 adb 子进程，
             // 否则 CastLoop 可能赶在进程退出前又拉起一个 screencap（僵尸 adb 堆积）。
             try { App.CastStopAll(); } catch { }
+            // 2026-11-17 O7：这里原来调 _worker[i].Abort()，换成协作式取消。
+            //
+            // 为什么必须换：ThreadAbortException 会被注入到**任意指令点**，
+            // 可能正好在持锁、写文件、或 adb 的同步读中间 —— 现场表现是
+            // 偶发 gui_error.log 里出现半截堆栈、或 ini 被写坏半行。
+            // 而且 Abort 在 .NET Framework 上并不保证线程真的退出，
+            // 真要停得住还得靠 Join / 看门狗，等于多背一层不确定性。
+            //
+            // 现在的顺序（和 StopWorker 完全一致，不另造机制）：
+            //   ① 置本槽停止标记 + 杀掉本槽 adb 子进程（阻塞在 ReadLine 上的
+            //      线程会立刻拿到 EOF 返回，这是能真正"叫醒"它的东西）
+            //   ② 置 GUISTOP（纯 sleep 轮询的长等待命令靠它退出）
+            //   ③ 给全部 worker 一个总预算 1.2s 体面退出（Join）
+            //   ④ 超预算的不再硬杀 —— 它们都是 IsBackground=true，
+            //      进程退出时随 CLR 一起收掉；winclose 路径另有 2.5s 看门狗兜底
             try
             {
                 for (int i = 0; i < MAX_SLOT; i++)
                 {
-                    if (_worker[i] != null && _worker[i].IsAlive) _worker[i].Abort();
+                    _stopRequested[i] = true;
+                    try { App.KillRunning(i); } catch { }
+                }
+                App.GUISTOP = true;
+
+                int budget = 1200;
+                for (int i = 0; i < MAX_SLOT && budget > 0; i++)
+                {
+                    Thread th = _worker[i];
+                    if (th == null || !th.IsAlive) continue;
+                    long t0 = Environment.TickCount;
+                    try { th.Join(budget); } catch { }
+                    budget -= (int)(Environment.TickCount - t0);
                 }
             }
             catch { }

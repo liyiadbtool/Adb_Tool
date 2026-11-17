@@ -4316,42 +4316,83 @@ function appendOut(msg){
    scrollTop，等于每行强制一次同步重排（200 行 / 50ms 时主线程基本被排版吃掉）。 */
 function appendLines(items){
   if(!items || !items.length) return;
-  var boxes = null, seen = null, outEl = null, apkEl = null;
-  for(var i=0;i<items.length;i++){
+
+  /* 2026-11-17 CPU 优化：按槽位分组，每槽一次 DocumentFragment 插入。
+     改前：一批 500 行 → 500 次 createElement + 500 次 appendChild + 500 次 trimLog，
+     每次 appendChild 都让该 box 的布局失效，trimLog 还要在 5000 节点里找提示节点。
+     logcat 满速时这条路径会把 UI 线程打满（现场：CPU 99.7%，风扇拉满）。
+     改后：
+       · 一个槽位一批 → 1 次 fragment 插入、1 次 trimLog、1 次贴底/滚动
+       · 中间不读任何布局属性（避免强制同步重排）
+       · 顺序与逐行插入完全一致（数组顺序即文档顺序） */
+  var groups = null;       // slot -> [msg...]
+  var outItems = null;     // src 1/2：指令页反馈区 / 语音
+  var apkItems = null;     // src 3：APK 管理结果区
+
+  for (var i = 0; i < items.length; i++){
     var it = items[i];
-    if(it.src === 1 || it.src === 2){
-      outEl = appendOutItem(it) || outEl;
-    }else if(it.src === 3){
-      // APK 面板：量小，逐条塞进当前这一段，循环结束后只滚一次
-      var ab = document.getElementById('apk-out');
-      if(ab){
-        if(!apkEl) apkEl = ab;
-        if(!_apkCurBody) apkOutSection('输出');
-        if(_apkCurBody){
-          var ad = document.createElement('div');
-          ad.className = (it.level === 1) ? 'o-ok' : (it.level === 2 ? 'o-err' : (it.level === 4 ? 'o-faint' : 'o-dim'));
-          ad.textContent = it.text;
-          _apkCurBody.appendChild(ad);
-        }
-      }
-    }else{
-      var b = appendLogItem(it);
-      if(b){
-        if(!boxes){ boxes = []; seen = {}; }
-        if(!seen[b.id]){ seen[b.id] = 1; boxes.push(b); }
-      }
+    if (it.src === 1 || it.src === 2){
+      if (!outItems) outItems = [];
+      outItems.push(it);
+    } else if (it.src === 3){
+      if (!apkItems) apkItems = [];
+      apkItems.push(it);
+    } else {
+      var s = it.slot || 0;
+      if (!groups) groups = {};
+      if (!groups[s]) groups[s] = [];
+      groups[s].push(it);
     }
   }
-  if(apkEl) apkEl.scrollTop = apkEl.scrollHeight;
-  if(boxes){
-    for(var j=0;j<boxes.length;j++){
-      var sn = parseInt(boxes[j].id.replace('logbox-', ''), 10);
-      flushLogBox(boxes[j], isNaN(sn) ? 0 : sn);
+
+  // ---- 终端页：批量插入 ----
+  if (groups){
+    for (var key in groups){
+      if (!groups.hasOwnProperty(key)) continue;
+      var box = document.getElementById('logbox-' + key);
+      if (!box) continue;
+      hideEmpty(key);
+      if (box.__stick === undefined) box.__stick = nearBottom(box);
+
+      var arr = groups[key];
+      var frag = document.createDocumentFragment();
+      for (var k = 0; k < arr.length; k++){
+        var d = document.createElement('div');
+        d.className = 'ln ' + (levelClass[arr[k].level] || '');
+        d.textContent = arr[k].text;
+        frag.appendChild(d);
+      }
+      box.appendChild(frag);              // 一次插入，一次布局
+      trimLog(box);                        // 一次裁剪（O4 后是 O(1)/行）
+      flushLogBox(box, parseInt(key, 10) || 0);
     }
   }
-  if(outEl){
-    if(outEl.__stick) outEl.scrollTop = outEl.scrollHeight;
-    outEl.__stick = undefined;
+
+  // ---- 指令页反馈区 / 语音：量小，沿用逐条（内部有自己的一段容器）----
+  if (outItems){
+    var outEl = null;
+    for (var o = 0; o < outItems.length; o++) outEl = appendOutItem(outItems[o]) || outEl;
+    if (outEl){
+      if (outEl.__stick) outEl.scrollTop = outEl.scrollHeight;
+      outEl.__stick = undefined;
+    }
+  }
+
+  // ---- APK 管理结果区：量小，循环结束后只滚一次 ----
+  if (apkItems){
+    var ab = document.getElementById('apk-out');
+    if (ab){
+      for (var q = 0; q < apkItems.length; q++){
+        var ai = apkItems[q];
+        if (!_apkCurBody) apkOutSection('输出');
+        if (!_apkCurBody) break;
+        var ad = document.createElement('div');
+        ad.className = (ai.level === 1) ? 'o-ok' : (ai.level === 2 ? 'o-err' : (ai.level === 4 ? 'o-faint' : 'o-dim'));
+        ad.textContent = ai.text;
+        _apkCurBody.appendChild(ad);
+      }
+      ab.scrollTop = ab.scrollHeight;
+    }
   }
 }
 

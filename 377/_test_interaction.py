@@ -192,6 +192,42 @@ JS = r"""
       ok('最大化时描边变方角（不残留圆弧）', radMax === 0, radMax + 'px');
       document.documentElement.setAttribute('data-winmax', '0');
 
+      /* ---------- J. 批量渲染（CPU 优化回归） ---------- */
+      // 注意：默认只建了 1 个槽（logbox-0）。要测多槽分流先 addSlot()。
+      var box2 = document.getElementById('logbox-0');
+      if (box2){
+        box2.innerHTML = '';
+        box2.__trimNote = null;
+        var bulk = [];
+        for (var bi = 0; bi < 500; bi++)
+          bulk.push({ level: 0, src: 0, slot: 0, text: 'B' + bi });
+        // 注意：不要在这里断言耗时。headless 用了 --virtual-time-budget，
+        // performance.now() 走的是虚拟时钟（实测新旧两种写法都返回 0.0ms），
+        // 测出来的数字没有意义，只会变成假绿灯。这里只验"结果对不对"。
+        appendLines(bulk);
+        ok('批量插入行数正确', box2.childElementCount === 500, box2.childElementCount);
+        ok('批量插入顺序正确（首尾）',
+           box2.firstElementChild && box2.lastElementChild &&
+           box2.firstElementChild.textContent === 'B0' &&
+           box2.lastElementChild.textContent === 'B499',
+           (box2.firstElementChild ? box2.firstElementChild.textContent : 'null') + ' ~ ' +
+           (box2.lastElementChild ? box2.lastElementChild.textContent : 'null'));
+
+        if (!document.getElementById('logbox-1') && typeof addSlot === 'function') { try { addSlot(); } catch(e){} }
+        var box3 = document.getElementById('logbox-1');
+        if (box3){
+          box2.innerHTML = ''; box2.__trimNote = null;
+          box3.innerHTML = ''; box3.__trimNote = null;
+          appendLines([{level:0,src:0,slot:1,text:'S2'},{level:0,src:0,slot:0,text:'S1'}]);
+          ok('多槽批量分流正确',
+             box3.textContent.indexOf('S2') >= 0 && box2.textContent.indexOf('S1') >= 0 &&
+             box3.textContent.indexOf('S1') < 0,
+             'slot1=' + (box3.textContent || '').slice(0, 12) + ' slot0=' + (box2.textContent || '').slice(0, 12));
+          box3.innerHTML = ''; box3.__trimNote = null;
+        }
+        box2.innerHTML = ''; box2.__trimNote = null;
+      }
+
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
   }, 500);
@@ -208,15 +244,38 @@ def main():
     # （2026-11-16 实测踩过：verify_all 从 1.5 分钟变成 6 分钟以上）
     prof = os.path.join(tempfile.gettempdir(), "edgeprof_interact_%d" % os.getpid())
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--no-sandbox",
+           # 关掉启动期的后台活动：每次跑都是全新 profile，这些会让冷启动多花好几秒
+           "--no-first-run", "--no-default-browser-check",
+           "--disable-background-networking", "--disable-sync",
+           "--disable-extensions", "--disable-component-update",
            "--window-size=1280,900",
            "--virtual-time-budget=9000", "--dump-dom",
            "--user-data-dir=" + prof,
            "file:///" + OUT.replace("\\", "/")]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=180)
-    m = re.search(r'<pre id="RESULT">(.*?)</pre>', r.stdout or "", re.S)
+
+    # 输出写临时文件，**不要用 capture_output**：
+    # Edge 会把自己的 stdout 句柄留给子进程（crashpad 等），
+    # 用 PIPE 时 subprocess 会一直等 EOF —— 表现为脚本永久挂住（实测踩过）。
+    tmpout = os.path.join(tempfile.gettempdir(), "edgeout_interact_%d.html" % os.getpid())
+    with open(tmpout, "w", encoding="utf-8", errors="replace") as fh:
+        try:
+            subprocess.run(cmd, stdout=fh, stderr=subprocess.DEVNULL, timeout=120)
+        except subprocess.TimeoutExpired:
+            print("Edge 超时未退出（120s）")
+            return 1
+    dom = ""
+    try:
+        with io.open(tmpout, "r", encoding="utf-8", errors="replace") as fh:
+            dom = fh.read()
+    finally:
+        try:
+            os.remove(tmpout)
+        except OSError:
+            pass
+
+    m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:
-        print("没拿到 RESULT，DOM 长度", len(r.stdout or ""))
+        print("没拿到 RESULT，DOM 长度", len(dom))
         return 1
     lines = [l for l in H.unescape(m.group(1)).splitlines() if l.strip()]
     fails = [l for l in lines if l.startswith("FAIL")]

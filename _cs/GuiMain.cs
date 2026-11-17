@@ -959,9 +959,16 @@ namespace AdbLogExport.Gui
             }
             catch { }
 
+            // 2026-11-17 O7：与 GuiWeb 同步，不再用 Thread.Abort（见 GuiWeb.OnFormClosing 的说明）。
+            // 这个窗体自 A12 起已不是运行时界面（真正在跑的是 GuiWeb + WebView2），
+            // 但保留同样的收尾方式，避免以后有人复用这个类又把 Abort 带回来。
             try
             {
-                if (_worker != null && _worker.IsAlive) _worker.Abort();
+                if (_worker != null && _worker.IsAlive)
+                {
+                    try { App.GUISTOP = true; App.KillRunning(0); } catch { }
+                    try { _worker.Join(1200); } catch { }
+                }
             }
             catch { }
 

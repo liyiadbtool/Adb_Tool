@@ -25,6 +25,11 @@ adb_log_gui/ffmpeg.exe
 logs/
 gui_error.log
 
+# ---- 本机运行态：命令历史（2026-11-17 取消跟踪） ----
+# 每次跑 GUI/--exec/自检都会追加内容，入库只会天天 dirty，且历史属于个人操作痕迹。
+.adb_tool_history
+adb_log_gui/.adb_tool_history
+
 # ---- 飞书交付临时副本（每次发版从成品目录拷过来，不是源文件）----
 _feishu/
 
