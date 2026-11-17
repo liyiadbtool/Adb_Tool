@@ -1690,6 +1690,18 @@ namespace AdbLogExport.Gui
                         if (App.PREFS != null && App.PREFS.Length > 0)
                             _web.CoreWebView2.PostWebMessageAsJson(
                                 "{\"kind\":\"prefs\",\"data\":" + Json(App.PREFS) + "}");
+                        // 2026-11-17：版本水印。现场出现过"改了却看不到变化"，
+                        // 根因是同机器上跑着别的目录里的旧副本（另一个 exe + 另一份 ui.html）。
+                        // 把「程序时间 / 界面时间 / 运行目录」推到设置面板的「关于」里，
+                        // 一眼就能判断当前窗口是哪一份，不用再猜。
+                        try
+                        {
+                            _web.CoreWebView2.PostWebMessageAsJson(
+                                "{\"kind\":\"build\",\"exe\":" + Json(StampOf(Application.ExecutablePath))
+                                + ",\"ui\":" + Json(StampOf(_uiPath))
+                                + ",\"dir\":" + Json(AppDomain.CurrentDomain.BaseDirectory) + "}");
+                        }
+                        catch { }
                     }
                     catch { }
                     break;
@@ -2402,9 +2414,21 @@ namespace AdbLogExport.Gui
         //   页面是内嵌的，没有"打开/另存为"的系统对话框；而且编码（GBK）和
         //   换行符（CRLF/LF）必须原样保留 —— 用户拿它改 ini / 脚本，编码一乱
         //   就等于把这个文件改坏了。
-        private static string B64(string s)
+        // 版本水印用：把文件时间压成 "MM-dd HH:mm"。
+        // 用文件时间而不是编译期常量 —— 现场要判断的是"这个 exe / 这份 ui.html
+        // 到底是哪一次产出的"，文件时间最直观，也不需要改两个 bat 去传宏。
+        private static string StampOf(string path)
         {
-            try { return Convert.ToBase64String(Encoding.UTF8.GetBytes(s == null ? "" : s)); }
+            try
+            {
+                if (string.IsNullOrEmpty(path) || !File.Exists(path)) return "";
+                return File.GetLastWriteTime(path).ToString("MM-dd HH:mm");
+            }
+            catch { return ""; }
+        }
+
+        private static string B64(string s)
+        {            try { return Convert.ToBase64String(Encoding.UTF8.GetBytes(s == null ? "" : s)); }
             catch { return ""; }
         }
 

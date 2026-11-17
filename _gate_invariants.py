@@ -224,6 +224,19 @@ A15_ADDS = {
     ]),
 }
 
+# A27（2026-11-17）：版本水印。
+#   build        C# 在 themeget 时推出的新消息：「程序时间 / 界面时间 / 运行目录」。
+#                为什么要它：现场出现过"改了却看不到变化"，根因是同机器上还开着
+#                别的目录里的旧副本（另一个 exe + 另一份 ui.html）。有了这条，
+#                「我在看哪一份」不用再靠猜，也不用问开发者。
+#   build-stamp  设置 → 关于 里显示这三项的那一行（原先是写死的 "v8.3 · 2026-11-15"，
+#                时间永远停在过去，反而误导）。
+A27_ADDS = {
+    "kinds": set(["build"]),
+    "onclicks": set(),
+    "ids": set(["build-stamp"]),
+}
+
 labels = {
     "kinds": "onMessage 的 kind（基线 %d）" % len(base["kinds"]),
     "onclicks": "onclick 绑定函数（基线 %d）" % len(base["onclicks"]),
@@ -239,7 +252,7 @@ for k in ("kinds", "onclicks", "ids"):
              if x not in A9_ADDS[k] and x not in A12_ADDS[k]
              and x not in A13_ADDS[k] and x not in A14_ADDS[k]
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
-             and x not in A17_ADDS[k]]
+             and x not in A17_ADDS[k] and x not in A27_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k] and x not in A18_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,

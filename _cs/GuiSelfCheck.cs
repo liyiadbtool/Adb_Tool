@@ -86,6 +86,8 @@ namespace AdbLogExport.Gui
   P('inputW', inp?Math.round(inp.getBoundingClientRect().width):0);
   switchTab('quick');
   P('winRadius', parseFloat(getComputedStyle(document.body,'::after').borderTopLeftRadius)||0);
+  var bs=document.getElementById('build-stamp');
+  P('buildStamp', bs ? (bs.textContent||'') : '');
   return R.join('|');
 })()
 ";
@@ -161,6 +163,14 @@ namespace AdbLogExport.Gui
                   fontUi.Length > 0 && fontUi != "undefined", "fontUi=" + Trunc(fontUi, 40));
             Check("窗口内描边圆角 = 8px（与原生窗口一致）",
                   Math.Abs(radius - 8) < 0.6, "radius=" + radius.ToString("0.##"));
+
+            // 版本水印：C# 推 build 消息 → 前端渲染到「关于」。这条链路断了，
+            // 现场就无法判断"当前窗口是哪份副本"，所以纳入自检。
+            string stamp = Get(m, "buildStamp");
+            Check("版本水印已显示（程序时间 / 界面时间）",
+                  stamp.IndexOf("程序", StringComparison.Ordinal) >= 0 &&
+                  stamp.IndexOf("界面", StringComparison.Ordinal) >= 0,
+                  Trunc(stamp, 60));
 
             Finish(f);
         }

@@ -3967,7 +3967,10 @@ body::after{
       <section class="set-sec">
         <div class="set-h">关于</div>
         <div class="set-about">adb_Tool</div>
-        <div class="set-about dim">v8.3 · 2026-11-15 · 单机本地运行，不上传任何数据</div>
+        <!-- 版本水印（2026-11-17）：由 C# 在 themeget 时推 build 消息填进来。
+             现场出现过"改了却看不到变化"，根因是同机器上还开着别的目录里的旧副本。
+             这里直接显示「程序时间 / 界面时间 / 运行目录」，一眼分辨。 -->
+        <div class="set-about dim" id="build-stamp">v8.3 · 单机本地运行，不上传任何数据</div>
       </section>
     </div>
     <div class="set-foot">
@@ -4058,6 +4061,7 @@ function onMessage(ev){
     case 'scrcpystat': onScrcpyStat(msg); break;
     case 'scrcpyres': onScrcpyRes(msg); break;
     case 'theme': applyTheme(msg.name || 'dark'); break;
+    case 'build': applyBuildStamp(msg); break;   // 版本水印（程序/界面时间 + 运行目录）
     case 'customcmds': customLoadDefs(msg.data || ''); break;
     case 'accent': applyAccent(msg.name || 'blue'); break;
   }
@@ -4617,6 +4621,29 @@ function applyAccent(name){
 function setAccent(name){
   applyAccent(name);
   try{ post('accent', name); }catch(e){}
+}
+
+/* 版本水印（2026-11-17）：设置 → 关于 里显示
+     「程序 11-17 14:10 · 界面 11-17 13:45 · 目录 …\adb_log_gui」
+   为什么需要：同机器上可能同时开着别的目录里的旧副本（另一个 exe + 另一份 ui.html），
+   用户改了却看不到变化时，第一件事应该是确认"我在看哪一份"，而不是怀疑代码。
+   目录只显示最后两级，避免长路径把这一行挤爆。 */
+function applyBuildStamp(m){
+  var el = document.getElementById('build-stamp');
+  if (!el) return;
+  var parts = [];
+  if (m.exe) parts.push('程序 ' + m.exe);
+  if (m.ui) parts.push('界面 ' + m.ui);
+  var dir = m.dir || '';
+  if (dir) {
+    dir = dir.replace(/[\\/]+$/, '');
+    var seg = dir.split(/[\\/]/);
+    if (seg.length > 2) dir = '…\\' + seg[seg.length - 2] + '\\' + seg[seg.length - 1];
+    parts.push('目录 ' + dir);
+  }
+  el.textContent = 'v8.3 · ' + parts.join(' · ');
+  el.title = '程序：' + (m.exe || '?') + '\n界面：' + (m.ui || '?') + '\n运行目录：' + (m.dir || '?')
+           + '\n\n如果「界面」时间早于你最后一次改 ui.html，说明当前窗口跑的是旧副本，关掉重开即可。';
 }
 function accentPopClick(ev){
   ev.stopPropagation();
