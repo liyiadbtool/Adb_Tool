@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 126,
- "totalBytes": 3254735,
+ "totalBytes": 3258371,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -151,8 +151,8 @@
   },
   {
    "path": "377/_test_interaction.py",
-   "size": 15602,
-   "sha256": "7b38c1a51247b88e71982ef7d920990688ac2d0bd71872040f9ab2c41531dbf0"
+   "size": 18837,
+   "sha256": "22e32bcfe83486abfe39730f8312a28a8d628c3c155b24a1ebdc16495d319096"
   },
   {
    "path": "377/_test_no_window.py",
@@ -336,8 +336,8 @@
   },
   {
    "path": "_cs/GuiSelfCheck.cs",
-   "size": 12046,
-   "sha256": "a05ce0978b39907effae3cc5beb066b1d6ce1dde8b23bafff2c23f2f5db82b5d"
+   "size": 13374,
+   "sha256": "33a309a78412b32648f8166e9bc51e1cd8ef7a6bef5b89bea6c4618c1c2603e7"
   },
   {
    "path": "_cs/GuiSink.cs",
@@ -346,8 +346,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 210819,
-   "sha256": "1f828deaa5c385f16e1d792e8cfc1bf266eab588562b1c07a0e04c63218e6144"
+   "size": 209124,
+   "sha256": "a20f2d0936fef2fa46551cc8dea7be45a999c45c1c11279b4f1b05b51f4a18c8"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -501,8 +501,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 832970,
-   "sha256": "cb916921f96caecf88ab5f2a68f04c97a242b9f79144ea4762d1410dfe8f9987"
+   "size": 833552,
+   "sha256": "5ba7989ce785b38bf44a8568e74f6ec516ec772c17251bd22cc45ea2fa2cc7ab"
   },
   {
    "path": "cmds.ini",
@@ -576,8 +576,8 @@
   },
   {
    "path": "docs/代码导读.md",
-   "size": 21282,
-   "sha256": "bc85d145457fe363ee6741b22248b95de57184752bc29ba9bea210183aa2422b"
+   "size": 21468,
+   "sha256": "84f85eeb1042271292833d963f86640f33baa418dcb448da341d177b14f31be1"
   },
   {
    "path": "docs/功能清单.md",

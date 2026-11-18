@@ -142,6 +142,13 @@
       openPop(t);
       return;
     }
+    /* T2（2026-11-18）：原来这里无条件 closePop()，点浮层**条目**也会命中 ——
+       浮层挂在 body 下，向上找不到 SELECT，于是 mousedown 当场把节点移除，
+       等 click 派发时节点已脱离文档，pop 上的 click 监听收不到 →
+       选中无效、change 不派发（字体切换/预置环境值/屏号/编码全都"点了没反应"）。
+       现在：点到浮层内部就不关（让 click 正常走 choose 逻辑），
+       只有点到浮层外面才关。 */
+    if (pop && pop.contains(ev.target)) return;
     closePop();
   }, true);
 

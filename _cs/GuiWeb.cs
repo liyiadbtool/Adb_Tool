@@ -1679,7 +1679,8 @@ namespace AdbLogExport.Gui
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
-                    SaveIniKey("prefs", App.PREFS == null ? "" : App.PREFS);
+                    // UI 测试模式不落盘（测试页会来回改字体/字号，写了就把 ini 弄脏）
+                    if (ProbeJs == null) SaveIniKey("prefs", App.PREFS == null ? "" : App.PREFS);
                     break;
 
                 // A14：字体大小（小 0.9 / 中 1.0 / 大 1.15）。
@@ -1824,25 +1825,25 @@ namespace AdbLogExport.Gui
                 // 而不是点一下之后几秒钟毫无反应。
                 case "ffmpegstat": RunFfmpegJob(0, ""); break;
                 case "ffmpegauto": RunFfmpegJob(1, ""); break;
-                case "ffmpegset": RunFfmpegJob(2, App.JsonUnescape(GetField(json, "path"))); break;
+                case "ffmpegset": RunFfmpegJob(2, GetField(json, "path")); break;
                 case "ffmpegpick": RunFfmpegJob(3, ""); break;
 
                 // ---------------- 外挂 scrcpy（R10）----------------
                 case "scrcpystat": RunScrcpyJob(0, 0, 0); break;
                 case "scrcpyauto": RunScrcpyJob(1, 0, 0); break;
                 case "scrcpypick": RunScrcpyJob(3, 0, 0); break;
-                case "scrcpyset": RunScrcpyJob(2, 0, 0, App.JsonUnescape(GetField(json, "path"))); break;
+                case "scrcpyset": RunScrcpyJob(2, 0, 0, GetField(json, "path")); break;
                 case "scrcpyopen": RunScrcpyJob(4, GetInt(json, "id"), GetInt(json, "slot")); break;
 
                 // ---------------- 文件管理 ----------------
                 case "fslist":
-                    RunFsList(GetField(json, "side"), App.JsonUnescape(GetField(json, "path")));
+                    RunFsList(GetField(json, "side"), GetField(json, "path"));
                     break;
 
                 // 文件页搜索（左右各自独立：side=local 只搜电脑，side=dev 只搜设备）
                 case "fssearch":
-                    RunFsSearch(GetField(json, "side"), App.JsonUnescape(GetField(json, "root")),
-                                App.JsonUnescape(GetField(json, "q")), GetInt(json, "seq"));
+                    RunFsSearch(GetField(json, "side"), GetField(json, "root"),
+                                GetField(json, "q"), GetInt(json, "seq"));
                     break;
 
                 case "fssearchcancel":
@@ -1850,8 +1851,8 @@ namespace AdbLogExport.Gui
                     break;
 
                 case "fscopy":
-                    RunFsCopy(GetField(json, "dir"), App.JsonUnescape(GetField(json, "dst")),
-                              App.JsonUnescape(GetField(json, "src")));
+                    RunFsCopy(GetField(json, "dir"), GetField(json, "dst"),
+                              GetField(json, "src"));
                     break;
 
                 case "fscancel":
@@ -1861,7 +1862,7 @@ namespace AdbLogExport.Gui
 
                 case "fsop":
                     RunFsOp(GetField(json, "op"), GetField(json, "side"),
-                            App.JsonUnescape(GetField(json, "path")), App.JsonUnescape(GetField(json, "name")));
+                            GetField(json, "path"), GetField(json, "name"));
                     break;
 
                 // ---------------- 无线 adb ----------------
@@ -2572,10 +2573,10 @@ namespace AdbLogExport.Gui
 
         private void RunTextSave(string json)
         {
-            string path = App.JsonUnescape(GetField(json, "path"));
+            string path = GetField(json, "path");
             string enc = GetField(json, "enc");
             string eol = GetField(json, "eol");
-            string name = App.JsonUnescape(GetField(json, "name"));
+            string name = GetField(json, "name");
             string text = FromB64(GetField(json, "data"));
 
             if (path == null || path.Length == 0)
@@ -4011,17 +4012,73 @@ namespace AdbLogExport.Gui
             return -1;
         }
 
-        private static string GetField(string json, string name)
+        // T1（2026-11-18）：原实现是"极简扫描"——跳过开头引号后一直取到下一个
+        // `"` / `,` / `}`，**原样返回、不解转义**。后果不只是回显难看：
+        //   ① 含双引号的命令被截断：`shell "settings delete global http_proxy"`
+        //      到 C# 只剩 `shell \`（扫描器遇到 `\"` 里的 `"` 就停）；
+        //   ② UNC 路径 `\\server\share` 变成 `\\\\server\share`，Windows 不一定纠得回来；
+        //   ③ 回显（PushEcho 经 Json 再转义）与实际执行的字符串不是同一个来源。
+        // 现在按 JSON 规则扫描 + 解码：遇 `\` 跳过一个字符（这样 `\"` 不会当成结束引号），
+        // 取值后解 `\\ \" \/ \b \f \n \r \t \uXXXX`。
+        // 注意：**调用点不许再自己解一次** —— 会二次解码（`C:\temp` 变 TAB）。
+        internal static string GetField(string json, string name)
         {
+            if (json == null) return "";
             string key = "\"" + name + "\":";
             int i = json.IndexOf(key, StringComparison.Ordinal);
             if (i < 0) return "";
             i += key.Length;
-            while (i < json.Length && (json[i] == ' ' || json[i] == '"')) i++;
-            if (i >= json.Length || json[i] == ',' || json[i] == '}') return "";
-            int j = i;
-            while (j < json.Length && json[j] != '"' && json[j] != ',' && json[j] != '}') j++;
-            return json.Substring(i, j - i);
+            while (i < json.Length && (json[i] == ' ' || json[i] == '\t'
+                                       || json[i] == '\r' || json[i] == '\n')) i++;
+            if (i >= json.Length) return "";
+
+            // 非字符串值（数字 / true / false / null）：原样取到 , 或 }
+            if (json[i] != '"')
+            {
+                int k = i;
+                while (k < json.Length && json[k] != ',' && json[k] != '}') k++;
+                return json.Substring(i, k - i).Trim();
+            }
+
+            i++;                                  // 跳过开引号
+            StringBuilder sb = new StringBuilder();
+            while (i < json.Length)
+            {
+                char c = json[i];
+                if (c == '"') break;              // 未转义的引号 = 值结束
+                if (c != '\\') { sb.Append(c); i++; continue; }
+                i++;
+                if (i >= json.Length) break;
+                char e = json[i];
+                switch (e)
+                {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'u':
+                        if (i + 4 < json.Length)
+                        {
+                            try
+                            {
+                                sb.Append((char)Convert.ToInt32(json.Substring(i + 1, 4), 16));
+                            }
+                            catch { /* 非法 \u —— 保守丢弃这四个字符 */ }
+                            i += 4;
+                        }
+                        break;
+                    default:
+                        // 非法转义：按字面保留（宁可多一个反斜杠，也不要吞掉用户输入）
+                        sb.Append(e);
+                        break;
+                }
+                i++;
+            }
+            return sb.ToString();
         }
 
         private static string Json(string s)

@@ -233,6 +233,60 @@ JS = r"""
         box2.innerHTML = ''; box2.__trimNote = null;
       }
 
+      /* ---------- G. T2：自绘下拉的 mousedown 不被误关（真实鼠标序列） ----------
+         历史事故：文档级捕获阶段处理器在 mousedown 时无条件 closePop()，
+         点浮层**条目**也会命中（浮层挂 body 下，向上找不到 SELECT），节点当场被移除，
+         等 click 派发时已脱离文档 → 选中无效、change 不派发。
+         所以这里必须按 mousedown → 断言浮层仍在 → mouseup → click 的顺序打靶；
+         直接 dispatchEvent(click) 会绕过整条路径，测不出这个 bug。 */
+      var mouseEv = function(el, type){
+        var r = el.getBoundingClientRect();
+        el.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, view:window,
+          clientX: Math.round(r.left + r.width/2), clientY: Math.round(r.top + r.height/2)}));
+      };
+      var popEl = function(){ return document.querySelector('.a14-selpop'); };
+      var selFont = document.getElementById('set-font');
+      if (!selFont){
+        ok('T2 字体下拉存在', false, '找不到 #set-font');
+      } else {
+        // 先回到默认字体，保证断言是"这一次切换"的结果
+        try { setFont('system'); } catch (e) {}
+        mouseEv(selFont, 'mousedown');
+        ok('T2 mousedown 打开自绘浮层', !!popEl(), 'pop=' + !!popEl());
+
+        var item = document.querySelector('.a14-selpop [data-v="deng"]');
+        ok('T2 浮层里有「等线 DengXian」条目', !!item, item ? item.textContent : '无');
+        if (item){
+          mouseEv(item, 'mousedown');
+          ok('T2 点浮层条目时浮层不被误关（回归点）', !!popEl(), 'pop=' + !!popEl());
+          mouseEv(item, 'mouseup');
+          mouseEv(item, 'click');
+          var fv = document.getElementById('set-font').value;
+          var tok = getComputedStyle(document.documentElement).getPropertyValue('--font-ui') || '';
+          ok('T2 选中后 value 与字体令牌都生效',
+             fv === 'deng' && tok.indexOf('DengXian') >= 0, 'value=' + fv + ' token=' + tok.slice(0, 40));
+          ok('T2 选中后浮层关闭', !popEl(), 'pop=' + !!popEl());
+        }
+        // 点外部应当关闭（保护既有行为）
+        mouseEv(selFont, 'mousedown');
+        var opened = !!popEl();
+        mouseEv(document.body, 'mousedown');
+        ok('T2 点浮层外部会关闭', opened && !popEl(), 'opened=' + opened + ' closed=' + !popEl());
+        // 键盘路径不许改坏（keydown 绑在浮层元素上，它自己拿焦点，所以派发目标是 pop）
+        mouseEv(selFont, 'mousedown');
+        var pk = popEl();
+        if (!pk){
+          ok('T2 键盘 ↓+Enter 仍可选中', false, '浮层没打开');
+        } else {
+          pk.dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowDown', bubbles:true}));
+          pk.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter', bubbles:true}));
+          ok('T2 键盘 ↓+Enter 仍可选中',
+             !popEl() && !!document.getElementById('set-font').value,
+             'pop=' + !!popEl() + ' value=' + document.getElementById('set-font').value);
+        }
+        try { setFont('system'); } catch (e) {}     // 还原，避免影响后续断言
+      }
+
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
   }

@@ -172,6 +172,28 @@ namespace AdbLogExport.Gui
                   stamp.IndexOf("界面", StringComparison.Ordinal) >= 0,
                   Trunc(stamp, 60));
 
+            // ---- T1（2026-11-18）：GetField 的转义解码 ----
+            // 原本是"极简扫描、不解转义"，回显与执行是两个不同来源。这四条把
+            // U5-4 的"一个反斜杠显示成两个"和它的两个真实故障一起钉死。
+            string bs = "\\";
+            string q1 = GuiWeb.GetField(
+                "{\"c\":\"shell " + bs + "\"settings delete global http_proxy" + bs + "\"\"}", "c");
+            Check("GetField：带双引号的命令不被截断",
+                  q1 == "shell \"settings delete global http_proxy\"", Trunc(q1, 60));
+
+            string uncIn = "{\"p\":\"" + bs + bs + bs + bs + "server" + bs + bs + "share\"}";
+            string uncOut = GuiWeb.GetField(uncIn, "p");
+            Check("GetField：UNC 路径不翻倍",
+                  uncOut == bs + bs + "server" + bs + "share", Trunc(uncOut, 60));
+
+            string winOut = GuiWeb.GetField("{\"p\":\"C:" + bs + bs + "temp\"}", "p");
+            Check("GetField：C:\\temp 不被二次解码成 TAB",
+                  winOut == "C:" + bs + "temp", Trunc(winOut, 40));
+
+            Check("GetField：数字字段仍可取值",
+                  GuiWeb.GetField("{\"n\": 123 }", "n") == "123",
+                  Trunc(GuiWeb.GetField("{\"n\": 123 }", "n"), 20));
+
             Finish(f);
         }
 

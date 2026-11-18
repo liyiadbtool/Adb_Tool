@@ -136,6 +136,20 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-18 · T1 + T2，按《AI 实现规格书》批次 1-2）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **T1 GetField 转义解码** | `GuiWeb.cs` `GetField`（≈4014） | 原实现是极简扫描、不解转义：含 `"` 的命令被截断（`shell "settings delete global http_proxy"` 只剩 `shell \`）、UNC 路径翻倍、回显与执行不同源。改为按 JSON 规则扫描（遇 `\` 跳过一个字符）+ 解 `\\ \" \/ \b \f \n \r \t \uXXXX`；非字符串值仍原样取（数字/布尔不受影响） |
+| 2 | **T1 删除二次解码** | `GuiWeb.cs` 11 处 | 规格书只点了 3 处，实测共 **11 处** `App.JsonUnescape(GetField(...))`（ffmpegset/scrcpyset/fslist/fssearch/fsop 等）。已全部拆掉 —— 不拆会把 `C:\temp` 解成 TAB，制造新的"打不开" |
+| 3 | **T2 自绘下拉 mousedown 误关** | `_v14.js` 捕获阶段处理器（已重注） | 原实现无条件 `closePop()`：点浮层**条目**时也命中（浮层挂 body 下，向上找不到 SELECT），mousedown 当场移除节点 → click 派发时已脱离文档 → 选中无效、`change` 不派发。现在 `pop.contains(ev.target)` 时不关。一处修复救活字体切换 / 预设环境值 / 投屏屏号 / 编码换行四类下拉 |
+| 4 | **回归断言** | `GuiSelfCheck` 15 → **19 条**；`377/_test_interaction.py` 28 → **35 条** | T1 四条（引号不截断 / UNC 不翻倍 / `C:\temp` 不进 TAB / 数字仍可取值）；T2 七条（**真实鼠标序列** mousedown→断言浮层仍在→mouseup→click，另含点外部关闭、键盘 ↓+Enter 不回归）|
+| 5 | 测试模式不落盘 | `GuiWeb.cs` | `prefsave` 也纳入 ProbeJs 判断，避免测试页改字体时把 `adb_log_gui/adb_log_export.ini` 弄脏 |
+
+验收基线：**28 项 / 0 失败**（门禁 1m24s）；GUI 自检 19 条 0 失败；交互一致性 35/35。
+
+---
+
 ### 9 条假红已定位并消除 → 门禁回到 **28 项 / 0 失败**（2026-11-18）
 
 换机后本机一度是 **28 项 / 24 通过 / 4 失败**，多出的 3 红共 9 条断言：
