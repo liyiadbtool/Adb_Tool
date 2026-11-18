@@ -136,6 +136,34 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 第三条环境差异：headless 测量失效（2026-11-18 · SunWwei 机器 / Edge 154）
+
+换机后本机门禁为 **28 项 / 24 通过 / 4 失败**，比基线多 3 红，共 9 条断言：
+
+| 门禁项 | 结果 | 失败断言 |
+|---|---|---|
+| 窗口与记录 | 194/199 | 卡片仍可见 / `--fb-left` 208→208 / 输出列左边界 242.6 vs 509.9 / frame opacity=0 / DEL 文字压按钮 |
+| 交互与输出区 | 72/75 | 切回输入框不聚焦 / 无 `focus-within` / 三套主题背景全 `rgb(0,0,0)` |
+| 交互一致性 | 27/28 | 最大化时 `body::after` 半径仍 8px（应 0） |
+
+**实测根因（均可在本机复现，非代码缺陷）：**
+
+1. **根元素与伪元素的 `getComputedStyle` 返回不更新的快照。** 现场插入
+   `body::after{background:rgb(1,2,3)!important}` 或
+   `:root[data-winmax="1"] body::after{border-radius:0!important}` 后读数**纹丝不动**；
+   同样写法套在新建普通 `div` 上完全正常。`html`/`body` 的 `background-color` 恒读成
+   `rgba(0,0,0,0)` / `rgb(0,0,0)`，而截图渲染出的主题底色是正确的。
+2. **虚拟时钟冻结动画。** `.frame` 上挂着 3 个 `fill:backwards` 的入场动画，
+   `currentTime` 恒为 0 → 被钉在起始帧 `opacity:.001`，`.frame` 永远 `opacity:0 /
+   visibility:hidden`；隐藏容器内的元素不可聚焦、几何测量失真。
+3. 已验证**无效**的绕法：加 `--run-all-compositor-stages-before-draw`、把测量从
+   300ms 推迟到 2500ms 并把预算提到 9000ms、`--disable-threaded-animation`。
+
+**反证代码是好的：** 真机 WebView2 自检 `adb_Tool.exe -guiSelfCheck` **15 条 0 失败**；
+本机 headless 截图渲染出的浅色/深色主题底色正确（只是读不出来）。
+
+**处置：** 不改断言、不改代码 —— 与 `Liquid Glass` 同类登记为环境差异。
+要在这台机器上转绿，只能把 377 的测量手段换成真实 WebView2（工程量按天算，暂不做）。
 
 ---
 

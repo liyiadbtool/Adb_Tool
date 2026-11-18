@@ -390,7 +390,7 @@ def main():
     print("\n  环境就绪。下一步（顺序不能反）：")
     print("    1) cd _cs && build.bat                （编 CLI，自检需要）")
     print("    2) cd ..\\adb_log_gui && build_gui.bat （编 GUI，记得 NO_PAUSE=1）")
-    print("    3) cd .. && python verify_all.py      （必须 16 项 0 失败）")
+    print("    3) cd .. && python verify_all.py      （必须 0 失败；项数以脚本实跑为准，当前基线 28 项）")
     print("    4) python release.py                  （出 3 个包）")
     print("    5) 把 AI_HANDOFF/01_AI_PROMPT.md 第 1 节发给 AI")
     return 0

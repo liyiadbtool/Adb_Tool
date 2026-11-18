@@ -1,9 +1,19 @@
 {
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
- "count": 101,
- "totalBytes": 1952207,
+ "count": 125,
+ "totalBytes": 3239519,
  "files": [
+  {
+   "path": "377/_a14_probe.js",
+   "size": 10817,
+   "sha256": "02c41ddab23dd9546ed0678f0157a2c80d6b1ec9c84eb52fcb8fa5e4259c2515"
+  },
+  {
+   "path": "377/_bench_render.py",
+   "size": 5314,
+   "sha256": "e2a9ba4185d7a54febf8912adf19bb202c8d4dba16bd5e1a91b008a680ace344"
+  },
   {
    "path": "377/_build_all.py",
    "size": 1852,
@@ -11,8 +21,8 @@
   },
   {
    "path": "377/_check_ui.js",
-   "size": 24887,
-   "sha256": "5b9debf109af60b398d4fa83261a17457a61bbbed8589be29ce061a1e92531a2"
+   "size": 28490,
+   "sha256": "64c1e98499ed593b8a9c5b67a55a3cc1f58ad9d40424c098e029712a41f36ee6"
   },
   {
    "path": "377/_cmds_shot.txt",
@@ -51,13 +61,13 @@
   },
   {
    "path": "377/_shot_align.py",
-   "size": 5527,
-   "sha256": "a8f545cf755d00f69f3e4d1cee8a6f6d6b5cfdda7dabdfdc9bcca4356de57d46"
+   "size": 5385,
+   "sha256": "8c8be1dcc12206475e7519d82b9dd41b50932c4bb4eb41e47b3ffc0d83cb6555"
   },
   {
    "path": "377/_shot_gui.py",
-   "size": 3283,
-   "sha256": "1a24f5601cca31a640200fdece8630a6e98304ab02089439de92b56a079b975d"
+   "size": 3179,
+   "sha256": "ffadbc9ba0635400743949c8a36802acb8e091ad39339fa0ae71dd63635d07e9"
   },
   {
    "path": "377/_shot_gui2.py",
@@ -71,8 +81,8 @@
   },
   {
    "path": "377/_shot_pw.py",
-   "size": 3724,
-   "sha256": "fbd3b561c77dde672e709a5c83bf5be6025f8e1edca98236bc9dcef12738b483"
+   "size": 3600,
+   "sha256": "3393c6ca282b68d8a92bb8ea25742737b2b28d7372cb899b7a1162c9b92fc438"
   },
   {
    "path": "377/_shot_real_gui.py",
@@ -88,6 +98,21 @@
    "path": "377/_shot_win.py",
    "size": 4967,
    "sha256": "4a9725e3292f176d2898038dc11d77a20804aea8753ecddfa9f1c681cf568393"
+  },
+  {
+   "path": "377/_t.js",
+   "size": 4651,
+   "sha256": "020ea17832706bc690b8578624ad1f50aaff466ed2ef29a57409b6692d890790"
+  },
+  {
+   "path": "377/_test_accent_blue.py",
+   "size": 5643,
+   "sha256": "8626bcf69ed6bb7975588d7e9e13b1ec22e49aa8958f65e2fef6d0cff0a27581"
+  },
+  {
+   "path": "377/_test_accent_interact.py",
+   "size": 4036,
+   "sha256": "c9679676826581da6487184e6a7dd71f52eb05dc1b3502cc6516df3adf4cdd82"
   },
   {
    "path": "377/_test_apk_ui.py",
@@ -106,8 +131,13 @@
   },
   {
    "path": "377/_test_cast_ui.py",
-   "size": 22965,
-   "sha256": "929f1a5c90e341f411b915373b5e9138605d62224f8c4f3fd0829d570b5eeb1f"
+   "size": 28151,
+   "sha256": "92d5a8c176e21d835bd8525c4c41bbb166da3cbc44e5711ea346b75191919faf"
+  },
+  {
+   "path": "377/_test_custom_cmd.py",
+   "size": 11205,
+   "sha256": "3396c229022ab916260bc3203c29c6f257b4cdac0153f1752b98b93523f85bb3"
   },
   {
    "path": "377/_test_file_ui.py",
@@ -116,8 +146,13 @@
   },
   {
    "path": "377/_test_fs_search.py",
-   "size": 10352,
-   "sha256": "20ebf7a2aad5bb42926ed6ad4476cfdc632add8f8725292667504832b9280d28"
+   "size": 13799,
+   "sha256": "b8f109a8b6223338d80d608d9702aa41c2ed830cc176a853885fc3599ea34bdb"
+  },
+  {
+   "path": "377/_test_interaction.py",
+   "size": 14203,
+   "sha256": "e4b2e6284cf925d271d06286615bd9a1a51236d742a11ad50acb7e3a1b163c2c"
   },
   {
    "path": "377/_test_no_window.py",
@@ -136,18 +171,18 @@
   },
   {
    "path": "377/_test_structure.py",
-   "size": 7675,
-   "sha256": "df8062e6897186a2a29d8c66524f053cb357e269b2d420423dc0fc885a79f92d"
+   "size": 10022,
+   "sha256": "68c28205b1415cadc063c741aa251893b86f2946be6d4d946e6203747f539b87"
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 39730,
-   "sha256": "ba188d306809c6dfaadb20869c1e3081d173c2a683dfb398e27d18d781a002eb"
+   "size": 45975,
+   "sha256": "efbdde3e78b3838612c667d26ca63ebb2cbc1c2241ea3bf0d5978a6b47dc989d"
   },
   {
    "path": "377/_test_ux.py",
-   "size": 18496,
-   "sha256": "47787f951a5d4689f027119cb80ac937b4c4cf5dadb72aaf7675a87e981e592f"
+   "size": 20873,
+   "sha256": "1a939769694cf8aa6544c069debaeeae2774120a3d7b528f567eda00379e6b54"
   },
   {
    "path": "377/_test_vr_ui.py",
@@ -156,8 +191,8 @@
   },
   {
    "path": "377/_test_wadb_ui.py",
-   "size": 7132,
-   "sha256": "f27dbe901cfbcbd6978e8d995cab87806334b30004e981ebd8e76bb624b21d98"
+   "size": 7174,
+   "sha256": "50aa2deeb2c4246fcec9055fda3030969c27ddd989534f9b4db0e41af83b439d"
   },
   {
    "path": "AI_HANDOFF/00_START_HERE.md",
@@ -166,8 +201,8 @@
   },
   {
    "path": "AI_HANDOFF/01_AI_PROMPT.md",
-   "size": 9218,
-   "sha256": "167d2323064a44d75a9d410e4bbebd9225951953c12e19cc2d26dba62d7fb691"
+   "size": 9601,
+   "sha256": "3b80bc14ff96f4e8b3b858cc5bebb1e5f709b756b8439f3642f8f3f580cbcf7d"
   },
   {
    "path": "AI_HANDOFF/02_PROJECT_MAP.md",
@@ -190,16 +225,6 @@
    "sha256": "8e6205bf27616b495d6e66fbcbcc7837eeba82807c372e972e7977108b325bbd"
   },
   {
-   "path": "AI_HANDOFF/make_manifest.py",
-   "size": 3306,
-   "sha256": "d904f82de662bba44df24d41ca68b969cd99aaa6caaf5bcb085d204142ad403d"
-  },
-  {
-   "path": "AI_HANDOFF/verify_handoff.py",
-   "size": 14520,
-   "sha256": "75d3b77b65f96300e93d951f6188bf73ed2baa03327df688780bf1eb5142007d"
-  },
-  {
    "path": "HANDOFF.md",
    "size": 43784,
    "sha256": "9e6a0baeffd2344438117a4d5b4a597ffbadcd1cd8f99a9f8368eda065d27d3c"
@@ -216,38 +241,38 @@
   },
   {
    "path": "_check_features.json",
-   "size": 13705,
-   "sha256": "0e80ffbdd74d772a981e5fcbda117a0eb11d41ae81e103012ffbc0f46b058f53"
+   "size": 44917,
+   "sha256": "5ced1249d6c053694dc5373a65e56242b0e4d34817a24ca973a96efce6c210ca"
   },
   {
    "path": "_cs/Adb.cs",
-   "size": 111516,
-   "sha256": "0d5ba979bbc4c3dbb95c36829da27c61a5c18b466033fc3f63e8d9b0b899081f"
+   "size": 112031,
+   "sha256": "f9eeb79b0694915ca05627f62ab2464a22dbec920594d2d20cb923f4233e9ca6"
   },
   {
    "path": "_cs/AdbCmd.cs",
-   "size": 29253,
-   "sha256": "ed6892b50a4531eeb6ee6b6c3dd6b6384c90a245da384bc83fef0212fb368fce"
+   "size": 29916,
+   "sha256": "0605cc6d183fbd4aebc941e9f03911fd5e42a6ca5ed176da71bae5157bdf5532"
   },
   {
    "path": "_cs/ApkCmds.cs",
-   "size": 10884,
-   "sha256": "eefc377689ea2a9c9786e5fd7e3bf1fe7912d8aad0d37865457b0393524fef5c"
+   "size": 11149,
+   "sha256": "844949af0bc0fa69a54653495d4b11b97a2f1d4ad974384b4a20c0ffa22af931"
   },
   {
    "path": "_cs/ApkList.cs",
-   "size": 17232,
-   "sha256": "41c3536bd8b254eda624a707daee4181326b6853139f108242285b140c272ac0"
+   "size": 17672,
+   "sha256": "ea257617c7c6000134072c3d49832dfdaafea502ba64febc4317ac24568b8b16"
   },
   {
    "path": "_cs/CarInfo.cs",
-   "size": 9521,
-   "sha256": "92127e923c8826e72a32e355a908f19e68ee192669f67d446cc08810ea177e08"
+   "size": 9742,
+   "sha256": "56f9724e046cbf10c871c1edba30b692a67290a0e8d680e693b382d2f24673ae"
   },
   {
    "path": "_cs/Cast.cs",
-   "size": 29598,
-   "sha256": "b1b65bd4a398966bd288385095b420ef4f6f846ae39526077b27e43e1c1a630d"
+   "size": 51184,
+   "sha256": "59ec3d54418581c5d66d8d940841d9ef04f86e285816a6c12001e169ff56413d"
   },
   {
    "path": "_cs/CmdRegistry.cs",
@@ -256,68 +281,73 @@
   },
   {
    "path": "_cs/Common.cs",
-   "size": 5935,
-   "sha256": "e06fecdbeb111694e89d57c529b4ef56b36e7271d30326f407069b383025e69d"
+   "size": 6086,
+   "sha256": "2ff647233644c43dda9c465e1a932d52ca538f4d7af6f6bd01afd79523481188"
+  },
+  {
+   "path": "_cs/CustomStore.cs",
+   "size": 2581,
+   "sha256": "d8fffc6a03a6790d3eb40f830ee2a6e5f68cfe152d0c29f62c83751519c77441"
   },
   {
    "path": "_cs/DeviceWatcher.cs",
-   "size": 22875,
-   "sha256": "d8adc82eb369d796538311ecc1e9dd0aa648da8b6df49ed8deafd949ac7a768f"
+   "size": 24165,
+   "sha256": "c078c2d5b14f78505a12c9469b66d180fd6a105017d6328a5ed5e698cf4339cf"
   },
   {
    "path": "_cs/Embed.cs",
-   "size": 12471,
-   "sha256": "43a7c88a8e7e1e7de7e5b9c5adbb16b66df89be32bcfd43993dcf225560b0434"
+   "size": 12759,
+   "sha256": "28bb81227319043ddc41d394ac166c31c2377f6bf8c81c3f7c0754c280eae89c"
   },
   {
    "path": "_cs/Env.cs",
-   "size": 12362,
-   "sha256": "972a816b42c9c293c6b8d46909cde2780f94949829456008b543b52d21a2c64e"
+   "size": 12708,
+   "sha256": "7b6b6db84f48af978207673de09f904538f4910be42d4ddd81b46b9ad5a7988c"
   },
   {
    "path": "_cs/Ffmpeg.cs",
-   "size": 18220,
-   "sha256": "2ff1683de2e32f53bc3119adde6882c5b8db2838da47212f3f1a27757b1dabc2"
+   "size": 18671,
+   "sha256": "16f64ce1e4ca568ea3430751f14fde8c8efd5952063849f87467bb926025fb38"
   },
   {
    "path": "_cs/FileBrowser.cs",
-   "size": 42292,
-   "sha256": "047bf84072b4f98ba8bb88497a194dd38e7ec5d9af28e71c72cbb4300273e820"
+   "size": 43284,
+   "sha256": "2f686e878b1f44c93fe0ca990fed2d097e5ea7b3fadde545df2253f7f95d9e6c"
   },
   {
    "path": "_cs/GuiEntry.cs",
-   "size": 9668,
-   "sha256": "0460cda3b8c51ad1d8f5040b01718dca4d2069e80b28d57f35c47d13826bf65c"
+   "size": 10623,
+   "sha256": "161447b42f3749cc401ec4f665a878d063224d826c9b9688e2f60d536a4ca2cf"
   },
   {
    "path": "_cs/GuiHeadless.cs",
-   "size": 10443,
-   "sha256": "a0f3769101d7605d96f3d0f00899346f8bf720c9427d606b6f48de26f151707f"
+   "size": 10701,
+   "sha256": "8e87cc7cf6c13826dd8681cba14e4035c19b2edf6cd2ebffe95d5fa43c8881e6"
   },
   {
    "path": "_cs/GuiMain.cs",
-   "size": 41639,
-   "sha256": "8734a96e9e22cf9e8dcbae155581353b3e0c3f7115d288272fdc9475100be93a"
+   "size": 43277,
+   "sha256": "884513eafe14bdf118c4362a6b886e63b8440a62cf7e2cf043419ac5af23f612"
   },
   {
    "path": "_cs/GuiSelfCheck.cs",
-   "size": 17875,
-   "sha256": "b253c06c9e64e4dd8c0f353fa76db99096bd5c510809fa008a10a9f6c7f14af9"
+   "size": 12046,
+   "sha256": "a05ce0978b39907effae3cc5beb066b1d6ce1dde8b23bafff2c23f2f5db82b5d"
   },
   {
    "path": "_cs/GuiSink.cs",
-   "size": 12313,
-   "sha256": "00a9c17a048a5fad67cc2bbbcb4dabd86e0acddd7425101bf3eebc2aed6e553e"
+   "size": 12595,
+   "sha256": "6acd64495d15eb4beb0831ee2ed3e78fbd28904d80544a612ad822a5dbc1f9d2"
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 112601,
-   "sha256": "36ec4e6084c8a872cffce6eef3d38ebfbd476a1038a1f2247bd13390b456bae6"
+   "size": 208196,
+   "sha256": "34ca6a999c49ac2a0cec3a1e9e599c055068e2e2846360eec7c260d724c1620b"
   },
   {
    "path": "_cs/Hdc.cs",
-   "size": 9680,
-   "sha256": "9e0a0a5af9c04c543ab501c8dc9527b5151354544836aa33f5b757bc3953c7a6"
+   "size": 9943,
+   "sha256": "fb376d26ecd2f45aa6468a1f6282e35cd451ad35e211ee74260bc0e9407dc44b"
   },
   {
    "path": "_cs/LineEdit.cs",
@@ -326,13 +356,13 @@
   },
   {
    "path": "_cs/PkgVer.cs",
-   "size": 48160,
-   "sha256": "638466326ba893315b4af94db107a4f54a99eb6440d4c415c837b76be0c91578"
+   "size": 49425,
+   "sha256": "ecdf6cd75e0acbed9cf82de96221c917f24cd29993bd8b7a9234db30ddd2ff97"
   },
   {
    "path": "_cs/Prefix.cs",
-   "size": 45651,
-   "sha256": "5c15bb59c8935be8e6db11b6461b5cf8c707108c3c3ddefb511120c468649f07"
+   "size": 52125,
+   "sha256": "93c41092aa77f88d0c64e235010fa4480f0cf268af0598cf9c958aadcffa00ec"
   },
   {
    "path": "_cs/Probe.cs",
@@ -341,8 +371,8 @@
   },
   {
    "path": "_cs/Program.cs",
-   "size": 75561,
-   "sha256": "9eb55ffb931448f2409ab8b2f35776259ce6c2b2135dc1886a69e56e2f95a215"
+   "size": 79685,
+   "sha256": "1daaabcb7bcfb927846c8860ef75e668adf144e7acbc94f61c92a6e758589fc9"
   },
   {
    "path": "_cs/Reconnect.cs",
@@ -351,18 +381,18 @@
   },
   {
    "path": "_cs/Render.cs",
-   "size": 107103,
-   "sha256": "c398f5a0abd4b78cd2e3f7518073f5df57037ddf3046d4dc394de57dbf2ca4d1"
+   "size": 108856,
+   "sha256": "6630bdac5f5f2d4d54434b9396833a24487ab63110b72336595e4c63f9a438b9"
   },
   {
    "path": "_cs/Root.cs",
-   "size": 6856,
-   "sha256": "e737cee2d4bae6c301c0ab2f1a7eda6ddabf6bf357285e9086767f0505e36e5b"
+   "size": 7032,
+   "sha256": "39e907d664d57468c78d6892a71361de25684a8d03dc6e59e12a6027620217db"
   },
   {
    "path": "_cs/Scrcpy.cs",
-   "size": 14420,
-   "sha256": "ba42e4dec8a20159c88661d4e485a590d2636503b4bb2feb4b1cd7ee1573a85d"
+   "size": 27683,
+   "sha256": "d05b1ff953e20bc4769ac96a7754ce672468c218221415b7ebf9e11da69d2623"
   },
   {
    "path": "_cs/Send.cs",
@@ -371,28 +401,28 @@
   },
   {
    "path": "_cs/TaskCmds.cs",
-   "size": 53778,
-   "sha256": "de0cf4337633a0ffa266f3fec8691954de9b88e2078a4b448b4bcde1a3c0b6fe"
+   "size": 73612,
+   "sha256": "75c67e27f47c66ea6dc141bbaf6efcce2fdc11a59430667dec5716863abc9ee8"
   },
   {
    "path": "_cs/Voice.cs",
-   "size": 43094,
-   "sha256": "d47e4a29b2f8ac443a9c81f88a26708d2d85daa764a16af153a446dae91e522b"
+   "size": 44012,
+   "sha256": "92af4163c6fc36182610426300fd65bded8345ee7e5b42b7f847cab177aff42b"
   },
   {
    "path": "_cs/Wireless.cs",
-   "size": 12682,
-   "sha256": "e7c8af040c19f7391dd01728623a5ec4b05fe805ab5d96507a604ee07dce8b4a"
+   "size": 12999,
+   "sha256": "a33b8aed80b20c4c33abf44ed064489d729468788cd126302d70b82a0ff51642"
   },
   {
    "path": "_cs/build.bat",
-   "size": 5094,
-   "sha256": "1cc404f03193b70d6502b2d4cabcb21de2bdd46af1acead23cb5f7ee7155ba3e"
+   "size": 5244,
+   "sha256": "675cdb802c9d9e3a3c2a917e7ce32b05c9ab7c1aaeed2292e9c42e284ea3f14c"
   },
   {
    "path": "_cs/console_input_test/README.md",
-   "size": 2752,
-   "sha256": "402c1b9c9253cc828e0acd2ed6cff14e8629c09f8d18ea2bf74cc0a4d0ebc58e"
+   "size": 2679,
+   "sha256": "8af933ed512f50de0986dadd5d9077f84e0c0d19f8a5e07372c7f4aa0232f8ce"
   },
   {
    "path": "_cs/console_input_test/build_fake.bat",
@@ -406,23 +436,23 @@
   },
   {
    "path": "_cs/console_input_test/drive_console.py",
-   "size": 7134,
-   "sha256": "f0b4a8afe1feb2db5070e19a8deb8d964524ca9a52ff70ec19c32e7598e5c501"
+   "size": 6917,
+   "sha256": "7f2b4db7f090ee613df5ef70e27c6e5e4ac2c90ff04cced60e00f62977dd9561"
   },
   {
    "path": "_cs/console_input_test/fake_adb.cs",
-   "size": 291,
-   "sha256": "68c4ad1f13d515bfb7bd8af0d2555d19a2adafd90d0d7ccb05da28221c342503"
+   "size": 304,
+   "sha256": "17eed87c1717313883d5440cb090a973a51944ffe967804b791cc3ca38de87b6"
   },
   {
    "path": "_cs/console_input_test/run_selftest_console.py",
-   "size": 1061,
-   "sha256": "de18fb62129145c666f3fde0558aca5e6c8b76444ae961f1342748682f281000"
+   "size": 1031,
+   "sha256": "56e712055ec6b03d0833ee72238f6e0aeab5c2763b0daa28a2d86e37bfdca1d9"
   },
   {
    "path": "_cs/console_input_test/test_input_features.py",
-   "size": 10004,
-   "sha256": "d26a99b2e929f57981fe150a821047ea52d13e9e9dc754e9f0ebb8a5d97a20b6"
+   "size": 9720,
+   "sha256": "fe701303e38ad0354152db13575a469d80291290141426be3756e4e9710fcc72"
   },
   {
    "path": "_cs/reconnect_test/README.md",
@@ -436,8 +466,8 @@
   },
   {
    "path": "_cs/verify_all_logic.py",
-   "size": 83920,
-   "sha256": "1fbf7a7f0ff94cfa671bb52cd6fda6e6b9da959bc5b431a611d6738fd0444ab5"
+   "size": 81678,
+   "sha256": "87b78ba78e8a89beeb16eaa2181c05321c6e7016b137e7d9dc02b01951d9fc38"
   },
   {
    "path": "_cs/verify_logic.py",
@@ -445,39 +475,39 @@
    "sha256": "7e70b2c429cc30b6462a1c27b9190ac8c55c21c0c49164040a16d04a87a8b4d8"
   },
   {
-   "path": "adb_log_export.ini",
-   "size": 7949,
-   "sha256": "ab1f9b9db6ec610059cabfbf4c309971246ca59942c0c846d0b79b2e8a3c3ccc"
-  },
-  {
    "path": "adb_log_gui/adb_log_export.ini",
-   "size": 8147,
-   "sha256": "37716271de96ee937b8eab07d2adde59618367da46292b4522f5c8f28feb82fa"
+   "size": 8354,
+   "sha256": "9a05900244d8a092bdd22d2c2d7cd9eee37e7f134283e8b7f421bfc5fd76fbd8"
   },
   {
    "path": "adb_log_gui/build_gui.bat",
-   "size": 11926,
-   "sha256": "7708a45e73fe4531f29c0f3cc7211f273c2c4d152d9b10f3f0467fa7a13d315d"
+   "size": 12427,
+   "sha256": "6fe3cf26e93bf87536c7ebb672405b63854364a03d8016bc6f507b8c46d3cfaa"
   },
   {
    "path": "adb_log_gui/cmds.ini",
-   "size": 11134,
-   "sha256": "ac444ca7b4294842a94e999ca018f7f1d2ab8e45ccc9a167ddcab61881fdfd18"
+   "size": 17965,
+   "sha256": "5ae51452db6b51213f249db78ebaac52f45358be47fc7a2bafd8e9632502b51e"
   },
   {
    "path": "adb_log_gui/make_min.bat",
-   "size": 3544,
-   "sha256": "a15c12306c23a881e24fa936c37750130059cda4ab7ba28ed7894c3425e609e3"
+   "size": 3717,
+   "sha256": "e8f283aada2fdedbbb5764a7586d2fab763f7d0520d5076bdeb9111048680f88"
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 249116,
-   "sha256": "38467658de7372838682af1cf47a3a8498fae8288e8536fb870b416d7fbbbe64"
+   "size": 832970,
+   "sha256": "cb916921f96caecf88ab5f2a68f04c97a242b9f79144ea4762d1410dfe8f9987"
   },
   {
    "path": "cmds.ini",
-   "size": 11961,
-   "sha256": "51ffc3f12983cbbe3f15102ec208a3a4e0de9c227f5257d498c4aee3b53e2f0c"
+   "size": 17965,
+   "sha256": "5ae51452db6b51213f249db78ebaac52f45358be47fc7a2bafd8e9632502b51e"
+  },
+  {
+   "path": "docs/ACCENT-CONTRAST.md",
+   "size": 4246,
+   "sha256": "81676b4665e9a95df9ee0d4d8d5b1201e416bdb98f15d99c77d5e220f8de6062"
   },
   {
    "path": "docs/AI协作指南_提示语与实现步骤.md",
@@ -485,14 +515,104 @@
    "sha256": "70990a19e7e2a40496895a730affef804bccf6b9232eed7359929a9737b72080"
   },
   {
+   "path": "docs/AI开发交接总纲.md",
+   "size": 17448,
+   "sha256": "c44d175373244e25c5eaced4b413e5220525d0ceaef4df4829a70dbd1473428f"
+  },
+  {
+   "path": "docs/COMPONENT-STATES.preview.html",
+   "size": 90767,
+   "sha256": "9a375c327d5858c51f2ce644300f62ed8870605977c582f5cdae7daa621c4c26"
+  },
+  {
+   "path": "docs/COVERAGE.md",
+   "size": 2984,
+   "sha256": "6920a32aa94f2dc9fb460de8650a378236303f0caa538035cd3ee22c67a4ba20"
+  },
+  {
+   "path": "docs/DESIGN.md",
+   "size": 20494,
+   "sha256": "2e850722f4c41b8ea5208cfffa6838e8abed83f46fe423c964b8249cd95cf96b"
+  },
+  {
+   "path": "docs/FUNCTION-INVARIANTS.md",
+   "size": 5425,
+   "sha256": "77c186806194854c6f46823607c45e1db0881d376b92c9daed6ad675ae3853c9"
+  },
+  {
+   "path": "docs/GITHUB-落地指引.md",
+   "size": 10144,
+   "sha256": "28fa836070e2cfcbcfa8febe90b5ace3915a26d7979ce5a55b5cc01f4bb02329"
+  },
+  {
+   "path": "docs/INVARIANT-DIFF.md",
+   "size": 6462,
+   "sha256": "56e8496c7ee1eaa991c4e1caac7238e1b100e03a71f4534cb1b8ba5c05d19668"
+  },
+  {
+   "path": "docs/RESKIN-FINAL-REPORT.md",
+   "size": 30637,
+   "sha256": "3316bfb9724f0d736bcafe425c84838d54d0679d102b9bfa5bcb78a6cbaa97a8"
+  },
+  {
+   "path": "docs/SynTestUtil命令对照与用法.md",
+   "size": 25815,
+   "sha256": "c280cfeb454e9400b490bc76e397d0af3c250bf56189f72f97b0c4f91b955d9e"
+  },
+  {
+   "path": "docs/UI-RESKIN-INVENTORY.md",
+   "size": 43748,
+   "sha256": "90e8ab75276f75d9402a27d750a9a9a8452e11d465ed1ef0b8c47f1d27c9ed3d"
+  },
+  {
+   "path": "docs/UI-UE走查_20261116.md",
+   "size": 9541,
+   "sha256": "17bba5016b7bc5affe855e97ae836babde4ef559420c8a5cb9a6f06ab3f65a5d"
+  },
+  {
+   "path": "docs/代码导读.md",
+   "size": 20940,
+   "sha256": "39f29bd33ec109f439045c6829f556e2344cf46eb7f53ec8264468f13b4ef054"
+  },
+  {
    "path": "docs/功能清单.md",
-   "size": 4734,
-   "sha256": "a8af5c26527fbd136ff04f8fa970ce51d31966753246fb23fa8589cd9d30f6aa"
+   "size": 28920,
+   "sha256": "34e57895ccafbf0d14140fa805a6c7bf9592db13b3b95ad29c092f8485ba045a"
+  },
+  {
+   "path": "docs/参考-Edge主题设置与同类实现.md",
+   "size": 9390,
+   "sha256": "a06c45bf32d460b1366f7e071e42780a13eb837a25dcd67ee372dbede31a517c"
+  },
+  {
+   "path": "docs/性能测试报告_20261117.md",
+   "size": 4588,
+   "sha256": "52d26d0f304c6d7ddc89bbe85308ab5dab793ec76772104efa90edd172b420c4"
+  },
+  {
+   "path": "docs/明天到公司继续开发.md",
+   "size": 5119,
+   "sha256": "f62e879fad9b4d3ce892fb99e815993a260384a992cea1aa6a9db53390a1f883"
+  },
+  {
+   "path": "docs/测试报告_20261116.md",
+   "size": 6945,
+   "sha256": "9a722c5f0c8b124465aaeab1f22f2708bc681930b1505dd94124a3f0a1cbe499"
+  },
+  {
+   "path": "docs/测试用例.md",
+   "size": 22754,
+   "sha256": "388be5bb88433a0fb3bc74d65ef622697e94f34cd5e0404d68d06df0198697e1"
+  },
+  {
+   "path": "docs/玻璃风主题_实现方案.md",
+   "size": 8715,
+   "sha256": "96503b59e0d96550fe960d0d796b658805a2cab2f08b7cdb4f27a5823b43d046"
   },
   {
    "path": "docs/用户使用手册.md",
-   "size": 29257,
-   "sha256": "300988e5c5094e3260fc1b7151b13cdc4910db628b2e6df5d2144a0fbbbdf72d"
+   "size": 91997,
+   "sha256": "374b26afd3d747d67e767d6daa26962b818748658370735d4666e953f2164813"
   },
   {
    "path": "docs/项目规则.md",
@@ -501,13 +621,13 @@
   },
   {
    "path": "release.py",
-   "size": 8364,
-   "sha256": "d0f6858f6baffedd30044f343b3f4c15f358b5a24b2af3b2ffd09d29643eafd4"
+   "size": 9228,
+   "sha256": "ecfbe8ca0a9188872eefb86958249f16f2331d19aed714e6ad13559277cddbaf"
   },
   {
    "path": "verify_all.py",
-   "size": 5885,
-   "sha256": "7505f33e95804267181ed80104162c2c6482b38080ef0a4d087597ccb5ffefdc"
+   "size": 8717,
+   "sha256": "7c2f7d0f85a517e09c3800fe5a4977433bc7d205f422cf6aab8f19c765aae63b"
   }
  ]
 }

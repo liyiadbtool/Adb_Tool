@@ -41,8 +41,19 @@ INCLUDE_FILES = [
 # 不纳入的后缀 / 目录 / 具体名（产物、缓存、样本）
 SKIP_EXT = (".exe", ".dll", ".zip", ".zst", ".png", ".jpg", ".jpeg", ".ico", ".log")
 SKIP_DIR_NAMES = {"dist", "dist_min", "dist_single", "__pycache__", "_shots", "release",
-                  "node_modules", ".git"}
-SKIP_FILES = {"MANIFEST.json", "verify_handoff.py", "make_manifest.py"}
+                  "node_modules", ".git", "_feishu"}
+# 按文件名排除（比对 basename，不是相对路径 —— 原来拿 rel 比，结果一个都没排掉，
+# 连 MANIFEST.json 自己都被写进清单，导致 verify 永远报"1 个文件不一致"）
+SKIP_FILES = {"MANIFEST.json", "verify_handoff.py", "make_manifest.py",
+              ".adb_tool_history"}
+# 根目录的 adb_log_export.ini 是**本机运行态**（.gitignore 里排除、每台机器 accent= 不同），
+# 收进清单会让两台机器的哈希天然对不上，所以排除；adb_log_gui 下那份是构建用模板，仍保留。
+SKIP_REL = {"adb_log_export.ini"}
+# 377 下的测试页面每次跑测试都会从 ui.html 重新生成（.gitignore 已排除），
+# 收进清单等于"跑一次测试就脏一次"，一律排除。
+SKIP_377_PATTERNS = ("test_", "_test_", "_dbg")
+SKIP_377_SUFFIX = "_probe.html"
+
 
 
 def sha256(path):
@@ -58,10 +69,17 @@ def collect():
 
     def add(full):
         rel = os.path.relpath(full, ROOT).replace("\\", "/")
-        if rel in SKIP_FILES:
+        name = os.path.basename(full)
+        if name in SKIP_FILES or rel in SKIP_REL:
             return
         if os.path.splitext(full)[1].lower() in SKIP_EXT:
             return
+        # 377 下由 ui.html 派生的测试页面：每次跑测试都重新生成，不能进清单
+        if rel.startswith("377/"):
+            if name.startswith(SKIP_377_PATTERNS) and name.endswith(".html"):
+                return
+            if name.endswith(SKIP_377_SUFFIX):
+                return
         try:
             st = os.stat(full)
         except OSError:
