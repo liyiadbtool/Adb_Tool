@@ -27,6 +27,10 @@ try:
 except Exception:
     _wv2 = None
 
+try:
+    import _ui_drive            # 真实鼠标/键盘序列驱动（T17）
+except Exception:
+    _ui_drive = None
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UI = os.path.join(ROOT, "adb_log_gui", "webview2", "ui.html")
 OUT = os.path.join(ROOT, "377", "_interaction_probe.html")
@@ -287,6 +291,34 @@ JS = r"""
         try { setFont('system'); } catch (e) {}     // 还原，避免影响后续断言
       }
 
+      /* ---------- H. T5：切到输出/文本输入后，断网识别开关必须真的点不动 ----------
+         原来只给 input 设 pointer-events:none，点 label 文字仍会切换 checkbox
+         （"看着灰、点着有效"）。这里点 label 验证。 */
+      switchTab('quick');
+      var vrLab = document.querySelector('.vr-local');
+      var vrInp = document.getElementById('vr-local');
+      if (!vrLab || !vrInp){
+        ok('T5 断网识别开关存在', false, '找不到 .vr-local/#vr-local');
+      } else {
+        setVrMode('out');
+        ok('T5 输出模式：input 被 disabled',
+           vrInp.disabled === true, 'disabled=' + vrInp.disabled);
+        ok('T5 输出模式：label 标记为不可用（aria + 光标 + 原因）',
+           vrLab.getAttribute('aria-disabled') === 'true' &&
+           getComputedStyle(vrLab).cursor === 'not-allowed' &&
+           (vrLab.title || '').length > 0,
+           'aria=' + vrLab.getAttribute('aria-disabled') + ' cursor=' + getComputedStyle(vrLab).cursor);
+        var beforeChk = vrInp.checked;
+        drive.clickAt(vrLab);
+        ok('T5 点 label 文字不再切换开关', vrInp.checked === beforeChk,
+           'before=' + beforeChk + ' after=' + vrInp.checked);
+
+        setVrMode('in');
+        ok('T5 切回语音输入后恢复可点',
+           vrInp.disabled === false && getComputedStyle(vrLab).cursor !== 'not-allowed',
+           'disabled=' + vrInp.disabled + ' cursor=' + getComputedStyle(vrLab).cursor);
+      }
+
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
   }
@@ -314,7 +346,9 @@ JS = r"""
 
 def main():
     src = io.open(UI, "r", encoding="utf-8").read()
-    io.open(OUT, "w", encoding="utf-8").write(src.replace("</body>", JS + "</body>"))
+    _drive_js = _ui_drive.inject_js() if _ui_drive is not None else ""
+    io.open(OUT, "w", encoding="utf-8").write(
+        src.replace("</body>", _drive_js + JS + "</body>"))
     # profile 目录必须每次唯一：固定名字时，上一轮如果留下残留 Edge 实例，
     # 这一轮会阻塞在 profile 锁上直到 180s 超时，整轮门禁看起来像"卡死"。
     # （2026-11-16 实测踩过：verify_all 从 1.5 分钟变成 6 分钟以上）

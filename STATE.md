@@ -136,6 +136,20 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-18 · T15/T17 + T5，批次 3 起步）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **T15 `setEnabled()` 统一禁用态** | `ui.html` | 一次设全：`disabled` + `pointer-events` + `.is-disabled` + `aria-disabled` + `title`（说明为什么不能点，`data-title` 暂存原值以便还原）。背景：全仓 `disabled` 15 处、`pointerEvents` 2 处、`aria-disabled` 1 处，写法散 → "看着灰点着有效"必然复发 |
+| 2 | **T5 断网识别开关"置灰仍可点"** | `setVrMode` | 原来只给 `<input id="vr-local">` 设 `pointer-events:none`，点 **label 文字**仍会切换 checkbox，`cursor:pointer` 也还挂着。现在整条 label + input 走 `setEnabled`，切回语音输入模式自动还原 |
+| 3 | **T17 `377/_ui_drive.py`** | 新增 | 真实鼠标/键盘序列的唯一入口：`click`（down→up→click）、`pressAndHold`、`key/press`、`typeInto`、`waitSteady`。规格书 T2 铁律"禁止直接 dispatchEvent(click)"从此是代码约束而不是口头规矩 |
+| 4 | 回归断言 | `377/_test_interaction.py` 35 → **39 条** | T5 四条：input 被 disabled / label 有 aria+光标+原因 / 点 label 文字不再切换 / 切回后恢复可点（全部走 `drive.clickAt`） |
+| 5 | 门禁稳定性 | `377/_wv2.py`、`_check_accent_dom.py` | `--uitest` 用默认 WebView2 配置目录，残留实例会互等锁（单独 20s、进全量变 240s 超时）→ 启动前先清自身进程；强调色检查拿不到 DOM 时重试一次 |
+
+验收：**28 项 / 0 失败（243s）**；交互一致性 39/39；GUI 自检 19 条。
+
+---
+
 ### 本轮做了什么（2026-11-18 · 星号键 / 长按时长）
 
 | # | 需求 | 落点 | 说明 |

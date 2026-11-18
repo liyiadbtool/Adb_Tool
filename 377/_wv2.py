@@ -49,6 +49,19 @@ def find_exe():
     return None
 
 
+def _kill_leftover():
+    """清掉上一轮没退干净的实例。
+
+    为什么需要：--uitest 用的是 exe 默认的 WebView2 配置目录，多个实例同时跑
+    会互相等锁 —— 表现是"单独跑 20 秒，进全量门禁就 240 秒超时"（实测踩过）。
+    只杀本工具自己的进程，不碰用户的其他窗口。"""
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "adb_Tool.exe"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+    except Exception:
+        pass
+
+
 def dump(html_path, wait_ms=3000, timeout=180):
     """跑页面，返回 `<pre id="RESULT">` 里的文本；拿不到返回 NO_RESULT。"""
     exe = find_exe()
@@ -57,10 +70,12 @@ def dump(html_path, wait_ms=3000, timeout=180):
     if not os.path.exists(html_path):
         raise RuntimeError("测试页不存在：" + html_path)
 
+    _kill_leftover()
     cmd = [exe, "--uitest", os.path.abspath(html_path), str(int(wait_ms))]
     try:
         r = subprocess.run(cmd, capture_output=True, timeout=timeout)
     except subprocess.TimeoutExpired:
+        _kill_leftover()
         return NO_RESULT
 
     text = (r.stdout or b"").decode("utf-8", "replace")

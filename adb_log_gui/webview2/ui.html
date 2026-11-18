@@ -672,6 +672,9 @@ body{
 .vr-actions{display:flex;align-items:center;gap:12px;}
 .vr-local{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim);cursor:pointer;user-select:none;}
 .vr-local input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;}
+/* T15：统一的禁用观感，配合 setEnabled()。光标一起改 —— 只变灰不改光标，
+   仍会被当成"可以点"。 */
+.is-disabled{opacity:.35;cursor:not-allowed !important;}
 /* 语音输入/输出 互斥模式切换（2026-11-12） */
 .vr-modes{display:flex;gap:8px;margin-bottom:10px;}
 .vrmode{
@@ -5934,6 +5937,30 @@ function pickZone(area){
 // 需求1：已并入指令页，结果走反馈窗口（src=1），与其它指令一致。
 // 需求（2026-11-12）：支持「语音输入 / 语音输出」两种模式，默认语音输入。
 var _vrMode = 'in';   // 'in'=语音输入（识别） 'out'=语音输出（TTS） 'text'=文本输入（input text）
+
+/* T15（2026-11-18）：统一的"禁用态"入口。
+   历史教训（T5）：`<label class="vr-local"><input id="vr-local"></label>` 这种结构下，
+   只给 input 设 pointer-events:none 是**不够**的 —— 点 label 文字仍会切换 checkbox，
+   样式和 cursor:pointer 也还挂着，用户看到的是"看着灰、点着有效"。
+   所以要素一次设全：语义(disabled) + 命中(pointer-events) + 观感(.is-disabled) +
+   可达性(aria-disabled) + 原因(title，鼠标悬停能知道为什么不能点)。
+   用法：setEnabled(el, false, '切到语音输入模式才可用') / setEnabled(el, true) */
+function setEnabled(el, on, reason){
+  if(!el) return;
+  var dis = !on;
+  try { if('disabled' in el) el.disabled = dis; } catch(e) {}
+  el.style.pointerEvents = dis ? 'none' : '';
+  el.classList.toggle('is-disabled', dis);
+  try { el.setAttribute('aria-disabled', dis ? 'true' : 'false'); } catch(e) {}
+  // 原因文案借 data-title 暂存原值，恢复正常时还原，避免把原有 tooltip 冲掉
+  if(dis){
+    if(el.getAttribute('data-title') === null) el.setAttribute('data-title', el.title || '');
+    if(reason) el.title = reason;
+  } else if(el.getAttribute('data-title') !== null){
+    el.title = el.getAttribute('data-title');
+    el.removeAttribute('data-title');
+  }
+}
 function setVrMode(m){
   _vrMode = m;
   var inBtn = document.getElementById('vrmode-in');
@@ -5943,11 +5970,18 @@ function setVrMode(m){
   if(outBtn) outBtn.classList.toggle('sel', m === 'out');
   if(txBtn) txBtn.classList.toggle('sel', m === 'text');
   // 语音输出 / 文本输入都不关联音区，断网识别也无意义 → 置灰不可点
+  // T5（2026-11-18）：原来只给 input 设了 pointerEvents，点 label 文字仍能切换。
+  // 现在整条 label + input 都走 setEnabled（含 disabled / aria / 光标 / 原因提示）。
   var zones = document.getElementById('vr-zones');
   var local = document.getElementById('vr-local');
   var off = (m === 'out' || m === 'text');
-  if(zones){ zones.style.opacity = off ? '0.35' : ''; zones.style.pointerEvents = off ? 'none' : ''; }
-  if(local){ local.style.opacity = off ? '0.35' : ''; local.style.pointerEvents = off ? 'none' : ''; }
+  var why = '切到「语音输入」模式才可用';
+  setEnabled(zones, !off, why);
+  if(local){
+    setEnabled(local, !off, why);
+    var lab = local.closest ? local.closest('label') : null;
+    if(lab) setEnabled(lab, !off, why);
+  }
 }
 function sendVr(){
   var inp = document.getElementById('vr-input');

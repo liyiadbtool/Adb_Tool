@@ -105,11 +105,19 @@ def main():
            "--user-data-dir=" + os.path.join(tempfile.gettempdir(),
                                              "edgeprof_accent_check_%d" % os.getpid()),
            "file:///" + TEST.replace("\\", "/")]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=120)
-    m = re.search(r'<pre id="RESULT">(.*?)</pre>', r.stdout or "", re.S)
+    # 2026-11-18：全量门禁里偶发 rc=1（单独跑 4s 通过）——上一轮 Edge 还没退干净时
+    # 会拿到空 DOM。为空就重试一次，仍为空才算失败。
+    stdout = ""
+    for attempt in (1, 2):
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=120)
+        stdout = r.stdout or ""
+        if re.search(r'<pre id="RESULT">', stdout):
+            break
+        print("  第 %d 次没拿到 RESULT（DOM 长度 %d），重试…" % (attempt, len(stdout)))
+    m = re.search(r'<pre id="RESULT">(.*?)</pre>', stdout, re.S)
     if not m:
-        print("没拿到 RESULT，DOM 长度", len(r.stdout or ""))
+        print("没拿到 RESULT，DOM 长度", len(stdout))
         return 1
     out = html.unescape(m.group(1))
     print(out)
