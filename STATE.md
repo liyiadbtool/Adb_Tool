@@ -136,34 +136,35 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
-### 第三条环境差异：headless 测量失效（2026-11-18 · SunWwei 机器 / Edge 154）
+### 待查：9 条断言在真实 WebView2 里同样失败（2026-11-18 · SunWwei 机器）
 
 换机后本机门禁为 **28 项 / 24 通过 / 4 失败**，比基线多 3 红，共 9 条断言：
 
 | 门禁项 | 结果 | 失败断言 |
 |---|---|---|
-| 窗口与记录 | 194/199 | 卡片仍可见 / `--fb-left` 208→208 / 输出列左边界 242.6 vs 509.9 / frame opacity=0 / DEL 文字压按钮 |
+| 窗口与记录 | 194/199 | 卡片仍可见 / `--fb-left` 213→213 / 输出列左边界 247.8 vs 521.8 / frame opacity=0 / DEL 文字压按钮 |
 | 交互与输出区 | 72/75 | 切回输入框不聚焦 / 无 `focus-within` / 三套主题背景全 `rgb(0,0,0)` |
 | 交互一致性 | 27/28 | 最大化时 `body::after` 半径仍 8px（应 0） |
 
-**实测根因（均可在本机复现，非代码缺陷）：**
+**先说结论**：早先判断"只是 headless 环境差异"是**错的**。已新增
+`adb_Tool.exe --uitest <页面> [等待ms]`（离屏真实 WebView2，复刻自检链路，
+把页面 `<pre id="RESULT">` 打到 stdout）+ `377/_wv2.py` 调用helper，
+把同样两份测试页**在真实 WebView2 里重跑，9 条一条不少**：
+`test_behavior` 194/199 同样 5 条、`test_ux` 72/75 同样 3 条。
+→ 不是 headless 特有，是两个渲染器里都成立的页面行为。
 
-1. **根元素与伪元素的 `getComputedStyle` 返回不更新的快照。** 现场插入
-   `body::after{background:rgb(1,2,3)!important}` 或
-   `:root[data-winmax="1"] body::after{border-radius:0!important}` 后读数**纹丝不动**；
-   同样写法套在新建普通 `div` 上完全正常。`html`/`body` 的 `background-color` 恒读成
-   `rgba(0,0,0,0)` / `rgb(0,0,0)`，而截图渲染出的主题底色是正确的。
-2. **虚拟时钟冻结动画。** `.frame` 上挂着 3 个 `fill:backwards` 的入场动画，
-   `currentTime` 恒为 0 → 被钉在起始帧 `opacity:.001`，`.frame` 永远 `opacity:0 /
-   visibility:hidden`；隐藏容器内的元素不可聚焦、几何测量失真。
-3. 已验证**无效**的绕法：加 `--run-all-compositor-stages-before-draw`、把测量从
-   300ms 推迟到 2500ms 并把预算提到 9000ms、`--disable-threaded-animation`。
+**已确认的介质现象（真实 WebView2 里实测）：**
 
-**反证代码是好的：** 真机 WebView2 自检 `adb_Tool.exe -guiSelfCheck` **15 条 0 失败**；
-本机 headless 截图渲染出的浅色/深色主题底色正确（只是读不出来）。
+1. `--bg` 在 `:root` 上随主题正确变化（#000 / #f2f2f7 / #fdfaf3），但
+   `getComputedStyle(body).backgroundColor` 恒为 `rgb(0,0,0)`、`html` 恒为
+   `rgba(0,0,0,0)`；新建 `div` 用同一个 `var(--bg)` 读出来是对的。
+2. `#frame` 同样：`:root --frame` 随主题变，但 `#frame` 解析值恒为
+   `rgba(17,17,19,.8)`（深色）。把副本 `cloneNode` 到 body 再读、或抖一次父级
+   `display` 之后，读数才变 —— 像是**元素级样式失效没有被标记**。
+3. `hideSplash()` 调了之后 `.frame` 仍可能停在 `visibility:hidden`。
 
-**处置：** 不改断言、不改代码 —— 与 `Liquid Glass` 同类登记为环境差异。
-要在这台机器上转绿，只能把 377 的测量手段换成真实 WebView2（工程量按天算，暂不做）。
+**尚未定论**：这 9 条到底属于「页面/布局确实有问题」还是「断言跟着 A16/A17 的
+布局改版过期了」，需要逐条对照当前 DOM 判。**没有改任何断言、没有为绕过而改代码。**
 
 ---
 

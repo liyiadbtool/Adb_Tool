@@ -72,6 +72,28 @@ namespace AdbLogExport.Gui
             // 会被无头执行分支接走。
             bool selfCheck = GuiHeadless.HasSelfCheck(args);
 
+            // ---- UI 测试模式（377 用，2026-11-18）----
+            // 用法：adb_Tool.exe --uitest <页面路径> [等待毫秒]
+            // 目的：让 377 在**真实 WebView2** 里量 ui.html。
+            // 原因见 GuiWeb.ProbeJs 的注释：headless Edge 154 下根元素/伪元素的
+            // getComputedStyle 不更新、动画时钟被冻结，9 条断言必然假红。
+            // 这个模式不显示窗口（复用自检的离屏逻辑），跑完把页面里
+            // <pre id="RESULT"> 的文本原样打到 stdout，然后自己关窗。
+            string uiTestPath = null;
+            int uiTestWait = 2500;
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (!string.Equals(args[i], "--uitest", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(args[i], "-uitest", StringComparison.OrdinalIgnoreCase)) continue;
+                if (i + 1 < args.Length && args[i + 1].Length > 0 && args[i + 1][0] != '-')
+                    uiTestPath = args[++i];
+                if (i + 1 < args.Length)
+                {
+                    int w;
+                    if (int.TryParse(args[i + 1], out w) && w > 0) { uiTestWait = w; i++; }
+                }
+            }
+
             // ---- 无头执行模式：把命令喂进 GUI 的真实管道，供等价性验证 ----
             // 与 --selfcheck 同理：不显示窗口，可进 CI。区别是它跑真命令，
             // 输出经 GuiSink 渲染成"级别 + 文本"，用来和命令行版逐行比对。
@@ -116,6 +138,7 @@ namespace AdbLogExport.Gui
                 // 定位 ui.html：外置优先（webview2\ui.html），没有就用内嵌的那份。
                 // 单 exe 版就是靠这里"凭空"拿到界面的，所以不能再写死路径。
                 string uiPath = Embed.PrepareUiHtml();
+                if (uiTestPath != null) uiPath = uiTestPath;   // UI 测试：直接加载调用方给的页面
                 Trace("ui.html = " + uiPath);
                 if (!File.Exists(uiPath))
                 {
@@ -127,11 +150,33 @@ namespace AdbLogExport.Gui
                     return 2;
                 }
                 GuiWeb f = new GuiWeb(uiPath);
-                if (selfCheck)
+                if (selfCheck || uiTestPath != null)
                 {
                     // 自检：窗口移到屏幕外，不抢焦点，不显示任务栏按钮
                     f.SelfCheckMode = true;
                     f.ShowInTaskbar = false;
+                }
+                if (uiTestPath != null)
+                {
+                    // 把页面里注入的断言脚本的产物取回来：测试脚本统一写进
+                    // <pre id="RESULT">，这里原样读文本。找不到就给哨兵值，
+                    // 让 Python 侧能区分"页面没跑起来"和"断言失败"。
+                    f.ProbeWaitMs = uiTestWait;
+                    f.ProbeJs = "(function(){var p=document.getElementById('RESULT');"
+                              + "return p?(p.textContent||''):'__NO_RESULT__';})()";
+                    f.ProbeResult = delegate(string raw)
+                    {
+                        string text = JsonUnquote(raw);
+                        try
+                        {
+                            Stream so = Console.OpenStandardOutput();
+                            byte[] b = new UTF8Encoding(false).GetBytes(text);
+                            so.Write(b, 0, b.Length);
+                            so.Flush();
+                        }
+                        catch { }
+                        try { f.Close(); } catch { }
+                    };
                 }
                 Trace("GuiWeb 构造完成，进入消息循环");
                 Application.Run(f);
@@ -150,8 +195,43 @@ namespace AdbLogExport.Gui
                 Trace("自检退出码 = " + GuiSelfCheck.ExitCode);
                 return GuiSelfCheck.ExitCode;
             }
+            if (uiTestPath != null)
+            {
+                Trace("uitest 结束");
+                return 0;
+            }
             Trace("Main 返回 0");
             return 0;
+        }
+
+        /// <summary>ExecuteScriptAsync 回的是 JSON 字符串字面量，这里解出原文。</summary>
+        internal static string JsonUnquote(string s)
+        {
+            if (s == null) return "";
+            if (s.Length >= 2 && s[0] == '\"' && s[s.Length - 1] == '\"')
+                s = s.Substring(1, s.Length - 2);
+            StringBuilder sb = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c != '\\') { sb.Append(c); continue; }
+                i++;
+                if (i >= s.Length) break;
+                char e = s[i];
+                if (e == 'n') sb.Append('\n');
+                else if (e == 'r') sb.Append('\r');
+                else if (e == 't') sb.Append('\t');
+                else if (e == 'b') sb.Append('\b');
+                else if (e == 'f') sb.Append('\f');
+                else if (e == 'u' && i + 4 < s.Length)
+                {
+                    try { sb.Append((char)Convert.ToInt32(s.Substring(i + 1, 4), 16)); }
+                    catch { }
+                    i += 4;
+                }
+                else sb.Append(e);
+            }
+            return sb.ToString();
         }
 
         // 诊断日志的落点：%LOCALAPPDATA%\adb_Tool\logs

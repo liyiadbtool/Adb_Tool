@@ -53,6 +53,19 @@ namespace AdbLogExport.Gui
         private volatile bool _navDone = false;
         private bool _selfCheckStarted = false;
 
+        // ---- UI 测试通道（377 用，2026-11-18）----
+        // 为什么需要：377 原来用 msedge --headless --dump-dom 量 ui.html。换到
+        // Edge 154 之后，headless 下根元素(html/body)与伪元素(::after)的
+        // getComputedStyle 返回的是**不更新的快照**（现场插 !important 规则都不生效），
+        // 且 --virtual-time-budget 会冻结动画时钟，.frame 的入场动画(fill:backwards)
+        // 被钉在 opacity:0 —— 9 条断言必红，跟代码对错无关。
+        // 现在改为在**真实 WebView2** 里跑：同一个 GuiWeb、同一个渲染器，量到的就是
+        // 用户看到的东西。复用的是自检那条链路（离屏窗口 + 页面就绪后 ExecuteScriptAsync）。
+        // ProbeJs 非空即进入该模式：页面就绪后执行它，结果经 ProbeResult 回传。
+        internal string ProbeJs = null;
+        internal int ProbeWaitMs = 800;
+        internal Action<string> ProbeResult = null;
+
         internal bool NavDone { get { return _navDone; } }
 
         // 页面就绪后延迟一拍再跑（splash 淡出 280ms + buildSlots 在 DOMContentLoaded）
@@ -61,10 +74,21 @@ namespace AdbLogExport.Gui
             if (_selfCheckStarted) return;
             _selfCheckStarted = true;
             System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
-            t.Interval = 800;
+            t.Interval = ProbeWaitMs > 0 ? ProbeWaitMs : 800;
             t.Tick += delegate
             {
                 try { t.Stop(); t.Dispose(); } catch { }
+                string js = ProbeJs;
+                if (js != null)
+                {
+                    // UI 测试：把页面里注入的断言脚本的自述结果取回来
+                    EvalForSelfCheck(js, delegate(string r)
+                    {
+                        try { if (ProbeResult != null) ProbeResult(r); }
+                        catch (Exception ex) { GuiEntry.Dump("uitest result", ex); }
+                    });
+                    return;
+                }
                 try { GuiSelfCheck.RunOn(this); } catch (Exception ex) { GuiEntry.Dump("selfcheck", ex); }
             };
             t.Start();
@@ -1143,6 +1167,9 @@ namespace AdbLogExport.Gui
                     if (thm != "light" && thm != "eye") thm = "dark";
 
                     string uiPathForLoad = _uiPath;
+                    // UI 测试模式（ProbeJs 非空）不许宿主改写页面的 data-theme /
+                    // data-accent —— 否则测的不是"页面自己切过去的样子"。
+                    if (ProbeJs == null)
                     try
                     {
                         string html = System.IO.File.ReadAllText(_uiPath, System.Text.Encoding.UTF8);
@@ -1171,7 +1198,7 @@ namespace AdbLogExport.Gui
                     catch (Exception exx) { App.Trace("accent: 替换 ui.html 默认值失败 " + exx.Message); }
 
                     // 双保险：DocumentCreated 时再同步改一次（若上面替换没生效，仍有这一层兜底）
-                    _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                    if (ProbeJs == null) _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
                         "(function(){ var d=document.documentElement; " +
                         "d.setAttribute('data-theme','" + thm + "'); " +
                         "d.setAttribute('data-accent','" + acc + "'); })();");
