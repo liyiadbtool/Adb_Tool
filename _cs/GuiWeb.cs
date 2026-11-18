@@ -1462,7 +1462,9 @@ namespace AdbLogExport.Gui
                     App.THEME = (th == "light" || th == "eye") ? th : "dark";
                     SetTitleBarDark(App.THEME == "dark");
                     ApplyChromeColor();   // A13：圆角四角露出的底色也要跟着换
-                    SaveThemePreference(App.THEME);
+                    // UI 测试模式（ProbeJs 非空）禁止落盘：测试页会来回切主题，
+                    // 写进 ini 就把受版本控制的模板改脏了（实测污染过 adb_log_gui 那份）。
+                    if (ProbeJs == null) SaveThemePreference(App.THEME);
                     break;
 
                 // ---------------- 自定义 ADB 指令（2026-11-15）----------------
@@ -1489,7 +1491,7 @@ namespace AdbLogExport.Gui
                     // 于是 cyan/teal/graphite/三白 保存时全被改写成 blue ——
                     // 用户看到的就是"强调色设置后重启回默认"。
                     App.ACCENT = App.NormalizeAccent(GetField(json, "data"));
-                    SaveAccentPreference(App.ACCENT);
+                    if (ProbeJs == null) SaveAccentPreference(App.ACCENT);   // 同上：测试模式不落盘
                     break;
 
                 // ---------------- 自绘标题栏 / 设置（2026-11-15） ----------------
