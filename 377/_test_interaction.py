@@ -22,6 +22,11 @@ import subprocess
 import sys
 import tempfile
 
+try:
+    import _wv2                  # 真实 WebView2 测量通道（同目录）
+except Exception:
+    _wv2 = None
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UI = os.path.join(ROOT, "adb_log_gui", "webview2", "ui.html")
 OUT = os.path.join(ROOT, "377", "_interaction_probe.html")
@@ -52,7 +57,7 @@ JS = r"""
 
   var TABS=['quick','cmd','file','cast','ui','text'];
 
-  setTimeout(function(){
+  function __runAll(){
     try{
       /* ---------- A. 6 页签互斥 ---------- */
       var bad=[];
@@ -230,7 +235,24 @@ JS = r"""
 
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
-  }, 500);
+  }
+
+  /* 2026-11-18：等页面进入稳态再量。
+     本文件没调 setStatus，启动层要等 8s 兜底才退，.frame 一直停在 opacity:0/
+     visibility:hidden；而 body::after 的圆角这类取值在"还没真正渲染"时读到的是旧值
+     （实测：稳态下 winmax 半径 8px→0px 正确）。这里直接收掉启动层（等价宿主 ready），
+     再轮询到稳态才跑。**断言一行未改。** */
+  setTimeout(function(){
+    try { if (typeof hideSplash === 'function') hideSplash(); } catch (e) {}
+    var t0 = Date.now();
+    (function waitSteady(){
+      var fr = document.getElementById('frame');
+      var ok = fr && fr.classList.contains('show') &&
+               getComputedStyle(fr).opacity === '1';
+      if (!ok && Date.now() - t0 < 6000) { setTimeout(waitSteady, 50); return; }
+      __runAll();
+    })();
+  }, 60);
 })();
 </script>
 """
@@ -243,6 +265,13 @@ def main():
     # 这一轮会阻塞在 profile 锁上直到 180s 超时，整轮门禁看起来像"卡死"。
     # （2026-11-16 实测踩过：verify_all 从 1.5 分钟变成 6 分钟以上）
     prof = os.path.join(tempfile.gettempdir(), "edgeprof_interact_%d" % os.getpid())
+    # 测量通道：优先真实 WebView2（--uitest）。headless 的虚拟时钟会冻结
+    # CSS transition，等不到稳态（详见 377/_wv2.py 头注释）；没有 exe 时回退 Edge。
+    dom = ""
+    if _wv2 is not None and _wv2.find_exe():
+        dom = _wv2.dump_dom(OUT, wait_ms=3500)
+        if '<pre id="RESULT">' not in dom:
+            dom = ""
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--no-sandbox",
            # 关掉启动期的后台活动：每次跑都是全新 profile，这些会让冷启动多花好几秒
            "--no-first-run", "--no-default-browser-check",
@@ -257,21 +286,21 @@ def main():
     # Edge 会把自己的 stdout 句柄留给子进程（crashpad 等），
     # 用 PIPE 时 subprocess 会一直等 EOF —— 表现为脚本永久挂住（实测踩过）。
     tmpout = os.path.join(tempfile.gettempdir(), "edgeout_interact_%d.html" % os.getpid())
-    with open(tmpout, "w", encoding="utf-8", errors="replace") as fh:
+    if not dom:
+        with open(tmpout, "w", encoding="utf-8", errors="replace") as fh:
+            try:
+                subprocess.run(cmd, stdout=fh, stderr=subprocess.DEVNULL, timeout=120)
+            except subprocess.TimeoutExpired:
+                print("Edge 超时未退出（120s）")
+                return 1
         try:
-            subprocess.run(cmd, stdout=fh, stderr=subprocess.DEVNULL, timeout=120)
-        except subprocess.TimeoutExpired:
-            print("Edge 超时未退出（120s）")
-            return 1
-    dom = ""
-    try:
-        with io.open(tmpout, "r", encoding="utf-8", errors="replace") as fh:
-            dom = fh.read()
-    finally:
-        try:
-            os.remove(tmpout)
-        except OSError:
-            pass
+            with io.open(tmpout, "r", encoding="utf-8", errors="replace") as fh:
+                dom = fh.read()
+        finally:
+            try:
+                os.remove(tmpout)
+            except OSError:
+                pass
 
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:

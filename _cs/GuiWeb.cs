@@ -65,6 +65,10 @@ namespace AdbLogExport.Gui
         internal string ProbeJs = null;
         internal int ProbeWaitMs = 800;
         internal Action<string> ProbeResult = null;
+        // 诊断用：off-screen 窗口会被 Chromium 判为"被遮挡"，动画/合成被节流，
+        // 入场动画永远停在 currentTime=0，量出来的是"隐藏态"。置 true 时窗口留在
+        // 屏幕内，动画按真实时钟跑完 —— 用来区分"页面真有问题"和"离屏导致的假象"。
+        internal bool ProbeOnScreen = false;
 
         internal bool NavDone { get { return _navDone; } }
 
@@ -175,7 +179,8 @@ namespace AdbLogExport.Gui
             {
                 // 自检模式：窗口移到屏幕外。WebView2 需要真实 HWND 与消息泵才能
                 // 完成初始化，所以不能"不显示"；但也不能抢用户焦点。
-                if (SelfCheckMode)
+                // ProbeOnScreen 时例外：离屏会被判为遮挡，动画被节流（见字段注释）。
+                if (SelfCheckMode && !ProbeOnScreen)
                 {
                     Location = new System.Drawing.Point(-8000, 0);
                     return;

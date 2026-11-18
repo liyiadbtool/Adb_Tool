@@ -16,6 +16,11 @@ import re
 import subprocess
 import sys
 
+try:
+    import _wv2                      # 真实 WebView2 测量通道（同目录）
+except Exception:                    # 极端情况（缺文件）下仍能回退 Edge
+    _wv2 = None
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UI = os.path.join(ROOT, "adb_log_gui", "webview2", "ui.html")
 TEST = os.path.join(ROOT, "377", "test_ux.html")
@@ -395,7 +400,22 @@ UX = r"""
     pre.textContent = R.join('\n');
     document.body.appendChild(pre);
   }
-  setTimeout(run, 300);
+  /* 2026-11-18：页面启动后约 1.6s 才进入稳态（.frame 的 opacity/visibility 过渡
+     才走完；之前 getAnimations() 里有 3 个 fill:backwards 的 CSSTransition 卡在
+     currentTime=0，把 .frame 钉在 opacity:0/visibility:hidden）。
+     本文件原有断言在 300ms 就量，量到的是"过渡中的隐藏态"，与断言本意（稳态）不符：
+     实测稳态下三套主题背景色 / 焦点 / winmax 半径全部正常。
+     改成等稳态再跑，**断言本身一行未改**。 */
+  (function(){
+    var t0 = Date.now();
+    (function waitSteady(){
+      var fr = document.getElementById('frame');
+      var ok = fr && fr.classList.contains('show') &&
+               getComputedStyle(fr).opacity === '1';
+      if (ok || Date.now() - t0 > 6000) { run(); return; }
+      setTimeout(waitSteady, 50);
+    })();
+  })();
 })();
 </script>
 """
@@ -407,17 +427,27 @@ def main():
     open(TEST, "w", encoding="utf-8").write(src.replace("</body>", UX + "</body>"))
 
     url = "file:///" + TEST.replace("\\", "/")
-    cmd = [
-        EDGE, "--headless=new", "--disable-gpu",
-        "--window-size=" + win,
-        "--virtual-time-budget=6000",
-        "--dump-dom",
-        "--user-data-dir=" + PROF,
-        url,
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=120)
-    dom = r.stdout or ""
+    # 测量通道：优先**真实 WebView2**（adb_Tool.exe --uitest，同一渲染器 + 真实时钟）。
+    # 为什么必须换：headless 的 --virtual-time-budget 会冻结 CSS transition，
+    # .frame 的过渡永远停在起始帧，怎么等都等不到稳态（详见 377/_wv2.py 头注释）。
+    # 没编译出 exe 时回退到原来的 Edge 路径，保证脚本仍能跑。
+    dom = None
+    if _wv2 is not None and _wv2.find_exe():
+        dom = _wv2.dump_dom(TEST, wait_ms=3500)
+        if not re.search(r'<pre id="RESULT">', dom):
+            dom = None
+    if dom is None:
+        cmd = [
+            EDGE, "--headless=new", "--disable-gpu",
+            "--window-size=" + win,
+            "--virtual-time-budget=6000",
+            "--dump-dom",
+            "--user-data-dir=" + PROF,
+            url,
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=120)
+        dom = r.stdout or ""
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:
         print("没拿到 RESULT，DOM 长度", len(dom))

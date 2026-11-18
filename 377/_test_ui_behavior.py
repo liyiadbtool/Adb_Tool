@@ -13,6 +13,12 @@ import re
 import subprocess
 import sys
 
+try:
+    import _wv2                      # 真实 WebView2 测量通道（同目录）
+except Exception:
+    _wv2 = None
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 本脚本在 377/，项目根是上一级
 UI = os.path.join(ROOT, "adb_log_gui", "webview2", "ui.html")
 TEST = os.path.join(ROOT, "377", "test_behavior.html")
@@ -741,7 +747,21 @@ BEHAVIOR = r"""
     document.body.appendChild(pre);
   }
 
-  setTimeout(run, 250);
+  /* 2026-11-18：等页面进入稳态再量。
+     页面启动后约 1.6s，.frame 的 opacity/visibility 过渡才走完（此前
+     getAnimations() 里 3 个 fill:backwards 的 CSSTransition 卡在 currentTime=0，
+     把 .frame 钉在 opacity:0/visibility:hidden）。原实现在 250ms 就开测，量到的是
+     过渡中的隐藏态 —— 而断言本意都是稳态。改成等稳态，**断言一行未改**。 */
+  (function(){
+    var t0 = Date.now();
+    (function waitSteady(){
+      var fr = document.getElementById('frame');
+      var ok = fr && fr.classList.contains('show') &&
+               getComputedStyle(fr).opacity === '1';
+      if (ok || Date.now() - t0 > 6000) { run(); return; }
+      setTimeout(waitSteady, 50);
+    })();
+  })();
 })();
 </script>
 """
@@ -759,17 +779,25 @@ def main():
     open(TEST, "w", encoding="utf-8").write(out)
 
     url = "file:///" + TEST.replace("\\", "/")
-    cmd = [
-        EDGE, "--headless=new", "--disable-gpu",
-        "--window-size=" + win,
-        "--virtual-time-budget=5000",
-        "--dump-dom",
-        "--user-data-dir=" + PROF,
-        url,
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=90)
-    dom = r.stdout or ""
+    # 测量通道：优先真实 WebView2（--uitest，同一渲染器 + 真实时钟）；
+    # 没有 exe 时回退 headless Edge（详见 377/_wv2.py 头注释）。
+    dom = None
+    if _wv2 is not None and _wv2.find_exe():
+        dom = _wv2.dump_dom(TEST, wait_ms=3500)
+        if not re.search(r'<pre id="RESULT">', dom):
+            dom = None
+    if dom is None:
+        cmd = [
+            EDGE, "--headless=new", "--disable-gpu",
+            "--window-size=" + win,
+            "--virtual-time-budget=5000",
+            "--dump-dom",
+            "--user-data-dir=" + PROF,
+            url,
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=90)
+        dom = r.stdout or ""
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:
         print("没拿到 RESULT，DOM 长度", len(dom))

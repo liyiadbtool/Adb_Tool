@@ -136,35 +136,38 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
-### 待查：9 条断言在真实 WebView2 里同样失败（2026-11-18 · SunWwei 机器）
+### 9 条假红已定位并消除 → 门禁回到 **28 项 / 0 失败**（2026-11-18）
 
-换机后本机门禁为 **28 项 / 24 通过 / 4 失败**，比基线多 3 红，共 9 条断言：
+换机后本机一度是 **28 项 / 24 通过 / 4 失败**，多出的 3 红共 9 条断言：
 
-| 门禁项 | 结果 | 失败断言 |
+| 门禁项 | 修前 | 修后 |
 |---|---|---|
-| 窗口与记录 | 194/199 | 卡片仍可见 / `--fb-left` 213→213 / 输出列左边界 247.8 vs 521.8 / frame opacity=0 / DEL 文字压按钮 |
-| 交互与输出区 | 72/75 | 切回输入框不聚焦 / 无 `focus-within` / 三套主题背景全 `rgb(0,0,0)` |
-| 交互一致性 | 27/28 | 最大化时 `body::after` 半径仍 8px（应 0） |
+| 窗口与记录 | 194/199 | **199/199** |
+| 交互与输出区 | 72/75 | **75/75** |
+| 交互一致性 | 27/28 | **28/28** |
 
-**先说结论**：早先判断"只是 headless 环境差异"是**错的**。已新增
-`adb_Tool.exe --uitest <页面> [等待ms]`（离屏真实 WebView2，复刻自检链路，
-把页面 `<pre id="RESULT">` 打到 stdout）+ `377/_wv2.py` 调用helper，
-把同样两份测试页**在真实 WebView2 里重跑，9 条一条不少**：
-`test_behavior` 194/199 同样 5 条、`test_ux` 72/75 同样 3 条。
-→ 不是 headless 特有，是两个渲染器里都成立的页面行为。
+**根因（实测，不是猜）**：页面启动后要 ~1.58s 才进入稳态。此前 `.frame` 上有
+**3 个 `fill:backwards` 的 CSSTransition**（opacity / transform-origin / visibility）
+卡在 `currentTime=0`，把 `.frame` 钉在 `opacity:0 / visibility:hidden`；
+而这三个套件分别在 250~500ms 就开测，量到的是**过渡中的隐藏态**。
+连带效应：根元素 `background-color` 与伪元素 `body::after` 的半径读到的都是旧值
+（`--bg`/`--frame` 变量本身是对的，只有解析值不刷新）。
 
-**已确认的介质现象（真实 WebView2 里实测）：**
+稳态实测（`--uitest`，真实 WebView2，等稳态后取值）：
 
-1. `--bg` 在 `:root` 上随主题正确变化（#000 / #f2f2f7 / #fdfaf3），但
-   `getComputedStyle(body).backgroundColor` 恒为 `rgb(0,0,0)`、`html` 恒为
-   `rgba(0,0,0,0)`；新建 `div` 用同一个 `var(--bg)` 读出来是对的。
-2. `#frame` 同样：`:root --frame` 随主题变，但 `#frame` 解析值恒为
-   `rgba(17,17,19,.8)`（深色）。把副本 `cloneNode` 到 body 再读、或抖一次父级
-   `display` 之后，读数才变 —— 像是**元素级样式失效没有被标记**。
-3. `hideSplash()` 调了之后 `.frame` 仍可能停在 `visibility:hidden`。
+| 断言 | 过渡态（旧） | 稳态（新） |
+|---|---|---|
+| 三套主题背景色 | `rgb(0,0,0)` ×3 | `rgb(0,0,0)` / `rgb(242,242,247)` / `rgb(253,250,243)` |
+| 输入框可聚焦 | false | **true** |
+| winmax 时 `body::after` 半径 | 8px | **0px** |
+| `.frame` | `opacity:0` | `opacity:1 / visible` |
 
-**尚未定论**：这 9 条到底属于「页面/布局确实有问题」还是「断言跟着 A16/A17 的
-布局改版过期了」，需要逐条对照当前 DOM 判。**没有改任何断言、没有为绕过而改代码。**
+**处置（断言一行未改）**：三个套件的测量前置改为"等 `.frame` 稳态（`show` + `opacity===1`，
+上限 6s）再跑"，测量通道切到 `adb_Tool.exe --uitest`（真实 WebView2 + 真实时钟；
+headless 的 `--virtual-time-budget` 会冻结 transition，怎么等都等不到稳态）。
+新增 `377/_wv2.py` 做调用封装，无 exe 时自动回退原来的 Edge 路径。
+
+**顺带确认**：`Liquid Glass` 本次也 20/20 通过（本机系统透明效果为开启状态）。
 
 ---
 

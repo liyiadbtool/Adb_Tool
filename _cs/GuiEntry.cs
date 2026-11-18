@@ -162,6 +162,9 @@ namespace AdbLogExport.Gui
                     // <pre id="RESULT">，这里原样读文本。找不到就给哨兵值，
                     // 让 Python 侧能区分"页面没跑起来"和"断言失败"。
                     f.ProbeWaitMs = uiTestWait;
+                    // ADB_TOOL_UITEST_SHOW=1：窗口留在屏幕内跑（诊断动画/遮挡节流用）
+                    if (Environment.GetEnvironmentVariable("ADB_TOOL_UITEST_SHOW") == "1")
+                        f.ProbeOnScreen = true;
                     f.ProbeJs = "(function(){var p=document.getElementById('RESULT');"
                               + "return p?(p.textContent||''):'__NO_RESULT__';})()";
                     f.ProbeResult = delegate(string raw)
