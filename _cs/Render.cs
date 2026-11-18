@@ -400,7 +400,7 @@ namespace AdbLogExport
             Console.WriteLine("    :fkcall :fkvoice :fkprev :fknext :fkplay   通话/语音/上首/下首/播放");
             Console.WriteLine("    :fkvolup :fkvoldown :fkmute                音量+/音量-/静音");
             Console.WriteLine("    :fkstarleft :fkstarright                   左星号(521)/右星号(520)");
-            Console.WriteLine("    :fkcalllong :fkvoicelong                   通话/语音 长按 4 秒");
+            Console.WriteLine("    :fkcalllong :fkvoicelong                   通话/语音 长按 3 秒");
             Console.WriteLine("    :fkforce              强制重启：电话(503)+星号(520) 同时按住 20 秒");
             Console.WriteLine("    :fkforce 25           按住 25 秒（车机重启导致断线也算成功）");
             Console.WriteLine("  旧名仍可用（过渡期）");

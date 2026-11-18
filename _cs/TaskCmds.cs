@@ -602,7 +602,7 @@ namespace AdbLogExport
                 Hint("输入 :r 重连后再试");
                 return;
             }
-            if (holdMs < 200) holdMs = 4000;
+            if (holdMs < 200) holdMs = 3000;   // 兜底默认 3 秒（2026-11-18 由 4 秒下调）
             if (holdMs > 120000) holdMs = 120000;   // 上限 2 分钟
 
             Echo("inject-key", "-a down " + keyCode + " 按住 " + (holdMs / 1000) + " 秒");
@@ -623,6 +623,49 @@ namespace AdbLogExport
 
             CMD_OK = true;
             Ok("长按已下发完毕（按住 " + (holdMs / 1000) + " 秒）");
+        }
+
+        // 方控单键**短按**：一条 inject-key 让 car_service 自己 down+up。
+        // cmds.ini 里的 fk* 命令都是这么写的（`shell dumpsys car_service inject-key 520`），
+        // 这里把内置命令也走同一条路径，保证"卡片上点一下"和"终端敲 :fksource"行为一致。
+        private static void DoFkTap(int keyCode, string label)
+        {
+            if (OFFLINE || DEVN == 0)
+            {
+                Fail("设备未连接，无法下发" + label);
+                Hint("输入 :r 重连后再试");
+                return;
+            }
+
+            Echo("inject-key", label + " (" + keyCode + ")");
+            string o = "";
+            string e = "";
+            int rc = ShellCall(CUR, "dumpsys car_service inject-key " + keyCode, out o, out e);
+
+            string merged = (o + "\n" + e).Trim();
+            if (merged.Length > 0)
+            {
+                string[] lines = merged.Split('\n');
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string line = lines[i].TrimEnd('\r');
+                    if (line.Trim().Length > 0) Info(line);
+                }
+            }
+
+            bool looksLikeDrop = merged.ToLowerInvariant().IndexOf("offline") >= 0
+                || merged.ToLowerInvariant().IndexOf("closed") >= 0;
+            if (rc == 0 || looksLikeDrop)
+            {
+                Ok(label + " 已下发");
+                CMD_OK = true;
+            }
+            else
+            {
+                CMD_OK = false;
+                Fail(label + " 下发失败（退出码 " + rc + "）");
+                Hint("确认 car_service 可用；可用 :fksource 单独验证 520 短按是否正常");
+            }
         }
 
         // 单次 inject-key 动作（down 或 up）。

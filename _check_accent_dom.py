@@ -99,7 +99,11 @@ def main():
     io.open(TEST, "w", encoding="utf-8").write(src.replace("</body>", JS + "</body>"))
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1100,760",
            "--virtual-time-budget=6000", "--dump-dom",
-           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_accent_check"),
+           # 2026-11-18：原先用固定目录名，一旦上一轮还有残留 Edge 实例占着
+           # profile 锁，这一轮就会静默阻塞到超时（实测偶发：连跑 3 次有 1 次卡满 120s）。
+           # 按 _test_interaction.py 的既有做法，改成每次进程唯一。
+           "--user-data-dir=" + os.path.join(tempfile.gettempdir(),
+                                             "edgeprof_accent_check_%d" % os.getpid()),
            "file:///" + TEST.replace("\\", "/")]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=120)

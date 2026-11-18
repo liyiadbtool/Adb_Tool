@@ -328,11 +328,21 @@ namespace AdbLogExport
                 return;
             }
 
-            // 方控长按：单键 down → 按住 4 秒 → up（与短按 inject-key 区分）
+            // 方控长按：单键 down → 按住 3 秒 → up（与短按 inject-key 区分）
             //   :fkvoicelong   语音键(508) 长按
             //   :fkcalllong    通话键(503) 长按
-            if (n == "fkvoicelong" || n == "fkvhold") { DoKeyHold(508, 4000); return; }
-            if (n == "fkcalllong" || n == "fkcallhold") { DoKeyHold(503, 4000); return; }
+            // 2026-11-18：按住时长 4 秒 → 3 秒（用户要求，真机手感更接近长按）
+            if (n == "fkvoicelong" || n == "fkvhold") { DoKeyHold(508, 3000); return; }
+            if (n == "fkcalllong" || n == "fkcallhold") { DoKeyHold(503, 3000); return; }
+
+            // 方控星号键（短按，car_service 自动 down+up）
+            //   :fkstarleft / :fkstarl    左星号 521
+            //   :fkstarright / :fkstarr   右星号 520
+            // 2026-11-18 修复：这两个名字此前只出现在 :h 帮助与快捷卡片里，
+            // 路由里**根本没有分支** → 点卡片会落到"没有这个命令：fkstarleft"。
+            // 编码取自 SynTestUtil 逆向（leftkey=521 / rightkey=520）。
+            if (n == "fkstarleft" || n == "fkstarl") { DoFkTap(521, "左星号键"); return; }
+            if (n == "fkstarright" || n == "fkstarr") { DoFkTap(520, "右星号键"); return; }
 
             // ---- 无感知截图（需求2）：绕过 cmd.exe 的黑框 ----
             // :shot 原走 cmds.ini 的 `adb exec-out screencap -p > path`，

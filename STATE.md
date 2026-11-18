@@ -136,6 +136,20 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-18 · 星号键 / 长按时长）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **左右星号键"失败"根因** | `Prefix.cs` | `:fkstarleft` / `:fkstarright` **只存在于 `:h` 帮助文本和快捷卡片里，路由里根本没有分支** → 点卡片落到 `Fail("没有这个命令：fkstarleft")`。已补两条（左 521 / 右 520，编码取自 SynTestUtil 逆向），走 `DoFkTap` 单次 `inject-key`（与 cmds.ini 的短按同一条路径） |
+| 2 | **强制重启的星号键是否失效** | 无需改代码 | 实测 `inject-key -a down 520` / `-a up 520` / 503 单键 / 503+520 组合**全部返回 Succeeded** → 注入层没坏。若强制重启仍不生效，方向在按住时长（默认 20s，可 `:fkforce 25`）或"注入键不触发强制重启、需物理方控" |
+| 3 | 长按语音/通话 4 秒 → **3 秒** | `Prefix.cs` + `TaskCmds.cs` + `Render.cs` + 卡片文案 | `DoKeyHold(508/503, 3000)`；`DoKeyHold` 兜底默认值同步 4000→3000；`:h` 与两张卡片文案改 3s |
+| 4 | 门禁偶发卡死 | `_check_accent_dom.py` | profile 目录用的是固定名，残留 Edge 占锁时会静默阻塞到超时（连跑 3 次有 1 次卡满 120s）。改为每次进程唯一（同 `_test_interaction.py` 的既有做法），4/4 稳定 4~5s |
+
+验收基线：**28 项 / 0 失败**；GUI 自检 19 条；CLI 自检 489 条。
+真机验证：`ecc73bf` 在线，`:fkstarleft` / `:fkstarright` 均 `Succeeded`。
+
+---
+
 ### 本轮做了什么（2026-11-18 · T1 + T2，按《AI 实现规格书》批次 1-2）
 
 | # | 需求 | 落点 | 说明 |
