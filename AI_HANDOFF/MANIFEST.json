@@ -1,8 +1,8 @@
 {
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
- "count": 125,
- "totalBytes": 3239519,
+ "count": 126,
+ "totalBytes": 3249314,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -195,6 +195,11 @@
    "sha256": "50aa2deeb2c4246fcec9055fda3030969c27ddd989534f9b4db0e41af83b439d"
   },
   {
+   "path": "377/_wv2.py",
+   "size": 3652,
+   "sha256": "fc0671cc0ddd8df92e28709a300ea1a0cb7ab7112bd916bffdbd28904291221c"
+  },
+  {
    "path": "AI_HANDOFF/00_START_HERE.md",
    "size": 7774,
    "sha256": "3b4a29a746010bb2326fc5a0f96af7e40c9d318ad2205cd08f219b411d0b768f"
@@ -316,8 +321,8 @@
   },
   {
    "path": "_cs/GuiEntry.cs",
-   "size": 10623,
-   "sha256": "161447b42f3749cc401ec4f665a878d063224d826c9b9688e2f60d536a4ca2cf"
+   "size": 14610,
+   "sha256": "561989b2ba777d246a054f9f0b3d352618104dc3e064dc0cf283b7364449ab0d"
   },
   {
    "path": "_cs/GuiHeadless.cs",
@@ -341,8 +346,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 208196,
-   "sha256": "34ca6a999c49ac2a0cec3a1e9e599c055068e2e2846360eec7c260d724c1620b"
+   "size": 210010,
+   "sha256": "6ca071c08714c7bdfd93f569f7a3bc1542dfa551d9e6cfead354b568a3e8ee99"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -571,8 +576,8 @@
   },
   {
    "path": "docs/代码导读.md",
-   "size": 20940,
-   "sha256": "39f29bd33ec109f439045c6829f556e2344cf46eb7f53ec8264468f13b4ef054"
+   "size": 21282,
+   "sha256": "bc85d145457fe363ee6741b22248b95de57184752bc29ba9bea210183aa2422b"
   },
   {
    "path": "docs/功能清单.md",
