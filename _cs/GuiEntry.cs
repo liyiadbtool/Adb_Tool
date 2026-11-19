@@ -245,6 +245,19 @@ namespace AdbLogExport.Gui
         // 取不到 LocalAppData 时退化为 exe 同级（至少日志不丢）。
         internal static string LogDir()
         {
+            // 2026-11-19：发布包带一个 log\ 目录，日志放这里最直观（QA 直接能翻）。
+            // 仍然保留 LocalAppData 兜底：包放在只读介质 / Program Files 时写不进去。
+            try
+            {
+                string beside = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log");
+                Directory.CreateDirectory(beside);
+                string probe = Path.Combine(beside, ".wtest");
+                File.WriteAllText(probe, "1");
+                File.Delete(probe);
+                return beside;
+            }
+            catch { }
+
             try
             {
                 string root = Environment.GetFolderPath(

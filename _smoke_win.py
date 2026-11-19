@@ -39,7 +39,13 @@ SPI_GETWORKAREA = 0x0030
 
 EXE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    "adb_log_gui", "dist", "adb_Tool.exe")
-LOG = os.path.join(os.environ.get("LOCALAPPDATA", ""), "adb_Tool", "logs", "gui_error.log")
+# 2026-11-19：新包日志落在 exe 同级 log\，老包在 LocalAppData；
+# 两边都认，否则会去比对**上一次**的旧日志而假绿。
+_BESIDE = os.path.join(os.path.dirname(os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "adb_log_gui", "dist", "adb_Tool.exe"))), "log")
+LOG = os.path.join(_BESIDE if os.path.isdir(_BESIDE) else
+                   os.path.join(os.environ.get("LOCALAPPDATA", ""), "adb_Tool", "logs"),
+                   "gui_error.log")
 
 
 def find_window(pid=None):

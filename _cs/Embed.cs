@@ -138,10 +138,16 @@ namespace AdbLogExport
                         // 外置优先：exe 同级有同名 dll 就用它。
                         // 这样"补一个更新的 SDK dll 覆盖"仍然有效，也方便调试时
                         // 直接换 dll 观察行为，不必重新编译。
-                        string ext = Path.Combine(BaseDir, simple + ".dll");
-                        if (File.Exists(ext))
+                        // 新布局在 internal\，老布局在 exe 同级 —— 两处都探
+                        string[] cands = new string[]
                         {
-                            try { return Assembly.LoadFrom(ext); }
+                            Path.Combine(BaseDir, "internal", simple + ".dll"),
+                            Path.Combine(BaseDir, simple + ".dll")
+                        };
+                        for (int ci = 0; ci < cands.Length; ci++)
+                        {
+                            if (!File.Exists(cands[ci])) continue;
+                            try { return Assembly.LoadFrom(cands[ci]); }
                             catch { }
                         }
 
@@ -163,8 +169,11 @@ namespace AdbLogExport
         internal static string PrepareNativeLoader()
         {
             // 1) 外置：exe 同级（发布包）/ webview2 子目录（源码目录）
+            // 2026-11-19：发布包改成 exe + internal\ + log\ 的干净结构，
+            // 新布局优先，老布局（平铺 / webview2\）继续兼容。
             string[] ext = new string[]
             {
+                Path.Combine(BaseDir, "internal", "WebView2Loader.dll"),
                 Path.Combine(BaseDir, "WebView2Loader.dll"),
                 Path.Combine(BaseDir, "webview2", "WebView2Loader.dll")
             };
@@ -220,8 +229,13 @@ namespace AdbLogExport
         /// </summary>
         internal static string PrepareUiHtml()
         {
-            string p1 = Path.Combine(BaseDir, "webview2", "ui.html");
+            // 2026-11-19：新布局把界面放进 internal\（发布包 = exe + internal\ + log\）。
+            // 探测顺序：internal → webview2（源码目录）→ exe 同级 → ui_draft → 内嵌释放
+            string p1 = Path.Combine(BaseDir, "internal", "ui.html");
             if (File.Exists(p1)) return p1;
+
+            string p1b = Path.Combine(BaseDir, "webview2", "ui.html");
+            if (File.Exists(p1b)) return p1b;
 
             string p2 = Path.Combine(BaseDir, "ui.html");
             if (File.Exists(p2)) return p2;

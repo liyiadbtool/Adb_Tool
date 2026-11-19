@@ -39,23 +39,26 @@ if not exist "%BIN%" (
 
 if exist "%DIST%" rmdir /s /q "%DIST%" >nul 2>&1
 mkdir "%DIST%" >nul 2>&1
-mkdir "%DIST%\webview2" >nul 2>&1
+rem 2026-11-19: clean layout - exe at root, everything else under internal\,
+rem runtime logs under log\ (same as build_gui.bat).
+mkdir "%DIST%\internal" >nul 2>&1
+mkdir "%DIST%\log" >nul 2>&1
 
 copy /y "%BIN%"                                        "%DIST%\adb_Tool.exe" >nul
-copy /y "%~dp0Microsoft.Web.WebView2.Core.dll"          "%DIST%\" >nul
-copy /y "%~dp0Microsoft.Web.WebView2.WinForms.dll"      "%DIST%\" >nul
-copy /y "%~dp0WebView2Loader.dll"                       "%DIST%\" >nul
-copy /y "%~dp0adb_log_export.ini"                       "%DIST%\" >nul
-copy /y "%~dp0cmds.ini"                                 "%DIST%\" >nul
-copy /y "%~dp0webview2\ui.html"                         "%DIST%\webview2\" >nul
+copy /y "%~dp0Microsoft.Web.WebView2.Core.dll"          "%DIST%\internal\" >nul
+copy /y "%~dp0Microsoft.Web.WebView2.WinForms.dll"      "%DIST%\internal\" >nul
+copy /y "%~dp0WebView2Loader.dll"                       "%DIST%\internal\" >nul
+copy /y "%~dp0adb_log_export.ini"                       "%DIST%\internal\" >nul
+copy /y "%~dp0cmds.ini"                                 "%DIST%\internal\" >nul
+copy /y "%~dp0webview2\ui.html"                         "%DIST%\internal\" >nul
 rem [2026-11-15] Keep the external window icon in sync with the embedded one.
-copy /y "%~dp0adb_Tool.ico"                             "%DIST%\" >nul
+copy /y "%~dp0adb_Tool.ico"                             "%DIST%\internal\" >nul
 
 rem manual: ..\docs\*.md -> dist_min\manual.md
 for %%F in ("%~dp0..\docs\*.md") do copy /y "%%~fF" "%DIST%\manual.md" >nul
 
 set "MISSING="
-for %%F in ("%DIST%\adb_Tool.exe" "%DIST%\Microsoft.Web.WebView2.Core.dll" "%DIST%\Microsoft.Web.WebView2.WinForms.dll" "%DIST%\WebView2Loader.dll" "%DIST%\adb_log_export.ini" "%DIST%\cmds.ini" "%DIST%\webview2\ui.html" "%DIST%\adb_Tool.ico") do (
+for %%F in ("%DIST%\adb_Tool.exe" "%DIST%\internal\Microsoft.Web.WebView2.Core.dll" "%DIST%\internal\Microsoft.Web.WebView2.WinForms.dll" "%DIST%\internal\WebView2Loader.dll" "%DIST%\internal\adb_log_export.ini" "%DIST%\internal\cmds.ini" "%DIST%\internal\ui.html" "%DIST%\internal\adb_Tool.ico") do (
     if not exist %%F set "MISSING=!MISSING! %%~nxF"
 )
 if defined MISSING (

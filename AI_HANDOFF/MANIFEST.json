@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 128,
- "totalBytes": 3358818,
+ "totalBytes": 3359373,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -251,8 +251,8 @@
   },
   {
    "path": "_check_features.json",
-   "size": 44917,
-   "sha256": "5ced1249d6c053694dc5373a65e56242b0e4d34817a24ca973a96efce6c210ca"
+   "size": 44937,
+   "sha256": "fbc4ef3472c1c2cdfc62ac4419da0dbffa058cb90a59f25fc0af04e444fb60e2"
   },
   {
    "path": "_cs/Adb.cs",
@@ -286,8 +286,8 @@
   },
   {
    "path": "_cs/CmdRegistry.cs",
-   "size": 20910,
-   "sha256": "38f812793d36f8b049a9dddba516ec5f9205c3df8cc518c1550588debc7b5fde"
+   "size": 20704,
+   "sha256": "63bbcf22f71fd3d63d25cc918c69924c189cefd2c7379377dc3adce3018a73d9"
   },
   {
    "path": "_cs/Common.cs",
@@ -306,8 +306,8 @@
   },
   {
    "path": "_cs/Embed.cs",
-   "size": 12759,
-   "sha256": "28bb81227319043ddc41d394ac166c31c2377f6bf8c81c3f7c0754c280eae89c"
+   "size": 13416,
+   "sha256": "dc3b83b48bd1f50e9593e8fb9d6fedaa75b41079541c32a3f579aced51bbb80a"
   },
   {
    "path": "_cs/Env.cs",
@@ -316,8 +316,8 @@
   },
   {
    "path": "_cs/Ffmpeg.cs",
-   "size": 18671,
-   "sha256": "16f64ce1e4ca568ea3430751f14fde8c8efd5952063849f87467bb926025fb38"
+   "size": 18459,
+   "sha256": "2343467c5e58bc7a30912071f4b916874b02bc85faa87bb0942ebbd3835d4cab"
   },
   {
    "path": "_cs/FileBrowser.cs",
@@ -326,8 +326,8 @@
   },
   {
    "path": "_cs/GuiEntry.cs",
-   "size": 14859,
-   "sha256": "1559edbe4efc969fa2d69251d532e8d021a07ea6a70ff8bfd910ce33e0e3291b"
+   "size": 15158,
+   "sha256": "122144912940ec8323fbd9d435062b19dfa7a06e3ba47ca5dfa81e47c5490916"
   },
   {
    "path": "_cs/GuiHeadless.cs",
@@ -386,8 +386,8 @@
   },
   {
    "path": "_cs/Program.cs",
-   "size": 79685,
-   "sha256": "1daaabcb7bcfb927846c8860ef75e668adf144e7acbc94f61c92a6e758589fc9"
+   "size": 78505,
+   "sha256": "2645a82e14b009fd336b2f160de0343479cb800d8f53f866cf0715afadfc009b"
   },
   {
    "path": "_cs/Reconnect.cs",
@@ -496,8 +496,8 @@
   },
   {
    "path": "adb_log_gui/build_gui.bat",
-   "size": 12341,
-   "sha256": "c27685dd247fd47fcbc94b5244b1c834d15c581fffe5fb1c771515f1f6c35375"
+   "size": 12788,
+   "sha256": "7432a50c18fb345a2c63863e59490fb75dd2151eee90c3de5b2eddf442073e2e"
   },
   {
    "path": "adb_log_gui/cmds.ini",
@@ -506,8 +506,8 @@
   },
   {
    "path": "adb_log_gui/make_min.bat",
-   "size": 3717,
-   "sha256": "e8f283aada2fdedbbb5764a7586d2fab763f7d0520d5076bdeb9111048680f88"
+   "size": 3897,
+   "sha256": "d23ba3d8bb2938045f9e92a0c2774f41eb93b4e4ee3626fafdab3efa4455c8aa"
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
@@ -626,8 +626,8 @@
   },
   {
    "path": "docs/用户使用手册.md",
-   "size": 96024,
-   "sha256": "487fcef65c65595bae1aa115520045001f5fed1bb01d7e435446b0b9d6c65f77"
+   "size": 96248,
+   "sha256": "1c60646bc0d230245eece47bf88d2e3439dfbc12cb9a090393c3371f79acaea8"
   },
   {
    "path": "docs/项目规则.md",
@@ -641,8 +641,8 @@
   },
   {
    "path": "verify_all.py",
-   "size": 9230,
-   "sha256": "dc508df07283742538e809749f0161081c9503c598d77952949376ec8422f382"
+   "size": 9556,
+   "sha256": "1ede2660884111b603497b8179661956e1c2faf8cf5a6abdf701b10444ca57ac"
   }
  ]
 }

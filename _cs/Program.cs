@@ -605,6 +605,14 @@ namespace AdbLogExport
         // ==================== 六、历史持久化 ====================
         private static string HistPath()
         {
+            // 2026-11-19：发布包结构改成 exe + internal\ + log\，历史文件这种运行期
+            // 产物不该躺在根目录（一个点文件很碍眼）。有 log\ 就往里放，没有则保持旧行为。
+            try
+            {
+                string lg = Path.Combine(ExeDir(), "log");
+                if (Directory.Exists(lg)) return Path.Combine(lg, ".adb_tool_history");
+            }
+            catch { }
             return Path.Combine(ExeDir(), ".adb_tool_history");
         }
 

@@ -174,18 +174,24 @@ set "DIST=%~dp0dist"
 rem Rebuild in place: wipe first so stale files cannot skew the checks below
 if exist "%DIST%" rmdir /s /q "%DIST%" >nul 2>&1
 mkdir "%DIST%" >nul 2>&1
-mkdir "%DIST%\webview2" >nul 2>&1
+rem 2026-11-19: clean layout - exe at root, everything else under internal\,
+rem runtime logs under log\. Matches what the reference tool ships and keeps
+rem the folder readable for hand-off.
+rem Backward compatible: Embed.cs probes internal\ first, then the old flat
+rem layout, so an old package still runs.
+mkdir "%DIST%\internal" >nul 2>&1
+mkdir "%DIST%\log" >nul 2>&1
 
 copy /y "%BIN%"                                     "%DIST%\adb_Tool.exe" >nul
-copy /y "%~dp0Microsoft.Web.WebView2.Core.dll"      "%DIST%\" >nul
-copy /y "%~dp0Microsoft.Web.WebView2.WinForms.dll"  "%DIST%\" >nul
-copy /y "%~dp0WebView2Loader.dll"                   "%DIST%\" >nul
-copy /y "%~dp0adb_log_export.ini"                   "%DIST%\" >nul
-copy /y "%~dp0cmds.ini"                             "%DIST%\" >nul
-copy /y "%~dp0webview2\ui.html"                     "%DIST%\webview2\" >nul
+copy /y "%~dp0Microsoft.Web.WebView2.Core.dll"      "%DIST%\internal\" >nul
+copy /y "%~dp0Microsoft.Web.WebView2.WinForms.dll"  "%DIST%\internal\" >nul
+copy /y "%~dp0WebView2Loader.dll"                   "%DIST%\internal\" >nul
+copy /y "%~dp0adb_log_export.ini"                   "%DIST%\internal\" >nul
+copy /y "%~dp0cmds.ini"                             "%DIST%\internal\" >nul
+copy /y "%~dp0webview2\ui.html"                     "%DIST%\internal\" >nul
 rem [2026-11-15] Window icon: TrySetCatIcon reads adb_Tool.ico next to the exe.
 rem The /win32icon embedded resource only covers taskbar / Alt+Tab. Ship both.
-copy /y "%~dp0adb_Tool.ico"                         "%DIST%\" >nul
+copy /y "%~dp0adb_Tool.ico"                         "%DIST%\internal\" >nul
 rem ffmpeg.exe: needed by the frame-grab screen recorder (screenrecord is blocked
 rem by FLAG_SECURE on these IVI screens). It is large (~105 MB), so it is copied
 rem best-effort; the recorder errors clearly at runtime if it is missing.
@@ -194,7 +200,7 @@ copy /y "%~dp0ffmpeg.exe"                           "%DIST%\" >nul 2>&1
 rem Guard: if any required file is missing, say so loudly. Shipping a package
 rem that "looks built" but will not start is worse than failing visibly here.
 set "MISSING="
-for %%F in ("%DIST%\adb_Tool.exe" "%DIST%\Microsoft.Web.WebView2.Core.dll" "%DIST%\Microsoft.Web.WebView2.WinForms.dll" "%DIST%\WebView2Loader.dll" "%DIST%\adb_log_export.ini" "%DIST%\cmds.ini" "%DIST%\webview2\ui.html" "%DIST%\adb_Tool.ico") do (
+for %%F in ("%DIST%\adb_Tool.exe" "%DIST%\internal\Microsoft.Web.WebView2.Core.dll" "%DIST%\internal\Microsoft.Web.WebView2.WinForms.dll" "%DIST%\internal\WebView2Loader.dll" "%DIST%\internal\adb_log_export.ini" "%DIST%\internal\cmds.ini" "%DIST%\internal\ui.html" "%DIST%\internal\adb_Tool.ico") do (
     if not exist %%F set "MISSING=!MISSING! %%~nxF"
 )
 if defined MISSING (

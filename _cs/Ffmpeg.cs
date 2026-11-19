@@ -61,7 +61,11 @@ namespace AdbLogExport
 
         internal static string DefaultIniPath()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+            // 2026-11-19：新布局 internal\ 优先，其次 exe 同级（老布局/便携）
+            string b = AppDomain.CurrentDomain.BaseDirectory;
+            string p = Path.Combine(b, "internal", "adb_log_export.ini");
+            if (File.Exists(p)) return p;
+            return Path.Combine(b, "adb_log_export.ini");
         }
 
         // ---------------- 候选枚举 ----------------

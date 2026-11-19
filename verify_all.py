@@ -44,6 +44,14 @@ EDGE_TESTS = [
 results = []
 
 
+def _log_dir(exe_path):
+    """日志可能落两处：exe 同级 log\\（新包），或 %LOCALAPPDATA%\\adb_Tool\\logs（旧包/只读目录）。"""
+    beside = os.path.join(os.path.dirname(os.path.abspath(exe_path)), "log")
+    if os.path.isdir(beside):
+        return beside
+    return os.path.join(os.environ.get("LOCALAPPDATA", ""), "adb_Tool", "logs")
+
+
 def record(name, ok, detail):
     results.append((name, ok, detail))
     print(("  [OK]   " if ok else "  [XX]   ") + name + "  " + detail)
@@ -164,7 +172,7 @@ def main():
         record("GUI 自检", True, "已跳过（--fast）")
     else:
         gui_exe = os.path.join(GUI_DIR, "adb_Tool.exe")
-        log = os.path.join(os.environ.get("LOCALAPPDATA", ""), "adb_Tool", "logs", "gui_selfcheck.log")
+        log = os.path.join(_log_dir(gui_exe), "gui_selfcheck.log")
         try:
             if os.path.exists(log):
                 os.remove(log)

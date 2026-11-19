@@ -886,14 +886,14 @@
           "file": "adb_log_gui/build_gui.bat",
           "has": [
             "copy /y \"%~dp0adb_Tool.ico\"",
-            "\"%DIST%\\adb_Tool.ico\""
+            "\"%DIST%\\internal\\adb_Tool.ico\""
           ]
         },
         {
           "file": "adb_log_gui/make_min.bat",
           "has": [
             "copy /y \"%~dp0adb_Tool.ico\"",
-            "\"%DIST%\\adb_Tool.ico\""
+            "\"%DIST%\\internal\\adb_Tool.ico\""
           ]
         },
         {

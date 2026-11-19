@@ -75,7 +75,10 @@ namespace AdbLogExport
         // ==================== 一、加载 ====================
         internal static void LoadCmds()
         {
-            string path = Path.Combine(ExeDir(), "cmds.ini");
+            // 2026-11-19：新布局把配置放 internal\；老布局仍在 exe 同级。
+            // 顺序：internal 存在就用 internal（发布包），否则用 exe 同级（便携/源码）。
+            string path = Path.Combine(ExeDir(), "internal", "cmds.ini");
+            if (!File.Exists(path)) path = Path.Combine(ExeDir(), "cmds.ini");
 
             // 首次运行：把内置脚本包写成模板，用户可以直接改
             if (!File.Exists(path))

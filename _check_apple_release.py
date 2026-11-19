@@ -153,12 +153,17 @@ for name, kind, need_ini, need_ffmpeg in [
         ck("adb_Tool.exe" in names, name + " 含 adb_Tool.exe")
         ck("使用手册.md" in names, name + " 含 使用手册.md")
         if need_ini:
-            ck("cmds.ini" in names and z.read("cmds.ini") == src_ini,
-               name + " 内 cmds.ini 与源一致")
-            ck("webview2/ui.html" in names and z.read("webview2/ui.html") == u1,
-               name + " 内 ui.html 与 U1 一致")
-            ck("adb_Tool.ico" in names and z.read("adb_Tool.ico") == ico1,
-               name + " 内 ico 与源一致")
+            # 2026-11-19：发布包改成 exe + internal\ + log\ 的结构，
+            # 老包（平铺 / webview2\）仍然兼容，两种路径都认。
+            ini_rel = "internal/cmds.ini" if "internal/cmds.ini" in names else "cmds.ini"
+            ui_rel = "internal/ui.html" if "internal/ui.html" in names else "webview2/ui.html"
+            ico_rel = "internal/adb_Tool.ico" if "internal/adb_Tool.ico" in names else "adb_Tool.ico"
+            ck(ini_rel in names and z.read(ini_rel) == src_ini,
+               name + " 内 cmds.ini 与源一致（" + ini_rel + "）")
+            ck(ui_rel in names and z.read(ui_rel) == u1,
+               name + " 内 ui.html 与 U1 一致（" + ui_rel + "）")
+            ck(ico_rel in names and z.read(ico_rel) == ico1,
+               name + " 内 ico 与源一致（" + ico_rel + "）")
         if need_ffmpeg:
             ck("ffmpeg.exe" in names, name + " 含 ffmpeg.exe")
         if "使用手册.md" in names:
