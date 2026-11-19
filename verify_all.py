@@ -63,19 +63,26 @@ def run(cmd, cwd, timeout, name, pick=None):
     # （安全软件扫描可执行文件的窗口期），单独跑却永远正常。
     # 这种不该算门禁失败 —— 重试一次再判。
     p = None
-    for attempt in (1, 2):
+    # 2026-11-19：这个瞬时锁（安全软件扫描 node.exe 的窗口）实测能持续 5~10 秒，
+    # 0.6 秒两次重试不够用 —— 今天连着误报三次。改成 3 次、间隔 2.5 秒。
+    for attempt in (1, 2, 3):
         try:
             p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
                                encoding="utf-8", errors="replace", timeout=timeout)
             break
         except subprocess.TimeoutExpired:
-            record(name, False, "超时 %ds" % timeout)
-            return False, ""
+            # 2026-11-19：headless Edge 偶发在**并发跑门禁**时卡住（单独跑同样脚本 5 秒过）。
+            # 直接判失败会误伤；超时也重试，连续三次超时才算真失败。
+            if attempt == 3:
+                record(name, False, "超时 %ds（重试 3 次仍失败）" % timeout)
+                return False, ""
+            print("        （%s 超时 %ds，重试 %d/3）" % (name, timeout, attempt))
+            time.sleep(2.0)
         except OSError as ex:
-            if attempt == 2:
+            if attempt == 3:
                 record(name, False, "无法启动 %s（%s）" % (cmd[0], ex))
                 return False, ""
-            time.sleep(0.6)
+            time.sleep(2.5)
     out = (p.stdout or "") + (p.stderr or "")
     ok = (p.returncode == 0)
     detail = ""

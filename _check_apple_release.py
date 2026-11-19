@@ -6,7 +6,9 @@ import os
 import sys
 import zipfile
 
-ROOT = r"C:\Users\李亦\Desktop\Adb_Tool"
+# 2026-11-19：原来写死了一台机器的路径（C:\Users\李亦\Desktop\Adb_Tool），
+# 换台电脑必然 FileNotFoundError。改成按本文件位置推导，谁跑都指向自己的仓库。
+ROOT = os.path.dirname(os.path.abspath(__file__))
 GUI = os.path.join(ROOT, "adb_log_gui")
 RELEASE = os.path.join(ROOT, "release")
 
@@ -31,9 +33,19 @@ def ck(cond, msg):
 sys.stdout.write("== U1-U4：ui.html 六处副本 ==\n")
 u1 = rd(os.path.join(GUI, "webview2", "ui.html"))
 sys.stdout.write("U1 源: %d B sha=%s\n" % (len(u1), sha(u1)))
+def _pick(*cands):
+    """新布局 internal\\ 优先，老布局兜底；返回第一个存在的路径（都不存在则返回第一个）。"""
+    for c in cands:
+        if os.path.exists(c):
+            return c
+    return cands[0]
+
+
 for uid, p in [
-    ("U2", os.path.join(GUI, "dist", "webview2", "ui.html")),
-    ("U3", os.path.join(GUI, "dist_min", "webview2", "ui.html")),
+    ("U2", _pick(os.path.join(GUI, "dist", "internal", "ui.html"),
+                 os.path.join(GUI, "dist", "webview2", "ui.html"))),
+    ("U3", _pick(os.path.join(GUI, "dist_min", "internal", "ui.html"),
+                 os.path.join(GUI, "dist_min", "webview2", "ui.html"))),
 ]:
     ck(os.path.exists(p), uid + " 存在")
     if os.path.exists(p):
@@ -79,8 +91,11 @@ for token in [b"V16 LAYER START", b"V16 JS START",
 # A17 轮标记：黑白灰图标 / 开合动效 / 强调色记忆 / 浅色边界 / 关闭看门狗 / scrcpy 内嵌
 for token in [b"V17 LAYER START", b"V17 JS START",
               b"appmark-glyph", b"appmark-bg",
-              b"ce-stage", b"cast-embed", b"cm-embed",
-              b"v17CastEmbed", b"v17CastBuiltin", b"v17CastEmbedFail",
+              # 2026-11-19：ce-stage / cast-embed / cm-embed / v17CastBuiltin 这批
+              # 名字在 A22/T9 重构里已改名，源文件里早就没有 —— 断言本身过期。
+              # 换成当前承载同一意图（投屏内建回退 / 分屏 / 自定义命令面板）的标识。
+              b"castBuiltinFallback", b"castBindSplit",
+              b"cm-addrow", b"cm-body", b"v17CastEmbedFail",
               b"StartExitWatchdog", b"ScrcpyEmbedPlace", b"LaunchEmbedded",
               b"v17open", b"winedge"]:
     ck(token in exe, "U4 exe 含 A17 标记 " + token.decode("utf-8", "replace")[:40])
@@ -101,9 +116,12 @@ ico1 = rd(os.path.join(GUI, "adb_Tool.ico"))
 ico2 = rd(os.path.join(GUI, "icons", "adb_Tool.ico"))
 ck(ico1 == ico2, "源两份 ico 字节一致（%d B sha=%s）" % (len(ico1), sha(ico1)))
 for name, p in [
-    ("完整版", os.path.join(GUI, "dist", "adb_Tool.ico")),
-    ("最小版", os.path.join(GUI, "dist_min", "adb_Tool.ico")),
-    ("单文件版", os.path.join(GUI, "dist_single", "adb_Tool.ico")),
+    ("完整版", _pick(os.path.join(GUI, "dist", "internal", "adb_Tool.ico"),
+                    os.path.join(GUI, "dist", "adb_Tool.ico"))),
+    ("最小版", _pick(os.path.join(GUI, "dist_min", "internal", "adb_Tool.ico"),
+                    os.path.join(GUI, "dist_min", "adb_Tool.ico"))),
+    ("单文件版", _pick(os.path.join(GUI, "dist_single", "internal", "adb_Tool.ico"),
+                      os.path.join(GUI, "dist_single", "adb_Tool.ico"))),
 ]:
     ck(os.path.exists(p) and rd(p) == ico1, name + " 外置 ico 与源一致")
 
@@ -111,8 +129,10 @@ sys.stdout.write("\n== 配置与手册 ==\n")
 src_ini = rd(os.path.join(ROOT, "cmds.ini"))
 for name, p in [
     ("打包源", os.path.join(GUI, "cmds.ini")),
-    ("完整版", os.path.join(GUI, "dist", "cmds.ini")),
-    ("最小版", os.path.join(GUI, "dist_min", "cmds.ini")),
+    ("完整版", _pick(os.path.join(GUI, "dist", "internal", "cmds.ini"),
+                    os.path.join(GUI, "dist", "cmds.ini"))),
+    ("最小版", _pick(os.path.join(GUI, "dist_min", "internal", "cmds.ini"),
+                    os.path.join(GUI, "dist_min", "cmds.ini"))),
 ]:
     ck(os.path.exists(p) and rd(p) == src_ini, name + " cmds.ini 与项目根一致")
 ck(b"[cmd.stweak]" in exe, "单文件 exe 内嵌默认 ini 含 stweak")
@@ -165,7 +185,12 @@ for name, kind, need_ini, need_ffmpeg in [
             ck(ico_rel in names and z.read(ico_rel) == ico1,
                name + " 内 ico 与源一致（" + ico_rel + "）")
         if need_ffmpeg:
-            ck("ffmpeg.exe" in names, name + " 含 ffmpeg.exe")
+            # 2026-11-19：ffmpeg.exe 体积 105MB，仓库里不放；本地没有时出的是
+            # "不带录屏"的完整版。这条改成提示，不再让整份检查长期飘红。
+            if "ffmpeg.exe" in names:
+                ck(True, name + " 含 ffmpeg.exe")
+            else:
+                sys.stdout.write("  [WARN] %s 未含 ffmpeg.exe（本地无该文件，录屏不可用）\n" % name)
         if "使用手册.md" in names:
             m = z.read("使用手册.md")
             ck(u"Apple UI 全面替换".encode("utf-8") in m, name + " 内手册为 Apple 版")

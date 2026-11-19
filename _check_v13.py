@@ -265,7 +265,7 @@ def main():
 
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,940",
            "--virtual-time-budget=15000", "--dump-dom",
-           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_v13"),
+           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_v13_%d" % os.getpid()),
            "file:///" + OUT.replace("\\", "/")]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=300)

@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 128,
- "totalBytes": 3359373,
+ "totalBytes": 3360234,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -16,8 +16,8 @@
   },
   {
    "path": "377/_build_all.py",
-   "size": 1852,
-   "sha256": "3006490972ced350861dd74d78f56da2c3ac96827f6511d7ce61afd5584a2433"
+   "size": 1976,
+   "sha256": "c4f4e50b7442d4045cd447546c202f6398c9a80f25ce9831ef74654efebb0d60"
   },
   {
    "path": "377/_check_ui.js",
@@ -161,8 +161,8 @@
   },
   {
    "path": "377/_test_rec_stop.py",
-   "size": 3846,
-   "sha256": "fd8d004e9cc0a39624473872f07ea7819c091d1b86bae1e73505a79289bcb38c"
+   "size": 3977,
+   "sha256": "ba29238dd43dbcccc1d8a2e833699f7b8dcfd12692714b72f3bca7a1b064f3de"
   },
   {
    "path": "377/_test_src_route.py",
@@ -641,8 +641,8 @@
   },
   {
    "path": "verify_all.py",
-   "size": 9556,
-   "sha256": "1ede2660884111b603497b8179661956e1c2faf8cf5a6abdf701b10444ca57ac"
+   "size": 10162,
+   "sha256": "827a4681e4e466b89e8b8b8fce1f55449cada17b0953b4c5347741f449066d2e"
   }
  ]
 }

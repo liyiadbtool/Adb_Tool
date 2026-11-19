@@ -247,16 +247,34 @@ def main():
     src = src.replace("</body>", JS + "</body>", 1)
     io.open(OUT, "w", encoding="utf-8").write(src)
 
-    cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,940",
-           "--virtual-time-budget=12000", "--dump-dom",
-           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_v12"),
-           "file:///" + OUT.replace("\\", "/")]
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=240)
-    m = re.search(r'<pre id="RESULT">(.*?)</pre>', r.stdout or "", re.S)
+    # 2026-11-19：原先用固定 profile 目录（edgeprof_v12），上一轮 Edge 没退干净时
+    # profile 锁被占，本轮会静默阻塞到门禁 300s 超时（今天连中两次；单独跑 5s 就过）。
+    # 改成每次进程唯一，与 _check_accent_dom.py 一致。
+    # 2026-11-19：并发跑门禁时 headless Edge 偶尔秒回空 DOM（单独跑 5 秒就过）。
+    # 空结果不算结论 —— 每轮换一个 profile 目录重试，三次都空才算真失败。
+    m = None
+    for attempt in (1, 2, 3):
+        prof = os.path.join(tempfile.gettempdir(),
+                            "edgeprof_v12_%d_%d" % (os.getpid(), attempt))
+        cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,940",
+               "--virtual-time-budget=12000", "--dump-dom",
+               "--user-data-dir=" + prof,
+               "file:///" + OUT.replace("\\", "/")]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=120)
+        except subprocess.TimeoutExpired:
+            print("  （第 %d 次超时，重试）" % attempt)
+            continue
+        m = re.search(r'<pre id="RESULT">(.*?)</pre>', r.stdout or "", re.S)
+        if m:
+            break
+        print("  （第 %d 次没拿到 RESULT，DOM 长度 %d，重试）"
+              % (attempt, len(r.stdout or "")))
+        if attempt == 3:
+            print((r.stderr or "")[:800])
     if not m:
-        print("没拿到 RESULT，DOM 长度", len(r.stdout or ""))
-        print((r.stderr or "")[:800])
+        print("没拿到 RESULT：重试 3 次仍为空")
         return 1
     import html as H
     lines = [l for l in H.unescape(m.group(1)).splitlines() if l.strip()]

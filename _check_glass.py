@@ -120,7 +120,7 @@ def main():
     io.open(OUT, "w", encoding="utf-8").write(src.replace("</body>", JS + "</body>"))
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,900",
            "--virtual-time-budget=9000", "--dump-dom",
-           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_glass"),
+           "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_glass_%d" % os.getpid()),
            "file:///" + OUT.replace("\\", "/")]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=180)

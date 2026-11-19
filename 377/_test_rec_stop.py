@@ -17,7 +17,8 @@ import sys
 import time
 import datetime
 
-ROOT = r"C:\Users\zuo20\WorkBuddy\2026-10-30-16-43-30"
+# 2026-11-19：原为写死的旧机器路径；按本文件位置推导（找不到 _bin\adb.exe 时仍回退 PATH）
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADB = os.path.join(ROOT, "_bin", "adb.exe")
 if not os.path.exists(ADB):
     ADB = "adb"

@@ -2,7 +2,8 @@
 """编译 CLI 与 GUI 两端，并回显关键错误行。"""
 import subprocess, os, sys, re
 
-ROOT = r"C:\Users\zuo20\WorkBuddy\2026-10-30-16-43-30"
+# 2026-11-19：原为写死的旧机器路径（C:\Users\zuo20\...），换机必挂；按本文件位置推导
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def run(bat, cwd, title):
     print("=" * 70)
