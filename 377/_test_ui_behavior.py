@@ -756,6 +756,38 @@ BEHAVIOR = r"""
         ok('T3 一键还原下发 stweakreset',
            _nsSent.length === 1 && _nsSent[0] === 'stweakreset', _nsSent.join('|'));
 
+        /* T3 续（2026-11-19）：上下行分别生效（对齐逆向里 UPLOAD 与 DOWNLOAD 两套参数） */
+        _nsSent.length = 0;
+        document.getElementById('ns-rate-up').value = '512';
+        document.getElementById('ns-delay-up').value = '200';
+        document.getElementById('ns-loss-up').value = '5';
+        document.getElementById('ns-rate-down').value = '2048';
+        document.getElementById('ns-delay-down').value = '300';
+        document.getElementById('ns-loss-down').value = '2';
+        nsRun('wekon');
+        ok('T3 上下行都填时先下发上行 stweak',
+           _nsSent.length >= 1 && _nsSent[0].indexOf('stweak ') === 0, _nsSent.join('|'));
+
+        // 预设：上下行值不同（2G 上行 32 / 下行 64）
+        var sel = document.getElementById('ns-preset');
+        sel.value = '2g';
+        nsApplyPreset();
+        ok('T3 预设 2G 上下行取值不同',
+           document.getElementById('ns-rate-up').value === '32'
+           && document.getElementById('ns-rate-down').value === '64',
+           document.getElementById('ns-rate-up').value + '/' + document.getElementById('ns-rate-down').value);
+        ok('T3 预设回显区分上下行',
+           document.getElementById('ns-out').textContent.indexOf('上行') >= 0
+           && document.getElementById('ns-out').textContent.indexOf('下行') >= 0);
+
+        // 下行命令拼装口径与上行一致
+        var downCmd = nsWeakCmdDown({delay:'300', loss:'2', rate:'2048'});
+        ok('T3 下行命令走 stweakdown 且参数齐全',
+           downCmd.indexOf('stweakdown ') === 0
+           && downCmd.indexOf('300ms') > 0
+           && downCmd.indexOf('2%') > 0
+           && downCmd.indexOf('2048kbit') > 0, downCmd);
+
         try { window.post = _postBak; } catch (e) {}
         // 还原输入，避免影响后续断言
         document.getElementById('ns-loss-up').value = '';
@@ -949,7 +981,7 @@ def main():
         dom = r.stdout or ""
     # 假绿防线：页面根本没产出 RESULT（脚本异常/加载失败）时必须判失败，
     # 否则下面按行统计会把空结果算成"全部通过"。
-    if dom.replace("\ufeff", "").strip() == "__NO_RESULT__":
+    if "__NO_RESULT__" in dom:
         print("  页面没有产出 RESULT（脚本异常或加载失败）")
         return 1
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)

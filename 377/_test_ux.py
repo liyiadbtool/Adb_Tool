@@ -450,7 +450,7 @@ def main():
         dom = r.stdout or ""
     # 假绿防线：页面根本没产出 RESULT（脚本异常/加载失败）时必须判失败，
     # 否则下面按行统计会把空结果算成"全部通过"。
-    if dom.replace("\ufeff", "").strip() == "__NO_RESULT__":
+    if "__NO_RESULT__" in dom:
         print("  页面没有产出 RESULT（脚本异常或加载失败）")
         return 1
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)

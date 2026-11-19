@@ -136,6 +136,22 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-19 · T3 续：按逆向补齐上下行）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **下行弱网真正生效** | `cmds.ini` 新 `stweakdown` | 逆向 F-E4 里 `UPLOAD_*` 与 `DOWNLOAD_*` 是**两套独立参数**（上行在 `request()`、下行在 `response()`）。我们原来只下发上行，下行仅"记录用"，语义不符。设备端下行要用 ingress 镜像到 `ifb0` 再挂 netem：`tc qdisc add dev wlan0 handle ffff: ingress` → `tc filter ... mirred egress redirect dev ifb0` → `tc qdisc replace dev ifb0 root netem ...` |
+| 2 | 上行/下行分别下发 | `nsRun('wekon')` | 上行先发，700ms 后发下行（同通道互斥），再补 `stweakstat` 复核 |
+| 3 | 预设改上下行两套 | `NS_PRESETS` | 2G 32/64、3G 384/768、高延迟 2048/4096、高丢包 2048/4096；回显文案区分「上行/下行」 |
+| 4 | 关闭与还原要清干净 | `stweakoff` / `stweakreset` | 只删 `root` 的话 ingress 镜像还挂着，下行仍在走 ifb0 的 netem —— 表现为"关了弱网，下行还是慢" |
+| 5 | 回读包含下行 | `stweakstat` | 增加 `---IFB---` 段（`tc qdisc show dev ifb0`），否则看不出下行到底挂没挂上 |
+
+验收：**28 项 / 0 失败（93s）**；窗口与记录 219 → **223 条**。
+
+> 设备当前未连接，`stweakdown` 的真机效果待下次插上验证（命令本身由静态自检与断言覆盖）。
+
+---
+
 ### 本轮做了什么（2026-11-19 · D10：T11 边界细腻化）
 
 | # | 需求 | 落点 | 说明 |

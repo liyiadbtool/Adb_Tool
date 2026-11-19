@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 127,
- "totalBytes": 3307069,
+ "totalBytes": 3312949,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -151,8 +151,8 @@
   },
   {
    "path": "377/_test_interaction.py",
-   "size": 22338,
-   "sha256": "f6da5d8d19b1834d5c904ffde5ac711704cb23f0c2216e89fe862cd5088c419d"
+   "size": 22308,
+   "sha256": "ef21411b52738665c7461f9743bf934df1744bc874e9a75ecc1a289e8effd3dd"
   },
   {
    "path": "377/_test_no_window.py",
@@ -176,13 +176,13 @@
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 55068,
-   "sha256": "3526063a177239aa4cf42e083cf890f45f15b2013a03e6e0652ac4337f131e1c"
+   "size": 56782,
+   "sha256": "618c863581c937f911c1a6bf29fab7eaa5380cb4466292df848f7cdc1036a674"
   },
   {
    "path": "377/_test_ux.py",
-   "size": 22875,
-   "sha256": "4469ffd88a5f0f3c42160a9bbbf501df80e75ff929cf93cf5c496fe8c5cbfee4"
+   "size": 22845,
+   "sha256": "0745cd970d0588d34106b389c62da437d55e341221f77fa973fd7c4cb3a10ac1"
   },
   {
    "path": "377/_test_vr_ui.py",
@@ -496,8 +496,8 @@
   },
   {
    "path": "adb_log_gui/cmds.ini",
-   "size": 18190,
-   "sha256": "b734354190706b159e65039150f1a8dedfb0826b07cda46153462c1a851dff0b"
+   "size": 19334,
+   "sha256": "2aadc97b16995d1cbf88806873ca00e9d479741219c21895e39f32d9fab2d6ff"
   },
   {
    "path": "adb_log_gui/make_min.bat",
@@ -506,13 +506,13 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 849560,
-   "sha256": "9d6a305266fda5033097b1e3eaaf271825861ed2b06e52f8d68ab0220abefe31"
+   "size": 851498,
+   "sha256": "307738271263f49b930847465823ccd1a877157a8d259b29e50efdf8f4ac3de0"
   },
   {
    "path": "cmds.ini",
-   "size": 18190,
-   "sha256": "b734354190706b159e65039150f1a8dedfb0826b07cda46153462c1a851dff0b"
+   "size": 19334,
+   "sha256": "2aadc97b16995d1cbf88806873ca00e9d479741219c21895e39f32d9fab2d6ff"
   },
   {
    "path": "docs/ACCENT-CONTRAST.md",

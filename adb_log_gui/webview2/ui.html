@@ -3591,7 +3591,7 @@ body::after{
               </select>
               <span class="ns-lbl">自定义环境值</span>
               <input id="ns-custom" placeholder="给这组参数起个名（仅记录用）">
-              <span class="ns-tip">上下行分开填；设备端 tc netem 只作用于 wlan0 出口（上行），下行列用于记录设计参数</span>
+              <span class="ns-tip">上下行分开填、分别生效：上行 = wlan0 出口 netem；下行 = ingress 镜像到 ifb0 再挂 netem（需 root + ifb 模块，个别机型不支持时只上行为准）</span>
             </div>
 
             <div class="ns-grid">
@@ -8735,12 +8735,16 @@ setTimeout(hideSplash, 5000);
    按 SynTestUtil「网络模拟」页重做：预置环境值 + 上下行参数表 + 三按钮 + 输出框。
    命令不新增 kind，仍走 post('quick', cmd) → case "quick" → SubmitCmd(txt,1,0)，
    真实设备回显在反馈表；这里的大框只记录"每次下发了什么"，便于 QA 追溯。 */
+/* T3（2026-11-19）：预设改成上下行分开 —— 逆向的 temp_mitmproxy_script.py 里
+   UPLOAD_* 与 DOWNLOAD_* 是两套独立参数（上行 15KB/s、下行 15KB/s、延迟 0.5/0.4s
+   都各自可调）。原来这里上下行填同一个值，等于把两套参数当一套用。
+   数值仍按 kbps 填（tc 的 kbit），下行一般比上行快。 */
 var NS_PRESETS = {
-  'off':       { rate:'',     delay:'0',   loss:'0'  },
-  '2g':        { rate:'64',   delay:'400', loss:'8'  },
-  '3g':        { rate:'512',  delay:'150', loss:'2'  },
-  'highdelay': { rate:'2048', delay:'800', loss:'0'  },
-  'highloss':  { rate:'2048', delay:'100', loss:'20' }
+  'off':       { up:{rate:'',    delay:'0',   loss:'0'},  down:{rate:'',    delay:'0',   loss:'0'}  },
+  '2g':        { up:{rate:'32',  delay:'400', loss:'8'},  down:{rate:'64',  delay:'400', loss:'8'}  },
+  '3g':        { up:{rate:'384', delay:'150', loss:'2'},  down:{rate:'768', delay:'150', loss:'2'}  },
+  'highdelay': { up:{rate:'2048',delay:'800', loss:'0'},  down:{rate:'4096',delay:'1200',loss:'0'}  },
+  'highloss':  { up:{rate:'2048',delay:'100', loss:'20'}, down:{rate:'4096',delay:'100', loss:'20'} }
 };
 
 /* 纯函数：把表单参数折成 stweak 命令。
@@ -8758,6 +8762,18 @@ function nsWeakCmd(v){
                    + num(v.rate, '100000') + 'kbit';
 }
 
+/* 下行命令。tc 的 wlan0 出口只管发出去的包，下行得靠 ingress 镜像到 ifb0。
+   参数口径与上行一致（延迟 ms / 丢包 % / 速率 kbit）。 */
+function nsWeakCmdDown(v){
+  function num(x, def){
+    var s = String(x === null || x === undefined ? '' : x).replace(/[^0-9.]/g,'');
+    return s === '' ? def : s;
+  }
+  return 'stweakdown ' + num(v.delay, '0') + 'ms '
+                       + num(v.loss, '0') + '% '
+                       + num(v.rate, '100000') + 'kbit';
+}
+
 function nsReadVals(){
   function g(id){ var e = document.getElementById(id); return e ? e.value : ''; }
   return {
@@ -8772,20 +8788,22 @@ function nsApplyPreset(){
   if(!sel) return;
   var p = NS_PRESETS[sel.value];
   if(!p) return;
-  var map = {
-    rate:  ['ns-rate-up','ns-rate-down'],
-    delay: ['ns-delay-up','ns-delay-down'],
-    loss:  ['ns-loss-up','ns-loss-down']
-  };
-  for(var k in map){
-    if(!map.hasOwnProperty(k)) continue;
-    for(var i=0;i<map[k].length;i++){
-      var e = document.getElementById(map[k][i]);
-      if(e) e.value = p[k];
-    }
+  // T3：上下行各自一套值（预设结构改成 {up:{...}, down:{...}}）
+  var dirs = [
+    { src: p.up   || {}, suffix: 'up' },
+    { src: p.down || {}, suffix: 'down' }
+  ];
+  for(var d = 0; d < dirs.length; d++){
+    var vals = dirs[d].src;
+    ['rate','delay','loss'].forEach(function(k){
+      var e = document.getElementById('ns-' + k + '-' + dirs[d].suffix);
+      if(e) e.value = (vals[k] === undefined ? '' : vals[k]);
+    });
   }
-  nsOut('已填入预置「' + sel.options[sel.selectedIndex].text + '」：速率 '
-        + (p.rate || '不限') + ' kbps / 延迟 ' + p.delay + ' ms / 丢包 ' + p.loss + '%', 't');
+  var u = p.up || {}, dn = p.down || {};
+  nsOut('已填入预置「' + sel.options[sel.selectedIndex].text + '」：'
+        + '上行 ' + (u.rate || '不限') + ' kbps / ' + u.delay + ' ms / ' + u.loss + '%；'
+        + '下行 ' + (dn.rate || '不限') + ' kbps / ' + dn.delay + ' ms / ' + dn.loss + '%', 't');
 }
 
 function nsOut(text, cls){
@@ -8838,11 +8856,23 @@ function nsRun(act){
   }
   else if(act === 'proxyoff'){ cmd = 'stproxyoff'; note = '删除三个代理键'; }
   else if(act === 'wekon'){
-    var err = nsCheckVals(nsReadVals());
+    var v = nsReadVals();
+    var err = nsCheckVals(v);
     if(err){ toast(err); nsOut('未下发：' + err, 'e'); return; }
-    cmd = nsWeakCmd(nsReadVals()); note = '按当前上行参数开启弱网';
-    // 双判：下发成功 ≠ 生效。补一条回读，让用户当场看到 tc 里到底有没有规则。
+    var hasDown = String(v.rateDown || '').replace(/[^0-9]/g,'') !== ''
+               || String(v.delayDown || '').replace(/[^0-9]/g,'') !== '';
+    cmd = nsWeakCmd(v);
+    note = '按当前参数开启弱网（上行）' + (hasDown ? ' + 下行' : '');
+    // 双判：下发成功 ≠ 生效。补一条回读，让用户当场看到 tc 里有没有规则。
     after = 'stweakstat';
+    if(hasDown){
+      // 下行要单独一条：wlan0 出口管不到进来的包（逆向的 DOWNLOAD_* 也是独立一套）
+      setTimeout(function(){
+        var c2 = nsWeakCmdDown(nsReadVals());
+        nsOut('→ ' + c2 + '   # 下行（ingress 镜像到 ifb0）', 'c');
+        post('quick', c2);
+      }, 700);
+    }
   }
   else if(act === 'wekoff'){ cmd = 'stweakoff'; note = '删除 tc qdisc，恢复原网络'; after = 'stweakstat'; }
   else if(act === 'weakstat'){ cmd = 'stweakstat'; note = '回读当前 tc 规则与 http_proxy'; }
