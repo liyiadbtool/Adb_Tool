@@ -160,6 +160,24 @@ A18_REMOVED = {
     "onclicks": set(["scrcpyOpen", "v17CastBuiltin", "castOpenScrcpy"]),
     "ids": set(["cast-embed", "ce-stage", "ce-hint", "cm-embed", "cm-builtin", "cast-mode"]),
 }
+# A31（2026-11-19）：删除「投屏」页签。
+# 理由：页内嵌 scrcpy 窗口在 5.0.1 上不重绘（黑屏），且原生窗口压住 WebView2
+# 吞掉 DOM 点击（取消按钮点不动）——实测无解。改为「指令页 → Scrcpy投屏」外部窗口。
+A31_REMOVED = {
+    "kinds": set(),
+    "onclicks": set([
+        "castToggle", "castMaxToggle", "castRecord", "castStartFromStrip",
+        "scrcpyAuto", "scrcpyPick", "scrcpyOpen",
+        "ffmpegAuto", "ffmpegPick",
+    ]),
+    "ids": set([
+        "page-cast", "cast-grid", "cast-strip", "cast-fps", "cast-hint",
+        "sc-dot", "sc-enc", "sc-txt", "ff-dot", "ff-enc", "ff-txt",
+    ]),
+}
+A31_TAB_REMOVED = ["cast"]
+A31_PAGE_REMOVED = ["page-cast"]
+
 # 页签 / 页面允许"追加"（顺序不能变，新页签必须在这里登记）
 A12_TAB_ADD = ["text"]
 A12_PAGE_ADD = ["page-text"]
@@ -286,17 +304,23 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
              and x not in A17_ADDS[k] and x not in A27_ADDS[k]
              and x not in A29_ADDS[k] and x not in A30_ADDS[k]]
-    bad_rm = [x for x in removed if x not in A12_REMOVED[k] and x not in A18_REMOVED[k]]
+    bad_rm = [x for x in removed if x not in A12_REMOVED[k]
+              and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,
         "基线 %d / 当前 %d；新增 %s；经批准删除 %s；违约删除 %s；未登记新增 %s" %
         (len(a), len(b), added or "无", removed or "无", bad_rm or "无", unreg or "无"))
 # 页签 / 页面：顺序冻结，允许在末尾追加（必须登记）
-tabs_ok = cur["tabs"][:len(base["tabs"])] == base["tabs"] and \
-          set(cur["tabs"][len(base["tabs"]):]) <= set(A12_TAB_ADD)
+# 2026-11-19：删页签会破坏"前缀相同"的比较，先把经批准删除的项从两侧摘掉
+_base_t = [t for t in base["tabs"] if t not in A31_TAB_REMOVED]
+_cur_t = [t for t in cur["tabs"] if t not in A31_TAB_REMOVED]
+tabs_ok = _cur_t[:len(_base_t)] == _base_t and \
+          set(_cur_t[len(_base_t):]) <= set(A12_TAB_ADD)
 chk(labels["tabs"], tabs_ok, "基线 %s / 当前 %s" % (base["tabs"], cur["tabs"]))
-pages_ok = cur["pages"][:len(base["pages"])] == base["pages"] and \
-           set(cur["pages"][len(base["pages"]):]) <= set(A12_PAGE_ADD)
+_base_p = [p for p in base["pages"] if p not in A31_PAGE_REMOVED]
+_cur_p = [p for p in cur["pages"] if p not in A31_PAGE_REMOVED]
+pages_ok = _cur_p[:len(_base_p)] == _base_p and \
+           set(_cur_p[len(_base_p):]) <= set(A12_PAGE_ADD)
 chk(labels["pages"], pages_ok, "基线 %s / 当前 %s" % (base["pages"], cur["pages"]))
 
 # ---- 冻结字符串锚点 ----
@@ -366,8 +390,14 @@ bugs = [
         for t in ("fs-enter", "data-enter", "进入 ⤵"))),
     ("搜索态 dblclick 兼容", "if (s && s.active) {" in s and "justRevealed" in s),
 ]
+# A31：投屏页整体删除，这两条 A9 断言的对象已不存在 —— 改成反向校验，
+# 确认它们确实被删干净（而不是放水放过）。
+A31_RETIRED = set(["前端缩略条走 /snap + 1 秒轮询", "缩略条每路停止按钮"])
 for name, cond in bugs:
-    chk("A9 追加轮 · " + name, cond)
+    if name in A31_RETIRED:
+        chk("A31 · 已随投屏页删除 · " + name, not cond)
+    else:
+        chk("A9 追加轮 · " + name, cond)
 
 # ---- A9 第三批：9 色强调色切换器（与明暗主题正交）----
 guiweb = read(os.path.join(ROOT, "_cs", "GuiWeb.cs"))

@@ -100,9 +100,10 @@ JS = r"""
 
       /* ---- 4. 页签 ---- */
       var tabs=document.querySelectorAll('.tabs .tab');
-      ok('页签 6 个（含文本）', tabs.length===6, String(tabs.length));
+      // 2026-11-19（A31）：投屏页删除，页签 6 → 5
+      ok('页签 5 个（含文本）', tabs.length===5, String(tabs.length));
       ok('文本页签在最右', tabs[tabs.length-1].getAttribute('data-tab')==='text');
-      ok('每个页签都有图标', document.querySelectorAll('.tabs .tab svg').length===6);
+      ok('每个页签都有图标', document.querySelectorAll('.tabs .tab svg').length===5);
       switchTab('text');
       ok('切到文本页后 page-text 激活', document.getElementById('page-text').classList.contains('active'));
 
@@ -139,7 +140,7 @@ JS = r"""
       openHelp();
       ok('帮助面板打开', document.getElementById('help-mask').style.display==='flex');
       var secs=document.querySelectorAll('#help-doc .sec').length;
-      ok('帮助章节 >= 12', secs>=12, String(secs));
+      ok('帮助章节 >= 11（投屏章节随页面删除）', secs>=11, String(secs));
       ok('目录项与章节数一致', document.querySelectorAll('#help-toc button').length===secs);
       var cat=document.getElementById('help-doc').textContent;
       ok('指令目录自动扫描（含一键截图）', cat.indexOf('一键截图')>=0);

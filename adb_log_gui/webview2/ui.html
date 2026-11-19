@@ -703,85 +703,6 @@ body{
 .apk-dk{flex:0 0 74px;color:var(--text-faint);}
 .apk-dv{flex:1;min-width:0;color:var(--text);word-break:break-all;font-family:var(--font-mono);}
 
-/* ============ 投屏（2026-11-13） ============ */
-.cast-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 14px;gap:10px;}
-.cast-head{display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0;flex-wrap:wrap;}
-.cast-fps{font-size:11.5px;color:var(--text-faint);font-family:var(--font-mono);}
-/* 外部工具行（ffmpeg / scrcpy）：单独一行，避免把标题行挤爆 */
-.cast-tools{display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;flex-wrap:wrap;}
-.cast-toolsep{width:1px;height:14px;background:var(--border);flex:0 0 auto;}
-.btn.sm{height:22px;font-size:11.5px;padding:0 8px;}
-/* 录屏编码器状态：绿=可用、红=没找到/校验失败、灰=检测中 */
-.ff-enc{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);
-  max-width:330px;min-width:0;overflow:hidden;}
-.ff-enc .dot{width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex:0 0 auto;}
-.ff-enc.ok .dot{background:var(--ok);}
-.ff-enc.bad .dot{background:var(--err);}
-.ff-enc .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cast-grid{flex:1;min-height:0;display:grid;position:relative;
-  grid-template-columns:var(--cc1, 1fr) var(--cc2, 1fr) 1fr;
-  grid-template-rows:var(--cr1, 1fr) 1fr;gap:10px;}
-/* 底部缩略条：全屏时显示其余已开启的路，点一下与全屏互换 */
-.cast-strip{display:none;flex:0 0 auto;gap:8px;overflow-x:auto;padding-top:2px;}
-.cast-strip.on{display:flex;}
-.cast-thumb{flex:0 0 auto;width:150px;height:84px;border:1px solid var(--border);border-radius:var(--r-3);
-  overflow:hidden;position:relative;cursor:pointer;background:var(--cast-stage);}
-.cast-thumb:hover{border-color:var(--accent);}
-.cast-thumb img{width:100%;height:100%;object-fit:contain;display:block;}
-.cast-thumb .cap{position:absolute;left:0;right:0;bottom:0;font-size:10.5px;padding:1px 5px;
-  background:var(--scrim);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cast-thumb.off{opacity:1;border-style:dashed;}
-.cast-thumb-off{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:var(--surface-2);}
-.cast-thumb-off .btn{height:22px;font-size:11.5px;padding:0 10px;}
-.cap-lite{font-size:10.5px;color:var(--text-faint);}
-/* 2026-11-15：底部缩略条每路的「停止」。常显，不用退出全屏就能关掉别路。
-   纯语义令牌；热区 28px 是缩略条 84px 高下的取舍（顶栏/主按钮仍按 44pt）。 */
-.cast-thumb-stop{position:absolute;top:4px;right:4px;z-index:2;width:28px;height:28px;padding:0;
-  display:inline-flex;align-items:center;justify-content:center;
-  border:1px solid var(--border-strong);border-radius:50%;
-  background:var(--surface);color:var(--text);font-size:17px;line-height:1;cursor:pointer;
-  box-shadow:var(--shadow-md);transition:background 150ms ease,border-color 150ms ease;}
-.cast-thumb-stop:hover{background:var(--err);border-color:var(--err);color:var(--on-accent);}
-.cast-thumb-stop:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-
-/* 最大化：用绝对定位浮层盖住，**不隐藏其它格子** ——
-   隐藏会让 <img> 的 multipart 流被浏览器挂起，恢复后要等下一帧，
-   看起来像"扩大之后别的投屏就断了"。*/
-.cast-cell.maxed{position:absolute;inset:0;z-index:20;
-  box-shadow:var(--shadow-lg);border-color:var(--accent);}
-.cast-grid.has-max .cast-split{display:none;}
-.cast-split{position:absolute;z-index:6;background:transparent;}
-.cast-split.v{width:10px;cursor:col-resize;top:0;bottom:0;}
-.cast-split.h{height:10px;cursor:row-resize;left:0;right:0;}
-.cast-split:hover{background:var(--accent-soft);}
-.cast-max{width:22px;height:22px;padding:0;display:inline-flex;align-items:center;justify-content:center;
-  border:1px solid var(--border);border-radius:var(--r-2);background:var(--bg);color:var(--text-faint);
-  font-size:12px;line-height:1;cursor:pointer;flex:0 0 auto;}
-.cast-max:hover{color:var(--text);border-color:var(--border-strong);}
-.cast-cell{display:flex;flex-direction:column;min-height:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-4);overflow:hidden;}
-.cast-cell.on{border-color:var(--accent);}
-.cast-cell.err{border-color:var(--err);}
-.cast-top{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);flex:0 0 auto;min-width:0;}
-.cast-name{font-size:12.5px;font-weight:600;color:var(--text);flex:0 0 auto;white-space:nowrap;max-width:44%;overflow:hidden;text-overflow:ellipsis;}
-.cast-meta{flex:1;min-width:0;font-size:11px;color:var(--text-faint);font-family:var(--font-mono);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;}
-.cast-dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint);flex:0 0 auto;}
-.cast-cell.on .cast-dot{background:var(--ok);}
-.cast-cell.rec .cast-dot{background:var(--err);animation:rpulse 1s ease-in-out infinite;}
-.cast-view{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:var(--cast-stage);position:relative;overflow:hidden;}
-.cast-view img{max-width:100%;max-height:100%;width:auto;height:auto;display:none;object-fit:contain;}
-.cast-view img.on{display:block;cursor:crosshair;}
-/* 点击涟漪：告诉用户"这一下已经点到设备上了" */
-.cast-ripple{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
-  border:2px solid var(--accent);pointer-events:none;animation:cripple .45s ease-out forwards;}
-@keyframes cripple{from{transform:scale(.4);opacity:.95;}to{transform:scale(2.2);opacity:0;}}
-.cast-idle{position:absolute;color:var(--text-faint);font-size:12px;text-align:center;padding:0 12px;line-height:1.8;}
-.cast-acts{display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--border);flex:0 0 auto;}
-.cast-acts select{flex:1;min-width:0;height:26px;background:var(--bg);color:var(--text-dim);
-  border:1px solid var(--border);border-radius:var(--r-2);font-size:11.5px;font-family:inherit;outline:none;padding:0 4px;}
-.cast-acts .btn{height:26px;font-size:12px;padding:0 8px;}
-@keyframes rpulse{0%,100%{opacity:1;}50%{opacity:.25;}}
-
 /* ============ 文件管理（2026-11-13） ============ */
 .fs-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 14px;gap:10px;}
 .fs-head{display:flex;align-items:center;gap:10px;flex:0 0 auto;min-width:0;}
@@ -2829,12 +2750,8 @@ body.v16-tabdrag .page{
 }
 
 /* 投屏页与文件页也一起收进去，否则四个页签的边距各不相同，切页会"跳"一下 */
-#page-cast .cast-wrap{ padding:8px; }
-#page-cast .cast-grid,
-#page-cast .cast-strip{
   border-radius:var(--r-5);
 }
-#page-cast .cast-thumb{ border-radius:var(--r-4); }
 
 /* ---------------------------------------------------------------------------
    §2 浅色主题的窗口边界（需求 4）
@@ -3434,8 +3351,6 @@ body::after{
       <svg viewBox="0 0 24 24"><rect x="2.8" y="4.4" width="18.4" height="15.2" rx="3"/><path d="M7 10l2.3 2.1L7 14.2"/><path d="M12.6 14.6h4"/></svg><span>终端</span></button>
     <button class="tab" data-tab="file" onclick="switchTab('file')">
       <svg viewBox="0 0 24 24"><path d="M3.4 7.6a2 2 0 012-2h3.6l2 2.2h7.6a2 2 0 012 2v8.2a2 2 0 01-2 2H5.4a2 2 0 01-2-2z"/></svg><span>文件</span></button>
-    <button class="tab" data-tab="cast" onclick="switchTab('cast')">
-      <svg viewBox="0 0 24 24"><rect x="2.6" y="4.2" width="18.8" height="12" rx="2.6"/><path d="M9 19.8h6M12 16.2v3.6"/></svg><span>投屏</span></button>
     <button class="tab" data-tab="ui" onclick="switchTab('ui')">
       <svg viewBox="0 0 24 24"><rect x="3.2" y="3.6" width="7.6" height="16.8" rx="2"/><rect x="13.2" y="3.6" width="7.6" height="16.8" rx="2"/></svg><span>UI</span></button>
     <button class="tab" data-tab="text" onclick="switchTab('text')">
@@ -3684,39 +3599,6 @@ body::after{
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="page" id="page-cast">
-      <div class="cast-wrap">
-        <div class="cast-head">
-          <span class="fs-title">多屏投屏</span>
-          <!-- A16：把"低帧"写明白。内置通道是 screencap 轮询，单帧受"设备编码"或
-               "链路带宽"限制（USB3 约 5fps，无线 adb 只有 1~2fps），这是协议上限，
-               不是没优化；要真正流畅只能走 scrcpy 外部窗口（h264）。 -->
-          <!-- A18：各分屏直接内嵌 scrcpy（h264 直连、可点击、30~60fps）；
-               scrcpy 不可用的格子自动回退内置抓帧。 -->
-          <span class="fs-hint" id="cast-hint">有 scrcpy 时每格用 h264 直连（可点击、30~60fps），没有该屏支持的格子回退内置抓帧</span>
-          <div class="spacer"></div>
-          <span class="cast-fps" id="cast-fps"></span>
-        </div>
-        <!-- 外部工具行：ffmpeg（录屏编码）与 scrcpy（流畅通道）各一组，互不影响 -->
-        <div class="cast-tools">
-          <span class="ff-enc" id="ff-enc" title="录屏编码器：截帧录屏要用它把 PNG 合成 mp4">
-            <span class="dot" id="ff-dot"></span>
-            <span class="t" id="ff-txt">ffmpeg：检测中…</span>
-          </span>
-          <button class="btn ghost sm" onclick="ffmpegAuto()" title="重新自动查找 ffmpeg（ini → 程序同级 → PATH → 常见位置）">重新查找</button>
-          <button class="btn ghost sm" onclick="ffmpegPick()" title="手动选择 ffmpeg.exe（会校验并记住）">选择…</button>
-          <span class="cast-toolsep"></span>
-          <span class="ff-enc" id="sc-enc" title="scrcpy：有它就多一条流畅通道（独立窗口），没有就继续用内置截帧通道">
-            <span class="dot" id="sc-dot"></span>
-            <span class="t" id="sc-txt">scrcpy：检测中…</span>
-          </span>
-          <button class="btn ghost sm" onclick="scrcpyAuto()" title="重新自动查找 scrcpy.exe">重新查找</button>
-          <button class="btn ghost sm" onclick="scrcpyPick()" title="手动选择 scrcpy.exe（会校验并记住）">选择…</button>
-        </div>
-        <div class="cast-grid" id="cast-grid"></div>
-        <div class="cast-strip" id="cast-strip"></div>
       </div>
     </div>
 
@@ -4750,6 +4632,20 @@ function accentPopClick(ev){
    若声明写在后面，初始化时的 switchTab 赋值会被这里的 ='cmd' 覆盖掉。 */
 var _tab = 'quick';
 
+/* 投屏页删除后的替代入口：跳指令页并把「Scrcpy投屏」分组滚到眼前。 */
+function gotoScrcpyGroup(){
+  switchTab('quick');
+  var cats = document.querySelectorAll('#quick-grid .qcat');
+  for (var i = 0; i < cats.length; i++){
+    var t = (cats[i].textContent || '').trim();
+    if (t.indexOf('Scrcpy') >= 0){
+      try { cats[i].scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      catch(e){ try { cats[i].scrollIntoView(); } catch(e2){} }
+      return;
+    }
+  }
+}
+
 function switchTab(name){
   document.querySelectorAll('.tab').forEach(function(t){
     t.classList.toggle('active', t.dataset.tab === name);
@@ -4758,8 +4654,6 @@ function switchTab(name){
   document.getElementById('page-quick').classList.toggle('active', name === 'quick');
   var pf = document.getElementById('page-file');
   if(pf) pf.classList.toggle('active', name === 'file');
-  var pc = document.getElementById('page-cast');
-  if(pc) pc.classList.toggle('active', name === 'cast');
   var pu = document.getElementById('page-ui');
   if(pu) pu.classList.toggle('active', name === 'ui');
   // 2026-11-16 交互走查 I3：文本页原本只靠 V12 的 switchTab 包装钩子补 .active，
@@ -4768,13 +4662,6 @@ function switchTab(name){
   var pt2 = document.getElementById('page-text');
   if(pt2) pt2.classList.toggle('active', name === 'text');
   _tab = name;
-  // 2026-11-16 交互走查 I4：投屏状态轮询以前从不 clearInterval，
-  // 离开投屏页后靠 `_tab !== 'cast'` 空转（每秒仍在跑回调）。
-  // 离开就停，回来由下面 cast 分支的 castStartPoll 重启（该函数幂等）。
-  if(name !== 'cast' && _cast && _cast.timer){
-    clearInterval(_cast.timer);
-    _cast.timer = null;
-  }
   // 需求2：切回指令页时回到顶部（滚动容器已上移，不会自动复位）
   if(name === 'quick'){
     var sc = document.getElementById('quick-scroll');
@@ -4782,10 +4669,6 @@ function switchTab(name){
     // 从终端页切过来时，焦点还留在隐藏的输入框里，键盘输入会"没反应"
     var qs2 = document.getElementById('quick-search');
     if(qs2) { try { qs2.blur(); } catch(e) {} }
-  }else if(name === 'cast'){
-    if(typeof castEnsureInit === 'function') castEnsureInit();
-    // I4：离开投屏页时轮询被停掉，回来要重启（castStartPoll 内部幂等）
-    if(typeof castStartPoll === 'function') castStartPoll();
   }else if(name === 'file'){
     // 首次进入才请求目录，避免启动就多两次 adb 往返
     if(typeof fsEnsureInit === 'function') fsEnsureInit();
@@ -5692,17 +5575,24 @@ var quickGroups = [
   ]},
   // 问题6：语音助手挪到「指令执行」下面（原来排在最后一位）。
   // 语音是这个工具最常用的场景，放最后每次都要往下找。
+  // 2026-11-19：语音助手按「唤醒 / 调试」两分类重排。
+  // 删掉的四张卡与替代入口：
+  //   唤醒(原参)   :vr wake 99   → 终端仍可敲
+  //   语音识别     :vr sr        → 语音助手页有输入框 + 发送按钮
+  //   断网识别     :vr local     → 语音助手页有「断网识别」勾选
+  //   音区对照表   :vr area      → 终端仍可敲，且唤醒卡已按音区命名
   { name:'语音助手', color:'var(--accent)', items:[
-    {name:'主驾唤醒', desc:'vr:// type=1', cmd:':vr wake'},
-    {name:'唤醒(原参)', desc:'type=99 & canSleep=false', cmd:':vr wake 99'},
-    {name:'语音识别', desc:'输入文本后回车，-a 可指定音区', cmd:':vr sr ', arg:true, usage:':vr sr <文本> [-a 音区 0~5]'},
-    {name:'断网识别', desc:'AH8 离线模式 mode=local', cmd:':vr local ', arg:true, usage:':vr local <文本> [-a 音区 0~5]'},
-    {name:'语助版本号', desc:'versionName + versionCode', cmd:':vr ver'},
-    {name:'重启语助进程', desc:'force-stop 后由语音拉起', cmd:':vr restart'},
-    {name:'打开后台设置', desc:'SettingDebugActivity', cmd:':vr set'},
-    {name:'文本语义调试', desc:'DebugTextExecuteSemantic', cmd:':vr dbg'},
-    {name:'音区对照表', desc:'0主驾 1副驾 2/3 二排 4/5 三排', cmd:':vr area'},
-    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log'}
+    {name:'主驾唤醒',   desc:'vr:// type=1 · voiceArea=0', cmd:':vr wake -a 0', cat:'唤醒'},
+    {name:'副驾唤醒',   desc:'voiceArea=1', cmd:':vr wake -a 1', cat:'唤醒'},
+    {name:'二排左唤醒', desc:'voiceArea=2', cmd:':vr wake -a 2', cat:'唤醒'},
+    {name:'二排右唤醒', desc:'voiceArea=3', cmd:':vr wake -a 3', cat:'唤醒'},
+    {name:'三排左唤醒', desc:'voiceArea=4', cmd:':vr wake -a 4', cat:'唤醒'},
+    {name:'三排右唤醒', desc:'voiceArea=5', cmd:':vr wake -a 5', cat:'唤醒'},
+    {name:'语助版本号', desc:'versionName + versionCode', cmd:':vr ver', cat:'调试'},
+    {name:'重启语助进程', desc:'force-stop 后由语音拉起', cmd:':vr restart', cat:'调试'},
+    {name:'打开后台设置', desc:'SettingDebugActivity', cmd:':vr set', cat:'调试'},
+    {name:'文本语义调试', desc:'DebugTextExecuteSemantic', cmd:':vr dbg', cat:'调试'},
+    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log', cat:'调试'}
   ]},
   // Scrcpy 投屏（2026-11-19）：投屏 tab 要删，改成指令卡片直接开外部 scrcpy 窗口。
   // 实测两个 scrcpy 实例可并行（各自随机 scid/端口），所以这里不需要分配端口。
@@ -6267,7 +6157,8 @@ document.addEventListener('keydown', function(e){
   if((e.ctrlKey || e.metaKey) && k === '1'){ e.preventDefault(); switchTab('quick'); return; }
   if((e.ctrlKey || e.metaKey) && k === '2'){ e.preventDefault(); switchTab('cmd'); return; }
   if((e.ctrlKey || e.metaKey) && k === '3'){ e.preventDefault(); switchTab('file'); return; }
-  if((e.ctrlKey || e.metaKey) && k === '4'){ e.preventDefault(); switchTab('cast'); return; }
+  // 2026-11-19：投屏页已删除，Ctrl+4 改为跳到「指令页 → Scrcpy投屏」分组
+  if((e.ctrlKey || e.metaKey) && k === '4'){ e.preventDefault(); gotoScrcpyGroup(); return; }
   // O3（2026-11-17）：6 个页签补齐 Ctrl+5/6，与 1~4 对齐（原来 UI/文本页没有快捷键）
   if((e.ctrlKey || e.metaKey) && k === '5'){ e.preventDefault(); switchTab('ui'); return; }
   if((e.ctrlKey || e.metaKey) && k === '6'){ e.preventDefault(); switchTab('text'); return; }
@@ -7108,757 +6999,6 @@ document.addEventListener('click', function(ev){
   if(w && !w.contains(ev.target)) closeWadb();
 });
 
-/* ==================== 投屏（2026-11-13） ====================
-   帧不走 JSON：浏览器直连后端 127.0.0.1:<port>/live/<slot> 拉 multipart 流，
-   前端只在画面上贴状态（帧率/错误）。这样 5 路同时投也不会把 UI 线程打满。 */
-var CAST_SLOTS = 6;   // 3×2 宫格铺满；HUD 默认绑 display 3
-var CAST_NAMES = ['主屏', '副屏', '后排屏', 'HUD', 'PHUD-B', 'PHUD-C'];
-var _cast = {
-  port: 0,
-  disp: [],                  // 探测到的屏 [{id,w,h,type,active}]
-  on: [false,false,false,false,false,false],
-  rec: [false,false,false,false,false,false],
-  dim: [null,null,null,null,null,null],   // 每槽当前屏的分辨率（点击换算用）
-  frames: [0,0,0,0,0,0],
-  fps: [0,0,0,0,0,0],
-  timer: null,
-  inited: false
-};
-
-function castEnsureInit(){
-  if (_cast.inited) return;
-  _cast.inited = true;
-  castRenderCells();
-  castRefresh();
-  ffmpegQuery();
-  scrcpyQuery();
-}
-
-/* ---------- 录屏编码器 ffmpeg（R9） ----------
-   为什么要在这里显示状态：截帧录屏（:rec）依赖 ffmpeg 合成 mp4，
-   而 ffmpeg 是"用户自带"的（105MB，不可能打进包）。找不到时如果不提示，
-   用户只会在录屏失败后看到一句"合成失败"，不知道该干什么。 */
-var _ff = { ok: false, path: '', source: '', version: '', err: '' };
-
-function ffmpegQuery(){ postObj({ kind: 'ffmpegstat' }); }
-
-function ffmpegAuto(){
-  var box = document.getElementById('ff-enc');
-  var txt = document.getElementById('ff-txt');
-  if (box) box.className = 'ff-enc';
-  if (txt) txt.textContent = 'ffmpeg：查找中…';
-  postObj({ kind: 'ffmpegauto' });
-}
-
-function ffmpegPick(){
-  var box = document.getElementById('ff-enc');
-  var txt = document.getElementById('ff-txt');
-  if (box) box.className = 'ff-enc';
-  if (txt) txt.textContent = 'ffmpeg：等待选择…';
-  postObj({ kind: 'ffmpegpick' });
-}
-
-/* ---------- 外挂 scrcpy（R10）：探针 → 接入 → 降级 ----------
-   设计取舍：scrcpy 的视频是它自己开 SDL 窗口渲染的，没有"塞进别人窗口"的稳定接口。
-   所以这里不试图内嵌，而是"有就单独开它的窗口（几十 fps + 可交互），
-   没有就继续用内置截帧通道（约 3fps）"，两条路互不影响，不引入降级风险。 */
-var _sc = { ok: false, path: '', version: '', err: '' };
-
-function scrcpyQuery(){ postObj({ kind: 'scrcpystat' }); }
-
-function scrcpyAuto(){
-  var txt = document.getElementById('sc-txt');
-  var box = document.getElementById('sc-enc');
-  if (box) box.className = 'ff-enc';
-  if (txt) txt.textContent = 'scrcpy：查找中…';
-  postObj({ kind: 'scrcpyauto' });
-}
-
-function scrcpyPick(){
-  var txt = document.getElementById('sc-txt');
-  var box = document.getElementById('sc-enc');
-  if (box) box.className = 'ff-enc';
-  if (txt) txt.textContent = 'scrcpy：等待选择…';
-  postObj({ kind: 'scrcpypick' });
-}
-
-function onScrcpyStat(m){
-  _sc.ok = !!m.ok;
-  _sc.path = m.path || '';
-  _sc.version = m.version || '';
-  _sc.err = m.err || '';
-
-  var box = document.getElementById('sc-enc');
-  var txt = document.getElementById('sc-txt');
-  if (box && txt) {
-    if (_sc.ok) {
-      box.className = 'ff-enc ok';
-      txt.textContent = 'scrcpy：' + (_sc.version || '可用');
-      box.title = _sc.path + '\n点击每格右下的「外部」按钮，用 scrcpy 开这一屏';
-    } else {
-      box.className = 'ff-enc bad';
-      txt.textContent = 'scrcpy：未找到（可选）';
-      box.title = (_sc.err || '没有找到 scrcpy.exe') + '\n没有它不影响使用，内置截帧通道照常工作';
-    }
-  }
-
-  if (m.req === 'pick' || m.req === 'set' || m.req === 'auto') {
-    if (_sc.ok) toast('scrcpy 已就绪：' + (_sc.version || _sc.path));
-    else toast('scrcpy 不可用（可选组件）：' + (_sc.err || '未找到'));
-  }
-}
-
-// 点格子上的「外部」：用 scrcpy 开这一屏；没有就明确告知并保持内置通道
-function scrcpyOpen(i){
-  if (!_online) { toast('设备未连接'); return; }
-  var id = castSelectedId(i);
-  if (id < 0) { toast('先选一块屏'); return; }
-
-  if (!_sc.ok) {
-    toast('未找到 scrcpy，继续用内置截帧通道');
-    if (_sc.err) setTimeout(function(){ toast(_sc.err); }, 120);
-    return;
-  }
-  postObj({ kind: 'scrcpyopen', slot: i, id: id });
-  toast('正在用 scrcpy 打开屏 ' + id + '…');
-}
-
-function onScrcpyRes(m){
-  if (m && m.msg) toast(m.msg);
-}
-
-function onFfmpegStat(m){
-  _ff.ok = !!m.ok;
-  _ff.path = m.path || '';
-  _ff.source = m.source || '';
-  _ff.version = m.version || '';
-  _ff.err = m.err || '';
-
-  var box = document.getElementById('ff-enc');
-  var txt = document.getElementById('ff-txt');
-  if (!box || !txt) return;
-
-  if (_ff.ok) {
-    box.className = 'ff-enc ok';
-    txt.textContent = 'ffmpeg：' + (_ff.version ? _ff.version + ' · ' : '') + _ff.source;
-    box.title = _ff.path + '\n来源：' + _ff.source + '\n截帧录屏用它合成 mp4';
-  } else {
-    box.className = 'ff-enc bad';
-    txt.textContent = 'ffmpeg：未找到（点「选择…」）';
-    box.title = _ff.err || '没找到可用的 ffmpeg.exe';
-  }
-
-  // 只在"用户主动操作"后弹提示：初始化时那一次静默失败很烦人
-  if (m.req === 'pick' || m.req === 'set' || m.req === 'auto') {
-    if (_ff.ok) toast('ffmpeg 已就绪：' + (_ff.version || _ff.path));
-    else toast(_ff.err || '没找到可用的 ffmpeg.exe');
-  }
-}
-
-/* 2026-11-15：把「前排投屏 / 后排投屏」两个按钮的能力内建到固定格子：
-     证据：SynTestUtil/_internal/adbutils/binaries/scrcpy-console.bat 写死
-     --display-id=1 投第二块屏；本工具 CastGrabPng 用 screencap -d <id> -p。
-     主屏（槽 0）→ displayId 0，后排屏（槽 2）→ displayId 1。
-   纯函数，不碰 DOM；castFillSelects 用它选默认值，castToggle 在下拉没选时用它兜底。
-   其它槽返回 -1（继续走"用户手选"的老逻辑，不改已定交互）。 */
-function castDefaultId(i){
-  // A18：六格固定屏位映射（与用户给到的 scrcpy 命令一一对应）：
-  //   槽 0 主屏 → 0，槽 1 副屏 → 4，槽 2 后排屏 → 1，
-  //   槽 3 HUD → 3，槽 4 PHUD-B → 9，槽 5 PHUD-C → 10。
-  // 下拉没选时 castToggle / scrcpy 直接用这里的默认值，一键投对应屏。
-  var MAP = [0, 4, 1, 3, 9, 10];
-  return (i >= 0 && i < MAP.length) ? MAP[i] : -1;
-}
-
-/* 探测列表里是否真有这个 displayId（纯函数，便于自检打靶） */
-function castHasDisplay(disp, id){
-  if (!disp || !disp.length) return false;
-  for (var i = 0; i < disp.length; i++) {
-    if (disp[i] && disp[i].id === id) return true;
-  }
-  return false;
-}
-
-function castRefresh(){
-  var hint = document.getElementById('cast-hint');
-  if (hint) hint.textContent = '正在探测车机屏幕…';
-  postObj({ kind: 'castlist' });
-}
-
-function onCastDisplays(m){
-  _cast.disp = m.items || [];
-  _cast.port = m.port || 0;
-  var hint = document.getElementById('cast-hint');
-  if (hint) {
-    hint.textContent = _cast.disp.length
-      ? ('发现 ' + _cast.disp.length + ' 块屏：' + _cast.disp.map(function(d){
-          return d.id + ' (' + d.w + '×' + d.h + ')';
-        }).join('  ·  '))
-      : '没探测到屏幕（设备未连接？）';
-  }
-  castFillSelects();
-  castStartPoll();
-}
-
-function castRenderCells(){
-  var grid = document.getElementById('cast-grid');
-  if (!grid) return;
-  var html = '';
-  for (var i = 0; i < CAST_SLOTS; i++) {
-    html += '<div class="cast-cell" id="cast-cell-' + i + '">'
-          +   '<div class="cast-top">'
-          +     '<span class="cast-dot" id="cast-dot-' + i + '"></span>'
-          +     '<span class="cast-name">' + CAST_NAMES[i] + '</span>'
-          +     '<span class="cast-meta" id="cast-meta-' + i + '">未开启</span>'
-          +     '<button class="cast-max" id="cast-max-' + i + '" onclick="castMaxToggle(' + i + ')" title="最大化 / 还原（双击标题也行）">⤢</button>'
-          +   '</div>'
-          +   '<div class="cast-view">'
-          +     '<img id="cast-img-' + i + '" alt="" draggable="false">'
-          +     '<span class="cast-idle" id="cast-idle-' + i + '">未开启<br>选一块屏后点「开启」</span>'
-          +   '</div>'
-          +   '<div class="cast-acts">'
-          +     '<select id="cast-sel-' + i + '" title="选择要投的屏"></select>'
-          +     '<button class="btn" id="cast-btn-' + i + '" onclick="castToggle(' + i + ')">开启</button>'
-          +     '<button class="btn" id="cast-rec-' + i + '" onclick="castRecord(' + i + ')" title="录制该屏（最长 60 秒）">录制</button>'
-          +   '</div>'
-          + '</div>';
-  }
-  grid.innerHTML = html;
-  for (var c2 = 0; c2 < CAST_SLOTS; c2++) {
-    (function(idx){
-      var v = document.querySelector('#cast-cell-' + idx + ' .cast-view');
-      if (!v) return;
-      v.addEventListener('click', function(ev){ castTap(idx, ev); });
-      // 2026-11-15：去掉浏览器对投屏 <img> 的原生拖拽 ghost。
-      // 那张跟着鼠标走的半透明帧图没有实际用途，还会让人误以为能拖文件进来。
-      // CSS 的 -webkit-user-drag:none + img[draggable=false] 是主手段，这里兜底。
-      v.addEventListener('dragstart', function(ev){ ev.preventDefault(); });
-    })(c2);
-  }
-  for (var c = 0; c < CAST_SLOTS; c++) {
-    var mt = document.querySelector('#cast-cell-' + c + ' .cast-top');
-    if (mt) {
-      (function(idx, el){
-        el.addEventListener('dblclick', function(){ castMaxToggle(idx); });
-      })(c, mt);
-    }
-  }
-  castFillSelects();
-  castInitSplits();
-}
-
-/* 画面点击 → 设备坐标。
-   纯函数（rect/nw/nh 都显式传），方便自检里直接打靶。
-   返回 null 表示点在黑边（letterbox）上，不该发 tap。 */
-function castMapPoint(clientX, clientY, rect, nw, nh, devW, devH){
-  if (!rect || !nw || !nh || !devW || !devH) return null;
-  var scale = Math.min(rect.width / nw, rect.height / nh);
-  var dw = nw * scale, dh = nh * scale;
-  var ox = rect.left + (rect.width - dw) / 2;
-  var oy = rect.top + (rect.height - dh) / 2;
-  var px = (clientX - ox) / dw;
-  var py = (clientY - oy) / dh;
-  if (px < 0 || px > 1 || py < 0 || py > 1) return null;   // 点在黑边上
-  return { x: Math.round(px * devW), y: Math.round(py * devH) };
-}
-
-/* 点画面 = 点设备（input tap）。只对已开启的格子生效。 */
-// 2026-11-15 点击流畅化：
-//   1) 25ms 内同一槽的重复 click（触控板/触摸鬼影）合并，不再往消息队列里堆；
-//   2) 分辨率兜底用帧自身的 naturalWidth/Height —— screencap 出来的图就是设备分辨率，
-//      即使屏位探测没给 dim 也能正确换算坐标（删掉「刷新屏位」按钮后尤其重要）；
-//   3) 涟漪不再用 setTimeout 清理，改 animationend 自清理，连点时不堆定时器。
-var _castTapLast = [0,0,0,0,0,0];
-// I5：黑边提示的节流时间戳（每槽一份）
-var _castTapEdgeNote = [0,0,0,0,0,0];
-function castTap(i, ev){
-  // O5（2026-11-17）：三种"点不动"的原因分流提示，不再统一静默 return。
-  // 原来前两种被同一个 return 吞掉，用户分不清是没开、掉线，还是点歪了。
-  if (!_cast.on[i]) { toast('这一格还没开启投屏，先点「开启」'); return; }
-  if (!_online) { toast('设备未连接'); return; }
-  var now = Date.now();
-  if (now - (_castTapLast[i] || 0) < 25) return;
-  _castTapLast[i] = now;
-  var img = document.getElementById('cast-img-' + i);
-  if (!img || !img.naturalWidth) { toast('还没收到这一格的画面，稍等再点'); return; }   // O5：同批分流
-  var dim = _cast.dim[i];
-  var devW = dim ? dim.w : img.naturalWidth;
-  var devH = dim ? dim.h : img.naturalHeight;
-
-  var rect = img.getBoundingClientRect();
-  var pt = castMapPoint(ev.clientX, ev.clientY, rect, img.naturalWidth, img.naturalHeight, devW, devH);
-  if (!pt) {
-    // 2026-11-16 交互走查 I5：点在 letterbox 黑边上原本静默 return，
-    // 用户看不到任何反馈，会判定"点了没反应 / 投屏点不动"。
-    // 这里给一次明确提示（同一槽 1.2s 内只提示一次，避免连点刷屏）。
-    var _now2 = Date.now();
-    if (_now2 - (_castTapEdgeNote[i] || 0) > 1200) {
-      _castTapEdgeNote[i] = _now2;
-      toast('点在画面外的黑边上，没有发送点击');
-    }
-    return;
-  }
-
-  postObj({ kind: 'casttap', slot: i, x: pt.x, y: pt.y });
-
-  // 涟漪（相对 .cast-view 定位）
-  var view = document.querySelector('#cast-cell-' + i + ' .cast-view');
-  if (view) {
-    var vr = view.getBoundingClientRect();
-    var dot = document.createElement('span');
-    dot.className = 'cast-ripple';
-    dot.style.left = (ev.clientX - vr.left) + 'px';
-    dot.style.top = (ev.clientY - vr.top) + 'px';
-    var kill = function(){ if (dot.parentNode) dot.parentNode.removeChild(dot); };
-    dot.addEventListener('animationend', kill);
-    dot.addEventListener('animationcancel', kill);
-    view.appendChild(dot);
-  }
-}
-
-/* 全屏 / 还原 + 底部缩略条（2026-11-14 R7）
-   规则：
-     · 全屏用绝对定位浮层"盖住"，不隐藏其它格（隐藏会挂起 img 的流）
-     · 底部条只列**已开启且不是当前全屏**的槽；未开启的显示灰色占位
-     · 点缩略图 = 与全屏互换（不重启采集） */
-var _castMaxed = -1;
-
-function castMaxToggle(i){
-  if (_castMaxed === i) castExitFull();
-  else castEnterFull(i);
-}
-
-function castEnterFull(i){
-  var grid = document.getElementById('cast-grid');
-  var cell = document.getElementById('cast-cell-' + i);
-  if (!grid || !cell) return;
-
-  if (_castMaxed >= 0) {
-    var oldCell = document.getElementById('cast-cell-' + _castMaxed);
-    if (oldCell) oldCell.classList.remove('maxed');
-    var ob = document.getElementById('cast-max-' + _castMaxed);
-    if (ob) ob.textContent = '⤢';
-  }
-
-  cell.classList.add('maxed');
-  grid.classList.add('has-max');
-  var btn = document.getElementById('cast-max-' + i);
-  if (btn) btn.textContent = '⤡';
-  _castMaxed = i;
-
-  castRenderStrip();
-  castInitSplits();
-}
-
-function castExitFull(){
-  if (_castMaxed < 0) return;
-  var cell = document.getElementById('cast-cell-' + _castMaxed);
-  if (cell) cell.classList.remove('maxed');
-  var btn = document.getElementById('cast-max-' + _castMaxed);
-  if (btn) btn.textContent = '⤢';
-  var grid = document.getElementById('cast-grid');
-  if (grid) grid.classList.remove('has-max');
-  _castMaxed = -1;
-
-  castRenderStrip();
-  castInitSplits();
-}
-
-// 从缩略条直接开启某一路（沿用该槽下拉里选的屏）
-function castStartFromStrip(i){
-  if (_cast.on[i]) return;
-  if (!_online) { toast('设备未连接'); return; }
-  var id = castSelectedId(i);
-  if (id < 0) { toast('这个槽还没选屏，请在格子里选一下'); return; }
-  castToggle(i);
-  toast('已开启「' + (CAST_NAMES[i] || ('槽 ' + i)) + '」');
-  castRenderStrip();
-}
-
-// 点缩略图：把全屏换成那一格
-function castSwapFull(j){
-  if (_castMaxed < 0 || j === _castMaxed) return;
-  castEnterFull(j);
-  toast('已切换到「' + (CAST_NAMES[j] || ('槽 ' + j)) + '」全屏');
-}
-
-function castRenderStrip(){
-  var strip = document.getElementById('cast-strip');
-  if (!strip) return;
-
-  if (_castMaxed < 0) {
-    strip.classList.remove('on');
-    strip.innerHTML = '';
-    return;
-  }
-
-  var port = _cast.port;
-  var html = '';
-  for (var i = 0; i < CAST_SLOTS; i++) {
-    if (i === _castMaxed) continue;
-    var on = !!_cast.on[i];
-    if (on && port) {
-      /* 2026-11-15：缩略图改走 /snap 单帧短连接，不再开 /live 长连接。
-         每路格子已经占一条长连接，缩略条再各占一条就把同源并发连接吃满了，
-         表现为「投屏超过两路之后底部画面全黑」（用户实测截图）。
-         快照由 1 秒轮询刷新，缩略图看当前画面足够，且响应完立刻断开。 */
-      html += '<div class="cast-thumb" data-slot="' + i + '"'
-            + ' title="' + escAttr(CAST_NAMES[i] + '（点击与全屏互换）') + '">'
-            + '<img data-slot="' + i + '" src="http://127.0.0.1:' + port + '/snap/' + i
-            + '?t=' + Date.now() + '" alt="">'
-            + '<button class="cast-thumb-stop" data-stop="' + i + '"'
-            + ' title="停止「' + escAttr(CAST_NAMES[i]) + '」投屏" aria-label="停止这一路投屏">×</button>'
-            + '<span class="cap">' + escHtml(CAST_NAMES[i]) + '</span>'
-            + '</div>';
-    } else {
-      // 未开启：给一个「开启」按钮，不用再回到格子里操作
-      html += '<div class="cast-thumb off" data-slot="' + i + '">'
-            + '<div class="cast-thumb-off">'
-            +   '<button class="btn" onclick="castStartFromStrip(' + i + ')" title="开始投这一路">开启</button>'
-            +   '<span class="cap-lite">' + escHtml(CAST_NAMES[i]) + '</span>'
-            + '</div>'
-            + '</div>';
-    }
-  }
-  strip.innerHTML = html;
-  strip.classList.add('on');
-}
-
-/* 2026-11-15：全屏时每秒用 /snap 刷新缩略条。
-   只换 img.src、不重建 DOM ——「停止」按钮不会被重建导致点击落空，
-   也不会像 innerHTML 那样反复新建连接。短请求响应完就断开，不占长连接池。 */
-function castRefreshStripFrames(){
-  if (_castMaxed < 0 || !_cast.port) return;
-  var strip = document.getElementById('cast-strip');
-  if (!strip) return;
-  var imgs = strip.querySelectorAll('img[data-slot]');
-  for (var k = 0; k < imgs.length; k++) {
-    var i = parseInt(imgs[k].getAttribute('data-slot'), 10);
-    if (isNaN(i) || !_cast.on[i]) continue;
-    imgs[k].src = 'http://127.0.0.1:' + _cast.port + '/snap/' + i + '?t=' + Date.now();
-  }
-}
-
-// 缩略条点击（事件委托，只绑一次）
-(function(){
-  var strip = document.getElementById('cast-strip');
-  if (!strip) return;
-  strip.addEventListener('click', function(ev){
-    // 2026-11-15：底部每路补「停止」，全屏时不用退出全屏就能关掉别路
-    var stop = ev.target.closest ? ev.target.closest('[data-stop]') : null;
-    if (stop) {
-      var si = parseInt(stop.getAttribute('data-stop'), 10);
-      if (!isNaN(si) && _cast.on[si]) castToggle(si);
-      return;
-    }
-    var t = ev.target.closest ? ev.target.closest('.cast-thumb') : null;
-    if (!t) return;
-    if (ev.target.closest && ev.target.closest('button')) return;   // 点「开启」按钮不触发互换
-    var slot = parseInt(t.getAttribute('data-slot'), 10);
-    if (isNaN(slot)) return;
-    if (!_cast.on[slot]) return;
-    castSwapFull(slot);
-  });
-})();
-
-/* 分隔条：两条竖的（列宽）+ 一条横的（行高）。
-   位置按当前格子边界实时重算，窗口缩放 / 最大化后都贴得住。 */
-function castInitSplits(){
-  var grid = document.getElementById('cast-grid');
-  if (!grid) return;
-
-  var olds = grid.querySelectorAll('.cast-split');
-  for (var d = 0; d < olds.length; d++) olds[d].parentNode.removeChild(olds[d]);
-  if (grid.classList.contains('has-max')) return;
-
-  var cells = grid.querySelectorAll('.cast-cell');
-  if (cells.length < 4) return;
-
-  var gr = grid.getBoundingClientRect();
-  var c0 = cells[0].getBoundingClientRect();
-  var c1 = cells[1].getBoundingClientRect();
-  var c3 = cells[3].getBoundingClientRect();
-
-  for (var k = 0; k < 2; k++) {
-    var v = document.createElement('div');
-    v.className = 'cast-split v';
-    v.style.left = ((k === 0 ? c0.right : c1.right) - gr.left - 5) + 'px';
-    v.setAttribute('data-col', String(k));
-    grid.appendChild(v);
-  }
-
-  var h = document.createElement('div');
-  h.className = 'cast-split h';
-  h.style.top = (c3.top - gr.top - 5) + 'px';
-  grid.appendChild(h);
-
-  castBindSplit(grid);
-}
-
-function castBindSplit(grid){
-  var vs = grid.querySelectorAll('.cast-split.v');
-  for (var i = 0; i < vs.length; i++) {
-    (function(el, col){
-      el.addEventListener('mousedown', function(ev){
-        ev.preventDefault();
-        var startX = ev.clientX;
-        var cells = grid.querySelectorAll('.cast-cell');
-        var before = cells[col].getBoundingClientRect().width;
-        var cw = grid.clientWidth;
-
-        function move(e2){
-          var w = before + (e2.clientX - startX);
-          if (w < 160) w = 160;
-          if (w > cw - 200) w = cw - 200;
-          grid.style.setProperty(col === 0 ? '--cc1' : '--cc2', Math.round(w) + 'px');
-          castInitSplits();
-        }
-        function up(){
-          document.removeEventListener('mousemove', move);
-          document.removeEventListener('mouseup', up);
-        }
-        document.addEventListener('mousemove', move);
-        document.addEventListener('mouseup', up);
-      });
-    })(vs[i], parseInt(vs[i].getAttribute('data-col'), 10));
-  }
-
-  var hs = grid.querySelectorAll('.cast-split.h');
-  if (hs.length) {
-    hs[0].addEventListener('mousedown', function(ev){
-      ev.preventDefault();
-      var startY = ev.clientY;
-      var cells = grid.querySelectorAll('.cast-cell');
-      var before = cells[0].getBoundingClientRect().height;
-      var ch = grid.clientHeight;
-
-      function move(e2){
-        var hh = before + (e2.clientY - startY);
-        if (hh < 120) hh = 120;
-        if (hh > ch - 120) hh = ch - 120;
-        grid.style.setProperty('--cr1', Math.round(hh) + 'px');
-        castInitSplits();
-      }
-      function up(){
-        document.removeEventListener('mousemove', move);
-        document.removeEventListener('mouseup', up);
-      }
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', up);
-    });
-  }
-}
-
-function castFillSelects(){
-  for (var i = 0; i < CAST_SLOTS; i++) {
-    var sel = document.getElementById('cast-sel-' + i);
-    if (!sel) continue;
-    var cur = sel.value;
-    var html = '';
-    for (var k = 0; k < _cast.disp.length; k++) {
-      var d = _cast.disp[k];
-      html += '<option value="' + d.id + '">屏 ' + d.id + ' · ' + d.w + '×' + d.h + '</option>';
-    }
-    if (!html) html = '<option value="-1">未探测到屏幕</option>';
-    sel.innerHTML = html;
-
-    // 还原选择：cur 可能是上一轮的 "-1"（占位项），直接赋给 select 会变成空值，
-    // 后面 castSelectedId() 就取到 -1，点「开启」会误报"先选一块屏"。
-    // "-1" 是"未探测到屏幕"的占位项，不是真实选择；当成没选过
-    if (cur === '-1') cur = '';
-    var keep = -1;
-    for (var q = 0; q < sel.options.length; q++) {
-      if (sel.options[q].value === cur) { keep = q; break; }
-    }
-    if (keep < 0) {
-      // A18：六格固定屏位映射（主屏 0 / 副屏 4 / 后排 1 / HUD 3 / PHUD-B 9 / PHUD-C 10）。
-      // 探测列表里能找到就用它；找不到就退化为按顺序分配，保证其它车型仍可用。
-      var fixed = castDefaultId(i);
-      var want = (fixed >= 0 && castHasDisplay(_cast.disp, fixed)) ? String(fixed)
-               : (_cast.disp.length > i ? String(_cast.disp[i].id) : '');
-      if (want) {
-        for (var q2 = 0; q2 < sel.options.length; q2++) {
-          if (sel.options[q2].value === want) { keep = q2; break; }
-        }
-      }
-    }
-    sel.selectedIndex = (keep >= 0) ? keep : 0;
-  }
-}
-
-function castSelectedId(i){
-  var sel = document.getElementById('cast-sel-' + i);
-  if (!sel) return -1;
-  var v = parseInt(sel.value, 10);
-  return isNaN(v) ? -1 : v;
-}
-
-function castToggle(i){
-  if (!_online) { toast('设备未连接'); return; }
-  var img = document.getElementById('cast-img-' + i);
-  var idle = document.getElementById('cast-idle-' + i);
-
-  if (_cast.on[i]) {
-    postObj({ kind: 'caststop', slot: i });
-    _cast.on[i] = false;
-    _cast.dim[i] = null;
-    /* A18：scrcpy 内嵌格也停掉（如果这格走的是 scrcpy） */
-    try { if (window.v17CastEmbedStop) window.v17CastEmbedStop(i); } catch (e) {}
-    if (_castMaxed === i) castExitFull(); else castRenderStrip();
-    if (img) { img.classList.remove('on'); img.removeAttribute('src'); }
-    if (idle) { idle.style.display = ''; idle.textContent = '已停止'; }
-    document.getElementById('cast-btn-' + i).textContent = '开启';
-    castMeta(i, '未开启');
-    castCellClass(i);
-    return;
-  }
-
-  var id = castSelectedId(i);
-  if (id < 0) id = castDefaultId(i);   // 主屏 / 后排屏一键投：不用先选屏
-  if (id < 0) { toast('先选一块屏'); return; }
-
-  // 记下这块屏的分辨率，点击投屏时要按它换算坐标
-  for (var q = 0; q < _cast.disp.length; q++) {
-    if (_cast.disp[q].id === id) { _cast.dim[i] = { w: _cast.disp[q].w, h: _cast.disp[q].h }; break; }
-  }
-
-  // A18：有 scrcpy 就走内嵌（h264，可点击，30~60fps），没有才退回内置抓帧。
-  // 这就是"各分屏都用 scrcpy 投屏"——每格一个 scrcpy，塞进格子本身，不再弹全屏。
-  if (_sc.ok) {
-    _cast.on[i] = true;
-    if (img) { img.removeAttribute('src'); img.classList.remove('on'); }
-    if (idle) { idle.style.display = ''; }
-    document.getElementById('cast-btn-' + i).textContent = '停止';
-    castMeta(i, 'scrcpy 连接中…');
-    castCellClass(i);
-    castRenderStrip();
-    try { window.v17CastEmbed(i, id); } catch (e) { castBuiltinFallback(i); }
-    return;
-  }
-
-  if (!_cast.port) { toast('流服务未就绪，切走再切回投屏页重试'); return; }
-
-  postObj({ kind: 'caststart', slot: i, id: id });
-  _cast.on[i] = true;
-  if (img) {
-    img.src = 'http://127.0.0.1:' + _cast.port + '/live/' + i + '?t=' + Date.now();
-    img.classList.add('on');
-  }
-  if (idle) idle.style.display = 'none';
-  document.getElementById('cast-btn-' + i).textContent = '停止';
-  castMeta(i, '连接中…');
-  castCellClass(i);
-  castRenderStrip();
-}
-
-/* A18：scrcpy 起不来时，某格回退到内置抓帧通道（不重走 castToggle，避免再触发 scrcpy） */
-function castBuiltinFallback(i){
-  if (!_online) return;
-  var img = document.getElementById('cast-img-' + i);
-  var idle = document.getElementById('cast-idle-' + i);
-  var id = castSelectedId(i);
-  if (id < 0) id = castDefaultId(i);
-  if (!_cast.port) { if (idle) { idle.style.display = ''; idle.textContent = '流服务未就绪'; } return; }
-  postObj({ kind: 'caststart', slot: i, id: id });
-  _cast.on[i] = true;
-  if (img) {
-    img.src = 'http://127.0.0.1:' + _cast.port + '/live/' + i + '?t=' + Date.now();
-    img.classList.add('on');
-  }
-  if (idle) idle.style.display = 'none';
-  castMeta(i, '内置抓帧');
-  castCellClass(i);
-  castRenderStrip();
-}
-
-function castMeta(i, text){
-  var el = document.getElementById('cast-meta-' + i);
-  if (el) el.textContent = text;
-}
-
-function castCellClass(i){
-  var c = document.getElementById('cast-cell-' + i);
-  if (!c) return;
-  c.classList.toggle('on', !!_cast.on[i]);
-  c.classList.toggle('rec', !!_cast.rec[i]);
-}
-
-function castStartPoll(){
-  if (_cast.timer) return;
-  _cast.timer = setInterval(function(){
-    if (_tab !== 'cast') return;
-    for (var i = 0; i < CAST_SLOTS; i++) {
-      if (_cast.on[i]) postObj({ kind: 'caststat', slot: i });
-    }
-    castRefreshStripFrames();   // 2026-11-15：全屏时刷新底部缩略条的单帧快照
-  }, 1000);
-}
-
-function onCastStat(m){
-  var i = m.slot;
-  if (i < 0 || i >= CAST_SLOTS) return;
-  if (!m.on) {
-    // 后端已停（比如采集失败）：同步前端状态
-    if (_cast.on[i]) {
-      _cast.on[i] = false;
-      var img = document.getElementById('cast-img-' + i);
-      if (img) { img.classList.remove('on'); img.removeAttribute('src'); }
-      var idle = document.getElementById('cast-idle-' + i);
-      if (idle) { idle.style.display = ''; idle.textContent = m.err || '已停止'; }
-      var b = document.getElementById('cast-btn-' + i);
-      if (b) b.textContent = '开启';
-      castCellClass(i);
-    }
-    return;
-  }
-
-  var prev = _cast.frames[i] || 0;
-  var delta = (m.frames || 0) - prev;
-  _cast.frames[i] = m.frames || 0;
-  _cast.fps[i] = delta;
-
-  var meta = '屏 ' + m.id + ' · ' + delta + ' fps · ' + (m.lastMs || 0) + ' ms';
-  if (m.err) meta = m.err;
-  castMeta(i, meta);
-}
-
-/* A16：内置通道是 screencap 轮询，最快也就 4~6fps —— 这是协议上限，不是参数没调。
-   要真正流畅只有 scrcpy（h264 流）。这里给一个"从投屏页直接跳过去"的入口：
-   取当前全屏那格（没全屏就用第 0 格）选中的 displayId，发内置 :scrcpy N。 */
-function castOpenScrcpy(){
-  if (!_online) { toast('设备未连接'); return; }
-  var i = (_castMaxed >= 0) ? _castMaxed : 0;
-  var id = castSelectedId(i);
-  if (id < 0) id = 0;
-  toast('正在用 scrcpy 打开「' + (CAST_NAMES[i] || ('屏 ' + id)) + '」');
-  post('quick', ':scrcpy ' + id);
-}
-
-function castRecord(i){
-  if (!_online) { toast('设备未连接'); return; }
-  var id = castSelectedId(i);
-  if (id < 0) { toast('先选一块屏'); return; }
-  var on = _cast.rec[i] ? '0' : '1';
-  postObj({ kind: 'castrec', slot: i, id: id, on: on });
-  _cast.rec[i] = !_cast.rec[i];
-  castCellClass(i);
-  var btn = document.getElementById('cast-rec-' + i);
-  if (btn) btn.textContent = _cast.rec[i] ? '停止录制' : '录制';
-}
-
-function onCastRec(m){
-  toast(m.msg || (m.ok ? '完成' : '失败'), m.ok ? 'ok' : 'err');
-  if (!m.ok) {
-    // 失败时把按钮状态倒回去，不然会一直显示"停止录制"
-    var i = m.slot;
-    if (i >= 0 && i < CAST_SLOTS) {
-      _cast.rec[i] = false;
-      castCellClass(i);
-      var btn = document.getElementById('cast-rec-' + i);
-      if (btn) btn.textContent = '录制';
-    }
-  }
-}
 
 /* ==================== 文件管理（2026-11-13） ====================
    双栏：左本地（"此电脑" -> 盘符 -> 目录），右设备（从 / 开始）。
@@ -10109,14 +9249,6 @@ var HELP_SECS = [
     '<li><b>底部按钮</b>：新建文件夹 / 重命名 / 删除，作用于当前选中项。</li></ul>' +
     '<p>复制过程有进度条，可随时「取消复制」。</p>' },
 
-  { id: 'cast', title: '6. 投屏页', html:
-    '<h3>投屏页</h3>' +
-    '<p>支持主屏 / 副屏 / 后排放屏 / HUD / PHUD 多路同时投。每块屏可单独「开启」，' +
-    '也可「录制」（走 ffmpeg 合成 mp4）、「外部」（用 scrcpy 开独立窗口，最流畅）。</p>' +
-    '<ul><li>画面可直接点击（等效触摸设备）。</li>' +
-    '<li>第一次用录屏/外部窗口要先指定 ffmpeg / scrcpy 路径，点「选择…」，之后会记住。</li>' +
-    '<li>顶部「多屏投屏」标签可最大化某一块屏，再点还原。</li></ul>' +
-    '<p>单帧截图有 8 秒超时保护：设备卡住会自动放弃并标记原因，不会把整个工具拖死。</p>' },
 
   { id: 'ui', title: '7. UI 对比页', html:
     '<h3>UI 对比页</h3>' +

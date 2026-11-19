@@ -274,7 +274,15 @@ namespace AdbLogExport
         {
             if (OFFLINE) { Warn("设备未连接，无法唤醒"); Hint("输入 :r 重连"); return; }
 
-            string t = (rest == null) ? "" : rest.Trim();
+            // 2026-11-19：支持 -a <音区>，例如 `:vr wake -a 副驾` / `:vr wake 1 -a 1`
+            int area; bool _localM; string areaBad;
+            string t = VrStripArgs(rest ?? "", out area, out _localM, out areaBad).Trim();
+            if (areaBad.Length > 0)
+            {
+                Fail("音区不合法：" + areaBad);
+                Hint("可用：-a 0~5 或 -a 主驾/副驾/二排左/二排右/三排左/三排右");
+                return;
+            }
             string type = VR_WAKE_TYPE;
             bool withSleep = false;
 
@@ -291,12 +299,15 @@ namespace AdbLogExport
                 }
             }
 
-            string uri = VrBuildWakeUri(type, withSleep);
+            string uri = VrBuildWakeUri(type, withSleep, area);
 
             string cmd = VrBuildAmCmd(uri);
-            if (VrAdb(new List<string> { "shell", cmd }, "唤醒指令已下发（type=" + type + "）"))
+            string tail = (area >= 0) ? "，音区=" + AreaName(area) : "";
+            if (VrAdb(new List<string> { "shell", cmd }, "唤醒指令已下发（type=" + type + tail + "）"))
             {
                 Hint("URI：" + UrlDecodeForDisplay(uri));
+                if (area >= 0)
+                    Hint("提示：该参数仅在 AH8 项目（0626apk 起）生效；换音区前先让上一个音区休眠");
             }
         }
 
@@ -408,10 +419,14 @@ namespace AdbLogExport
             return uri.ToString();
         }
 
-        internal static string VrBuildWakeUri(string type, bool withSleep)
+        internal static string VrBuildWakeUri(string type, bool withSleep, int area = -1)
         {
             string uri = VR_VR_URI + "?type=" + type;
             if (withSleep) uri += "&canSleep=false";
+            // 2026-11-19：按音区唤醒。voiceArea 与识别侧同一套取值（0主驾 1副驾
+            // 2二排左 3二排右 4三排左 5三排右），复用 VR_AREAS 的顺序。
+            // area<0 时不拼任何东西 —— 旧调用方（含自检）行为逐字节不变。
+            if (area >= 0) uri += "&voiceArea=" + area;
             return uri;
         }
 

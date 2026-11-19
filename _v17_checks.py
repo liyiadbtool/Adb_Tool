@@ -196,17 +196,18 @@ chk("⑧ 原生遮罩的图标颜色取 App.ACCENT",
 # ============================================================================
 # 8. 追加-1：scrcpy 内嵌（A18 起：每格一块，不再是单屏全窗口）
 # ============================================================================
-chk("追加① 投屏页六格各自宿主（格子 .cast-view 即画面区，不再有单屏全窗口占位）",
-    'id="cast-grid"' in s and 'id="cast-embed"' not in s
-    and 'id="ce-stage"' not in s)
+# 2026-11-19（A31）：投屏页整体删除 —— 六格宿主/内嵌/回退这几条的对象都不在了，
+# 改为反向断言（确认页面确实被删干净），能力由外部 scrcpy 窗口承担。
+chk("追加① 投屏页六格宿主已随页面删除",
+    'id="cast-grid"' not in s and 'id="cast-cell-0"' not in s)
 chk("追加① 页面按格上报区域比例（不受 ZoomFactor / DPI 影响）",
     "post('castembedrect'" in v17 and "r.left / W" in v17 and "slot: slot" in v17)
-chk("追加① 六格固定屏位映射（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）",
-    "var MAP = [0, 4, 1, 3, 9, 10];" in s)
-chk("追加① 有 scrcpy 时每格走内嵌、没有才回退内置抓帧",
-    "if (_sc.ok) {" in s and "window.v17CastEmbed(i, id);" in s)
-chk("追加① 某格 scrcpy 起不来会回退该格内置通道",
-    "function castBuiltinFallback(i)" in s and "castBuiltinFallback" in v17)
+chk("追加① 六屏映射改由指令卡片承载（:cast 0/1/3/4/9/10）",
+    all((":cast %d'" % d) in s for d in (0, 1, 3, 4, 9, 10)))
+chk("追加① 内嵌分发逻辑已随页面删除",
+    "window.v17CastEmbed(i, id);" not in s)
+chk("追加① 回退内置通道逻辑已随页面删除",
+    "function castBuiltinFallback(i)" not in s)
 chk("追加① C# 用 SetParent 把 scrcpy 窗口塞进每格 Panel",
     "SetParent(h, _castHost[slot].Handle);" in guiweb)
 chk("追加① 接管时去掉标题栏/边框（否则内嵌里还有一个窗口框）",

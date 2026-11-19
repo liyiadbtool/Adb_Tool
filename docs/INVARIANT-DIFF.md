@@ -7,10 +7,10 @@
 | 核验项 | 结论 | 说明 |
 |---|---|---|
 | onMessage 的 kind（基线 28） | PASS | 基线 28 / 当前 39；新增 ['accent', 'build', 'customcmds', 'netsimlog', 'netsimstat', 'netsimstate', 'prefs', 'texterr', 'textfile', 'textsaved', 'winstate']；经批准删除 无；违约删除 无；未登记新增 无 |
-| onclick 绑定函数（基线 59） | PASS | 基线 59 / 当前 96；新增 ['accentPopClick', 'apkFillFront', 'appClose', 'closeCustomMgr', 'closeHelp', 'closeSettings', 'cmAddStep', 'cmBackdrop', 'cmDel', 'cmDelStep', 'cmEdit', 'cmNew', 'cmSave', 'fbHeadToggle', 'fsRetry', 'fsSwapSides', 'helpGo', 'openCustomMgr', 'openHelp', 'setSize', 'setThemeByName', 'tbClose', 'tbMax', 'tbMin', 'toggleSettings', 'txClose', 'txFindClose', 'txFindNext', 'txFindOpen', 'txGoto', 'txNew', 'txOpen', 'txReplaceAll', 'txReplaceOne', 'txSave', 'txSelect', 'txSyncCaret', 'txToggleWrap', 'txUndoRedo', 'txZoom']；经批准删除 ['scrcpyOpen', 'sendCmd', 'toggleTheme']；违约删除 无；未登记新增 无 |
-| 静态 DOM id（基线 135） | PASS | 基线 135 / 当前 204；新增 ['a15-sec-display', 'accent-pop', 'apk-btn-fillfront', 'apk-btn-uninstall', 'apk-pkg-hint', 'apk-pkg-input', 'appmark-bg', 'appmark-glyph', 'build-stamp', 'cm-desc', 'cm-err', 'cm-grid', 'cm-list', 'cm-name', 'cm-steps', 'custom-mgr', 'custom-panel', 'fs-swap', 'help-doc', 'help-mask', 'help-search', 'help-toc', 'log-dot', 'ns-stat', 'ns-state', 'page-text', 'set-auto', 'set-display-hint', 'set-eyelevel', 'set-font', 'set-font-preview', 'set-fsize', 'set-mask', 'set-oled', 'set-theme', 'settings-btn', 'tb-close', 'tb-max', 'tb-min', 'tb-status', 'tb-sub', 'titlebar', 'tx-body', 'tx-case', 'tx-edit', 'tx-enc', 'tx-eol', 'tx-find', 'tx-find-i', 'tx-find-n', 'tx-gutter', 'tx-repl-all', 'tx-repl-i', 'tx-repl-one', 'tx-st-enc', 'tx-st-eol', 'tx-st-font', 'tx-st-len', 'tx-st-pos', 'tx-st-sel', 'tx-tabs', 'tx-wrap-btn', 'tx-zoom-val', 'v15-devh', 'v15-devoff', 'v15-devrefresh', 'v15-devrows', 'v15-lvdev', 'v15-lvshow', 'v15-lvstate']；经批准删除 ['theme-btn']；违约删除 无；未登记新增 无 |
-| data-tab 页签顺序 | PASS | 基线 ['quick', 'cmd', 'file', 'cast', 'ui'] / 当前 ['quick', 'cmd', 'file', 'cast', 'ui', 'text'] |
-| #page-* 页面集合 | PASS | 基线 ['page-cmd', 'page-quick', 'page-cast', 'page-ui', 'page-file'] / 当前 ['page-cmd', 'page-quick', 'page-cast', 'page-ui', 'page-file', 'page-text'] |
+| onclick 绑定函数（基线 59） | PASS | 基线 59 / 当前 88；新增 ['accentPopClick', 'apkFillFront', 'appClose', 'closeCustomMgr', 'closeHelp', 'closeSettings', 'cmAddStep', 'cmBackdrop', 'cmDel', 'cmDelStep', 'cmEdit', 'cmNew', 'cmSave', 'fbHeadToggle', 'fsRetry', 'fsSwapSides', 'helpGo', 'openCustomMgr', 'openHelp', 'setSize', 'setThemeByName', 'tbClose', 'tbMax', 'tbMin', 'toggleSettings', 'txClose', 'txFindClose', 'txFindNext', 'txFindOpen', 'txGoto', 'txNew', 'txOpen', 'txReplaceAll', 'txReplaceOne', 'txSave', 'txSelect', 'txSyncCaret', 'txToggleWrap', 'txUndoRedo', 'txZoom']；经批准删除 ['castMaxToggle', 'castRecord', 'castStartFromStrip', 'castToggle', 'ffmpegAuto', 'ffmpegPick', 'scrcpyAuto', 'scrcpyOpen', 'scrcpyPick', 'sendCmd', 'toggleTheme']；违约删除 无；未登记新增 无 |
+| 静态 DOM id（基线 135） | PASS | 基线 135 / 当前 193；新增 ['a15-sec-display', 'accent-pop', 'apk-btn-fillfront', 'apk-btn-uninstall', 'apk-pkg-hint', 'apk-pkg-input', 'appmark-bg', 'appmark-glyph', 'build-stamp', 'cm-desc', 'cm-err', 'cm-grid', 'cm-list', 'cm-name', 'cm-steps', 'custom-mgr', 'custom-panel', 'fs-swap', 'help-doc', 'help-mask', 'help-search', 'help-toc', 'log-dot', 'ns-stat', 'ns-state', 'page-text', 'set-auto', 'set-display-hint', 'set-eyelevel', 'set-font', 'set-font-preview', 'set-fsize', 'set-mask', 'set-oled', 'set-theme', 'settings-btn', 'tb-close', 'tb-max', 'tb-min', 'tb-status', 'tb-sub', 'titlebar', 'tx-body', 'tx-case', 'tx-edit', 'tx-enc', 'tx-eol', 'tx-find', 'tx-find-i', 'tx-find-n', 'tx-gutter', 'tx-repl-all', 'tx-repl-i', 'tx-repl-one', 'tx-st-enc', 'tx-st-eol', 'tx-st-font', 'tx-st-len', 'tx-st-pos', 'tx-st-sel', 'tx-tabs', 'tx-wrap-btn', 'tx-zoom-val', 'v15-devh', 'v15-devoff', 'v15-devrefresh', 'v15-devrows', 'v15-lvdev', 'v15-lvshow', 'v15-lvstate']；经批准删除 ['cast-fps', 'cast-grid', 'cast-hint', 'cast-strip', 'ff-dot', 'ff-enc', 'ff-txt', 'page-cast', 'sc-dot', 'sc-enc', 'sc-txt', 'theme-btn']；违约删除 无；未登记新增 无 |
+| data-tab 页签顺序 | PASS | 基线 ['quick', 'cmd', 'file', 'cast', 'ui'] / 当前 ['quick', 'cmd', 'file', 'ui', 'text'] |
+| #page-* 页面集合 | PASS | 基线 ['page-cmd', 'page-quick', 'page-cast', 'page-ui', 'page-file'] / 当前 ['page-cmd', 'page-quick', 'page-ui', 'page-file', 'page-text'] |
 | post() 签名（v12 起多一个 extra 字段包） | PASS | function post(kind, data, src, slot, extra){ |
 | postObj() 签名 | PASS | function postObj(o){ |
 | sendCmd() 签名 | PASS | function sendCmd(cmd){ |
@@ -35,8 +35,8 @@
 | ICO 多尺寸齐备（16/24/32/48/64/128/256） | PASS | [16, 24, 32, 48, 64, 128, 256] |
 | 可编辑 SVG 源存在（图标 v2：车载中控终端） | PASS |  |
 | A9 追加轮 · 缩略条 /snap 单帧端点 | PASS |  |
-| A9 追加轮 · 前端缩略条走 /snap + 1 秒轮询 | PASS |  |
-| A9 追加轮 · 缩略条每路停止按钮 | PASS |  |
+| A31 · 已随投屏页删除 · 前端缩略条走 /snap + 1 秒轮询 | PASS |  |
+| A31 · 已随投屏页删除 · 缩略条每路停止按钮 | PASS |  |
 | A9 追加轮 · 搜索结果点击整行进树 | PASS |  |
 | A9 追加轮 · 旧的「进入 ⤵」按钮已删 | PASS |  |
 | A9 追加轮 · 搜索态 dblclick 兼容 | PASS |  |

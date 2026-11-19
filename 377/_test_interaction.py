@@ -59,7 +59,7 @@ JS = r"""
   st.textContent='*{transition:none!important;animation:none!important;}';
   document.head.appendChild(st);
 
-  var TABS=['quick','cmd','file','cast','ui','text'];
+  var TABS=['quick','cmd','file','ui','text'];
 
   function __runAll(){
     try{
@@ -87,56 +87,25 @@ JS = r"""
       ok('switchTab 4 层包装链连切 36 次不抛异常', err===null, err);
 
       /* ---------- C. Ctrl+1~6 ---------- */
-      var map={'1':'quick','2':'cmd','3':'file','4':'cast','5':'ui','6':'text'};
+      // 2026-11-19：Ctrl+4 不再切投屏页，改为跳指令页（Scrcpy投屏 分组）
+      var map={'1':'quick','2':'cmd','3':'file','4':'quick','5':'ui','6':'text'};
       var wrong=[];
       for(var key in map){
         var ev=new KeyboardEvent('keydown',{key:key,ctrlKey:true,bubbles:true,cancelable:true});
         document.dispatchEvent(ev);
         if(typeof _tab!=='undefined' && _tab!==map[key]) wrong.push('Ctrl+'+key+'->'+_tab);
       }
-      ok('Ctrl+1~6 映射到六个页签', wrong.length===0, wrong.join(' ; '));
+      // 2026-11-19：Ctrl+4 不再切投屏页（页已删），改为跳指令页并定位 Scrcpy投屏 分组
+      ok('Ctrl+1~5 映射到五个页签（Ctrl+4 = 跳 Scrcpy投屏 分组）',
+         wrong.length===0, wrong.join(' ; '));
 
-      /* ---------- D. 投屏轮询启停 ---------- */
-      switchTab('cast');
-      var hasOn = (typeof _cast!=='undefined') && _cast.timer;
-      switchTab('quick');
-      var hasOff = (typeof _cast!=='undefined') && !_cast.timer;
-      ok('进投屏页启动状态轮询', !!hasOn, hasOn?'':'timer 未创建');
-      ok('离开投屏页停掉轮询（I4）', !!hasOff, hasOff?'':'timer 未清理');
-      switchTab('cast');
-      var hasAgain = (typeof _cast!=='undefined') && !!_cast.timer;
-      ok('再次进入投屏页轮询可重启', !!hasAgain, hasAgain?'':'重启失败');
       switchTab('quick');
 
-      /* ---------- E. castMapPoint 纯函数 ---------- */
-      var rect={left:100,top:50,width:400,height:300};
-      // 图 800x600 放进 400x300：正好等比，无黑边
-      var c=castMapPoint(300,200,rect,800,600,800,600);
-      ok('等比铺满：中心点映射到设备中心',
-         c && Math.abs(c.x-400)<=1 && Math.abs(c.y-300)<=1, c?c.x+','+c.y:null);
-      // 图 800x400 放进 400x300：上下留黑边（dh=200, oy=50+50=100）
-      var lb=castMapPoint(300,60,rect,800,400,800,400);
-      ok('黑边区域返回 null（不误发 tap）', lb===null, lb?lb.x+','+lb.y:'');
-      var inb=castMapPoint(300,250,rect,800,400,800,400);
-      ok('黑边内画面区域可映射', inb && inb.x>=0 && inb.y>=0, inb?inb.x+','+inb.y:null);
-      // 设备分辨率与图片分辨率不同：按设备分辨率换算（同样取画面中心）
-      var sc=castMapPoint(300,200,rect,800,600,1920,1080);
-      ok('设备分辨率 != 图片分辨率时按设备换算',
-         sc && Math.abs(sc.x-960)<=2 && Math.abs(sc.y-540)<=2, sc?sc.x+','+sc.y:null);
-      // 右边界：clientX=500 正好是 rect 右边（px=1），允许等于 devW（边界含端点）
-      var edge=castMapPoint(500,200,rect,800,600,1920,1080);
-      ok('右边界点映射到 devW（含端点，不越界）',
-         edge && edge.x===1920, edge?edge.x:null);
-      ok('退化参数（rect 为空）返回 null', castMapPoint(0,0,null,800,600,800,600)===null);
-
-      /* ---------- F. I5 接线 ---------- */
-      ok('黑边提示节流数组已接线',
-         typeof _castTapEdgeNote!=='undefined' && _castTapEdgeNote.length===6,
-         typeof _castTapEdgeNote);
-      ok('castTap 内已调用 toast 提示黑边',
-         /castTapEdgeNote\[i\]/.test(document.documentElement.innerHTML) ||
-         /_castTapEdgeNote/.test(window.castTap ? window.castTap.toString() : ''),
-         '未找到接线');
+      /* E/F 段（castMapPoint 投屏坐标换算、黑边提示接线）随投屏页删除，2026-11-19 A31。
+         反向断言：这些投屏专用函数不应再回来。 */
+      ok('投屏坐标换算相关函数已随页面删除',
+         typeof castMapPoint === 'undefined' && typeof castTap === 'undefined',
+         typeof castMapPoint);
 
       /* ---------- G. 字体切换（bug1 回归） ---------- */
       var sel2 = document.getElementById('set-font');

@@ -1014,6 +1014,12 @@ namespace AdbLogExport
             STCheck("唤醒 99 含 type=99", vw99.IndexOf("type=99") > 0, vw99);
             STCheck("唤醒 99 含 canSleep=false", vw99.IndexOf("canSleep=false") > 0, vw99);
 
+            // 7.4a 按音区唤醒（2026-11-19）
+            string vwA = VrBuildWakeUri("1", false, 1);
+            STCheck("唤醒带 voiceArea=1", vwA.IndexOf("voiceArea=1") > 0, vwA);
+            STCheck("唤醒默认不带 voiceArea", VrBuildWakeUri("1", false).IndexOf("voiceArea") < 0,
+                    VrBuildWakeUri("1", false));
+
             // 7.4b TBOX 帧表（2026-11-19）：15 帧、末帧重启、两套环境只差 3 帧
             string[] tf = TboxFrames(false);
             string[] tpre = TboxFrames(true);

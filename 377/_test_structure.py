@@ -52,7 +52,8 @@ JS = r"""
   function ok(name, cond, extra){
     R.push((cond ? 'PASS' : 'FAIL') + ' | ' + name + (cond ? '' : ' | ' + (extra===undefined?'':extra)));
   }
-  var PAGES = ['cmd','quick','file','cast','ui'];
+  // 2026-11-19：投屏页已删除（A31），页面清单去掉 cast
+  var PAGES = ['cmd','quick','file','ui'];
   var KEY = {
     cmd:   ['slots', 'cmd-input-0', 'logbox-0'],
     quick: ['quick-grid', 'feedback'],
@@ -72,12 +73,13 @@ JS = r"""
       var order = [];
       for (var ti = 0; ti < tabs.length; ti++) order.push(tabs[ti].getAttribute('data-tab'));
       // 2026-11-15 第二轮：末尾追加「文本」页（需求 4），顺序仍是前五个冻结
-      ok('页签顺序为 指令→终端→文件→投屏→UI→文本',
-         order.join(',') === 'quick,cmd,file,cast,ui,text', order.join(','));
+      // 2026-11-19：投屏页已删除（改外部 scrcpy 窗口），页签 6 → 5
+      ok('页签顺序为 指令→终端→文件→UI→文本',
+         order.join(',') === 'quick,cmd,file,ui,text', order.join(','));
       ok('第一个页签文字是「指令」', tabs[0].textContent.trim() === '指令', tabs[0].textContent);
       ok('第二个页签文字是「终端」', tabs[1].textContent.trim() === '终端', tabs[1].textContent);
-      ok('第五个页签文字是「UI」', tabs[4].textContent.trim() === 'UI',
-         tabs[4] ? tabs[4].textContent : 'no-tab');
+      ok('第四个页签文字是「UI」', tabs[3].textContent.trim() === 'UI',
+         tabs[3] ? tabs[3].textContent : 'no-tab');
       ok('默认激活的是「指令」页',
          document.getElementById('page-quick').classList.contains('active')
          && !document.getElementById('page-cmd').classList.contains('active'));
@@ -129,32 +131,11 @@ JS = r"""
          Math.round(tr.width) + 'x' + Math.round(tr.height));
       if (window.fbSetCollapsed) window.fbSetCollapsed(true);
 
-      // 3c) 未投屏时 #cast-img-0 是 0x0 属正常，只要求存在且未激活
-      var ci = document.getElementById('cast-img-0');
-      ok('未投屏时 #cast-img-0 存在且未激活',
-         !!ci && !ci.classList.contains('on'), ci ? ci.className : 'missing');
-
-      // 4) 页面高度要撑满（整页空白时高度是 0）
-      switchTab('cast');
-      var pc = document.getElementById('page-cast');
-      var r2 = pc.getBoundingClientRect();
-      ok('投屏页撑满可用高度', r2.height > 300, Math.round(r2.height));
-      // 2026-11-15：前排/后排/刷新位三个按钮已删除，能力内建进「主屏」「后排屏」固定格子。
-      // 断言「旧按钮不再回来」比断言「新按钮存在」更能防回归。
-      ok('前排投屏按钮已删除', !document.getElementById('cast-front-btn'));
-      ok('后排投屏按钮已删除', !document.getElementById('cast-rear-btn'));
-      ok('刷新屏位按钮已删除', !document.getElementById('cast-refresh-btn'));
-      ok('内建屏位映射纯函数存在',
-         typeof castDefaultId === 'function' && typeof castHasDisplay === 'function');
-      ok('castDefaultId 六格固定屏位映射（主屏0/副屏4/后排1/HUD3/PHUD-B9/PHUD-C10）',
-         castDefaultId(0) === 0 && castDefaultId(1) === 4 &&
-         castDefaultId(2) === 1 && castDefaultId(3) === 3 &&
-         castDefaultId(4) === 9 && castDefaultId(5) === 10);
-      ok('castHasDisplay 命中与缺失',
-         castHasDisplay([{id:0},{id:1}], 1) === true &&
-         castHasDisplay([{id:0}], 1) === false &&
-         castHasDisplay([], 0) === false);
-      ok('旧的一键前后排函数已移除', typeof castRow === 'undefined' && typeof castRowId === 'undefined');
+      // 2026-11-19（A31）：投屏页删除，castHasDisplay / castRow 等随页面一起下线；
+      // 改成反向断言，防止哪天又把整页塞回来。
+      ok('投屏页相关函数已随页面删除',
+         typeof castHasDisplay === 'undefined' && typeof castRow === 'undefined'
+         && typeof castToggle === 'undefined');
 
       // 5) UI 对比页（投屏右侧）：是 .main 直接子节点，且切过去有实际尺寸
       var pui = document.getElementById('page-ui');

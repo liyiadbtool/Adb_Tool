@@ -37,8 +37,34 @@ function text(rel) {
     return cache[rel];
 }
 
+// A31（2026-11-19）：投屏页整体删除后，这些功能项的对象已不存在。
+// 不是"跳过不看"，而是转到"反向清单"里 —— 每一项都断言它的锚点确实已删，
+// 防止哪天有人把投屏页又塞回来却以为功能清单还绿着。
+const RETIRED = [
+    { id: "page.cast",       gone: ["function castToggle", 'id="page-cast"'] },
+    { id: "ui.tab-order",    gone: ['data-tab="cast"'] },
+    { id: "cast.six-slots",  gone: ["CAST_SLOTS = 6"] },
+    { id: "rec.ffmpeg",      gone: ["function ffmpegPick", 'id="ff-enc"'] },
+    { id: "rec.scrcpy",      gone: ["function scrcpyOpen", 'id="sc-enc"'] },
+    { id: "cast.builtin-rows", gone: ["function castDefaultId"] },
+    { id: "cast.tap-smooth", gone: ["_castTapLast"] },
+    { id: "cast.no-drag",    gone: ["v.addEventListener('dragstart'"] },
+    { id: "cast.strip-snap", gone: ["function castRefreshStripFrames"] },
+    { id: "cast.strip-stop", gone: ["cast-thumb-stop"] },
+    { id: "ui.a16",          gone: ["function castOpenScrcpy"] },
+    { id: "ui.a17",          gone: ["if (_sc.ok) {"] },
+];
+const retiredIds = new Set(RETIRED.map(r => r.id));
+for (const r of RETIRED) {
+    const src = text("adb_log_gui/webview2/ui.html") || "";
+    const still = r.gone.filter(n => src.indexOf(n) >= 0);
+    if (still.length) bad(r.id + "（已下线，但仍能在 ui.html 找到）：" + still.join("；"));
+    else good(r.id + "  已随投屏页下线（A31）");
+}
+
 let checked = 0;
 for (const f of cfg.features || []) {
+    if (retiredIds.has(f.id)) continue;
     const problems = [];
     for (const a of (f.anchors || [])) {
         const src = text(a.file);

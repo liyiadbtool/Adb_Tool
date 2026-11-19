@@ -1,0 +1,28 @@
+feat: 删投屏页签（转外部 scrcpy）+ 语音按音区唤醒
+
+## 投屏（P1）
+- 删除 #page-cast / 顶栏页签 / 投屏 CSS / 投屏 JS（751 行）/ 帮助第 6 章
+- Ctrl+4 改为跳「指令页 → Scrcpy投屏」分组（新增 gotoScrcpyGroup）
+- 门禁登记 A31_REMOVED（onclicks 9 / ids 11 / tab / page），
+  A9 里两条缩略条断言改为反向校验（必须已删）
+- 测试同步：
+  · _test_cast_ui.py 移出 EDGE_TESTS
+  · _test_structure：页签 6→5、PAGES 去 cast、castHasDisplay 改反向断言
+  · _test_interaction：Ctrl+4 = 指令页、删投屏轮询三条、castMapPoint/castTap 改反向
+  · _check_v16/-v17：scrcpy 按钮与六格内嵌断言改反向/改判
+  · _check_v12：页签 6→5、图标 6→5、帮助章节 ≥12→≥11
+  · _check_features.js：12 个投屏功能项进 RETIRED 反向清单
+  · GuiSelfCheck：页签/页面 6→5、投屏格改「无 cast-grid」
+- 踩坑：用正则删帮助数组里的 `{ id: 'cast', ... }` 会吃多（把 Overlay 切半 →
+  Unexpected token ':'），必须花括号配对
+
+## 语音（音区唤醒）
+- VrBuildWakeUri(type, withSleep, area=-1)：area>=0 时拼 &voiceArea=N，
+  与识别侧同一套 0~5 映射；area<0 时与旧行为逐字节一致
+- :vr wake 支持 -a <音区>（复用 VrStripArgs，支持中文音区名）
+- 语音助手组重排：唤醒 6 张（主驾/副驾/二排左/二排右/三排左/三排右）+ 调试 5 张
+- 删除 4 张卡：唤醒(原参)/语音识别/断网识别/音区对照表（均有页面或终端替代入口）
+- CLI 自检 +2（唤醒带/不带 voiceArea）
+
+门禁 27 项 / 0 失败；CLI 自检 501 条全过。
+注意：设备当前未连接，:vr wake -a 副驾 未做真机验证。

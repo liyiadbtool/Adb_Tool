@@ -57,7 +57,8 @@ namespace AdbLogExport.Gui
   P('fontUi',gv('--font-ui'));
   P('tabs',document.querySelectorAll('.tab').length);
   P('tabActive',document.querySelectorAll('.tab.active').length);
-  var ids=['quick','cmd','file','cast','ui','text'],pn=0;
+  // A31（2026-11-19）：投屏页删除，页签清单 6 → 5
+  var ids=['quick','cmd','file','ui','text'],pn=0;
   for(var i=0;i<ids.length;i++){ if(document.getElementById('page-'+ids[i])) pn++; }
   P('pages',pn);
   var seen={},dup=0,all=document.querySelectorAll('[id]');
@@ -74,7 +75,6 @@ namespace AdbLogExport.Gui
   }catch(e){}
   P('tabSwitchable',okc);
   P('cards',document.querySelectorAll('.qcard').length);
-  P('castCells',document.querySelectorAll('#cast-grid .cast-cell').length);
   // 输出区与输入框只在「终端」页可见；页面隐藏时 getBoundingClientRect 全为 0，
   // 所以必须先切到终端页再量（第一次跑就踩了：ratio=0 / inputW=0）。
   switchTab('cmd');
@@ -144,12 +144,13 @@ namespace AdbLogExport.Gui
             Check("没有重复 id", dup == 0, "dup=" + dup);
 
             // ---- 结构 ----
-            Check("页签数量为 6", tabs == 6, "tabs=" + tabs);
+            Check("页签数量为 5", tabs == 5, "tabs=" + tabs);   // A31：投屏页已删除
             Check("默认只有一个页签激活", active == 1, "active=" + active);
-            Check("六个页面容器都存在", pages == 6, "pages=" + pages);
-            Check("六个页签都能切换（且互斥）", switchable == 6, "switchable=" + switchable + "/6");
+            Check("五个页面容器都存在", pages == 5, "pages=" + pages);   // A31：投屏页删除
+            Check("五个页签都能切换（且互斥）", switchable == 5, "switchable=" + switchable + "/5");
             Check("指令卡片已渲染（>=20 张）", cards >= 20, "cards=" + cards);
-            Check("投屏区有 6 格", cells == 6, "cells=" + cells);
+            // A31：投屏页删除，六格断言随之下线（改为确认不再有 #cast-grid）
+            Check("投屏页已删除（无 cast-grid）", cells == 0, "castCells=" + cells);
 
             // ---- 布局 ----
             Check("输出区占主区 >= 55%", ratio >= 0.55, "ratio=" + ratio.ToString("0.000"));

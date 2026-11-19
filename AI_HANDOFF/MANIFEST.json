@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 130,
- "totalBytes": 3394626,
+ "totalBytes": 3360274,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -151,8 +151,8 @@
   },
   {
    "path": "377/_test_interaction.py",
-   "size": 22308,
-   "sha256": "ef21411b52738665c7461f9743bf934df1744bc874e9a75ecc1a289e8effd3dd"
+   "size": 20423,
+   "sha256": "d4dced94571f16af44ad5e26fb5423e998e81c8bc1841f8b954b2f0b64d28cd7"
   },
   {
    "path": "377/_test_no_window.py",
@@ -171,13 +171,13 @@
   },
   {
    "path": "377/_test_structure.py",
-   "size": 10022,
-   "sha256": "68c28205b1415cadc063c741aa251893b86f2946be6d4d946e6203747f539b87"
+   "size": 8764,
+   "sha256": "9bf6e3a6f4afbc4253c30ef9f34dbc4491b104be483bfc61b2ad547cc8e37e26"
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 59820,
-   "sha256": "b51f893c5f06068cbcd7265aff013e171de8cf2425c072d40ad478c5d38b513e"
+   "size": 61508,
+   "sha256": "5a0a3fa82a913cfdbf1de34e27a342a2c834287706a497219664dc426fe814b8"
   },
   {
    "path": "377/_test_ux.py",
@@ -246,8 +246,8 @@
   },
   {
    "path": "_check_features.js",
-   "size": 3672,
-   "sha256": "5e0abe19be7953b8068e6726d288d06477a38d9867f703541cc4c6af42c1951e"
+   "size": 5176,
+   "sha256": "efa50c446f92c050a4ab0430ee2af98e624d9fb5945691dbeacf205ff84f7748"
   },
   {
    "path": "_check_features.json",
@@ -341,8 +341,8 @@
   },
   {
    "path": "_cs/GuiSelfCheck.cs",
-   "size": 13374,
-   "sha256": "33a309a78412b32648f8166e9bc51e1cd8ef7a6bef5b89bea6c4618c1c2603e7"
+   "size": 13243,
+   "sha256": "7ffdee3157f1f19efdb0031b39df7ed8c0de9e5a48e3b619e996370dd268bc0a"
   },
   {
    "path": "_cs/GuiSink.cs",
@@ -396,8 +396,8 @@
   },
   {
    "path": "_cs/Render.cs",
-   "size": 108873,
-   "sha256": "fd1d0674de86ccfbdf50702dc4da75555cddc7549195c643d82ab66a9981c161"
+   "size": 109219,
+   "sha256": "a283d320683ff795a0273917b997a72e7749d8be6c8c06f87c56144e3eac8c1b"
   },
   {
    "path": "_cs/Root.cs",
@@ -426,8 +426,8 @@
   },
   {
    "path": "_cs/Voice.cs",
-   "size": 44012,
-   "sha256": "92af4163c6fc36182610426300fd65bded8345ee7e5b42b7f847cab177aff42b"
+   "size": 44139,
+   "sha256": "436ae301455d3596f4373b0b9e9eefccbda4519ee8f409daca69f4e716aec860"
   },
   {
    "path": "_cs/Wireless.cs",
@@ -516,8 +516,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 868867,
-   "sha256": "0f8f70570de4a68c823af8e6bbc2a5b9af9512069569d3e2bde465bb7e1acb00"
+   "size": 832433,
+   "sha256": "75f3085e202dff5e6661ab2d639bc8e895abd4ba96a51abf69dad1d8553a57c7"
   },
   {
    "path": "cmds.ini",
@@ -566,8 +566,8 @@
   },
   {
    "path": "docs/INVARIANT-DIFF.md",
-   "size": 6629,
-   "sha256": "fd03bd3346f0f4e39fa9c17057f702afc8465ee6cca9154a4632a59cb3460c8a"
+   "size": 6888,
+   "sha256": "a551441f4ea338ea033f356c45382049e9cd0e8bf71976b9ab0ed83b8823d940"
   },
   {
    "path": "docs/RESKIN-FINAL-REPORT.md",
@@ -611,8 +611,8 @@
   },
   {
    "path": "docs/投屏6格需求排期_20261119.md",
-   "size": 5537,
-   "sha256": "af7074d5bbe498648a413e495162247c155fe5a814e9398aa06318045e6cbeae"
+   "size": 7005,
+   "sha256": "c724af97fd6dccf4fcba8ca6163b36c7bc8273d94351f80bbaca19448bd3bdcf"
   },
   {
    "path": "docs/明天到公司继续开发.md",
@@ -651,8 +651,8 @@
   },
   {
    "path": "verify_all.py",
-   "size": 10162,
-   "sha256": "827a4681e4e466b89e8b8b8fce1f55449cada17b0953b4c5347741f449066d2e"
+   "size": 10126,
+   "sha256": "7aa9bdf6e3d33e084b2ab7e820f247778236033e5dabf7235f0c449abe029410"
   }
  ]
 }

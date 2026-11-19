@@ -114,9 +114,10 @@ chk("③ 独立组「投屏（scrcpy）」已删（只剩注释提一句）",
     "group:'投屏（scrcpy）'" not in s)
 chk("③ 六张卡按屏位齐全（0 / 4 / 1 / 3 / 9 / 10）",
     all((":scrcpy %d'" % d) in s for d in (0, 4, 1, 3, 9, 10)))
-chk("③ 有「用 scrcpy 打开」按钮入口 castOpenScrcpy",
-    "function castOpenScrcpy" in s and "castOpenScrcpy()" in body_html)
-chk("③ 按钮走 quick 通道发 :scrcpy", "post('quick', ':scrcpy '" in s)
+# 2026-11-19（A31）：投屏页删除，「用 scrcpy 打开」按钮随页面下线。
+# 能力改由「指令页 → Scrcpy投屏」卡片 + :cast 命令承担（下面那条六卡断言仍在）。
+chk("③ 投屏页内的 scrcpy 按钮已随页面删除", "function castOpenScrcpy" not in s)
+chk("③ 投屏改走 :cast 命令（指令卡片）", ":cast 0'" in s and ":cast 10'" in s)
 
 # ============================================================================
 # 4. 第④⑤⑥条：弹窗互斥 / 不再叠 hover / 不再显示不全
