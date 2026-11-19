@@ -703,6 +703,41 @@ BEHAVIOR = r"""
          && testCard.cmd.indexOf('web-test.syncore.space') > 0,
          testCard ? testCard.cmd : '没有');
 
+      /* ---- 历史记录（2026-11-19）：持久化 + Win11 边界语义 + 每槽独立 ---- */
+      try{
+        var i0 = document.getElementById('cmd-input-0');
+        var i1 = document.getElementById('cmd-input-1');
+        hist.length = 0; histPos = {}; drafts = {};
+        histPush('echo A'); histPush('echo B'); histPush('echo B'); histPush('echo C');
+        ok('历史去连续重复（A,B,B,C → 3 条）', hist.length === 3, hist.length);
+        i0.value = 'echo draft';
+        nav(-1, 0);
+        ok('上键取到最新一条', i0.value === 'echo C', i0.value);
+        nav(-1, 0); nav(-1, 0);
+        ok('上键到最旧仍是第一条', i0.value === 'echo A', i0.value);
+        nav(-1, 0);
+        ok('到最旧停住不越界', i0.value === 'echo A', i0.value);
+        nav(1, 0); nav(1, 0);
+        ok('下键回到最新', i0.value === 'echo C', i0.value);
+        nav(1, 0);
+        ok('越过最新还原草稿', i0.value === 'echo draft', i0.value);
+
+        // 每槽独立：槽 1 从最新开始，不影响槽 0
+        if(i1){
+          i1.value = 'slot1 own';
+          nav(-1, 1);
+          ok('槽 1 独立翻历史', i1.value === 'echo C', i1.value);
+          ok('槽 0 未被槽 1 影响', i0.value === 'echo draft', i0.value);
+        }
+
+        // 持久化：写进 localStorage
+        histSave();
+        var raw2 = localStorage.getItem('adb_hist_v1');
+        ok('历史已落 localStorage', !!raw2 && raw2.indexOf('echo A') > 0, raw2 ? raw2.slice(0, 40) : 'null');
+        localStorage.removeItem('adb_hist_v1');
+        hist.length = 0; histPos = {}; drafts = {};
+      }catch(e){ ok('历史记录套件未抛异常', false, String(e)); }
+
       /* ---- R1（2026-11-19）：无设备时指令入口置灰 ---- */
       setStatus({dev:'', online:false, rooted:false});
       var sendBtn = document.getElementById('btn-vr-send');

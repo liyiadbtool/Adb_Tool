@@ -4053,8 +4053,43 @@ body::after{
 <!-- V12:SETTINGS END -->
 
 <script>
-var hist = [];
-var histIdx = -1;
+/* 命令历史（2026-11-19 重做，对齐 Win11 命令窗口的手感）
+   原来的问题：
+     1) 只存在内存里 —— 关掉工具/刷新页面就清空，用起来"只有一条"
+     2) histIdx/draft 是**全局**的，而输入框有多个槽位，切槽后上下键会串味
+     3) 到最旧一条不设边界，下键也不会把你没提交的草稿还回来
+   现在的规则（与 cmd.exe / PowerShell 一致）：
+     · 上键：往更旧的走，到最旧就停住
+     · 下键：往更新的走，越过最新一条时**还原你原来没提交的草稿**
+     · 连续重复的命令不重复入栈（PowerShell 同）
+     · 落 localStorage，最多 500 条，重启仍在
+     · 每个槽位各自记住"翻到第几条"和"草稿"，互不干扰 */
+var HIST_MAX = 500;
+var HIST_KEY = 'adb_hist_v1';
+var hist = histLoad();
+var histPos = {};      // slot -> 从末尾往前的偏移（0 = 最新一条）
+var drafts = {};       // slot -> 进入浏览前那行没提交的内容
+
+function histLoad(){
+  try{
+    var raw = localStorage.getItem(HIST_KEY);
+    var a = raw ? JSON.parse(raw) : [];
+    return (a && a.length) ? a.slice(-HIST_MAX) : [];
+  }catch(e){ return []; }
+}
+function histSave(){
+  try{ localStorage.setItem(HIST_KEY, JSON.stringify(hist)); }catch(e){}
+}
+/* 提交一条命令：去空、去连续重复、限长、落盘，并把所有槽位的浏览位置复位 */
+function histPush(cmd){
+  cmd = String(cmd == null ? '' : cmd).replace(/\s+$/, '');
+  if(!cmd) return;
+  if(hist.length && hist[hist.length - 1] === cmd){ histPos = {}; return; }
+  hist.push(cmd);
+  if(hist.length > HIST_MAX) hist.splice(0, hist.length - HIST_MAX);
+  histSave();
+  histPos = {};
+}
 var draft = '';
 
 // post(kind, data, src)
@@ -4790,7 +4825,7 @@ function run(slot){
   }
   inp.value = '';
   txAutoGrow(slot);          // T10：清空后高度收回单行
-  hist.push(cmd); histIdx = -1; draft = '';
+  histPush(cmd);
   var fromQuick = (_tab === 'quick');
   // 在指令页敲的命令，输出要落在反馈区 —— 但在反馈区里得先有"这一条"，
   // 否则 appendOut 找不到 _curOutEl 会把整段输出静默丢掉（等于敲了没反应）。
@@ -4900,15 +4935,33 @@ function onInputKey(e, slot){
 }
 
 function nav(dir, slot){
-  if(hist.length === 0) return;
   slot = slot || 0;
   var inp = document.getElementById('cmd-input-' + slot);
   if(!inp) return;
-  if(histIdx < 0){ draft = inp.value; histIdx = hist.length; }
-  histIdx += dir;
-  if(histIdx < 0) histIdx = 0;
-  if(histIdx > hist.length) histIdx = hist.length;
-  inp.value = (histIdx === hist.length) ? draft : hist[histIdx];
+  if(!hist.length) return;
+
+  var pos = histPos[slot];
+  if(pos === undefined){
+    // 还没进入浏览：上键开始往上翻，下键什么都不做（Win11 同）
+    if(dir > 0) return;
+    drafts[slot] = inp.value;
+    pos = 0;
+  }else if(dir < 0){
+    if(pos >= hist.length - 1) return;   // 已到最旧，停住不再越界
+    pos++;
+  }else{
+    if(pos <= 0){
+      // 越过最新一条 → 还原草稿并退出浏览
+      delete histPos[slot];
+      inp.value = drafts[slot] || '';
+      try{ inp.setSelectionRange(inp.value.length, inp.value.length); }catch(e){}
+      return;
+    }
+    pos--;
+  }
+  histPos[slot] = pos;
+  inp.value = hist[hist.length - 1 - pos] || '';
+  try{ inp.setSelectionRange(inp.value.length, inp.value.length); }catch(e){}
 }
 
 function setStatus(s){
@@ -6012,6 +6065,7 @@ function runQuickAt(g, j, cardEl){
   // 问题4：先建好这一条的空记录（带"执行中"占位），
   // 输出随命令执行逐行填进它的右栏 —— 后面的永远不会覆盖前面的。
   addPendingRow(it.cmd);
+  histPush(it.cmd);   // 卡片执行的命令也进历史，方便上键翻回来改参数
 
   post('quick', it.cmd);
 }
