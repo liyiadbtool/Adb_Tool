@@ -357,7 +357,26 @@ namespace AdbLogExport
         ///      主屏是用户列的第一个，必须显式传 0，否则 scrcpy 用"默认屏"，语义不清。
         ///   2) 标题原来写死 "屏 N"，6 个窗口在任务栏里分不清谁是谁。
         /// </summary>
+        /// <summary>
+        /// 带录制的投屏：与 Launch 相同的窗口，额外 --record 到指定 mp4 + --time-limit 自动停。
+        /// 为什么用 scrcpy 录而不是工具内的 ffmpeg 截帧合成：投屏页删掉后 Cast.cs 那套
+        /// 逐帧截图就没有承载页面了，而 scrcpy 是原生 h264 录制，帧率与画质都更好、代码更少。
+        /// </summary>
+        internal static bool LaunchRecord(int displayId, string name, string outFile,
+                                          int seconds, out string err)
+        {
+            err = "";
+            if (seconds <= 0) seconds = 60;
+            return LaunchCore(displayId, name, outFile, seconds, out err);
+        }
+
         internal static bool Launch(int displayId, string name, out string err)
+        {
+            return LaunchCore(displayId, name, null, 0, out err);
+        }
+
+        private static bool LaunchCore(int displayId, string name, string recFile,
+                                       int recSeconds, out string err)
         {
             err = "";
             string ver = "";
@@ -389,6 +408,11 @@ namespace AdbLogExport
             // 让 scrcpy 把实时帧率打到 stderr —— 以后"卡不卡"有数据可看，
             // 不用再靠感觉。读取在下面的 drain 线程里（不读会堵死管道）。
             a.Append(" --print-fps");
+            if (!string.IsNullOrEmpty(recFile))
+            {
+                a.Append(" --record=\"").Append(recFile).Append("\"");
+                a.Append(" --time-limit=").Append(recSeconds);
+            }
 
             ProcessStartInfo psi = new ProcessStartInfo();
             psi.FileName = exe;

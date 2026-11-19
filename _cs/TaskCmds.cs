@@ -1505,6 +1505,98 @@ namespace AdbLogExport
                : "星河云埋点：未完全开启（privacy_enabled=" + pv + "）");
         }
 
+        // :castrec <屏号> [秒]   投屏并录制到 桌面\logcat\<日期>\screenrecord
+        //
+        // 投屏页要删掉，页内那个「录制」按钮随之消失；能力用这条命令保留，
+        // 底层从"Cast.cs 逐帧截图 + ffmpeg 合成"换成 scrcpy 原生 h264 录制。
+        private static void DoCastRec(string argRaw)
+        {
+            if (!RequireDevice("")) return;
+
+            string a = (argRaw == null ? "" : argRaw).Trim();
+            int id = 0, sec = 60;
+            string[] parts = a.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                Info("用法：:castrec <屏号> [秒数]");
+                Hint("屏号：0 主屏 · 1 后排 · 3 HUD · 4 副驾 · 9 PHUD-B · 10 PHUD-C");
+                Hint("默认录 60 秒，文件落在 桌面\\logcat\\<日期>\\screenrecord\\");
+                return;
+            }
+            if (!int.TryParse(parts[0], out id) || id < 0)
+            {
+                Fail("屏号要是数字：" + parts[0]);
+                return;
+            }
+            if (parts.Length > 1 && !int.TryParse(parts[1], out sec)) sec = 60;
+            if (sec <= 0 || sec > 1800) { Fail("秒数范围 1~1800"); return; }
+
+            string dir = OutDir("screenrecord");
+            string file = Path.Combine(dir, "cast" + id + "_"
+                          + DateTime.Now.ToString("HHmmss") + ".mp4");
+
+            string err = "";
+            if (!Scrcpy.LaunchRecord(id, "屏 " + id, file, sec, out err))
+            {
+                Fail("scrcpy 启动失败：" + err);
+                Hint("确认已安装 scrcpy：:scrcpystat");
+                return;
+            }
+            CMD_OK = true;   // 只是"已启动"，不是失败；窗口关掉后 scrcpy 自己写盘
+            Ok("已开始录制屏 " + id + "（" + sec + " 秒后自动停止）");
+            Hint("文件：" + file);
+        }
+
+        // :qnxlog [路径]   导出 QNX 日志（默认 /share/log）到 桌面\logcat\<日期>\qnx
+        //
+        // 车机是 QNX + Android 双系统，QNX 侧日志通过共享目录 /share/log 暴露给 Android。
+        // 这里不用 tar：pull 目录 adb 会自己递归，而且能边拉边看进度。
+        private static void DoQnxLog(string argRaw)
+        {
+            if (!RequireDevice("")) return;
+
+            string src = (argRaw == null ? "" : argRaw).Trim();
+            if (src.Length == 0) src = "/share/log";
+            if (!src.StartsWith("/", StringComparison.Ordinal))
+            {
+                Fail("路径要以 / 开头：" + src);
+                Hint("默认是 /share/log，一般不用带参数");
+                return;
+            }
+
+            // 先判类型：目录 / 文件 / 不存在。三者处理方式不同，也避免拉一个空目录
+            string kind = ShellValue("if [ -d " + src + " ]; then echo dir; elif [ -f "
+                                     + src + " ]; then echo file; else echo none; fi");
+            kind = (kind ?? "").Trim();
+            if (kind == "none" || kind.Length == 0)
+            {
+                Fail("设备上没有 " + src);
+                Hint("确认是 QNX 项目；可以试 :ls /share 看有哪些目录");
+                return;
+            }
+
+            string dst = OutDir("qnx");
+            Echo("pull", src + "  →  " + dst);
+
+            string o = "", e = "";
+            int rc = AdbCall(new List<string> { "pull", src, dst }, out o, out e);
+            string all = (o + "\n" + e).Trim();
+            CMD_OK = (rc == 0);
+            if (CMD_OK)
+            {
+                Ok("QNX 日志已导出：" + dst);
+                // adb pull 的进度行很长，只回显最后一行（通常是 "1 file pulled..."）
+                string last = all.Length > 0 ? all.Substring(all.LastIndexOf('\n') + 1).Trim() : "";
+                if (last.Length > 0) Hint(last);
+            }
+            else
+            {
+                Fail("导出失败（rc=" + rc + "）");
+                if (all.Length > 0) Hint(FirstLine(all));
+                Hint("QNX 共享目录有时只有 root 可读：先 :root 再试");
+            }
+        }
+
         // :proxydel   删除代理：三个键分别删、分别回显
         //
         // 为什么不在 cmds.ini 里写一条 `a; b; c`：那样只有一段合并输出，

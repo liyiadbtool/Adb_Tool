@@ -291,6 +291,12 @@ namespace AdbLogExport
                 return;
             }
 
+            // :qnxlog [路径]  导出 QNX 侧日志（默认 /share/log）到 桌面\logcat\<日期>\qnx
+            if (n == "qnxlog" || n == "qnxl" || n == "qnx") { DoQnxLog(arg); return; }
+
+            // :castrec <屏号> [秒]  投屏并录制（scrcpy --record，默认 60 秒）
+            if (n == "castrec" || n == "castrecord") { DoCastRec(arg); return; }
+
             if (n == "wsdevid" || n == "devid") { DoDeviceId(); return; }
 
             // :url <地址>  用桌面系统默认浏览器打开（不是车机）

@@ -5541,6 +5541,9 @@ var quickGroups = [
     // ---- 显示与信息 ----
     {name:'开启坐标', desc:'pointer_location = 1，显示触摸坐标', cmd:'stxyon', cat:'显示与信息'},
     {name:'关闭坐标', desc:'pointer_location = 0，关闭触摸坐标', cmd:'stxyoff', cat:'显示与信息'},
+    {name:'开启触控点', desc:'show_touches = 1，点击处显示白点', cmd:'sttoucheson', cat:'显示与信息'},
+    {name:'关闭触控点', desc:'show_touches = 0', cmd:'sttouchesoff', cat:'显示与信息'},
+    {name:'导出 QNX 日志', desc:'/share/log → 桌面logcat\日期\qnx', cmd:':qnxlog', progress:true, cat:'显示与信息'},
     {name:'查看VIN', desc:'读 persist.sys.vehicle.vin', cmd:'stvin', cat:'显示与信息'},
     {name:'网络状态-ping', desc:'ping 公网 5 个包（car_net 实测）', cmd:'stping', cat:'显示与信息'},
     {name:'网络状态-IP', desc:'读 wlan0 地址（car_net 实测）', cmd:'stip', cat:'显示与信息'},
@@ -5658,7 +5661,7 @@ var quickGroups = [
     {name:'投屏 副驾屏', desc:'display 4', cmd:':cast 4'},
     {name:'投屏 PHUD-B', desc:'display 9', cmd:':cast 9'},
     {name:'投屏 PHUD-C', desc:'display 10', cmd:':cast 10'},
-    {name:'scrcpy 状态', desc:'版本 / 路径探测', cmd:':scrcpystat'}
+    {name:'录制 主屏 60s', desc:'scrcpy --record → 桌面logcat\日期\screenrecord', cmd:':castrec 0 60', progress:true}
   ]},
 
   // TBOX 环境切换（2026-11-19）：参考 Downloads\正式环境.bat / 预发布环境.bat，

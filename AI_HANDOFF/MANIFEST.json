@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 130,
- "totalBytes": 3387364,
+ "totalBytes": 3394626,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -376,8 +376,8 @@
   },
   {
    "path": "_cs/Prefix.cs",
-   "size": 52962,
-   "sha256": "fa7c109a98454aa842951315dffa531c6f3e29bda4de47a94a5b0ba3c92fd2e4"
+   "size": 53332,
+   "sha256": "7d6c84c7393891cc43a935b7cdcb4edcb715e3105512771ce1fb308d67b048e1"
   },
   {
    "path": "_cs/Probe.cs",
@@ -406,8 +406,8 @@
   },
   {
    "path": "_cs/Scrcpy.cs",
-   "size": 27700,
-   "sha256": "dfa0c1fa9a88401dfd0239f05dd3b7c033ea40eebadf7be8fdca179a981c6651"
+   "size": 28877,
+   "sha256": "6b2c712e7ee58985d6c784b2d471fec20a499cb6768ef0383a13427ae7fcaebe"
   },
   {
    "path": "_cs/Send.cs",
@@ -416,8 +416,8 @@
   },
   {
    "path": "_cs/TaskCmds.cs",
-   "size": 75671,
-   "sha256": "0c20382a9bb391019a60b6f18c5010a845afcf245f78f1b4db078033f8d5419e"
+   "size": 79913,
+   "sha256": "995c7f279d6789485e1c63a0eb127fb5d5afbd6a93aca46b2de0bc6ea273c641"
   },
   {
    "path": "_cs/Tbox.cs",
@@ -497,7 +497,7 @@
   {
    "path": "adb_log_gui/adb_log_export.ini",
    "size": 8399,
-   "sha256": "507400fecedffb80ee5a0285cfc857e02c3591f4a7716208e7b5038fd76e60e6"
+   "sha256": "6715c88144d4ede3be0f3c4fd9b3d32d5450b9ca0015e2f33b407da018b88306"
   },
   {
    "path": "adb_log_gui/build_gui.bat",
@@ -506,8 +506,8 @@
   },
   {
    "path": "adb_log_gui/cmds.ini",
-   "size": 19334,
-   "sha256": "2aadc97b16995d1cbf88806873ca00e9d479741219c21895e39f32d9fab2d6ff"
+   "size": 19869,
+   "sha256": "f5792f8c16fad430eb4d5923e8fc217a31a4437407567431e4ec9c69c8d1e2ca"
   },
   {
    "path": "adb_log_gui/make_min.bat",
@@ -516,13 +516,13 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 868464,
-   "sha256": "8344d59e25ab04e7b4be7a6f0369f130ac9288e0d6a360646510987b183723eb"
+   "size": 868867,
+   "sha256": "0f8f70570de4a68c823af8e6bbc2a5b9af9512069569d3e2bde465bb7e1acb00"
   },
   {
    "path": "cmds.ini",
-   "size": 19334,
-   "sha256": "2aadc97b16995d1cbf88806873ca00e9d479741219c21895e39f32d9fab2d6ff"
+   "size": 19869,
+   "sha256": "f5792f8c16fad430eb4d5923e8fc217a31a4437407567431e4ec9c69c8d1e2ca"
   },
   {
    "path": "docs/ACCENT-CONTRAST.md",
