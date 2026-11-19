@@ -5648,6 +5648,19 @@ var quickGroups = [
     {name:'音区对照表', desc:'0主驾 1副驾 2/3 二排 4/5 三排', cmd:':vr area'},
     {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log'}
   ]},
+  // Scrcpy 投屏（2026-11-19）：投屏 tab 要删，改成指令卡片直接开外部 scrcpy 窗口。
+  // 实测两个 scrcpy 实例可并行（各自随机 scid/端口），所以这里不需要分配端口。
+  // 屏号沿用 CAST_NAMES：0 主屏 / 1 后排 / 3 HUD / 4 副驾 / 9 PHUD-B / 10 PHUD-C
+  { name:'Scrcpy投屏', color:'var(--accent)', items:[
+    {name:'投屏 主屏',   desc:'display 0 · 2560×1440', cmd:':cast 0'},
+    {name:'投屏 后排屏', desc:'display 1', cmd:':cast 1'},
+    {name:'投屏 HUD',    desc:'display 3', cmd:':cast 3'},
+    {name:'投屏 副驾屏', desc:'display 4', cmd:':cast 4'},
+    {name:'投屏 PHUD-B', desc:'display 9', cmd:':cast 9'},
+    {name:'投屏 PHUD-C', desc:'display 10', cmd:':cast 10'},
+    {name:'scrcpy 状态', desc:'版本 / 路径探测', cmd:':scrcpystat'}
+  ]},
+
   // TBOX 环境切换（2026-11-19）：参考 Downloads\正式环境.bat / 预发布环境.bat，
   // 往 /dev/mcu_spi 写 15 帧，末帧重启 MCU。命令不带 yes 只做 dry-run，卡片直接带 yes。
   { name:'TBOX', color:'var(--accent)', items:[
