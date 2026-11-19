@@ -1057,6 +1057,10 @@ body{
 .ns-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
 .ns-lbl{font-size:12px;color:var(--text-dim);white-space:nowrap;flex:0 0 auto;}
 .ns-tip{font-size:11px;color:var(--text-faint);line-height:1.5;flex:1 1 260px;min-width:0;}
+/* T3：代理状态与实时流量 */
+.ns-state{font-size:12px;color:var(--text-faint);white-space:nowrap;}
+.ns-state.on{color:var(--ok);font-weight:600;}
+.ns-stat{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;}
 .ns-panel input,.ns-panel select{
   height:28px;background:var(--bg);color:var(--text);border:1px solid var(--border);
   border-radius:var(--r-2);font-size:12px;font-family:inherit;outline:none;padding:0 8px;}
@@ -3591,7 +3595,7 @@ body::after{
               </select>
               <span class="ns-lbl">自定义环境值</span>
               <input id="ns-custom" placeholder="给这组参数起个名（仅记录用）">
-              <span class="ns-tip">上下行分开填、分别生效：上行 = wlan0 出口 netem；下行 = ingress 镜像到 ifb0 再挂 netem（需 root + ifb 模块，个别机型不支持时只上行为准）</span>
+              <span class="ns-tip">上下行分别生效：本机起 HTTP 代理做整形，车机 http_proxy 指向本机（需车机与电脑同一网段；只影响走代理的 HTTP(S) 流量）</span>
             </div>
 
             <div class="ns-grid">
@@ -3625,6 +3629,9 @@ body::after{
               <input id="ns-proxy" class="ns-proxy" placeholder="代理 IP:端口  例 10.41.152.100:8888">
               <button class="btn ghost sm" onclick="nsRun('proxyon')" title="stproxyon <IP:端口>">开启代理</button>
               <button class="btn ghost sm" onclick="nsRun('proxyoff')" title="删除三个代理键（stproxyoff）">关闭代理</button>
+              <div class="spacer"></div>
+              <span class="ns-state" id="ns-state">○ 未启用</span>
+              <span class="ns-stat" id="ns-stat"></span>
               <div class="spacer"></div>
               <button class="btn ghost sm" onclick="nsOutClear()">清空记录</button>
             </div>
@@ -4094,6 +4101,10 @@ function onMessage(ev){
     case 'apkfront': onApkFront(msg.pkg); break;
     case 'wadb': onWadb(msg); break;
     // ---- 文件管理 ----
+    // T3：网络模拟（内置代理）
+    case 'netsimlog': nsLog(msg.text); break;
+    case 'netsimstat': nsStat(msg); break;
+    case 'netsimstate': nsSetState(!!msg.on); break;
     case 'fslist': onFsList(msg); break;
     case 'fssearchdone': onFsSearchDone(msg); break;
     case 'fsprog': onFsProg(msg); break;
@@ -9086,6 +9097,37 @@ function nsCheckVals(v){
   return '';
 }
 
+/* 面板状态：0=未启用，1=代理运行中（含上下行实时流量） */
+var _nsOn = false;
+function nsSetState(on){
+  _nsOn = !!on;
+  var b = document.getElementById('ns-state');
+  if (b){
+    b.textContent = on ? '● 弱网代理运行中' : '○ 未启用';
+    b.className = 'ns-state' + (on ? ' on' : '');
+  }
+}
+
+/* 代理日志：直接写进面板输出框（参考工具的"弱网环境脚本生成中…"那种流水线信息） */
+function nsLog(text){
+  if (!text) return;
+  nsOut(String(text), 't');
+}
+
+/* 实时统计：上行/下行累计 + 连接数 */
+function nsStat(m){
+  var el = document.getElementById('ns-stat');
+  if (!el) return;
+  function kb(n){
+    n = n || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+  el.textContent = '上行 ' + kb(m.up) + ' · 下行 ' + kb(m.down)
+                 + ' · 连接 ' + (m.conns || 0) + (m.active ? ('（活动 ' + m.active + '）') : '');
+}
+
 function nsRun(act){
   var cmd = '', note = '', after = '';
   if(act === 'proxyget'){ cmd = 'stproxyget'; note = '查询设备当前代理设置'; }
@@ -9103,27 +9145,35 @@ function nsRun(act){
   }
   else if(act === 'proxyoff'){ cmd = 'stproxyoff'; note = '删除三个代理键'; }
   else if(act === 'wekon'){
+    /* 2026-11-19 改向：设备端 tc 不可用（内核没编 sch_netem，连 lo 都报
+       "No such file or directory"），改走参考工具同款思路：PC 端内置代理 +
+       车机 http_proxy 指向 PC。上下行各一套参数，由代理做限速/延迟/丢包。 */
     var v = nsReadVals();
     var err = nsCheckVals(v);
     if(err){ toast(err); nsOut('未下发：' + err, 'e'); return; }
-    var hasDown = String(v.rateDown || '').replace(/[^0-9]/g,'') !== ''
-               || String(v.delayDown || '').replace(/[^0-9]/g,'') !== '';
-    cmd = nsWeakCmd(v);
-    note = '按当前参数开启弱网（上行）' + (hasDown ? ' + 下行' : '');
-    // 双判：下发成功 ≠ 生效。补一条回读，让用户当场看到 tc 里有没有规则。
-    after = 'stweakstat';
-    if(hasDown){
-      // 下行要单独一条：wlan0 出口管不到进来的包（逆向的 DOWNLOAD_* 也是独立一套）
-      setTimeout(function(){
-        var c2 = nsWeakCmdDown(nsReadVals());
-        nsOut('→ ' + c2 + '   # 下行（ingress 镜像到 ifb0）', 'c');
-        post('quick', c2);
-      }, 700);
-    }
+    function n(x){ var t = String(x === null || x === undefined ? '' : x).replace(/[^0-9]/g,'');
+                   return t === '' ? 0 : parseInt(t, 10); }
+    postObj({ kind:'netsimstart', port: 8888,
+              upRate: n(v.rate),   downRate: n(v.rateDown),
+              upDelay: n(v.delay), downDelay: n(v.delayDown),
+              upLoss: n(v.loss),   downLoss: n(v.lossDown) });
+    nsOut('→ 启动内置代理并设置车机代理', 'c');
+    nsSetState(true);
+    return;
   }
-  else if(act === 'wekoff'){ cmd = 'stweakoff'; note = '删除 tc qdisc，恢复原网络'; after = 'stweakstat'; }
-  else if(act === 'weakstat'){ cmd = 'stweakstat'; note = '回读当前 tc 规则与 http_proxy'; }
-  else if(act === 'weakreset'){ cmd = 'stweakreset'; note = '删 tc + 三个代理键，回到出厂网络设置'; after = 'stweakstat'; }
+  else if(act === 'wekoff'){
+    postObj({ kind:'netsimstop' });
+    nsOut('→ 停止内置代理并清除车机代理', 'c');
+    nsSetState(false);
+    return;
+  }
+  else if(act === 'weakstat'){ cmd = 'stproxyget'; note = '回读车机当前代理设置'; }
+  else if(act === 'weakreset'){
+    postObj({ kind:'netsimstop' });
+    nsOut('→ 一键还原：停止代理 + 清除三个代理键', 'c');
+    nsSetState(false);
+    return;
+  }
   if(!cmd) return;
   if(!_online){ toast('设备未连接'); nsOut('未下发（设备未连接）：' + cmd, 'e'); return; }
   nsOut('→ ' + cmd + '   # ' + note, 'c');

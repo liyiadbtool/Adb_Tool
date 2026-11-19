@@ -710,9 +710,12 @@ BEHAVIOR = r"""
         ok('NS 有操作记录大输出框', !!document.getElementById('ns-out'));
         /* ---------- T3（2026-11-19）：校验 + 回读复核 + 一键还原 ---------- */
         // 捕获下发的命令（真实 WebView2 里 post 走 chrome.webview）
+        // 代理改造后走 postObj（对象消息），两种入口都捕获
         var _nsSent = [];
         var _postBak = window.post;
+        var _postObjBak = window.postObj;
         try { window.post = function(kind, data){ _nsSent.push(String(data)); }; } catch (e) {}
+        try { window.postObj = function(o){ _nsSent.push(JSON.stringify(o)); }; } catch (e) {}
 
         ok('T3 有「回读现状」和「一键还原」按钮',
            nsPanel.textContent.indexOf('回读现状') >= 0 && nsPanel.textContent.indexOf('一键还原') >= 0);
@@ -732,11 +735,13 @@ BEHAVIOR = r"""
         nsRun('wekon');
         ok('T3 速率 0 拒绝下发', _nsSent.length === 0, _nsSent.join('|'));
 
-        // 合法参数：下发 stweak，并在稍后补一条 stweakstat 复核
+        // 合法参数：启动内置代理（2026-11-19 改向：不再下发 tc）
         _nsSent.length = 0;
         document.getElementById('ns-rate-up').value = '512';
+        document.getElementById('ns-rate-down').value = '2048';
         nsRun('wekon');
-        ok('T3 合法参数下发 stweak', _nsSent.length === 1 && _nsSent[0].indexOf('stweak ') === 0,
+        ok('T3 合法参数启动内置代理',
+           _nsSent.length === 1 && _nsSent[0].indexOf('"kind":"netsimstart"') >= 0,
            _nsSent.join('|'));
 
         // 代理格式校验：只写端口 → 拒绝
@@ -753,8 +758,9 @@ BEHAVIOR = r"""
 
         _nsSent.length = 0;
         nsRun('weakreset');
-        ok('T3 一键还原下发 stweakreset',
-           _nsSent.length === 1 && _nsSent[0] === 'stweakreset', _nsSent.join('|'));
+        ok('T3 一键还原停止代理',
+           _nsSent.length === 1 && _nsSent[0].indexOf('"kind":"netsimstop"') >= 0,
+           _nsSent.join('|'));
 
         /* T3 续（2026-11-19）：上下行分别生效（对齐逆向里 UPLOAD 与 DOWNLOAD 两套参数） */
         _nsSent.length = 0;
@@ -765,8 +771,14 @@ BEHAVIOR = r"""
         document.getElementById('ns-delay-down').value = '300';
         document.getElementById('ns-loss-down').value = '2';
         nsRun('wekon');
-        ok('T3 上下行都填时先下发上行 stweak',
-           _nsSent.length >= 1 && _nsSent[0].indexOf('stweak ') === 0, _nsSent.join('|'));
+        var startMsg = _nsSent.length ? _nsSent[0] : '';
+        ok('T3 上下行参数分别带进代理',
+           startMsg.indexOf('"kind":"netsimstart"') >= 0
+           && startMsg.indexOf('"upRate":512') > 0
+           && startMsg.indexOf('"downRate":2048') > 0
+           && startMsg.indexOf('"upDelay":200') > 0
+           && startMsg.indexOf('"downDelay":300') > 0,
+           startMsg.slice(0, 160));
 
         // 预设：上下行值不同（2G 上行 32 / 下行 64）
         var sel = document.getElementById('ns-preset');
@@ -789,6 +801,7 @@ BEHAVIOR = r"""
            && downCmd.indexOf('2048kbit') > 0, downCmd);
 
         try { window.post = _postBak; } catch (e) {}
+        try { window.postObj = _postObjBak; } catch (e) {}
         // 还原输入，避免影响后续断言
         document.getElementById('ns-loss-up').value = '';
         document.getElementById('ns-delay-up').value = '';

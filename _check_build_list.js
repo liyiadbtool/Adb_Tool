@@ -19,7 +19,7 @@ const CLI_BAT = path.join(SRC, "build.bat");
 const GUI_BAT = path.join(ROOT, "adb_log_gui", "build_gui.bat");
 
 // GUI 专用文件：只在 GUI 版编译，CLI 不需要（必须显式列在这里，防止"漏了"被当成正常）
-const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs"];
+const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs", "NetSim.cs"];
 
 let fail = 0;
 function bad(m) { console.log("  [XX]   " + m); fail++; }

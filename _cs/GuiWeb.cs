@@ -1889,6 +1889,18 @@ namespace AdbLogExport.Gui
                     try { App.KillRunning(0); } catch { }
                     break;
 
+                // ---- 网络模拟（T3 改向：PC 端内置代理，不再依赖设备 tc/netem）----
+                case "netsimstart":
+                    RunNetSimStart(GetInt(json, "port"), GetInt(json, "upRate"),
+                                   GetInt(json, "downRate"), GetInt(json, "upDelay"),
+                                   GetInt(json, "downDelay"), GetInt(json, "upLoss"),
+                                   GetInt(json, "downLoss"));
+                    break;
+
+                case "netsimstop":
+                    RunNetSimStop();
+                    break;
+
                 case "fsop":
                     RunFsOp(GetField(json, "op"), GetField(json, "side"),
                             GetField(json, "path"), GetField(json, "name"));
@@ -3615,6 +3627,93 @@ namespace AdbLogExport.Gui
         //
         // 为什么进度用单独消息而不是 console 行：文件页没有日志区，
         // 进度条要的是 done/total 两个数字，塞进文本行还得回头解析。
+
+        // ==================== 网络模拟（PC 端代理） ====================
+        // 设备端 tc 不可用的实测结论：这台车机内核没编 sch_netem，
+        // 连 `tc qdisc add dev lo root netem` 都报 No such file or directory。
+        // 所以改走参考工具同款思路：PC 起代理，车机 http_proxy 指向 PC。
+        private Thread _netStatThread;
+
+        private void PushNetSimLog(string text)
+        {
+            try
+            {
+                _web.CoreWebView2.PostWebMessageAsJson(
+                    "{\"kind\":\"netsimlog\",\"text\":" + Json(text) + "}");
+            }
+            catch { }
+        }
+
+        private void RunNetSimStart(int port, int upRate, int downRate,
+                                    int upDelay, int downDelay, int upLoss, int downLoss)
+        {
+            NetSim.OnLog = delegate(string t) { PushNetSimLog(t); };
+            bool ok = NetSim.Start(port, upRate, downRate, upDelay, downDelay, upLoss, downLoss);
+            if (!ok) return;
+
+            string ip = NetSim.LocalIp();
+            PushNetSimLog("本机局域网 IP：" + ip + "，端口 " + NetSim.Port);
+
+            // 把车机代理指向本机（settings put 不需要 root）
+            Thread th = new Thread(new ThreadStart(delegate()
+            {
+                string o = "", e = "";
+                try
+                {
+                    App.ShellCall(App.CUR, "settings put global http_proxy " + ip + ":" + NetSim.Port,
+                                  out o, out e);
+                    string back = "";
+                    App.ShellCall(App.CUR, "settings get global http_proxy", out back, out e);
+                    PushNetSimLog("已把车机代理指向 " + ip + ":" + NetSim.Port
+                                  + "（回读：" + (back ?? "").Trim() + "）");
+                }
+                catch (Exception ex) { PushNetSimLog("设置代理失败：" + ex.Message); }
+            }));
+            th.IsBackground = true;
+            th.Start();
+
+            if (_netStatThread == null)
+            {
+                _netStatThread = new Thread(new ThreadStart(delegate()
+                {
+                    while (true)
+                    {
+                        Thread.Sleep(800);
+                        if (!NetSim.Running) { _netStatThread = null; break; }
+                        try
+                        {
+                            _web.CoreWebView2.PostWebMessageAsJson(
+                                "{\"kind\":\"netsimstat\",\"up\":" + NetSim.UpBytes
+                                + ",\"down\":" + NetSim.DownBytes
+                                + ",\"conns\":" + NetSim.ConnTotal
+                                + ",\"active\":" + NetSim.ConnActive + "}");
+                        }
+                        catch { }
+                    }
+                }));
+                _netStatThread.IsBackground = true;
+                _netStatThread.Start();
+            }
+        }
+
+        private void RunNetSimStop()
+        {
+            NetSim.Stop();
+            Thread th = new Thread(new ThreadStart(delegate()
+            {
+                string o = "", e = "";
+                try
+                {
+                    App.ShellCall(App.CUR,
+                        "settings delete global http_proxy; settings delete global global_http_proxy_host; "
+                        + "settings delete global global_http_proxy_port", out o, out e);
+                    PushNetSimLog("已清除车机代理（三个键一起删）");
+                }
+                catch (Exception ex) { PushNetSimLog("清除代理失败：" + ex.Message); }
+            }));
+            th.IsBackground = true;
+            th.Start();
+        }
 
         private void PushFsList(string side, string path, string parent,
                                List<App.FsEntry> items, string err, int seq)

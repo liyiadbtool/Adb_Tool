@@ -254,11 +254,17 @@ A29_ADDS = {
 #   另外三处是行为改造、没有新增 DOM：请求序号（丢过期响应）、超时自动重试一次、
 #   35 秒加载看门狗。
 A30_ADDS = {
-    "kinds": set(),
+    # T3 改向（2026-11-19）：网络模拟改走 PC 端内置代理。
+    #   netsimlog    代理流水日志（对应参考工具的"弱网环境脚本生成中…"）
+    #   netsimstat   实时上下行字节/连接数
+    #   netsimstate  代理启停状态
+    # 发送侧的 netsimstart / netsimstop 不在此列（这里统计的是页面**接收**的 kind）
+    "kinds": set(["netsimlog", "netsimstat", "netsimstate"]),
     # T14b：文件交互第一批新增的内联 onclick（右键菜单/排序/路径编辑都是函数调用，
     # 菜单项本身是动态节点，不进静态扫描）
     "onclicks": set(["fsRetry", "fsPathEdit", "fsPathDone"]),
-    "ids": set(),
+    # T3：代理状态与实时流量显示
+    "ids": set(["ns-state", "ns-stat"]),
 }
 
 labels = {
