@@ -3498,7 +3498,7 @@ body::after{
                   <div class="apk-list" id="apk-list"></div>
                 </div>
               </div>
-              <button class="btn" id="apk-btn-clear" onclick="apkAct('clear')" disabled>清空数据</button>
+              <button class="btn" id="apk-btn-clear" onclick="apkAct('clear')" disabled>清理数据</button>
               <button class="btn" id="apk-btn-kill" onclick="apkAct('kill')" disabled>关闭进程</button>
               <button class="btn" id="apk-btn-query" onclick="apkQuerySel()" disabled title="查询选中应用：名称 / 版本 / 包名 / 路径 / pid">查询</button>
               <button class="btn" id="apk-btn-export" onclick="apkAct('export')" disabled>导出APK</button>
@@ -3506,7 +3506,7 @@ body::after{
 
             <div class="apk-row">
               <span class="apk-front" id="apk-front">当前前台：—</span>
-              <button class="btn ghost" onclick="apkQueryFront()" title="查询当前前台应用（等价 :pkg now）">查前台</button>
+              <button class="btn ghost" onclick="apkQueryFront()" title="查询当前前台应用（等价 :pkg now）">查询前台应用</button>
               <button class="btn ghost" onclick="apkAddCurrentFront()" title="把当前前台应用加进列表">加入列表</button>
               <div class="spacer"></div>
               <button class="btn ghost" onclick="openApkMgr()">＋ 管理列表</button>
@@ -5425,10 +5425,12 @@ var quickGroups = [
     {name:'重启车机', desc:'adb reboot，30~60 秒后重新 :r 重连', cmd:':reboot', cat:'开关调试'},
     // ---- 应用控制 ----
     {name:'打开TSP后台', desc:'启动 com.gac.cloud.app 后台', cmd:'tsp', cat:'应用控制'},
-    {name:'AI智能推荐后台', desc:'进入AI智能推荐后台', cmd:'airec', cat:'应用控制'},
+    // T9（2026-11-19）：这张与「网联服务 › 后台入口」那张是同一个 airec 命令，
+    // 用户要求「除自定义外其它模块指令不允许重复」，删这一张、保留网联服务那张。
+    // airec 命令本身不丢，终端仍可直接敲 :airec。
     {name:'进入工程模式', desc:'com.android.engmode 主界面', cmd:'engmode', cat:'应用控制'},
     // 「查前台应用 / 查询前台包名 / 清理前台应用」已挪到「APK管理」分组
-    // （2026-11-13）：那里有「查前台」「清空数据」两个等价入口，对象还能由用户指定。
+    // （2026-11-13）：那里有「查询前台应用」「清理数据」两个等价入口，对象还能由用户指定。
     // :pkg now / :front / :fstop 三条命令保留，终端页仍可直接敲。
     // ---- 主题模式 ----
     {name:'黑夜模式', desc:'强制夜间主题（uimode night yes）', cmd:'yes', cat:'主题模式'},
@@ -6371,11 +6373,15 @@ function renderApkSelect(){
 }
 
 var APK_TIPS = {
-  clear:'pm clear：清空全部应用数据（登录态、授权都会没），应用回到刚安装状态',
+  query:'查询选中应用的名称 / 版本 / 包名 / 路径 / pid（一条 dumpsys，不动应用状态）',
+  clear:'pm clear：清理全部应用数据（登录态、授权都会没），应用回到刚安装状态',
   kill:'am force-stop：只关闭进程，应用数据完整保留',
   export:'导出到 桌面\\logcat\\<日期>\\APK（多 split 会一起导出，不打包）'
 };
-var APK_BTNS = { 'apk-btn-clear':'clear', 'apk-btn-kill':'kill', 'apk-btn-export':'export' };
+/* T6（2026-11-19）：原来漏了 apk-btn-query —— HTML 上写死的 disabled 永远没人清，
+   查询按钮永远是灰的。apkQuerySel() 自身有 _apkSel 守卫，这里补一行即可。 */
+var APK_BTNS = { 'apk-btn-query':'query', 'apk-btn-clear':'clear',
+                 'apk-btn-kill':'kill', 'apk-btn-export':'export' };
 
 function updateApkButtons(){
   var online = !!_online;
@@ -6636,7 +6642,7 @@ function apkOutText(text, level){
 function apkAct(act){
   if(_apkBusy) return;
   if(!_apkSel){ toast('先选一个应用'); return; }
-  var label = act === 'clear' ? '清空数据' : (act === 'kill' ? '关闭进程' : '导出APK');
+  var label = act === 'clear' ? '清理数据' : (act === 'kill' ? '关闭进程' : '导出APK');
   apkOutSection(label + '  ' + apkSelName() + '（' + _apkSel + '）');
   _apkBusy = true;
   updateApkButtons();
@@ -8571,7 +8577,10 @@ setTimeout(function(){
 // 兜底：8 秒后无论是否收到状态都关掉加载层，并显示界面（避免一直卡黑猫）
 // 问题2：这里也走 hideSplash()，与 setStatus 共用同一套"只退场一次"的逻辑，
 // 否则两条路径各自加类会让过渡被打断，反而更闪。
-setTimeout(hideSplash, 8000);
+/* T4（2026-11-19）：兜底 8s → 5s。无设备时 C# 会立刻推一条 offline status，
+   setStatus 里就会 hideSplash（<1.5s）；这里的定时器只兜"连 status 都没收到"
+   的极端情况（adb 卡死），不该让用户干等 8 秒。 */
+setTimeout(hideSplash, 5000);
 
 /* ==================== 网络模拟面板（2026-11-15） ====================
    按 SynTestUtil「网络模拟」页重做：预置环境值 + 上下行参数表 + 三按钮 + 输出框。

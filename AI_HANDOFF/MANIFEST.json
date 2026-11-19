@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 127,
- "totalBytes": 3269686,
+ "totalBytes": 3274177,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -21,8 +21,8 @@
   },
   {
    "path": "377/_check_ui.js",
-   "size": 28490,
-   "sha256": "64c1e98499ed593b8a9c5b67a55a3cc1f58ad9d40424c098e029712a41f36ee6"
+   "size": 29477,
+   "sha256": "1e1ce5ec27fc925a5b08dc466662bad3957fb4349278afb935fba979ac6eb44b"
   },
   {
    "path": "377/_cmds_shot.txt",
@@ -116,8 +116,8 @@
   },
   {
    "path": "377/_test_apk_ui.py",
-   "size": 14312,
-   "sha256": "1676929ee6b051e71e436d3be03fe8737b5c2d92a2c26c897fb488b48fd867b1"
+   "size": 15621,
+   "sha256": "170121e1421b12768560525215a67a759aeea7a84db3969c41ec7bb8cfd77f9b"
   },
   {
    "path": "377/_test_batch_ui.py",
@@ -351,8 +351,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 209124,
-   "sha256": "a20f2d0936fef2fa46551cc8dea7be45a999c45c1c11279b4f1b05b51f4a18c8"
+   "size": 210433,
+   "sha256": "8830abfe7aeab474a5915c8091800ea92b4a68dde4c773dee80e088f4fa80683"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -506,8 +506,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 836999,
-   "sha256": "ee3cde223b590330c036ae32867d12cb17d53edd18cda878ed5c83996d916c87"
+   "size": 837831,
+   "sha256": "7e3c33aed45d4911d0cb418109f3e578c9a4b8909565ae74247b815a2ec0cdac"
   },
   {
    "path": "cmds.ini",
@@ -612,7 +612,7 @@
   {
    "path": "docs/测试用例.md",
    "size": 22754,
-   "sha256": "388be5bb88433a0fb3bc74d65ef622697e94f34cd5e0404d68d06df0198697e1"
+   "sha256": "ba05e3c72151282ec7dc5199c3bca23f4f0e6cf4862195c5f43a14927b17db53"
   },
   {
    "path": "docs/玻璃风主题_实现方案.md",
@@ -621,8 +621,8 @@
   },
   {
    "path": "docs/用户使用手册.md",
-   "size": 91997,
-   "sha256": "374b26afd3d747d67e767d6daa26962b818748658370735d4666e953f2164813"
+   "size": 92051,
+   "sha256": "841a2741d5a5d2bc96618704686c9d3c413c133f5315f6f51200629f89805747"
   },
   {
    "path": "docs/项目规则.md",

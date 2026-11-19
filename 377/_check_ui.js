@@ -457,5 +457,20 @@ ck('ACCENT LAYER 由生成器维护（可复跑）',
    src.indexOf('/* === ACCENT LAYER START === */') >= 0 &&
    src.indexOf('/* === ACCENT LAYER END === */') >= 0);
 
+// ---- T4（2026-11-19）：无设备时进界面的兜底不能超过 5 秒 ----
+ck('启动层兜底 <= 5000ms（T4）',
+   /setTimeout\(hideSplash,\s*(\d+)\)/.test(src) &&
+   parseInt(/setTimeout\(hideSplash,\s*(\d+)\)/.exec(src)[1], 10) <= 5000,
+   /setTimeout\(hideSplash,\s*(\d+)\)/.exec(src) ? '实际 ' + /setTimeout\(hideSplash,\s*(\d+)\)/.exec(src)[1] + 'ms' : '没找到');
+
+// ---- T6（2026-11-19）：APK 查询按钮必须进按钮映射，否则 HTML 上的 disabled 永远没人清 ----
+ck('apk-btn-query 已进 APK_BTNS 映射（T6）',
+   /APK_BTNS\s*=\s*\{[^}]*apk-btn-query/.test(src));
+ck('三处「清空数据」已改为「清理数据」（T6）',
+   src.indexOf('清空数据') === -1, '仍有 ' + (src.match(/清空数据/g) || []).length + ' 处');
+
+// ---- T9（2026-11-19）：非自定义分组内指令 name 不许重复（DOM 级断言在 _check_a14.py） ----
+ck('airec 卡片只保留一张（T9）', (src.match(/cmd:'airec'/g) || []).length === 1);
+
 console.log('');
 console.log(FAIL === 0 ? '  ui.html 静态自检全部通过' : '  失败 ' + FAIL + ' 项');process.exit(FAIL === 0 ? 0 : 1);

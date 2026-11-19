@@ -98,6 +98,7 @@ JS = r"""
       setApkApps(APPS);
       ok('三条应用进入列表', _apkApps.length === 3, _apkApps.length);
       ok('未选中时按钮禁用', document.getElementById('apk-btn-clear').disabled);
+      ok('未选中时查询按钮也禁用', document.getElementById('apk-btn-query').disabled);
 
       toggleApkDrop();
       ok('下拉展开', document.getElementById('apk-drop').style.display !== 'none');
@@ -123,6 +124,12 @@ JS = r"""
       // ---------- 3. 禁用态 ----------
       _online = true; updateApkButtons();
       ok('在线且已选中：动作可用', !document.getElementById('apk-btn-clear').disabled);
+      /* T6（2026-11-19）：查询按钮原来不在 APK_BTNS 里，HTML 上写死的 disabled
+         永远没人清 —— 选中应用后它还是灰的。 */
+      ok('选中后查询按钮解除禁用', !document.getElementById('apk-btn-query').disabled);
+      ok('查询按钮的 title 说明语义',
+         document.getElementById('apk-btn-query').title.indexOf('包名') >= 0,
+         document.getElementById('apk-btn-query').title);
       ok('导出按钮的 title 说明语义',
          document.getElementById('apk-btn-export').title.indexOf('APK') >= 0,
          document.getElementById('apk-btn-export').title);
@@ -177,7 +184,18 @@ JS = r"""
       pickApk('com.gac.user.center');
       var logBefore = document.getElementById('logbox-0').childElementCount;
       apkAct('clear');
-      ok('动作写入头行', textOf('apk-out').indexOf('清空数据') >= 0, textOf('apk-out'));
+      ok('动作写入头行', textOf('apk-out').indexOf('清理数据') >= 0, textOf('apk-out'));
+      /* T6：四处文案口径（按钮 / 动作头行 / 查前台按钮） */
+      ok('清理按钮文案是「清理数据」',
+         document.getElementById('apk-btn-clear').textContent.indexOf('清理数据') >= 0,
+         document.getElementById('apk-btn-clear').textContent);
+      var frontBtn = null;
+      var allBtn = document.querySelectorAll('#apk-panel button, .apk-panel button');
+      for (var bi = 0; bi < allBtn.length; bi++)
+        if ((allBtn[bi].getAttribute('onclick') || '').indexOf('apkQueryFront') >= 0) frontBtn = allBtn[bi];
+      ok('前台查询按钮文案是「查询前台应用」',
+         !!frontBtn && frontBtn.textContent.indexOf('查询前台应用') >= 0,
+         frontBtn ? frontBtn.textContent : '没找到');
       ok('头行带包名', textOf('apk-out').indexOf('com.gac.user.center') >= 0);
       ok('执行中按钮禁用', document.getElementById('apk-btn-kill').disabled);
       var actMsg = findSent('apkact');

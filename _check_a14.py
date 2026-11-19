@@ -155,9 +155,21 @@ JS = r"""
     }
 
     /* ================= 二、AI智能推荐文案（需求 2.1） ================= */
-    var qeItems = quickGroups[qe].items, ai = null;
-    for(var k=0;k<qeItems.length;k++) if(qeItems[k].name === 'AI智能推荐后台') ai = qeItems[k];
-    ok('指令执行里 AI 卡片说明已改', ai && ai.desc === '进入AI智能推荐后台', ai && ai.desc);
+    /* T9（2026-11-19）：用户要求「除自定义外其它模块指令不允许重复」，
+       「指令执行 › 应用控制」那张 airec 已删除，只保留「网联服务 › 后台入口」那张。
+       所以这里断言的语义从"说明文案改过"变成"只留一张、且文案仍在"。 */
+    var qeItems = quickGroups[qe].items, ai = null, aiCount = 0;
+    for(var k=0;k<qeItems.length;k++) if(qeItems[k].name === 'AI智能推荐后台'){ ai = qeItems[k]; aiCount++; }
+    ok('指令执行组里已无 AI 卡片（去重）', aiCount === 0, 'count=' + aiCount);
+    var wsGroup = null;
+    for(var w2=0;w2<quickGroups.length;w2++) if(quickGroups[w2].name === '网联服务') wsGroup = quickGroups[w2];
+    var wsAi = null;
+    if(wsGroup){
+      for(var w3=0;w3<wsGroup.items.length;w3++)
+        if(wsGroup.items[w3].name === 'AI智能推荐后台') wsAi = wsGroup.items[w3];
+    }
+    ok('网联服务里仍保留 AI 卡片且说明文案正确',
+       wsAi && wsAi.desc === '进入AI智能推荐后台', wsAi && wsAi.desc);
 
     /* ================= 三、启动图标（需求 1） ================= */
     /* A17 起图标改了结构：图形只画一份，放在 body 顶部的 <defs id="appmark-glyph">，
@@ -305,6 +317,26 @@ JS = r"""
       bs[1].click();
       ok('回到「中」= 1.0', parseFloat(posts('uizoom').slice(-1)[0].data) === 1.0);
     }
+
+    /* T9（2026-11-19）：非自定义分组内，指令 name 不允许重复。
+       用户口径：「除自定义外，其它模块的指令不允许重复」。
+       命中只报错、不自动改名 —— 自动改名会让"名字突然变了"更难查。 */
+    var dupNames = [], seen = {};
+    for (var dgi = 0; dgi < quickGroups.length; dgi++){
+      var dg = quickGroups[dgi];
+      if (!dg || dg.panel === 'custom') continue;      // 自定义组整组跳过
+      var dItems = dg.items || [];
+      for (var dii = 0; dii < dItems.length; dii++){
+        var dnm = dItems[dii].name;
+        if (!dnm) continue;
+        if (seen[dnm] !== undefined){
+          dupNames.push(dnm + '（' + seen[dnm] + ' / ' + dg.name + '）');
+        } else {
+          seen[dnm] = dg.name;
+        }
+      }
+    }
+    ok('非自定义分组的指令 name 无重复', dupNames.length === 0, dupNames.join('、') || '无重复');
   }
 
   setTimeout(function(){

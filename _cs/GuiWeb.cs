@@ -1991,6 +1991,26 @@ namespace AdbLogExport.Gui
                                 PushStatusEarly(firstDev);
                             });
                         }
+                        else
+                        {
+                            // T4（2026-11-19）：无设备时原来一条 status 都不推，
+                            // 前端只能干等 hideSplash 的兜底定时器（8 秒→5 秒也太久）。
+                            // 这里立刻推一条 offline，前端 setStatus 会走 hideSplash，
+                            // 实测 <1.5 秒进界面。
+                            // 注意：_online=false 会把指令按钮置灰 —— 这是**正确行为**，
+                            // 无设备本来就不该能操作，不是功能回退。
+                            FinishInvoke(delegate
+                            {
+                                try
+                                {
+                                    _web.CoreWebView2.PostWebMessageAsJson(
+                                        "{\"kind\":\"status\",\"dev\":\"\",\"online\":false,"
+                                        + "\"soc\":\"\",\"res\":\"\",\"dir\":\"\",\"rooted\":null,"
+                                        + "\"msg\":\"未检测到设备\"}");
+                                }
+                                catch (Exception ex) { GuiEntry.Dump("PushStatusEmpty", ex); }
+                            });
+                        }
                     }
                 }
                 catch { }
