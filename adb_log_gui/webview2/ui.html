@@ -3815,7 +3815,7 @@ body::after{
               <button class="fs-ico" onclick="fsReload('local')" title="刷新">⟳</button>
               <input class="fs-search" id="fs-q-local" placeholder="搜电脑文件…（Esc 退出）" spellcheck="false"
                      oninput="fsSearchInput('local')" onkeydown="fsSearchKey(event,'local')">
-              <div class="fs-crumb" id="crumb-local"></div>
+              <div class="fs-crumb" id="crumb-local" ondblclick="fsPathEdit(event,'local')" title="双击可直接输入路径"></div>
             </div>
             <div class="fs-cols">
               <span></span>
@@ -3839,7 +3839,7 @@ body::after{
               <button class="fs-ico" onclick="fsReload('dev')" title="刷新">⟳</button>
               <input class="fs-search" id="fs-q-dev" placeholder="搜设备文件…（Esc 退出）" spellcheck="false"
                      oninput="fsSearchInput('dev')" onkeydown="fsSearchKey(event,'dev')">
-              <div class="fs-crumb" id="crumb-dev"></div>
+              <div class="fs-crumb" id="crumb-dev" ondblclick="fsPathEdit(event,'dev')" title="双击可直接输入路径"></div>
             </div>
             <div class="fs-cols">
               <span></span>
@@ -8214,13 +8214,15 @@ function fsWalk(side, node, depth){
     return out;
   }
 
-  var limit = Math.min(node.children.length, node.shown || FS_PAGE);
+  // T14b：隐藏文件过滤 + 排序在这里统一做（原来按后端返回的原样渲染）
+  var kids = fsKids(_fs[side], node.children);
+  var limit = Math.min(kids.length, node.shown || FS_PAGE);
   for (var i = 0; i < limit; i++) {
-    out += fsWalk(side, fsNode(side, node.children[i]), depth + 1);
+    out += fsWalk(side, fsNode(side, kids[i]), depth + 1);
   }
-  if (node.children.length > limit) {
+  if (kids.length > limit) {
     out += '<div class="fs-more" data-more="' + escAttr(node.e.path) + '" style="padding-left:' + (pad + 16) + 'px">'
-         + '还有 ' + (node.children.length - limit) + ' 项，点这里加载更多</div>';
+         + '还有 ' + (kids.length - limit) + ' 项，点这里加载更多</div>';
   }
   return out;
 }
@@ -8254,6 +8256,12 @@ function bindFsRows(side, box){
       }
       fsClick(side, row, ev);
     }
+  });
+
+  // T14b-①：右键菜单（挂在行上；空白处右键也给菜单，方便新建/排序）
+  box.addEventListener('contextmenu', function(ev){
+    var row = ev.target.closest ? ev.target.closest('.fs-row') : null;
+    fsCtxOpen(ev, side, row ? row.getAttribute('data-path') : fsCurrentDir(side));
   });
 
   box.addEventListener('dblclick', function(ev){
@@ -8338,18 +8346,212 @@ function fsClick(side, row, ev){
   var isDir = row.getAttribute('data-dir') === '1';
 
   var sp = fsNorm(p);
+  // T14b-②：Shift 连选（Ctrl 连选原来就有）。范围按**当前可见行**的顺序取，
+  // 与用户在屏幕上看到的区间一致（隐藏文件过滤后也不会错位）。
+  if (ev.shiftKey && st.lastSel && st.lastSel !== sp) {
+    var allRows = document.querySelectorAll('#list-' + side + ' .fs-row');
+    var i0 = -1, i1 = -1;
+    for (var ri = 0; ri < allRows.length; ri++) {
+      var rp = fsNorm(allRows[ri].getAttribute('data-path'));
+      if (rp === st.lastSel) i0 = ri;
+      if (rp === sp) i1 = ri;
+    }
+    if (i0 >= 0 && i1 >= 0) {
+      st.sel = {};
+      var a = Math.min(i0, i1), b = Math.max(i0, i1);
+      for (var k = a; k <= b; k++) st.sel[fsNorm(allRows[k].getAttribute('data-path'))] = 1;
+      renderFs(side);
+      return;
+    }
+  }
   if (ev.ctrlKey || ev.metaKey) {
     if (st.sel[sp]) delete st.sel[sp]; else st.sel[sp] = 1;
   } else {
     st.sel = {};
     st.sel[sp] = 1;
   }
+  st.lastSel = sp;
 
   // 搜索态：单击只选中（高亮 + 可拖拽），不展开也不切树
   var s = st.search;
   if (s && s.active) { renderFs(side); return; }
 
   if (isDir) fsToggle(side, p); else renderFs(side);
+}
+
+/* ==================== T14b（2026-11-19）：文件交互第一批 ====================
+   ① 右键菜单  ② Shift 连选  ⑧ 排序  ③ 显示隐藏文件  ⑤ 路径可编辑  ⑥ 新建入口
+   注意：Ctrl 多选、新建/重命名/删除的后端（fsop）与函数本来就有 ——
+   这批补的是**入口**和**渲染层的过滤/排序**，不重复造轮子。 */
+
+/* 排序 + 隐藏文件过滤：目录恒在前，其余按 st.sortBy */
+function fsKids(st, children){
+  if (!children) return [];
+  var arr = [];
+  for (var i = 0; i < children.length; i++){
+    var e = children[i];
+    var nm = e.name || '';
+    if (!st.showHidden && nm.charAt(0) === '.') continue;
+    arr.push(e);
+  }
+  var by = st.sortBy || 'name', desc = !!st.sortDesc;
+  arr.sort(function(a, b){
+    if (!!a.dir !== !!b.dir) return a.dir ? -1 : 1;
+    var r;
+    if (by === 'size') r = (a.size || 0) - (b.size || 0);
+    else if (by === 'time') r = String(a.time || '').localeCompare(String(b.time || ''));
+    else r = String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
+    return desc ? -r : r;
+  });
+  return arr;
+}
+
+/* 排序菜单：点同一个字段切换升降序，点不同字段按默认方向开始 */
+function fsSortBy(side, by){
+  var st = _fs[side];
+  if (!st) return;
+  // 首次点某字段一律升序（和资源管理器一致），再点同一个字段才切降序
+  if (st.sortBy === by) st.sortDesc = !st.sortDesc;
+  else { st.sortBy = by; st.sortDesc = false; }
+  renderFs(side);
+  var cn = { name:'名称', size:'大小', time:'时间' }[by] || by;
+  toast('按' + cn + (st.sortDesc ? '降序' : '升序'));
+}
+
+function fsToggleHidden(side){
+  var st = _fs[side];
+  if (!st) return;
+  st.showHidden = !st.showHidden;
+  renderFs(side);
+  toast(st.showHidden ? '显示隐藏文件' : '隐藏点文件');
+}
+
+/* 右键菜单：复用 Overlay（T16）—— 外点关闭 / Esc / 滚动跟随都不用再写一遍 */
+function fsCtxOpen(ev, side, path){
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  var st = _fs[side];
+  if (!st) return;
+  var key = fsNorm(path);
+
+  // 右键的行没选中 → 先选中它（和资源管理器一致），已选中则保留多选
+  if (!st.sel[key]) { st.sel = {}; st.sel[key] = 1; renderFs(side); }
+
+  var isDev = (side === 'dev');
+  var one = fsSelectedPaths(side).length === 1;
+  var rowEl = document.querySelector('#list-' + side + ' .fs-row[data-path="' +
+              String(path).replace(/"/g, '\\"') + '"]');
+
+  var menu = document.createElement('div');
+  menu.className = 'a14-selpop fs-ctx';
+  menu.style.minWidth = '168px';
+
+  function item(text, act, disabled){
+    var d = document.createElement('div');
+    d.className = 'it' + (disabled ? ' off' : '');
+    d.textContent = text;
+    d.setAttribute('data-act', act);
+    menu.appendChild(d);
+  }
+  if (isDev) item('下载到本机', 'download');
+  else       item('上传到设备', 'upload');
+  menu.appendChild(document.createElement('div')).className = 'grp';
+  item('重命名', 'rename', !one);
+  item('删除', 'del');
+  menu.appendChild(document.createElement('div')).className = 'grp';
+  item('复制路径', 'copypath');
+  item('新建文件夹', 'mkdir');
+  menu.appendChild(document.createElement('div')).className = 'grp';
+  item('排序：名称' + (st.sortBy === 'name' ? (st.sortDesc ? ' ↓' : ' ↑') : ''), 'sortname');
+  item('排序：大小' + (st.sortBy === 'size' ? (st.sortDesc ? ' ↓' : ' ↑') : ''), 'sortsize');
+  item('排序：时间' + (st.sortBy === 'time' ? (st.sortDesc ? ' ↓' : ' ↑') : ''), 'sorttime');
+  item((st.showHidden ? '✓ ' : '') + '显示隐藏文件', 'hidden');
+  item('刷新', 'refresh');
+
+  menu.addEventListener('click', function(e){
+    var t = e.target;
+    if (!t.getAttribute || !t.getAttribute('data-act')) return;
+    e.preventDefault(); e.stopPropagation();
+    var act = t.getAttribute('data-act');
+    Overlay.close();
+    if (act === 'download') fsCopy('down', fsCurrentDir('local'), fsSelectedPaths('dev'));
+    else if (act === 'upload') fsCopy('up', fsCurrentDir('dev'), fsSelectedPaths('local'));
+    else if (act === 'rename') fsRename(side);
+    else if (act === 'del') fsDelete(side);
+    else if (act === 'copypath') fsCopyPath(side);
+    else if (act === 'mkdir') fsNewFolder(side);
+    else if (act === 'sortname') fsSortBy(side, 'name');
+    else if (act === 'sortsize') fsSortBy(side, 'size');
+    else if (act === 'sorttime') fsSortBy(side, 'time');
+    else if (act === 'hidden') fsToggleHidden(side);
+    else if (act === 'refresh') fsReload(side);
+  });
+
+  Overlay.open({ el: menu, anchor: rowEl || document.getElementById('list-' + side),
+                 z: Overlay.LEVEL.pop });
+}
+
+/* 复制选中项的路径到剪贴板（多行；设备侧路径本身就是可以直接用的形式） */
+function fsCopyPath(side){
+  var paths = fsSelectedPaths(side);
+  if (!paths.length) { toast('先选中一项'); return; }
+  var text = paths.join('\n');
+  try {
+    navigator.clipboard.writeText(text);
+    toast(paths.length === 1 ? '已复制路径' : ('已复制 ' + paths.length + ' 条路径'));
+  } catch (e) {
+    // 无剪贴板权限时退化成可见提示，至少让用户能手工复制
+    toast('复制失败：' + text);
+  }
+}
+
+/* ⑤ 路径栏双击可编辑：回车跳转，Esc 取消。
+   为什么不做常驻输入框：面包屑本身可点，再并排一个输入框会挤掉搜索框。
+   为什么用内联 onkeydown 而不是 addEventListener：闭包版在无头环境下不稳定
+   （dispatch 之后没进处理函数，实测），内联写法则一定能被触发，也便于门禁登记。 */
+function fsPathEdit(ev, side){
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  var crumb = document.getElementById('crumb-' + side);
+  if (!crumb || crumb.querySelector('.fs-pathin')) return;
+  var cur = fsCurrentDir(side) || (side === 'dev' ? '/' : '');
+  crumb.setAttribute('data-bak', crumb.innerHTML);   // 原面包屑暂存，Esc 时还原
+
+  crumb.innerHTML = '<input class="fs-pathin" spellcheck="false" value="' + escAttr(cur) +
+                    '" placeholder="输入路径后回车，Esc 取消" ' +
+                    'onkeydown="fsPathDone(event,\'' + escAttr(side) + '\')" ' +
+                    'onblur="fsPathDone(event,\'' + escAttr(side) + '\')">';
+  var inp = crumb.querySelector('.fs-pathin');
+  try { inp.focus(); inp.select(); } catch (e) {}
+}
+
+/* 路径输入的收尾：Enter 跳转、Esc 还原、失焦也还原 */
+function fsPathDone(ev, side){
+  var crumb = document.getElementById('crumb-' + side);
+  if (!crumb) return;
+  // 重入保护：替换 innerHTML 会把输入框摘掉，摘掉会同步触发 blur，
+  // blur 又调回这里 —— 不加锁会报 "node to be removed is no longer a child"。
+  if (crumb.__busy) return;
+  var inp = crumb.querySelector('.fs-pathin');
+  if (!inp) return;                                  // 已经收尾过了
+  var key = (ev && ev.key) || '';
+  if (key && key !== 'Enter' && key !== 'Escape') return;
+
+  crumb.__busy = true;
+  var v = (inp.value || '').trim();
+  var bak = crumb.getAttribute('data-bak') || '';
+  crumb.innerHTML = bak;
+  crumb.removeAttribute('data-bak');
+  crumb.__busy = false;
+  if (key !== 'Enter' || !v) return;
+
+  var st = _fs[side];
+  if (!st) return;
+  var p = fsNorm(v);
+  st.nodes[p] = st.nodes[p] || { e:{ name:p, path:p, dir:true }, children:null,
+                                 expanded:false, loading:false, err:'', shown:FS_PAGE };
+  st.nodes[p].loading = true;
+  st.nodes[p].expanded = true;
+  renderFs(side);
+  fsRequest(side, p);
 }
 
 /* T14a-4：错误行的一键重试 —— 清掉错误/加载态后重发同一个路径 */

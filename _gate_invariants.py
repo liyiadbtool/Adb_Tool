@@ -255,7 +255,9 @@ A29_ADDS = {
 #   35 秒加载看门狗。
 A30_ADDS = {
     "kinds": set(),
-    "onclicks": set(["fsRetry"]),
+    # T14b：文件交互第一批新增的内联 onclick（右键菜单/排序/路径编辑都是函数调用，
+    # 菜单项本身是动态节点，不进静态扫描）
+    "onclicks": set(["fsRetry", "fsPathEdit", "fsPathDone"]),
     "ids": set(),
 }
 
