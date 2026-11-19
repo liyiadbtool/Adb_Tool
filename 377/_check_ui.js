@@ -469,6 +469,15 @@ ck('apk-btn-query 已进 APK_BTNS 映射（T6）',
 ck('三处「清空数据」已改为「清理数据」（T6）',
    src.indexOf('清空数据') === -1, '仍有 ' + (src.match(/清空数据/g) || []).length + ' 处');
 
+// ---- T11（2026-11-19）：圆角只用数值刻度令牌，不再散落字面量 ----
+// 例外只有 1px（刻意保留的近直角，用于极窄元素）。
+var _radLit = (srcNoCmt.match(/border-radius:\s*(\d+)px/g) || []);
+var _radBad = _radLit.filter(function (x) { return !/\b1px\b/.test(x); });
+ck('圆角字面量已全部折算成令牌（T11）', _radBad.length === 0, _radBad.slice(0, 6).join(' '));
+ck('圆角刻度令牌齐备（--r-1..--r-6）',
+   ['--r-1:4px', '--r-2:6px', '--r-3:8px', '--r-4:10px', '--r-5:12px', '--r-6:16px']
+     .every(function (t) { return src.indexOf(t) >= 0; }));
+
 // ---- T9（2026-11-19）：非自定义分组内指令 name 不许重复（DOM 级断言在 _check_a14.py） ----
 ck('airec 卡片只保留一张（T9）', (src.match(/cmd:'airec'/g) || []).length === 1);
 

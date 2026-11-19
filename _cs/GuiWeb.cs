@@ -2030,6 +2030,11 @@ namespace AdbLogExport.Gui
                             {
                                 try
                                 {
+                                    // 就绪判断：BootDevice 可能早于 WebView2 初始化跑完，
+                                    // 此时 _web/CoreWebView2 还是 null —— 直接 Post 会抛 NRE
+                                    // （窗口冒烟的"无新增错误日志"就是这么抓到的）。
+                                    // 没就绪就跳过：前端还有 5 秒兜底定时器，不会卡住。
+                                    if (_web == null || _web.CoreWebView2 == null) return;
                                     _web.CoreWebView2.PostWebMessageAsJson(
                                         "{\"kind\":\"status\",\"dev\":\"\",\"online\":false,"
                                         + "\"soc\":\"\",\"res\":\"\",\"dir\":\"\",\"rooted\":null,"

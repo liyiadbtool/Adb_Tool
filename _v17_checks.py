@@ -146,8 +146,11 @@ chk("④ 深色主题不变（只给 10% 白边）", '--winedge:rgba(255,255,255
 # ============================================================================
 # 5. 第⑤条：直角 → 圆角
 # ============================================================================
+# T11（2026-11-19）：12px 已折算成数值刻度令牌 --r-5（值仍是 12px），
+# 断言口径不变：侧栏仍是 12px 圆角卡片，只是写法换成令牌。
 chk("⑤ 指令页侧栏与右侧区各自成卡片（12px 圆角 + 8px 内缩）",
-    "#page-quick .quick-nav{" in v17css and "border-radius:12px;" in v17css
+    "#page-quick .quick-nav{" in v17css
+    and ("border-radius:12px;" in v17css or "border-radius:var(--r-5);" in v17css)
     and "#page-quick .quick-wrap{" in v17css and "padding:8px;" in v17css)
 chk("⑤ 侧栏 border-right 被四边等宽覆盖（否则画出来是断角）",
     "#page-quick .quick-nav{" in v17css

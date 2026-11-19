@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 127,
- "totalBytes": 3304551,
+ "totalBytes": 3307069,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -21,8 +21,8 @@
   },
   {
    "path": "377/_check_ui.js",
-   "size": 29477,
-   "sha256": "1e1ce5ec27fc925a5b08dc466662bad3957fb4349278afb935fba979ac6eb44b"
+   "size": 30087,
+   "sha256": "53102582486b97f2c32e14da361292ed32b931170da886e21e3d0bdb7661cf6a"
   },
   {
    "path": "377/_cmds_shot.txt",
@@ -351,8 +351,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 212776,
-   "sha256": "526f531db376fa4f695c9e33bb21110062d60c6065cfe65b230a5aa26609a74f"
+   "size": 213299,
+   "sha256": "93885964ce3b5bb210ca1b64812389438bd21ad789b005a28fe0d90011e95378"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -506,8 +506,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 848175,
-   "sha256": "c6c80259c8906bb35bc523306da33bffd0b742525608e7d562bbea8c888e7e6d"
+   "size": 849560,
+   "sha256": "9d6a305266fda5033097b1e3eaaf271825861ed2b06e52f8d68ab0220abefe31"
   },
   {
    "path": "cmds.ini",
