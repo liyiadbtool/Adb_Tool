@@ -686,6 +686,23 @@ BEHAVIOR = r"""
         ok('ST 抓全日志卡片渲染在指令执行组内',
            ieGrid.textContent.indexOf('抓全日志') >= 0);
       }
+      // 星河座舱云两条入口（2026-11-19）：必须走 :url（PC 浏览器）而不是设备侧命令
+      var wsG = null;
+      for (var wi = 0; wi < quickGroups.length; wi++) if (quickGroups[wi].name === '网联服务') wsG = quickGroups[wi];
+      var preCard = null, testCard = null;
+      if (wsG) for (var ci = 0; ci < wsG.items.length; ci++){
+        if (wsG.items[ci].name === '准上线星河座舱云') preCard = wsG.items[ci];
+        if (wsG.items[ci].name === '测试星河座舱云') testCard = wsG.items[ci];
+      }
+      ok('星河座舱云：准上线入口存在且走 :url',
+         !!preCard && preCard.cmd.indexOf(':url ') === 0
+         && preCard.cmd.indexOf('web-pre.syncore.space') > 0,
+         preCard ? preCard.cmd : '没有');
+      ok('星河座舱云：测试入口存在且走 :url',
+         !!testCard && testCard.cmd.indexOf(':url ') === 0
+         && testCard.cmd.indexOf('web-test.syncore.space') > 0,
+         testCard ? testCard.cmd : '没有');
+
       var nsIdx = grpIdx('网络模拟');
       ok('NS 存在「网络模拟」分组', nsIdx >= 0, nsIdx);
       if(nsIdx >= 0){

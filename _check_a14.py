@@ -106,7 +106,8 @@ JS = r"""
     if (ws < 0) return;
 
     var items = quickGroups[ws].items;
-    ok('网联服务 13 条卡片', items.length === 13, items.length);
+    // 2026-11-19：新增星河座舱云两条（准上线/测试），13 → 15
+    ok('网联服务 15 条卡片', items.length === 15, items.length);
 
     var want = ['AI智能推荐后台','配置中心后台','支付宝后台','上传支付宝日志',
                 '导出支付宝日志','导出微信小程序日志','导出车载微信日志',
@@ -135,9 +136,14 @@ JS = r"""
     ok('查询设备ID 走 :wsdevid', (find('查询设备ID')||{}).cmd === ':wsdevid',
        (find('查询设备ID')||{}).cmd);
     var urls = items.filter(function(it){ return (it.cmd||'').indexOf(':url https://') === 0; });
-    ok('两条云平台走 :url', urls.length === 2, urls.length);
+    ok('云平台入口共 4 条且都走 :url', urls.length === 4, urls.length);
     ok('讯飞 IOT 链接正确', urls.some(function(u){ return u.cmd.indexOf('link.xfyun.cn/logs') > 0; }));
     ok('埋点校验页链接正确', urls.some(function(u){ return u.cmd.indexOf('acquisition-center-front') > 0; }));
+    // 2026-11-19：星河座舱云（车机没有浏览器，只能走 PC 侧 :url）
+    ok('准上线星河座舱云链接正确',
+       urls.some(function(u){ return u.cmd.indexOf('web-pre.syncore.space:20443') > 0; }));
+    ok('测试星河座舱云链接正确',
+       urls.some(function(u){ return u.cmd.indexOf('web-test.syncore.space:20443') > 0; }));
 
     switchTab('quick');
     var nav = document.querySelectorAll('#quick-nav .qnav-item');
@@ -147,9 +153,10 @@ JS = r"""
     if (hit >= 0){
       nav[hit].click();
       var cards = document.querySelectorAll('#quick-grid .qcard');
-      ok('渲染出 13 张卡', cards.length === 13, cards.length);
-      ok('渲染出 4 个分类小标题', document.querySelectorAll('#quick-grid .qcat').length === 4,
-         document.querySelectorAll('#quick-grid .qcat').length);
+      ok('渲染出 15 张卡', cards.length === 15, cards.length);
+      var _cats = document.querySelectorAll('#quick-grid .qcat');
+      ok('渲染出 4 个分类小标题', _cats.length === 4,
+         _cats.length + '：' + [].map.call(_cats, function(e){ return e.textContent; }).join('/'));
       var nm = document.getElementById('quick-group-name');
       ok('分组标题是「网联服务」', nm && nm.textContent === '网联服务', nm && nm.textContent);
     }

@@ -5560,6 +5560,9 @@ var quickGroups = [
     // ---- 后台入口 ----
     {name:'AI智能推荐后台', desc:'进入AI智能推荐后台', cmd:'airec', cat:'后台入口'},
     {name:'配置中心后台', desc:'space.syncore.cockpit 配置中心默认页', cmd:'wsconfig', cat:'后台入口'},
+    // 2026-11-19：星河座舱云运营平台。走 :url（**电脑**浏览器打开）——
+    // 实测车机只装了 com.android.webview，没有任何浏览器 Activity，
+    // am start -a VIEW -d https://… 必定 "unable to resolve Intent"。
     {name:'支付宝后台', desc:'支付宝车载服务设置页（ampe://setting）', cmd:'wsalipayset', cat:'后台入口'},
     {name:'上传支付宝日志', desc:'触发支付宝把日志传云端（ampe://uploadlog）', cmd:'wsalipayup', cat:'后台入口'},
     // ---- 日志导出 ----
@@ -5578,7 +5581,11 @@ var quickGroups = [
     {name:'打开星河埋点云', desc:'浏览器打开埋点校验页（testVerification）',
      cmd:':url https://www.syncore.space/acquisition-center-front/index.html#/testVerification', cat:'云平台'},
     {name:'打开讯飞IOT云', desc:'浏览器打开讯飞 IOT 设备日志页',
-     cmd:':url https://link.xfyun.cn/logs', cat:'云平台'}
+     cmd:':url https://link.xfyun.cn/logs', cat:'云平台'},
+    // 2026-11-19：星河座舱云运营平台（准上线 / 测试）。H5 后台在**电脑**浏览器打开，
+    // 车机只装了 com.android.webview，没有任何浏览器 Activity，走 am start 必然失败。
+    {name:'准上线星河座舱云', desc:'web-pre 运营平台（用电脑浏览器打开）', cmd:':url https://web-pre.syncore.space:20443/operation-platform/index.html#/pandect', cat:'云平台'},
+    {name:'测试星河座舱云', desc:'web-test 运营平台（用电脑浏览器打开）', cmd:':url https://web-test.syncore.space:20443/operation-platform/index.html#/pandect', cat:'云平台'}
   ]},
   // 方控按键：独立分组（用户要求"方控独立的页面"）。
   // 这类命令都走 dumpsys car_service inject-key <键值>，语义上是"模拟按一下
