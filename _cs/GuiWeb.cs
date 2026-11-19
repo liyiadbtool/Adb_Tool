@@ -85,17 +85,44 @@ namespace AdbLogExport.Gui
                 string js = ProbeJs;
                 if (js != null)
                 {
-                    // UI 测试：把页面里注入的断言脚本的自述结果取回来
-                    EvalForSelfCheck(js, delegate(string r)
-                    {
-                        try { if (ProbeResult != null) ProbeResult(r); }
-                        catch (Exception ex) { GuiEntry.Dump("uitest result", ex); }
-                    });
+                    // UI 测试：把页面里注入的断言脚本的自述结果取回来。
+                    // 2026-11-19：原来只等固定 ProbeWaitMs 就取一次 —— 页面里的
+                    // 断言如果比我等的久（比如多了切换页签、拉文件列表），取到的是
+                    // 空结果，看起来像"脚本崩了"。改成**轮询取**：拿到真结果就走，
+                    // 最多再等 8 秒（每 400ms 一次）。
+                    TryEvalProbe(js, 0);
                     return;
                 }
                 try { GuiSelfCheck.RunOn(this); } catch (Exception ex) { GuiEntry.Dump("selfcheck", ex); }
             };
             t.Start();
+        }
+
+        // 轮询取断言结果：页面还没跑完就隔 400ms 再取，最多 20 次（约 8 秒）。
+        // 一旦取到非空结果就立刻回传 —— 别为了"等一个固定时间"把快测拖成慢测。
+        private void TryEvalProbe(string js, int attempt)
+        {
+            EvalForSelfCheck(js, delegate(string r)
+            {
+                // 页面回传里可能带 BOM（U+FEFF），比对前先剔掉 ——
+                // 否则 "__NO_RESULT__\ufeff" 会被当成"真结果"，轮询直接结束。
+                bool empty = string.IsNullOrEmpty(r)
+                             || r.Replace("\ufeff", "").Contains("__NO_RESULT__");
+                if (empty && attempt < 30)
+                {
+                    System.Windows.Forms.Timer t2 = new System.Windows.Forms.Timer();
+                    t2.Interval = 400;
+                    t2.Tick += delegate
+                    {
+                        try { t2.Stop(); t2.Dispose(); } catch { }
+                        TryEvalProbe(js, attempt + 1);
+                    };
+                    t2.Start();
+                    return;
+                }
+                try { if (ProbeResult != null) ProbeResult(r); }
+                catch (Exception ex) { GuiEntry.Dump("uitest result", ex); }
+            });
         }
 
         // 把一段 JS 丢给页面执行，结果回 UI 线程。

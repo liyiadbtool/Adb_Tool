@@ -154,6 +154,25 @@
     el.style.height = (max > 0 ? Math.min(h, max) : h) + 'px';
     el.style.overflowY = (max > 0 && h > max) ? 'auto' : 'hidden';
   }
+  // T10（2026-11-19）：中文输入法组字态守卫。
+  // 用**事件委托**而不是给每个 textarea 绑：buildSlots() 在基础脚本里、
+  // 比本层脚本先执行，直接调用 bindImeGrow 会 "is not defined"（实测整页中断）。
+  // 委托挂在 document 上，只注册一次，动态新增的槽位也自动覆盖。
+  function imeInputIndex(el) {
+    if (!el || el.tagName !== 'TEXTAREA' || !el.id) return -1;
+    var m = /^cmd-input-(\d+)$/.exec(el.id);
+    return m ? parseInt(m[1], 10) : -1;
+  }
+  document.addEventListener('compositionstart', function (ev) {
+    if (imeInputIndex(ev.target) >= 0) ev.target.__imeComposing = true;
+  }, true);
+  document.addEventListener('compositionend', function (ev) {
+    var n = imeInputIndex(ev.target);
+    if (n < 0) return;
+    ev.target.__imeComposing = false;
+    if (ev.target.__imePending) { ev.target.__imePending = false; taAutoGrow(n); }
+  }, true);
+
   window.txAutoGrow = taAutoGrow;
 
   function insertNewline(el) {

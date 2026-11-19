@@ -737,7 +737,102 @@ BEHAVIOR = r"""
          ieTxt.indexOf('打开carplay音频') < 0);
       sc.scrollTop = 0;
 
+      /* ---------- T10（2026-11-19）：输入条 5 行自适应 ---------- */
+      switchTab('cmd');
+      var ta = document.getElementById('cmd-input-0');
+      if(!ta){
+        ok('T10 指令输入框存在', false, '找不到 #cmd-input-0');
+      } else {
+        var lh = parseFloat(css(ta, 'lineHeight')) || 20;
+        var maxH = parseFloat(css(ta, 'maxHeight')) || (lh * 5);
+        var h0 = ta.offsetHeight;
+
+        ta.value = 'line1';
+        txAutoGrow(0);
+        var h1 = ta.offsetHeight;
+        ok('T10 单行时高度约一行', h1 < lh * 2, 'h=' + h1 + ' lh=' + lh);
+
+        ta.value = '1\n2\n3\n4\n5';
+        txAutoGrow(0);
+        var h5 = ta.offsetHeight;
+        ok('T10 五行时输入框变高', h5 > h1 + lh * 2, 'h1=' + h1 + ' h5=' + h5);
+        ok('T10 五行时不超过 5 行上限', h5 <= maxH + 2, 'h5=' + h5 + ' max=' + maxH);
+
+        ta.value = '1\n2\n3\n4\n5\n6\n7\n8\n9\n10';
+        txAutoGrow(0);
+        var h10 = ta.offsetHeight;
+        ok('T10 十行时封顶在 5 行并内部滚动',
+           h10 <= maxH + 2 && css(ta, 'overflowY') === 'auto',
+           'h10=' + h10 + ' max=' + maxH + ' overflow=' + css(ta, 'overflowY'));
+
+        // 容器不能被裁：.field 原来是死高 32px
+        var field = ta.closest('.field');
+        ok('T10 容器跟着长高（不再是死高）',
+           field && field.offsetHeight >= h5 - 2, field ? 'field=' + field.offsetHeight : '无 .field');
+
+        // IME 组字期间不抖：组字中的 input 不应立刻改高度
+        ta.value = '';
+        txAutoGrow(0);
+        var hb = ta.offsetHeight;
+        ta.dispatchEvent(new Event('compositionstart'));
+        ta.value = 'nihao';
+        txAutoGrow(0);
+        ok('T10 组字期间不改高度（防抖）', ta.offsetHeight === hb, 'before=' + hb + ' during=' + ta.offsetHeight);
+        ta.dispatchEvent(new Event('compositionend'));
+        ok('T10 组字结束后补算高度', ta.offsetHeight >= hb, 'after=' + ta.offsetHeight);
+
+        // 清空后收回单行
+        ta.value = '1\n2\n3';
+        txAutoGrow(0);
+        ta.value = '';
+        txAutoGrow(0);
+        ok('T10 清空后高度收回单行', ta.offsetHeight < lh * 2, 'h=' + ta.offsetHeight);
+      }
+
+      /* ---------- T12（2026-11-19）：提示符口径 ---------- */
+      var inPmt = document.querySelector('#page-cmd .inputbar .field .pmt');
+      ok('T12 输入框提示符只显示 >', inPmt && inPmt.textContent.trim() === '>',
+         inPmt ? inPmt.textContent : '无');
+      // 这一段只验"提示符怎么分派"，不验状态链路：把会去连设备拉列表的
+      // fsOnDeviceOnline 临时屏蔽掉，避免测试依赖车机、也避免把取值窗口顶穿。
+      var __fsBak = window.fsOnDeviceOnline;
+      try { window.fsOnDeviceOnline = function () {}; } catch (e) {}
+      setStatus({dev:'b09acfa2', online:true, dir:'/sdcard/Download', soc:'8295',
+                 res:'1920x1080', rooted:true, msg:'ok'});
+      try { window.fsOnDeviceOnline = __fsBak; } catch (e) {}
+      var inPmt2 = document.querySelector('#page-cmd .inputbar .field .pmt');
+      ok('T12 有目录/设备号时输入框仍只显示 >',
+         inPmt2 && inPmt2.textContent.trim() === '>', inPmt2 ? inPmt2.textContent : '无');
+      ok('T12 回显提示符保留设备号与目录',
+         curPmt().indexOf('b09acfa2') >= 0 && curPmt().indexOf('/sdcard/Download') >= 0,
+         curPmt());
+
+      /* ---------- T13（2026-11-19）：文件名单行省略 ----------
+         不去 switchTab('file')：那会真的向设备拉文件列表，测试变成"要插着车机"，
+         而且慢到能把 --uitest 的取值窗口顶穿。这里用 DOM 副本量计算样式即可 ——
+         CSS 规则命中与是否可见无关。 */
+      var probe = document.createElement('div');
+      probe.className = 'fs-row';
+      probe.innerHTML = '<div class="n"><span class="t">a-very-long-file-name.apk</span></div>';
+      probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:120px;';
+      document.body.appendChild(probe);
+      var fn = probe.querySelector('.n .t');
+      ok('T13 文件名单行省略（nowrap + ellipsis）',
+         css(fn, 'whiteSpace') === 'nowrap' && css(fn, 'textOverflow') === 'ellipsis',
+         css(fn, 'whiteSpace') + '/' + css(fn, 'textOverflow'));
+
+      var qprobe = document.createElement('div');
+      qprobe.className = 'qcard';
+      qprobe.innerHTML = '<div class="qname">一条很长很长的快捷指令名称，应当允许换行不截断</div>';
+      qprobe.style.cssText = 'position:absolute;left:-9999px;top:0;width:120px;';
+      document.body.appendChild(qprobe);
+      var qn = qprobe.querySelector('.qname');
+      ok('T13 卡片名仍允许换行（不误伤）', css(qn, 'whiteSpace') === 'normal', css(qn, 'whiteSpace'));
+      probe.parentNode.removeChild(probe);
+      qprobe.parentNode.removeChild(qprobe);
+
     }catch(e){
+
       R.push('FAIL | 测试脚本异常 | ' + e.message + ' @ ' + (e.stack||'').split('\n')[1]);
     }
 
@@ -798,6 +893,11 @@ def main():
         r = subprocess.run(cmd, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=90)
         dom = r.stdout or ""
+    # 假绿防线：页面根本没产出 RESULT（脚本异常/加载失败）时必须判失败，
+    # 否则下面按行统计会把空结果算成"全部通过"。
+    if dom.replace("\ufeff", "").strip() == "__NO_RESULT__":
+        print("  页面没有产出 RESULT（脚本异常或加载失败）")
+        return 1
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:
         print("没拿到 RESULT，DOM 长度", len(dom))

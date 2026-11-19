@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 127,
- "totalBytes": 3289339,
+ "totalBytes": 3299072,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -151,8 +151,8 @@
   },
   {
    "path": "377/_test_interaction.py",
-   "size": 22011,
-   "sha256": "016984f7a6cf54277eb8e3b24f8b09b3b267589e0896b567270fa8fd88b4f64f"
+   "size": 22338,
+   "sha256": "f6da5d8d19b1834d5c904ffde5ac711704cb23f0c2216e89fe862cd5088c419d"
   },
   {
    "path": "377/_test_no_window.py",
@@ -176,13 +176,13 @@
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 47263,
-   "sha256": "7296215c8c9f7fca89a93897016633f30fd9da6b954241a9173948b89185be2b"
+   "size": 52514,
+   "sha256": "f15a4291afe08daf55cb4e9977c0b28b430b0bbdb8910cc664233e5dbd882301"
   },
   {
    "path": "377/_test_ux.py",
-   "size": 22548,
-   "sha256": "7323e83b8425a562123976334616e162974565c343159d6226eae0ebe4a7c086"
+   "size": 22875,
+   "sha256": "4469ffd88a5f0f3c42160a9bbbf501df80e75ff929cf93cf5c496fe8c5cbfee4"
   },
   {
    "path": "377/_test_vr_ui.py",
@@ -201,8 +201,8 @@
   },
   {
    "path": "377/_wv2.py",
-   "size": 4994,
-   "sha256": "9bd94b039201bc6b98646ffc3e988ae876c9801d139c97155ab547766313fdfc"
+   "size": 5038,
+   "sha256": "669e5e729bea575570699675f831f6707dc5ab613d5d8cd8c405edfe3d8f7fb8"
   },
   {
    "path": "AI_HANDOFF/00_START_HERE.md",
@@ -351,8 +351,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 211288,
-   "sha256": "d5b1aff37b91716f45c1cff8b33dbd0e35540c78845cb91814bcd059f0586a80"
+   "size": 212776,
+   "sha256": "526f531db376fa4f695c9e33bb21110062d60c6065cfe65b230a5aa26609a74f"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -506,8 +506,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 843528,
-   "sha256": "1c57670eb9183052fd03a6091bc46be797d4c8080422cd3de6fe56a781d9baee"
+   "size": 845824,
+   "sha256": "c6df0d94b4b0197b92113d23fbd3fc600aec8f16092f776453dde90bed9f33e2"
   },
   {
    "path": "cmds.ini",

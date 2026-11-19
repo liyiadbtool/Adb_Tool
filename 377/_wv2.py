@@ -98,7 +98,7 @@ def dump(html_path, wait_ms=3000, timeout=180):
             pass
 
     # GUI 进程的 stdout 可能带 BOM，去掉再判断
-    text = text.lstrip("\ufeff").strip()
+    text = text.replace("\ufeff", "").strip()   # BOM 位置不固定，直接全删
     return text if text else NO_RESULT
 
 

@@ -272,7 +272,9 @@ body{
 /* 输入行 */
 .inputbar{flex:0 0 auto;padding:12px 16px;border-top:1px solid var(--border);}
 .inputwrap{display:flex;align-items:center;gap:8px;}
-.field{flex:1;min-width:0;height:32px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
+/* T10（2026-11-19）：原来是写死的 height:32px —— 多行输入长到 5 行时容器不长，
+   文字被裁。改成 min-height，单行仍是 32px，多行随内容长高。 */
+.field{flex:1;min-width:0;min-height:32px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
 .field:focus-within{border-color:var(--accent);}
 .field .pmt{font-family:var(--font-mono);font-size:13px;color:var(--accent);white-space:nowrap;font-weight:600;}
 .field input{flex:1;min-width:0;height:100%;border:none;outline:none;background:none;color:var(--text);font-family:var(--font-mono);font-size:13px;caret-color:var(--accent);user-select:text;-webkit-user-select:text;}
@@ -1223,8 +1225,11 @@ input:disabled,select:disabled,textarea:disabled{
     --text-dim:rgba(59,53,44,.90);--text-faint:rgba(59,53,44,.74); }
   .btn,.tab,.qcard,.fs-pane{ border-color:var(--border-strong); }
 }
-/* 文字缩放 200%：允许换行，不截断主体内容 */
-.qcard .qname,.fs-row .n .t,.fb-row .fb-cmd{ white-space:normal;overflow-wrap:anywhere; }
+/* 文字缩放 200%：允许换行，不截断主体内容。
+   T13（2026-11-19）：**文件名不在此列** —— 它单独走单行省略（810/817 行已设
+   nowrap + ellipsis），混在这条里会被无条件换行，长文件名压成两三行，
+   把整个文件列表的行高撑乱。卡片名/反馈命令仍保留换行。 */
+.qcard .qname,.fb-row .fb-cmd{ white-space:normal;overflow-wrap:anywhere; }
 
 
 /* === ACCENT LAYER START === */
@@ -2180,264 +2185,6 @@ body.col-resizing *{cursor:col-resize !important;}
   .set-panel{width:100%;}
 }
 /* === V12 LAYER END === */
-/* === V13 LAYER START === */
-/* ==========================================================================
-   A13 · 标题栏四圆点 / 尺寸自适应 / 终端多行 / 输出区热区
-   --------------------------------------------------------------------------
-   设计约束（改之前先读）：
-     1) 四点只画圆点、不显示任何文字 —— 语义靠 hover 即时 tooltip 承担，
-        所以 tooltip 必须是「即时」的，不能依赖原生 title 的 1 秒延迟。
-     2) 圆点直径 9px，命中区 26px（小于 24px 会难命中，这是底线）。
-     3) 颜色只走令牌：root/无线 = 强调色 or 置灰，日志 = 等级色，设备 = 在线色。
-        禁止在这里写死十六进制（门禁会查）。
-     4) 标题栏高度随窗口宽度线性变化（clamp 38~54），窗口按钮按同一定值派生，
-        不再各自写死，避免"按钮比标题栏还小/还大"。
-   ========================================================================== */
-
-:root{
-  /* 标题栏高度：38px 起步，随视口宽度线性长，封顶 54px。
-     46px 对应 1375px 视口（1100 宽窗口下约 42px，和 Windows 原生接近）。 */
-  --tb-h:clamp(38px, 24px + 1.6vw, 54px);
-  --tb-btn-w:calc(var(--tb-h) * 1.22);
-  --tb-dot:9px;
-  --tb-hit:26px;
-  --tb-tip-bg:var(--surface-2);
-  /* 门禁不许在组件样式里写字面量色，所以圆环/tooltip 阴影都提成令牌 */
-  --tb-dot-ring:rgba(0,0,0,.18);
-  --tb-tip-shadow:0 8px 24px rgba(0,0,0,.28);
-
-  /* V 级白点：深色下是白，浅色主题必须换成深灰，否则白点消失在白底上。
-     注意：这里必须按主题分别声明 —— V12 里 --lv-v 是挂在
-     :root[data-theme="dark"] 上的，特异性比裸 :root 高，裸覆盖根本不会生效。 */
-  --lv-v:#ffffff;
-}
-:root[data-theme="dark"]{ --lv-v:#ffffff; }
-:root[data-theme="light"]{ --lv-v:#3a3a3c; }
-:root[data-theme="eye"]{ --lv-v:#4a4238; }
-
-/* ---------------- §1 标题栏骨架 ---------------- */
-.titlebar{
-  height:var(--tb-h);
-  padding-left:12px;padding-right:0;
-  gap:0;
-  /* 玻璃层：原来挂在 .topbar 上，顶栏删掉后必须挪到标题栏，
-     否则「壳」的半透明模糊就断了（_check_glass 也会挂）。 */
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  backdrop-filter:blur(20px) saturate(180%);
-  box-shadow:inset 0 -1px 0 var(--border);
-}
-.tb-drag{
-  flex:0 0 auto;
-  display:flex;align-items:center;gap:8px;
-  padding-right:2px;
-}
-/* 中间那段才是主要拖拽区：logo 和圆点之间、圆点和右侧之间都能拖 */
-.tb-drag-mid{flex:1 1 auto;align-self:stretch;min-width:24px;}
-
-.tb-logo svg{width:18px;height:18px;}
-
-/* ---------------- §2 四个状态圆点 ---------------- */
-.tb-status{
-  display:flex;align-items:center;
-  gap:2px;flex:0 0 auto;
-  align-self:stretch;
-}
-.tb-status > .rootpill,
-.tb-status > .wadb,
-.tb-status > .logpill,
-.tb-status > .device{
-  width:var(--tb-hit);height:var(--tb-hit);
-  min-width:0;padding:0;margin:0;
-  display:grid;place-items:center;
-  border:0;background:transparent;
-  border-radius:8px;
-  color:inherit;cursor:pointer;
-  transition:background .12s var(--ease-soft);
-}
-.tb-status > .wadb{display:inline-flex;}
-.tb-status > .rootpill:hover,
-.tb-status > .wadb:hover,
-.tb-status > .logpill:hover,
-.tb-status > .device:hover{ background:var(--well); }
-.tb-status > .rootpill:focus-visible,
-.tb-status > .wadb-btn:focus-visible,
-.tb-status > .logpill:focus-visible,
-.tb-status > .device:focus-visible{
-  outline:2px solid var(--accent);outline-offset:1px;
-}
-
-/* 圆点本体：四个点同一套尺寸/过渡，只有颜色不同 */
-.tb-status .rdot,
-.tb-status .wdot,
-.tb-status .logpill .dot,
-.tb-status .device .dot{
-  width:var(--tb-dot);height:var(--tb-dot);
-  border-radius:50%;
-  background:var(--text-faint);
-  flex:0 0 auto;
-  transition:background .12s,transform .12s var(--ease-soft),box-shadow .12s;
-}
-.tb-status > *:hover .rdot,
-.tb-status > *:hover .wdot,
-.tb-status > *:hover .dot,
-.tb-status > *:hover .logpill .dot{ transform:scale(1.25); }
-
-/* 文字全部藏起来 —— 用户要求「仅显示圆点不显示名称」 */
-.tb-status .rtxt,
-.tb-status .ltag,
-.tb-status .lv,
-.tb-status #wadb-txt,
-.tb-status .device .id,
-.tb-status .device .sep,
-.tb-status .device .soc{ display:none !important; }
-
-/* root：已 root 跟随强调色，未 root 置灰（不用红 —— 红留给"异常"） */
-.tb-status .rootpill.yes .rdot{
-  background:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
-.tb-status .rootpill.no .rdot{ background:var(--text-faint); }
-.tb-status .rootpill.off .rdot,
-.tb-status .rootpill.disabled .rdot{ background:var(--border); }
-.tb-status .rootpill.busy .rdot{ animation:rpulse 1s ease-in-out infinite; }
-.tb-status .rootpill.disabled{ cursor:default; }
-
-/* 无线：已连接跟随强调色，未连接置灰 */
-.tb-status .wadb-btn{
-  width:var(--tb-hit);height:var(--tb-hit);
-  padding:0;border:0;background:transparent;
-  display:grid;place-items:center;border-radius:8px;color:inherit;
-}
-.tb-status .wadb-btn .wdot{ background:var(--text-faint); }
-.tb-status .wadb-btn.on .wdot{
-  background:var(--accent);
-  box-shadow:0 0 0 3px var(--accent-soft);
-}
-.tb-status .wadb-btn.busy .wdot{ animation:rpulse 1s ease-in-out infinite; }
-
-/* 日志等级：V 白 / D 蓝 / I 绿 / W 黄 / E 红；未设置 = 灰边色 */
-.tb-status .logpill .dot{ background:var(--text-faint); }
-.tb-status .logpill[data-lv="V"] .dot{ background:var(--lv-v); }
-.tb-status .logpill[data-lv="D"] .dot{ background:var(--lv-d); }
-.tb-status .logpill[data-lv="I"] .dot{ background:var(--lv-i); }
-.tb-status .logpill[data-lv="W"] .dot{ background:var(--lv-w); }
-.tb-status .logpill[data-lv="E"] .dot{ background:var(--lv-e); }
-.tb-status .logpill[data-lv="none"] .dot{ background:var(--border); }
-/* V 是白点，深色下需要一点描边才不会糊在标题栏上 */
-.tb-status .logpill[data-lv="V"] .dot{
-  box-shadow:inset 0 0 0 1px var(--tb-dot-ring);
-}
-
-/* 设备：在线 = --ok，离线 = --err，未知 = 置灰（沿用原有 .dot 语义） */
-.tb-status .device .dot{ background:var(--ok); }
-.tb-status .device .dot.off{ background:var(--err); }
-.tb-status .device .dot.none{ background:var(--text-faint); }
-
-/* 无线弹窗：进标题栏后必须 fixed 定位（absolute 会被标题栏的堆叠上下文压住） */
-.tb-status .wadb-pop{
-  position:fixed;
-  z-index:135;
-  top:calc(var(--tb-h) + 6px);
-}
-
-/* ---------------- §3 右侧：运行指示 / 设置 / 窗口按钮 ---------------- */
-.tb-right{
-  display:flex;align-items:center;gap:4px;
-  flex:0 0 auto;
-  padding-left:6px;
-}
-.tb-right .set-btn{ width:calc(var(--tb-h) * .78); height:calc(var(--tb-h) * .72); }
-.tb-right .set-btn svg{ width:calc(var(--tb-h) * .42); height:calc(var(--tb-h) * .42); }
-.tb-right .runchip{ height:26px; }
-
-/* 窗口按钮：图标按按钮尺寸派生，不再写死 10px（写死就是"最大化后按钮显得小"） */
-.tb-btn{ width:var(--tb-btn-w); }
-.tb-btn svg{
-  width:calc(var(--tb-h) * .27);
-  height:calc(var(--tb-h) * .27);
-  stroke-width:1.15;
-}
-
-/* 角部缩放热区放大到 12px：窗口圆角会把四角裁掉一部分，
-   5px/9px 的热区在圆角处几乎点不到（A13 圆角带来的副作用）。 */
-.rz-nw,.rz-ne,.rz-sw,.rz-se{width:12px;height:12px;}
-
-/* ---------------- §4 即时 tooltip ---------------- */
-.tb-tip{
-  position:fixed;z-index:220;
-  padding:5px 10px;border-radius:8px;
-  font-size:12px;line-height:1.4;
-  color:var(--text);
-  background:var(--tb-tip-bg);
-  border:1px solid var(--border);
-  box-shadow:var(--tb-tip-shadow),inset 0 1px 0 var(--rim);
-  pointer-events:none;white-space:nowrap;
-  opacity:0;transform:translateY(-3px);
-  transition:opacity .12s var(--ease-soft),transform .12s var(--ease-soft);
-}
-.tb-tip.show{ opacity:1;transform:translateY(0); }
-
-/* ---------------- §5 终端：多行输入 + 图标按钮 ---------------- */
-#page-cmd .inputbar .field{
-  align-items:flex-start;      /* 多行时 `>` 提示符要贴首行，不能垂直居中 */
-  padding-top:6px;padding-bottom:6px;
-}
-#page-cmd .inputbar .field .pmt{
-  line-height:1.55;
-  padding-top:1px;
-}
-#page-cmd .inputbar textarea{
-  flex:1 1 auto;min-width:0;
-  resize:none;border:0;outline:none;background:transparent;
-  color:var(--text);
-  font-family:var(--font-mono);
-  font-size:13px;line-height:1.55;
-  padding:0;
-  max-height:calc(1.55em * 5);   /* 最多 5 行，再多内部滚动 */
-  overflow-y:auto;
-  white-space:pre-wrap;word-break:break-all;
-}
-#page-cmd .inputbar textarea::placeholder{ color:var(--text-faint); }
-
-/* 四个按钮只留图标：固定 34px 见方，多余宽度全部让给输入框 */
-#page-cmd .inputbar .btn{
-  width:34px;min-width:34px;height:34px;
-  padding:0;display:grid;place-items:center;flex:0 0 auto;
-}
-#page-cmd .inputbar .btn svg{ width:15px;height:15px; }
-#page-cmd .inputbar .btn.primary svg{ width:16px;height:16px; }
-
-/* ---------------- §6 输出区：点空白切换 ---------------- */
-/* 收起态：整条都能点开。原来是 ns-resize 光标，用户以为是拖拽条、不知道能点。 */
-.feedback .fb-collapsed-bar{ cursor:pointer; }
-.feedback .fb-collapsed-bar:hover{ background:var(--well); }
-.feedback .fb-collapsed-bar .fcb-arrow{ transition:transform .15s var(--ease-soft); }
-.feedback .fb-collapsed-bar:hover .fcb-arrow{ transform:translateY(-1px); }
-
-/* 展开态：表头这一行除按钮外都是"点击收起"热区 */
-.feedback .fb-head{ cursor:pointer; }
-.feedback .fb-head .fbtn,
-.feedback .fb-head button{ cursor:pointer; }
-.fb-head-hint{
-  margin-left:auto;margin-right:10px;
-  font-size:11px;color:var(--text-faint);
-  opacity:0;transition:opacity .15s var(--ease-soft);
-  pointer-events:none;white-space:nowrap;
-}
-.feedback .fb-head:hover .fb-head-hint{ opacity:.8; }
-
-/* ---------------- §7 设置：界面缩放 ---------------- */
-.set-zoom-row{ display:flex;align-items:center;gap:8px;margin-top:6px; }
-.set-zoom-row .set-sel{ flex:1 1 auto; }
-.set-zoom-val{
-  font-family:var(--font-mono);font-size:12.5px;
-  color:var(--text-dim);min-width:44px;text-align:right;
-}
-
-/* ---------------- §8 细节：页签上移后的衔接 ---------------- */
-/* 顶栏删掉后页签直接贴标题栏，靠这条内阴影和标题栏分开，避免两行糊成一片 */
-.tabs{ box-shadow:inset 0 -1px 0 var(--border); }
-/* === V13 LAYER END === */
 /* === V14 LAYER START === */
 /* ==========================================================================
    A14 · 边界对比 / 图标尺寸 / 字体大小 / 下拉浮层
@@ -3281,6 +3028,264 @@ body::after{
 .theme-card.on span{ color:var(--on-accent); }
 .theme-card.on .tc-ic svg{ stroke:var(--on-accent); }
 /* === V17 LAYER END === */
+/* === V13 LAYER START === */
+/* ==========================================================================
+   A13 · 标题栏四圆点 / 尺寸自适应 / 终端多行 / 输出区热区
+   --------------------------------------------------------------------------
+   设计约束（改之前先读）：
+     1) 四点只画圆点、不显示任何文字 —— 语义靠 hover 即时 tooltip 承担，
+        所以 tooltip 必须是「即时」的，不能依赖原生 title 的 1 秒延迟。
+     2) 圆点直径 9px，命中区 26px（小于 24px 会难命中，这是底线）。
+     3) 颜色只走令牌：root/无线 = 强调色 or 置灰，日志 = 等级色，设备 = 在线色。
+        禁止在这里写死十六进制（门禁会查）。
+     4) 标题栏高度随窗口宽度线性变化（clamp 38~54），窗口按钮按同一定值派生，
+        不再各自写死，避免"按钮比标题栏还小/还大"。
+   ========================================================================== */
+
+:root{
+  /* 标题栏高度：38px 起步，随视口宽度线性长，封顶 54px。
+     46px 对应 1375px 视口（1100 宽窗口下约 42px，和 Windows 原生接近）。 */
+  --tb-h:clamp(38px, 24px + 1.6vw, 54px);
+  --tb-btn-w:calc(var(--tb-h) * 1.22);
+  --tb-dot:9px;
+  --tb-hit:26px;
+  --tb-tip-bg:var(--surface-2);
+  /* 门禁不许在组件样式里写字面量色，所以圆环/tooltip 阴影都提成令牌 */
+  --tb-dot-ring:rgba(0,0,0,.18);
+  --tb-tip-shadow:0 8px 24px rgba(0,0,0,.28);
+
+  /* V 级白点：深色下是白，浅色主题必须换成深灰，否则白点消失在白底上。
+     注意：这里必须按主题分别声明 —— V12 里 --lv-v 是挂在
+     :root[data-theme="dark"] 上的，特异性比裸 :root 高，裸覆盖根本不会生效。 */
+  --lv-v:#ffffff;
+}
+:root[data-theme="dark"]{ --lv-v:#ffffff; }
+:root[data-theme="light"]{ --lv-v:#3a3a3c; }
+:root[data-theme="eye"]{ --lv-v:#4a4238; }
+
+/* ---------------- §1 标题栏骨架 ---------------- */
+.titlebar{
+  height:var(--tb-h);
+  padding-left:12px;padding-right:0;
+  gap:0;
+  /* 玻璃层：原来挂在 .topbar 上，顶栏删掉后必须挪到标题栏，
+     否则「壳」的半透明模糊就断了（_check_glass 也会挂）。 */
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 -1px 0 var(--border);
+}
+.tb-drag{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:8px;
+  padding-right:2px;
+}
+/* 中间那段才是主要拖拽区：logo 和圆点之间、圆点和右侧之间都能拖 */
+.tb-drag-mid{flex:1 1 auto;align-self:stretch;min-width:24px;}
+
+.tb-logo svg{width:18px;height:18px;}
+
+/* ---------------- §2 四个状态圆点 ---------------- */
+.tb-status{
+  display:flex;align-items:center;
+  gap:2px;flex:0 0 auto;
+  align-self:stretch;
+}
+.tb-status > .rootpill,
+.tb-status > .wadb,
+.tb-status > .logpill,
+.tb-status > .device{
+  width:var(--tb-hit);height:var(--tb-hit);
+  min-width:0;padding:0;margin:0;
+  display:grid;place-items:center;
+  border:0;background:transparent;
+  border-radius:8px;
+  color:inherit;cursor:pointer;
+  transition:background .12s var(--ease-soft);
+}
+.tb-status > .wadb{display:inline-flex;}
+.tb-status > .rootpill:hover,
+.tb-status > .wadb:hover,
+.tb-status > .logpill:hover,
+.tb-status > .device:hover{ background:var(--well); }
+.tb-status > .rootpill:focus-visible,
+.tb-status > .wadb-btn:focus-visible,
+.tb-status > .logpill:focus-visible,
+.tb-status > .device:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px;
+}
+
+/* 圆点本体：四个点同一套尺寸/过渡，只有颜色不同 */
+.tb-status .rdot,
+.tb-status .wdot,
+.tb-status .logpill .dot,
+.tb-status .device .dot{
+  width:var(--tb-dot);height:var(--tb-dot);
+  border-radius:50%;
+  background:var(--text-faint);
+  flex:0 0 auto;
+  transition:background .12s,transform .12s var(--ease-soft),box-shadow .12s;
+}
+.tb-status > *:hover .rdot,
+.tb-status > *:hover .wdot,
+.tb-status > *:hover .dot,
+.tb-status > *:hover .logpill .dot{ transform:scale(1.25); }
+
+/* 文字全部藏起来 —— 用户要求「仅显示圆点不显示名称」 */
+.tb-status .rtxt,
+.tb-status .ltag,
+.tb-status .lv,
+.tb-status #wadb-txt,
+.tb-status .device .id,
+.tb-status .device .sep,
+.tb-status .device .soc{ display:none !important; }
+
+/* root：已 root 跟随强调色，未 root 置灰（不用红 —— 红留给"异常"） */
+.tb-status .rootpill.yes .rdot{
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.tb-status .rootpill.no .rdot{ background:var(--text-faint); }
+.tb-status .rootpill.off .rdot,
+.tb-status .rootpill.disabled .rdot{ background:var(--border); }
+.tb-status .rootpill.busy .rdot{ animation:rpulse 1s ease-in-out infinite; }
+.tb-status .rootpill.disabled{ cursor:default; }
+
+/* 无线：已连接跟随强调色，未连接置灰 */
+.tb-status .wadb-btn{
+  width:var(--tb-hit);height:var(--tb-hit);
+  padding:0;border:0;background:transparent;
+  display:grid;place-items:center;border-radius:8px;color:inherit;
+}
+.tb-status .wadb-btn .wdot{ background:var(--text-faint); }
+.tb-status .wadb-btn.on .wdot{
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+.tb-status .wadb-btn.busy .wdot{ animation:rpulse 1s ease-in-out infinite; }
+
+/* 日志等级：V 白 / D 蓝 / I 绿 / W 黄 / E 红；未设置 = 灰边色 */
+.tb-status .logpill .dot{ background:var(--text-faint); }
+.tb-status .logpill[data-lv="V"] .dot{ background:var(--lv-v); }
+.tb-status .logpill[data-lv="D"] .dot{ background:var(--lv-d); }
+.tb-status .logpill[data-lv="I"] .dot{ background:var(--lv-i); }
+.tb-status .logpill[data-lv="W"] .dot{ background:var(--lv-w); }
+.tb-status .logpill[data-lv="E"] .dot{ background:var(--lv-e); }
+.tb-status .logpill[data-lv="none"] .dot{ background:var(--border); }
+/* V 是白点，深色下需要一点描边才不会糊在标题栏上 */
+.tb-status .logpill[data-lv="V"] .dot{
+  box-shadow:inset 0 0 0 1px var(--tb-dot-ring);
+}
+
+/* 设备：在线 = --ok，离线 = --err，未知 = 置灰（沿用原有 .dot 语义） */
+.tb-status .device .dot{ background:var(--ok); }
+.tb-status .device .dot.off{ background:var(--err); }
+.tb-status .device .dot.none{ background:var(--text-faint); }
+
+/* 无线弹窗：进标题栏后必须 fixed 定位（absolute 会被标题栏的堆叠上下文压住） */
+.tb-status .wadb-pop{
+  position:fixed;
+  z-index:135;
+  top:calc(var(--tb-h) + 6px);
+}
+
+/* ---------------- §3 右侧：运行指示 / 设置 / 窗口按钮 ---------------- */
+.tb-right{
+  display:flex;align-items:center;gap:4px;
+  flex:0 0 auto;
+  padding-left:6px;
+}
+.tb-right .set-btn{ width:calc(var(--tb-h) * .78); height:calc(var(--tb-h) * .72); }
+.tb-right .set-btn svg{ width:calc(var(--tb-h) * .42); height:calc(var(--tb-h) * .42); }
+.tb-right .runchip{ height:26px; }
+
+/* 窗口按钮：图标按按钮尺寸派生，不再写死 10px（写死就是"最大化后按钮显得小"） */
+.tb-btn{ width:var(--tb-btn-w); }
+.tb-btn svg{
+  width:calc(var(--tb-h) * .27);
+  height:calc(var(--tb-h) * .27);
+  stroke-width:1.15;
+}
+
+/* 角部缩放热区放大到 12px：窗口圆角会把四角裁掉一部分，
+   5px/9px 的热区在圆角处几乎点不到（A13 圆角带来的副作用）。 */
+.rz-nw,.rz-ne,.rz-sw,.rz-se{width:12px;height:12px;}
+
+/* ---------------- §4 即时 tooltip ---------------- */
+.tb-tip{
+  position:fixed;z-index:220;
+  padding:5px 10px;border-radius:8px;
+  font-size:12px;line-height:1.4;
+  color:var(--text);
+  background:var(--tb-tip-bg);
+  border:1px solid var(--border);
+  box-shadow:var(--tb-tip-shadow),inset 0 1px 0 var(--rim);
+  pointer-events:none;white-space:nowrap;
+  opacity:0;transform:translateY(-3px);
+  transition:opacity .12s var(--ease-soft),transform .12s var(--ease-soft);
+}
+.tb-tip.show{ opacity:1;transform:translateY(0); }
+
+/* ---------------- §5 终端：多行输入 + 图标按钮 ---------------- */
+#page-cmd .inputbar .field{
+  align-items:flex-start;      /* 多行时 `>` 提示符要贴首行，不能垂直居中 */
+  padding-top:6px;padding-bottom:6px;
+}
+#page-cmd .inputbar .field .pmt{
+  line-height:1.55;
+  padding-top:1px;
+}
+#page-cmd .inputbar textarea{
+  flex:1 1 auto;min-width:0;
+  resize:none;border:0;outline:none;background:transparent;
+  color:var(--text);
+  font-family:var(--font-mono);
+  font-size:13px;line-height:1.55;
+  padding:0;
+  max-height:calc(1.55em * 5);   /* 最多 5 行，再多内部滚动 */
+  overflow-y:auto;
+  white-space:pre-wrap;word-break:break-all;
+}
+#page-cmd .inputbar textarea::placeholder{ color:var(--text-faint); }
+
+/* 四个按钮只留图标：固定 34px 见方，多余宽度全部让给输入框 */
+#page-cmd .inputbar .btn{
+  width:34px;min-width:34px;height:34px;
+  padding:0;display:grid;place-items:center;flex:0 0 auto;
+}
+#page-cmd .inputbar .btn svg{ width:15px;height:15px; }
+#page-cmd .inputbar .btn.primary svg{ width:16px;height:16px; }
+
+/* ---------------- §6 输出区：点空白切换 ---------------- */
+/* 收起态：整条都能点开。原来是 ns-resize 光标，用户以为是拖拽条、不知道能点。 */
+.feedback .fb-collapsed-bar{ cursor:pointer; }
+.feedback .fb-collapsed-bar:hover{ background:var(--well); }
+.feedback .fb-collapsed-bar .fcb-arrow{ transition:transform .15s var(--ease-soft); }
+.feedback .fb-collapsed-bar:hover .fcb-arrow{ transform:translateY(-1px); }
+
+/* 展开态：表头这一行除按钮外都是"点击收起"热区 */
+.feedback .fb-head{ cursor:pointer; }
+.feedback .fb-head .fbtn,
+.feedback .fb-head button{ cursor:pointer; }
+.fb-head-hint{
+  margin-left:auto;margin-right:10px;
+  font-size:11px;color:var(--text-faint);
+  opacity:0;transition:opacity .15s var(--ease-soft);
+  pointer-events:none;white-space:nowrap;
+}
+.feedback .fb-head:hover .fb-head-hint{ opacity:.8; }
+
+/* ---------------- §7 设置：界面缩放 ---------------- */
+.set-zoom-row{ display:flex;align-items:center;gap:8px;margin-top:6px; }
+.set-zoom-row .set-sel{ flex:1 1 auto; }
+.set-zoom-val{
+  font-family:var(--font-mono);font-size:12.5px;
+  color:var(--text-dim);min-width:44px;text-align:right;
+}
+
+/* ---------------- §8 细节：页签上移后的衔接 ---------------- */
+/* 顶栏删掉后页签直接贴标题栏，靠这条内阴影和标题栏分开，避免两行糊成一片 */
+.tabs{ box-shadow:inset 0 -1px 0 var(--border); }
+/* === V13 LAYER END === */
 </style>
 </head>
 <body>
@@ -4759,6 +4764,7 @@ function run(slot){
     return;
   }
   inp.value = '';
+  txAutoGrow(slot);          // T10：清空后高度收回单行
   hist.push(cmd); histIdx = -1; draft = '';
   var fromQuick = (_tab === 'quick');
   // 在指令页敲的命令，输出要落在反馈区 —— 但在反馈区里得先有"这一条"，
@@ -4932,9 +4938,14 @@ function setStatus(s){
   setRootState(rt, _online, s.rooted === null && _rooted !== true);
   // 需求7：日志等级徽章（persist.log.tag，V/D/I/W/E）
   setLogLevel(s.loglevel || '');
-  // 提示符：输入框只显示 ">"（需求4），设备号/目录只出现在日志回显里
-  var pmts = document.querySelectorAll('.pmt');
-  for(var pi = 0; pi < pmts.length; pi++) pmts[pi].textContent = '>';
+  // 提示符：输入框只显示 ">"（需求4），设备号/目录只出现在日志回显里。
+  // T12（2026-11-19）：原来这里用 querySelectorAll('.pmt') 把**所有**提示符
+  // 都改成 '>'，回显也跟着退化成 '>'，与注释意图正好相反 —— 于是"这条命令在
+  // 哪个目录执行的"就查不到了。现在只改输入框，回显重算成 curPmt()。
+  var inPmts = document.querySelectorAll('.inputbar .field .pmt');
+  for (var pi = 0; pi < inPmts.length; pi++) inPmts[pi].textContent = '>';
+  var echoPmts = document.querySelectorAll('.echo .pmt');
+  for (var ei = 0; ei < echoPmts.length; ei++) echoPmts[ei].textContent = curPmt();
   // APK 面板的按钮依赖"设备是否在线"，状态一变就要重算一次禁用态，
   // 否则拔线后按钮还亮着，点了才发现执行不了。
   if(typeof updateApkButtons === 'function') updateApkButtons();
@@ -6048,6 +6059,7 @@ function sendVr(){
   _busy[0] = true;
   post('cmd', cmd, 1);
   inp.value = '';
+  txAutoGrow(0);             // T10：清空后高度收回单行
 }
 
 // 语音助手页键盘：回车发送（Shift+Enter 换行），上下键回放历史
@@ -6503,9 +6515,13 @@ function updateApkButtons(){
   if(fb) fb.disabled = !_apkFront;
   var vb = document.getElementById('apk-btn-ver');
   if(vb){
-    vb.disabled = _apkBusy || !online || _apkApps.length === 0;
+    // 守卫：setStatus 可能在 APK 状态初始化之前就调到这里（启动早期），
+    // 那时 _apkApps 还是 undefined —— 直接读 .length 会抛
+    // "Cannot read properties of undefined"。
+    var apps = (typeof _apkApps !== 'undefined' && _apkApps) ? _apkApps : [];
+    vb.disabled = _apkBusy || !online || apps.length === 0;
     vb.title = !online ? '设备未连接'
-             : (_apkApps.length === 0 ? '列表是空的，先添加应用' : '一次 adb 调用查全部，显示名称/包名/版本/路径');
+             : (apps.length === 0 ? '列表是空的，先添加应用' : '一次 adb 调用查全部，显示名称/包名/版本/路径');
   }
 }
 
@@ -10266,321 +10282,6 @@ document.addEventListener('DOMContentLoaded', function (){
 
 
 
-/* === V13 JS START === */
-/* ==========================================================================
-   A13 · 标题栏四圆点 / 终端多行顺序执行 / 输出区点空白切换
-   --------------------------------------------------------------------------
-   这一层只做「接线」，不改任何既有函数的语义：
-     · 状态圆点：颜色由 CSS 按类名/属性决定，这里只负责即时 tooltip；
-     · 终端多行：包装 run / endRun，逐行顺序下发，失败也继续（靠 end 驱动）；
-     · 输出区：展开态补一个"点表头空白收起"的热区。
-   所以所有原有的 id、onclick、状态类名都保持不动 —— 门禁和 377 套件不用重写。
-   ========================================================================== */
-(function () {
-  'use strict';
-
-  function $(id) { return document.getElementById(id); }
-
-  /* ===================== §1 四个状态圆点 ===================== */
-
-  // 即时 tooltip：原生 title 有 1 秒延迟、样式也不跟主题，
-  // 而四点没有文字，语义全靠 hover —— 延迟 1 秒等于没有。
-  var _tip = null;
-  var _tipTimer = null;
-
-  function ensureTip() {
-    if (_tip) return _tip;
-    _tip = document.createElement('div');
-    _tip.className = 'tb-tip';
-    _tip.setAttribute('role', 'tooltip');
-    document.body.appendChild(_tip);
-    return _tip;
-  }
-
-  function dotText(el) {
-    if (!el) return '';
-    var id = el.id || '';
-
-    if (id === 'root-pill') {
-      // title 由 setRootState() 按真实状态写：已 root / 未 root，点击执行 adb root …
-      return el.title || 'root';
-    }
-    if (el.classList && el.classList.contains('wadb') || id === 'wadb-btn') {
-      var ip = (typeof _wadbIp !== 'undefined' && _wadbIp) ? _wadbIp : '';
-      var btn = $('wadb-btn');
-      var on = btn && btn.classList.contains('on');
-      return on || ip
-        ? ('无线调试：已连接' + (ip ? ' ' + ip : '') + '（点击管理）')
-        : '无线调试：未连接（点击连接）';
-    }
-    if (id === 'log-pill') {
-      var lv = el.getAttribute('data-lv') || '';
-      if (lv === 'none' || !lv) return '日志等级：未设置（点击查看取值方法）';
-      return el.title || ('日志等级：' + lv);
-    }
-    if (id === 'dev-badge') {
-      var parts = [];
-      var i1 = $('dev-id'), i2 = $('dev-soc'), i3 = $('dev-res');
-      if (i1 && i1.textContent.trim()) parts.push(i1.textContent.trim());
-      if (i2 && i2.textContent.trim()) parts.push(i2.textContent.trim());
-      if (i3 && i3.textContent.trim()) parts.push(i3.textContent.trim());
-      return parts.length ? ('设备：' + parts.join(' · ')) : '设备未连接';
-    }
-    return el.title || '';
-  }
-
-  function tipShow(el) {
-    var txt = dotText(el);
-    if (!txt) return;
-    var t = ensureTip();
-    t.textContent = txt;
-    t.style.left = '0px';
-    t.style.top = '0px';
-    t.classList.add('show');
-
-    var r = el.getBoundingClientRect();
-    var w = t.offsetWidth;
-    var left = r.left + r.width / 2 - w / 2;
-    var maxL = window.innerWidth - w - 8;
-    if (left < 8) left = 8;
-    if (left > maxL) left = maxL;
-    t.style.left = Math.round(left) + 'px';
-    t.style.top = Math.round(r.bottom + 8) + 'px';
-  }
-
-  function tipHide() {
-    if (_tipTimer) { clearTimeout(_tipTimer); _tipTimer = null; }
-    if (_tip) _tip.classList.remove('show');
-  }
-
-  function bindDot(el) {
-    if (!el) return;
-    el.addEventListener('mouseenter', function () {
-      if (_tipTimer) clearTimeout(_tipTimer);
-      _tipTimer = setTimeout(function () { tipShow(el); }, 60);
-    });
-    el.addEventListener('mouseleave', tipHide);
-    el.addEventListener('blur', tipHide);
-    el.addEventListener('click', tipHide);
-  }
-
-  function initDots() {
-    // 点在自己身上的 mousedown 不能冒泡到 .tb-drag —— 否则点 root 点会变成拖窗口，
-    // 点击永远不触发（这是四点放进标题栏最容易踩的一个坑）。
-    var box = $('tb-status');
-    if (box) {
-      box.addEventListener('mousedown', function (e) { e.stopPropagation(); });
-    }
-    bindDot($('root-pill'));
-    bindDot($('wadb-btn'));
-    bindDot($('log-pill'));
-    bindDot($('dev-badge'));
-  }
-
-  /* ===================== §2 无线弹窗定位 ===================== */
-
-  // 弹窗进了标题栏，absolute 会被标题栏的堆叠上下文压到页签下面，
-  // 所以改成 fixed + 按圆点位置算坐标。
-  function positionWadbPop() {
-    var pop = $('wadb-pop');
-    var btn = $('wadb-btn');
-    if (!pop || !btn) return;
-    if (pop.style.display === 'none') return;
-    var r = btn.getBoundingClientRect();
-    pop.style.top = Math.round(r.bottom + 6) + 'px';
-    var w = pop.offsetWidth || 300;
-    var left = r.left - 6;
-    var maxL = window.innerWidth - w - 10;
-    if (left > maxL) left = maxL;
-    if (left < 10) left = 10;
-    pop.style.left = Math.round(left) + 'px';
-  }
-
-  function wrapWadb() {
-    if (typeof window.toggleWadb === 'function' && !window.__v13WadbWrapped) {
-      var orig = window.toggleWadb;
-      window.toggleWadb = function (ev) {
-        var r = orig.apply(this, arguments);
-        positionWadbPop();
-        return r;
-      };
-      window.__v13WadbWrapped = true;
-    }
-  }
-
-  /* ===================== §3 终端：多行输入 ===================== */
-
-  function taAutoGrow(n) {
-    var el = $('cmd-input-' + n);
-    if (!el || el.tagName !== 'TEXTAREA') return;
-    el.style.height = 'auto';
-    var h = el.scrollHeight;
-    var max = 0;
-    try {
-      max = parseFloat(getComputedStyle(el).maxHeight) || 0;
-    } catch (e) { max = 0; }
-    el.style.height = (max > 0 ? Math.min(h, max) : h) + 'px';
-    el.style.overflowY = (max > 0 && h > max) ? 'auto' : 'hidden';
-  }
-  window.txAutoGrow = taAutoGrow;
-
-  function insertNewline(el) {
-    var s = el.selectionStart, e = el.selectionEnd, v = el.value;
-    el.value = v.slice(0, s) + '\n' + v.slice(e);
-    el.selectionStart = el.selectionEnd = s + 1;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  // 队列：一条跑完（end 消息回来）再发下一条。
-  // 不用一次性拼成一条 shell 命令的原因：a;b 只在 shell 内成立，
-  // 而这里允许 `adb xxx`、`:car`、`stweakxxx` 各种前缀混写。
-  var _txQ = {};
-
-  function txNext(slot) {
-    var q = _txQ[slot];
-    if (!q) return;
-    if (q.i >= q.lines.length) { _txQ[slot] = null; return; }
-    var inp = $('cmd-input-' + slot);
-    if (!inp) { _txQ[slot] = null; return; }
-    inp.value = q.lines[q.i++];
-    taAutoGrow(slot);
-    try { window.__v13RunRaw(slot); } catch (e) { _txQ[slot] = null; }
-  }
-
-  function wrapRun() {
-    if (typeof window.run !== 'function' || window.__v13RunWrapped) return;
-    var origRun = window.run;
-    var origEnd = window.endRun;
-    window.__v13RunRaw = function (slot) { return origRun(slot); };
-
-    window.run = function (slot) {
-      slot = slot || 0;
-      var inp = $('cmd-input-' + slot);
-      if (!inp) return origRun(slot);
-      var raw = inp.value || '';
-      if (raw.indexOf('\n') < 0) return origRun(slot);
-
-      var lines = raw.split(/\r?\n/).map(function (s) { return s.trim(); })
-                      .filter(function (s) { return s.length > 0; });
-      if (lines.length <= 1) return origRun(slot);
-      if (window._busy && window._busy[slot]) {
-        if (typeof toast === 'function') toast('这个输入框的上一条指令还在执行，请稍候');
-        return;
-      }
-      _txQ[slot] = { lines: lines, i: 0 };
-      txNext(slot);
-    };
-
-    if (typeof origEnd === 'function') {
-      window.endRun = function (r) {
-        var out = origEnd.apply(this, arguments);
-        var slot = (r && r.slot) || 0;
-        if (_txQ[slot]) setTimeout(function () { txNext(slot); }, 0);
-        return out;
-      };
-    }
-  }
-
-  function wrapStop() {
-    if (typeof window.stop !== 'function' || window.__v13StopWrapped) return;
-    var orig = window.stop;
-    window.stop = function (slot) {
-      slot = slot || 0;
-      _txQ[slot] = null;   // 停止 = 整条队列作废，不是只停当前这一行
-      return orig.apply(this, arguments);
-    };
-    window.__v13StopWrapped = true;
-  }
-
-  function wrapInputKey() {
-    if (typeof window.onInputKey !== 'function' || window.__v13KeyWrapped) return;
-    var orig = window.onInputKey;
-    window.onInputKey = function (ev, n) {
-      var el = ev.target;
-      var isTA = el && el.tagName === 'TEXTAREA';
-
-      if (isTA && ev.key === 'Enter' && ev.shiftKey) {
-        ev.preventDefault();
-        insertNewline(el);
-        return;
-      }
-      if (isTA && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
-        // 多行编辑时方向键先走光标，走到首行/末行才交给历史 ——
-        // 否则在第二行按 ↑ 会直接把内容换成上一条命令，整段丢光。
-        var v = el.value || '';
-        var pos = el.selectionStart;
-        var first = v.indexOf('\n');
-        var last = v.lastIndexOf('\n');
-        if (ev.key === 'ArrowUp' && first >= 0 && pos > first) return;
-        if (ev.key === 'ArrowDown' && last >= 0 && pos <= last) return;
-      }
-      return orig(ev, n);
-    };
-    window.__v13KeyWrapped = true;
-  }
-
-  function initTerminal() {
-    wrapRun();
-    wrapStop();
-    wrapInputKey();
-    // 已有的 textarea（slot 0..n）先量一次高度，避免首屏是空盒子
-    var tas = document.querySelectorAll('#slots textarea[id^="cmd-input-"]');
-    for (var i = 0; i < tas.length; i++) {
-      var id = tas[i].id || '';
-      var n = parseInt(id.replace('cmd-input-', ''), 10);
-      if (!isNaN(n)) taAutoGrow(n);
-    }
-  }
-
-  /* ===================== §4 输出区：点空白切换 ===================== */
-
-  // 展开态点表头空白 = 收起；按钮/列标题上的点击不拦。
-  window.fbHeadToggle = function (ev) {
-    if (ev) {
-      var t = ev.target;
-      if (t && t.closest &&
-          t.closest('button,.fbtn,.fb-acts,input,select,a,textarea')) return;
-      ev.preventDefault();
-    }
-    if (typeof window.collapseFeed === 'function') window.collapseFeed();
-  };
-
-  /* ===================== §5 启动 ===================== */
-
-  function boot() {
-    initDots();
-    wrapWadb();
-    initTerminal();
-
-    // 窗口尺寸变了，无线弹窗如果开着要跟着挪
-    window.addEventListener('resize', function () {
-      positionWadbPop();
-      tipHide();
-    });
-    // 页面滚动 / 切页签时 tooltip 必须收起，否则会浮在错误的位置
-    document.addEventListener('scroll', tipHide, true);
-    window.addEventListener('blur', tipHide);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-
-  // 切页签会重建 slot（buildSlots 重写 innerHTML），textarea 是新节点，
-  // 这里在切换后补一次自动增高 + 重新接线。
-  var _origSwitch = window.switchTab;
-  if (typeof _origSwitch === 'function' && !window.__v13TabWrapped) {
-    window.switchTab = function (name) {
-      var r = _origSwitch.apply(this, arguments);
-      try { initTerminal(); } catch (e) {}
-      return r;
-    };
-    window.__v13TabWrapped = true;
-  }
-})();
-/* === V13 JS END === */
 
 
 
@@ -12474,6 +12175,344 @@ document.addEventListener('DOMContentLoaded', function (){
   }
 })();
 /* === V17 JS END === */
+
+
+
+
+/* === V13 JS START === */
+/* ==========================================================================
+   A13 · 标题栏四圆点 / 终端多行顺序执行 / 输出区点空白切换
+   --------------------------------------------------------------------------
+   这一层只做「接线」，不改任何既有函数的语义：
+     · 状态圆点：颜色由 CSS 按类名/属性决定，这里只负责即时 tooltip；
+     · 终端多行：包装 run / endRun，逐行顺序下发，失败也继续（靠 end 驱动）；
+     · 输出区：展开态补一个"点表头空白收起"的热区。
+   所以所有原有的 id、onclick、状态类名都保持不动 —— 门禁和 377 套件不用重写。
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ===================== §1 四个状态圆点 ===================== */
+
+  // 即时 tooltip：原生 title 有 1 秒延迟、样式也不跟主题，
+  // 而四点没有文字，语义全靠 hover —— 延迟 1 秒等于没有。
+  var _tip = null;
+  var _tipTimer = null;
+
+  function ensureTip() {
+    if (_tip) return _tip;
+    _tip = document.createElement('div');
+    _tip.className = 'tb-tip';
+    _tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(_tip);
+    return _tip;
+  }
+
+  function dotText(el) {
+    if (!el) return '';
+    var id = el.id || '';
+
+    if (id === 'root-pill') {
+      // title 由 setRootState() 按真实状态写：已 root / 未 root，点击执行 adb root …
+      return el.title || 'root';
+    }
+    if (el.classList && el.classList.contains('wadb') || id === 'wadb-btn') {
+      var ip = (typeof _wadbIp !== 'undefined' && _wadbIp) ? _wadbIp : '';
+      var btn = $('wadb-btn');
+      var on = btn && btn.classList.contains('on');
+      return on || ip
+        ? ('无线调试：已连接' + (ip ? ' ' + ip : '') + '（点击管理）')
+        : '无线调试：未连接（点击连接）';
+    }
+    if (id === 'log-pill') {
+      var lv = el.getAttribute('data-lv') || '';
+      if (lv === 'none' || !lv) return '日志等级：未设置（点击查看取值方法）';
+      return el.title || ('日志等级：' + lv);
+    }
+    if (id === 'dev-badge') {
+      var parts = [];
+      var i1 = $('dev-id'), i2 = $('dev-soc'), i3 = $('dev-res');
+      if (i1 && i1.textContent.trim()) parts.push(i1.textContent.trim());
+      if (i2 && i2.textContent.trim()) parts.push(i2.textContent.trim());
+      if (i3 && i3.textContent.trim()) parts.push(i3.textContent.trim());
+      return parts.length ? ('设备：' + parts.join(' · ')) : '设备未连接';
+    }
+    return el.title || '';
+  }
+
+  function tipShow(el) {
+    var txt = dotText(el);
+    if (!txt) return;
+    var t = ensureTip();
+    t.textContent = txt;
+    t.style.left = '0px';
+    t.style.top = '0px';
+    t.classList.add('show');
+
+    var r = el.getBoundingClientRect();
+    var w = t.offsetWidth;
+    var left = r.left + r.width / 2 - w / 2;
+    var maxL = window.innerWidth - w - 8;
+    if (left < 8) left = 8;
+    if (left > maxL) left = maxL;
+    t.style.left = Math.round(left) + 'px';
+    t.style.top = Math.round(r.bottom + 8) + 'px';
+  }
+
+  function tipHide() {
+    if (_tipTimer) { clearTimeout(_tipTimer); _tipTimer = null; }
+    if (_tip) _tip.classList.remove('show');
+  }
+
+  function bindDot(el) {
+    if (!el) return;
+    el.addEventListener('mouseenter', function () {
+      if (_tipTimer) clearTimeout(_tipTimer);
+      _tipTimer = setTimeout(function () { tipShow(el); }, 60);
+    });
+    el.addEventListener('mouseleave', tipHide);
+    el.addEventListener('blur', tipHide);
+    el.addEventListener('click', tipHide);
+  }
+
+  function initDots() {
+    // 点在自己身上的 mousedown 不能冒泡到 .tb-drag —— 否则点 root 点会变成拖窗口，
+    // 点击永远不触发（这是四点放进标题栏最容易踩的一个坑）。
+    var box = $('tb-status');
+    if (box) {
+      box.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+    }
+    bindDot($('root-pill'));
+    bindDot($('wadb-btn'));
+    bindDot($('log-pill'));
+    bindDot($('dev-badge'));
+  }
+
+  /* ===================== §2 无线弹窗定位 ===================== */
+
+  // 弹窗进了标题栏，absolute 会被标题栏的堆叠上下文压到页签下面，
+  // 所以改成 fixed + 按圆点位置算坐标。
+  function positionWadbPop() {
+    var pop = $('wadb-pop');
+    var btn = $('wadb-btn');
+    if (!pop || !btn) return;
+    if (pop.style.display === 'none') return;
+    var r = btn.getBoundingClientRect();
+    pop.style.top = Math.round(r.bottom + 6) + 'px';
+    var w = pop.offsetWidth || 300;
+    var left = r.left - 6;
+    var maxL = window.innerWidth - w - 10;
+    if (left > maxL) left = maxL;
+    if (left < 10) left = 10;
+    pop.style.left = Math.round(left) + 'px';
+  }
+
+  function wrapWadb() {
+    if (typeof window.toggleWadb === 'function' && !window.__v13WadbWrapped) {
+      var orig = window.toggleWadb;
+      window.toggleWadb = function (ev) {
+        var r = orig.apply(this, arguments);
+        positionWadbPop();
+        return r;
+      };
+      window.__v13WadbWrapped = true;
+    }
+  }
+
+  /* ===================== §3 终端：多行输入 ===================== */
+
+  function taAutoGrow(n) {
+    var el = $('cmd-input-' + n);
+    if (!el || el.tagName !== 'TEXTAREA') return;
+    el.style.height = 'auto';
+    var h = el.scrollHeight;
+    var max = 0;
+    try {
+      max = parseFloat(getComputedStyle(el).maxHeight) || 0;
+    } catch (e) { max = 0; }
+    el.style.height = (max > 0 ? Math.min(h, max) : h) + 'px';
+    el.style.overflowY = (max > 0 && h > max) ? 'auto' : 'hidden';
+  }
+  // T10（2026-11-19）：中文输入法组字态守卫。
+  // 用**事件委托**而不是给每个 textarea 绑：buildSlots() 在基础脚本里、
+  // 比本层脚本先执行，直接调用 bindImeGrow 会 "is not defined"（实测整页中断）。
+  // 委托挂在 document 上，只注册一次，动态新增的槽位也自动覆盖。
+  function imeInputIndex(el) {
+    if (!el || el.tagName !== 'TEXTAREA' || !el.id) return -1;
+    var m = /^cmd-input-(\d+)$/.exec(el.id);
+    return m ? parseInt(m[1], 10) : -1;
+  }
+  document.addEventListener('compositionstart', function (ev) {
+    if (imeInputIndex(ev.target) >= 0) ev.target.__imeComposing = true;
+  }, true);
+  document.addEventListener('compositionend', function (ev) {
+    var n = imeInputIndex(ev.target);
+    if (n < 0) return;
+    ev.target.__imeComposing = false;
+    if (ev.target.__imePending) { ev.target.__imePending = false; taAutoGrow(n); }
+  }, true);
+
+  window.txAutoGrow = taAutoGrow;
+
+  function insertNewline(el) {
+    var s = el.selectionStart, e = el.selectionEnd, v = el.value;
+    el.value = v.slice(0, s) + '\n' + v.slice(e);
+    el.selectionStart = el.selectionEnd = s + 1;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // 队列：一条跑完（end 消息回来）再发下一条。
+  // 不用一次性拼成一条 shell 命令的原因：a;b 只在 shell 内成立，
+  // 而这里允许 `adb xxx`、`:car`、`stweakxxx` 各种前缀混写。
+  var _txQ = {};
+
+  function txNext(slot) {
+    var q = _txQ[slot];
+    if (!q) return;
+    if (q.i >= q.lines.length) { _txQ[slot] = null; return; }
+    var inp = $('cmd-input-' + slot);
+    if (!inp) { _txQ[slot] = null; return; }
+    inp.value = q.lines[q.i++];
+    taAutoGrow(slot);
+    try { window.__v13RunRaw(slot); } catch (e) { _txQ[slot] = null; }
+  }
+
+  function wrapRun() {
+    if (typeof window.run !== 'function' || window.__v13RunWrapped) return;
+    var origRun = window.run;
+    var origEnd = window.endRun;
+    window.__v13RunRaw = function (slot) { return origRun(slot); };
+
+    window.run = function (slot) {
+      slot = slot || 0;
+      var inp = $('cmd-input-' + slot);
+      if (!inp) return origRun(slot);
+      var raw = inp.value || '';
+      if (raw.indexOf('\n') < 0) return origRun(slot);
+
+      var lines = raw.split(/\r?\n/).map(function (s) { return s.trim(); })
+                      .filter(function (s) { return s.length > 0; });
+      if (lines.length <= 1) return origRun(slot);
+      if (window._busy && window._busy[slot]) {
+        if (typeof toast === 'function') toast('这个输入框的上一条指令还在执行，请稍候');
+        return;
+      }
+      _txQ[slot] = { lines: lines, i: 0 };
+      txNext(slot);
+    };
+
+    if (typeof origEnd === 'function') {
+      window.endRun = function (r) {
+        var out = origEnd.apply(this, arguments);
+        var slot = (r && r.slot) || 0;
+        if (_txQ[slot]) setTimeout(function () { txNext(slot); }, 0);
+        return out;
+      };
+    }
+  }
+
+  function wrapStop() {
+    if (typeof window.stop !== 'function' || window.__v13StopWrapped) return;
+    var orig = window.stop;
+    window.stop = function (slot) {
+      slot = slot || 0;
+      _txQ[slot] = null;   // 停止 = 整条队列作废，不是只停当前这一行
+      return orig.apply(this, arguments);
+    };
+    window.__v13StopWrapped = true;
+  }
+
+  function wrapInputKey() {
+    if (typeof window.onInputKey !== 'function' || window.__v13KeyWrapped) return;
+    var orig = window.onInputKey;
+    window.onInputKey = function (ev, n) {
+      var el = ev.target;
+      var isTA = el && el.tagName === 'TEXTAREA';
+
+      if (isTA && ev.key === 'Enter' && ev.shiftKey) {
+        ev.preventDefault();
+        insertNewline(el);
+        return;
+      }
+      if (isTA && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+        // 多行编辑时方向键先走光标，走到首行/末行才交给历史 ——
+        // 否则在第二行按 ↑ 会直接把内容换成上一条命令，整段丢光。
+        var v = el.value || '';
+        var pos = el.selectionStart;
+        var first = v.indexOf('\n');
+        var last = v.lastIndexOf('\n');
+        if (ev.key === 'ArrowUp' && first >= 0 && pos > first) return;
+        if (ev.key === 'ArrowDown' && last >= 0 && pos <= last) return;
+      }
+      return orig(ev, n);
+    };
+    window.__v13KeyWrapped = true;
+  }
+
+  function initTerminal() {
+    wrapRun();
+    wrapStop();
+    wrapInputKey();
+    // 已有的 textarea（slot 0..n）先量一次高度，避免首屏是空盒子
+    var tas = document.querySelectorAll('#slots textarea[id^="cmd-input-"]');
+    for (var i = 0; i < tas.length; i++) {
+      var id = tas[i].id || '';
+      var n = parseInt(id.replace('cmd-input-', ''), 10);
+      if (!isNaN(n)) taAutoGrow(n);
+    }
+  }
+
+  /* ===================== §4 输出区：点空白切换 ===================== */
+
+  // 展开态点表头空白 = 收起；按钮/列标题上的点击不拦。
+  window.fbHeadToggle = function (ev) {
+    if (ev) {
+      var t = ev.target;
+      if (t && t.closest &&
+          t.closest('button,.fbtn,.fb-acts,input,select,a,textarea')) return;
+      ev.preventDefault();
+    }
+    if (typeof window.collapseFeed === 'function') window.collapseFeed();
+  };
+
+  /* ===================== §5 启动 ===================== */
+
+  function boot() {
+    initDots();
+    wrapWadb();
+    initTerminal();
+
+    // 窗口尺寸变了，无线弹窗如果开着要跟着挪
+    window.addEventListener('resize', function () {
+      positionWadbPop();
+      tipHide();
+    });
+    // 页面滚动 / 切页签时 tooltip 必须收起，否则会浮在错误的位置
+    document.addEventListener('scroll', tipHide, true);
+    window.addEventListener('blur', tipHide);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  // 切页签会重建 slot（buildSlots 重写 innerHTML），textarea 是新节点，
+  // 这里在切换后补一次自动增高 + 重新接线。
+  var _origSwitch = window.switchTab;
+  if (typeof _origSwitch === 'function' && !window.__v13TabWrapped) {
+    window.switchTab = function (name) {
+      var r = _origSwitch.apply(this, arguments);
+      try { initTerminal(); } catch (e) {}
+      return r;
+    };
+    window.__v13TabWrapped = true;
+  }
+})();
+/* === V13 JS END === */
 
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，
