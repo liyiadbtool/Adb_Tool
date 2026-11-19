@@ -4963,6 +4963,8 @@ function setStatus(s){
   setRootState(rt, _online, s.rooted === null && _rooted !== true);
   // 需求7：日志等级徽章（persist.log.tag，V/D/I/W/E）
   setLogLevel(s.loglevel || '');
+  // R1：设备上下线都要重算置灰
+  try { applyOnlineGate(); } catch (e) {}
   // 提示符：输入框只显示 ">"（需求4），设备号/目录只出现在日志回显里。
   // T12（2026-11-19）：原来这里用 querySelectorAll('.pmt') 把**所有**提示符
   // 都改成 '>'，回显也跟着退化成 '>'，与注释意图正好相反 —— 于是"这条命令在
@@ -5565,6 +5567,10 @@ var quickGroups = [
     // am start -a VIEW -d https://… 必定 "unable to resolve Intent"。
     {name:'支付宝后台', desc:'支付宝车载服务设置页（ampe://setting）', cmd:'wsalipayset', cat:'后台入口'},
     {name:'上传支付宝日志', desc:'触发支付宝把日志传云端（ampe://uploadlog）', cmd:'wsalipayup', cat:'后台入口'},
+    // R5（2026-11-19）：隐私授权 —— 写 privacy_enabled=true 并回读确认
+    {name:'打开隐私授权', desc:'settings put global privacy_enabled true（写后回读）', cmd:':sxlog set', cat:'后台入口'},
+    // R2（2026-11-19）：删除代理 —— 三个键分别删、分别回显
+    {name:'删除代理', desc:'依次删 http_proxy / host / port，逐条回执', cmd:':proxydel', cat:'后台入口'},
     // ---- 日志导出 ----
     // 三条都落到 桌面\logcat\<今天>\<分类>，与 :dlog / :anr / :dropbox 同一套落点规则
     {name:'导出支付宝日志', desc:'applog → 桌面logcat\\日期\\alipay', cmd:':wsalipay', progress:true, cat:'日志导出'},
@@ -5969,6 +5975,13 @@ function runQuickAt(g, j, cardEl){
     setCardIcon(card, 'running');
   }
 
+  // R1 兜底：卡片若被脚本/键盘绕过点进来，也不许下发设备类指令
+  var _c = String(it.cmd || '');
+  if (!_online && _c.indexOf(':url') !== 0) {
+    toast('设备未连接');
+    return;
+  }
+
   // 立即置忙：防止这一条还没收到 begin 回执前又点进第二条
   _busy[0] = true;
 
@@ -6030,6 +6043,29 @@ function setEnabled(el, on, reason){
     el.removeAttribute('data-title');
   }
 }
+/* R1（2026-11-19）：无设备时的统一置灰。
+   原来只有"执行时拦截"，按钮看着是亮的 —— 用户点了才被告知没设备。
+   现在设备状态一变就把执行入口置灰（走 setEnabled，语义/命中/观感/可达性一次设全）。
+   注意：:url 是"用电脑浏览器打开链接"，不依赖设备，不能跟着禁。 */
+function applyOnlineGate(){
+  var off = !_online;
+  var why = off ? '设备未连接，连上后自动恢复' : '';
+
+  var vb = document.getElementById('btn-vr-send');
+  if (vb) setEnabled(vb, !off, why);
+
+  var cards = document.querySelectorAll('#quick-grid .qcard');
+  for (var i = 0; i < cards.length; i++){
+    var c = cards[i];
+    var g = parseInt(c.getAttribute('data-g'), 10);
+    var j = parseInt(c.getAttribute('data-j'), 10);
+    var it = (quickGroups[g] && quickGroups[g].items) ? quickGroups[g].items[j] : null;
+    var cmd = it ? String(it.cmd || '') : '';
+    if (cmd.indexOf(':url') === 0) continue;      // 电脑侧打开，不受设备状态影响
+    setEnabled(c, !off, why);
+  }
+}
+
 function setVrMode(m){
   _vrMode = m;
   var inBtn = document.getElementById('vrmode-in');
@@ -12153,6 +12189,7 @@ document.addEventListener('DOMContentLoaded', function (){
             + '</div>';
     }
     grid.innerHTML = html;
+    try { applyOnlineGate(); } catch (e) {}   // R1：新渲染的卡片同样按在线状态置灰
   };
 
   /* 输入防抖放在"事件入口"这一层，而不是替换 onQuickSearch：

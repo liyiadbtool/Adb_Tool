@@ -272,6 +272,9 @@ namespace AdbLogExport
             }
 
             // :wsdevid  查设备标识（navi.did / android_id / navi.uuid）
+            // :proxydel  删除代理（三个键分别删、分别回显）
+            if (n == "proxydel" || n == "delproxy") { DoProxyDel(); return; }
+
             if (n == "wsdevid" || n == "devid") { DoDeviceId(); return; }
 
             // :url <地址>  用桌面系统默认浏览器打开（不是车机）

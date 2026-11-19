@@ -1,8 +1,8 @@
 {
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
- "count": 128,
- "totalBytes": 3360234,
+ "count": 129,
+ "totalBytes": 3370313,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -126,8 +126,8 @@
   },
   {
    "path": "377/_test_busy_lock.py",
-   "size": 6958,
-   "sha256": "514461bcf12f52f1d7ec635f6bd1db0b37afff04e6ec06af7adf49eb86026230"
+   "size": 7223,
+   "sha256": "b6aa1b90d4eed792db0da5c3512b958b95e313b0aa0bbc953c165a680f3c5548"
   },
   {
    "path": "377/_test_cast_ui.py",
@@ -176,8 +176,8 @@
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 58440,
-   "sha256": "3fa5c21b5dfb9f7c43539d4f34964219c940282112e1ad2f4234774c7e849eab"
+   "size": 59820,
+   "sha256": "b51f893c5f06068cbcd7265aff013e171de8cf2425c072d40ad478c5d38b513e"
   },
   {
    "path": "377/_test_ux.py",
@@ -376,8 +376,8 @@
   },
   {
    "path": "_cs/Prefix.cs",
-   "size": 51792,
-   "sha256": "ad14df07536403a6b7ff678f6c3d6fdb54b65a79e597b97fa1ad5ff932cb7839"
+   "size": 51949,
+   "sha256": "82ec5e5639f6d3f1666d8be8edba48781a9c407291bbd625fee2d7990e9784ee"
   },
   {
    "path": "_cs/Probe.cs",
@@ -416,8 +416,8 @@
   },
   {
    "path": "_cs/TaskCmds.cs",
-   "size": 73737,
-   "sha256": "9b79612f40f381889f8d1eaaad120d1a7c62355c05bff6f76867fd13695c8c60"
+   "size": 75671,
+   "sha256": "0c20382a9bb391019a60b6f18c5010a845afcf245f78f1b4db078033f8d5419e"
   },
   {
    "path": "_cs/Voice.cs",
@@ -511,8 +511,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 865116,
-   "sha256": "223668f6bac80d1118183b34adec1b006f4d97b3a655873e39d00b533b66ec4d"
+   "size": 867025,
+   "sha256": "cdf6bec134dbb075d4259b97abc2084e5357c8372d32df88aeec64f0facaa5a7"
   },
   {
    "path": "cmds.ini",
@@ -603,6 +603,11 @@
    "path": "docs/性能测试报告_20261117.md",
    "size": 4588,
    "sha256": "52d26d0f304c6d7ddc89bbe85308ab5dab793ec76772104efa90edd172b420c4"
+  },
+  {
+   "path": "docs/投屏6格需求排期_20261119.md",
+   "size": 4434,
+   "sha256": "cd5f9454b9844ba392b739b3691861c193eb58b2b5aed320668a5bcb91189171"
   },
   {
    "path": "docs/明天到公司继续开发.md",

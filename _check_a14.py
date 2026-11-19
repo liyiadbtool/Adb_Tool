@@ -107,7 +107,8 @@ JS = r"""
 
     var items = quickGroups[ws].items;
     // 2026-11-19：新增星河座舱云两条（准上线/测试），13 → 15
-    ok('网联服务 15 条卡片', items.length === 15, items.length);
+    // 2026-11-19：+打开隐私授权 +删除代理 → 17
+    ok('网联服务 17 条卡片', items.length === 17, items.length);
 
     var want = ['AI智能推荐后台','配置中心后台','支付宝后台','上传支付宝日志',
                 '导出支付宝日志','导出微信小程序日志','导出车载微信日志',
@@ -153,7 +154,7 @@ JS = r"""
     if (hit >= 0){
       nav[hit].click();
       var cards = document.querySelectorAll('#quick-grid .qcard');
-      ok('渲染出 15 张卡', cards.length === 15, cards.length);
+      ok('渲染出 17 张卡', cards.length === 17, cards.length);
       var _cats = document.querySelectorAll('#quick-grid .qcat');
       ok('渲染出 4 个分类小标题', _cats.length === 4,
          _cats.length + '：' + [].map.call(_cats, function(e){ return e.textContent; }).join('/'));

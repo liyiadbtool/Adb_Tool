@@ -264,6 +264,8 @@ A30_ADDS = {
     # 菜单项本身是动态节点，不进静态扫描）
     "onclicks": set(["fsRetry", "fsPathEdit", "fsPathDone"]),
     # T3：代理状态与实时流量显示
+    # R2/R5（2026-11-19）：新增两条网联服务卡片，没有新 id；但 :proxydel 是内置命令，
+    # 门禁的 kind/onclick 都扫不到，靠 _check_a14 的卡片断言覆盖。
     "ids": set(["ns-state", "ns-stat"]),
 }
 

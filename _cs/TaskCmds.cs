@@ -1505,6 +1505,35 @@ namespace AdbLogExport
                : "星河云埋点：未完全开启（privacy_enabled=" + pv + "）");
         }
 
+        // :proxydel   删除代理：三个键分别删、分别回显
+        //
+        // 为什么不在 cmds.ini 里写一条 `a; b; c`：那样只有一段合并输出，
+        // 某个键没删掉时看不出是哪一条。分三次 ShellStep 才能逐条对账。
+        private static void DoProxyDel()
+        {
+            if (!RequireDevice("")) return;
+            CMD_OK = true;
+            string[] keys = new string[]
+            {
+                "http_proxy",
+                "global_http_proxy_host",
+                "global_http_proxy_port"
+            };
+            for (int i = 0; i < keys.Length; i++)
+            {
+                if (!ShellStep("settings delete global " + keys[i], "删除 " + keys[i]))
+                    CMD_OK = false;
+            }
+            // 双判：删完回读一次，只删 http_proxy 会留下 host/port 残值
+            string left = ShellValue("settings get global http_proxy");
+            if (left != null && left.Trim().Length > 0 && left.Trim() != "null")
+            {
+                Warn("http_proxy 回读仍是「" + left.Trim() + "」，可能被系统策略写回");
+                CMD_OK = false;
+            }
+            else if (CMD_OK) Ok("三个代理键已删除，回读 http_proxy = null");
+        }
+
         // :sxlog set   只写 privacy_enabled=true（不重启、不动属性）
         private static void DoSxTraceSet()
         {
@@ -1515,9 +1544,20 @@ namespace AdbLogExport
                 return;
             }
             string pv = ShellValue("settings get global privacy_enabled");
-            CMD_OK = (pv == "1");
-            if (CMD_OK) Ok("privacy_enabled = 1（已回读确认）");
+            // 2026-11-19：原来只认 "1"，但这台车机回读的是字符串 "true" ——
+            // 写入成功也被判成失败（用户反馈「打红星但还是 true」）。
+            // Settings 的值在不同 ROM 上可能是 1 / true / on，三种都算开。
+            CMD_OK = PrivacyOn(pv);
+            if (CMD_OK) Ok("privacy_enabled = " + pv + "（已回读确认）");
             else Warn("写入后回读是「" + pv + "」，可能被系统策略覆盖");
+        }
+
+        /// <summary>privacy_enabled 的回读值是否代表"已开启"（1 / true / on，大小写不敏感）。</summary>
+        internal static bool PrivacyOn(string v)
+        {
+            if (v == null) return false;
+            string t = v.Trim().ToLowerInvariant();
+            return t == "1" || t == "true" || t == "on";
         }
 
         // :wsdevid   查询设备 ID（DID + android_id）

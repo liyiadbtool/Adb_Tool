@@ -703,6 +703,27 @@ BEHAVIOR = r"""
          && testCard.cmd.indexOf('web-test.syncore.space') > 0,
          testCard ? testCard.cmd : '没有');
 
+      /* ---- R1（2026-11-19）：无设备时指令入口置灰 ---- */
+      setStatus({dev:'', online:false, rooted:false});
+      var sendBtn = document.getElementById('btn-vr-send');
+      ok('R1 离线时语音发送置灰', !!sendBtn && sendBtn.disabled === true && sendBtn.classList.contains('is-disabled'));
+      ok('R1 置灰带原因', (sendBtn.title || '').indexOf('设备未连接') >= 0, sendBtn.title);
+      setStatus({dev:'x', online:true, rooted:true});
+      ok('R1 上线后恢复可点', sendBtn.disabled === false && !sendBtn.classList.contains('is-disabled'));
+
+      /* ---- R2/R5（2026-11-19）：网联服务新增两条卡片 ---- */
+      var wsG2 = null;
+      for (var wi2 = 0; wi2 < quickGroups.length; wi2++) if (quickGroups[wi2].name === '网联服务') wsG2 = quickGroups[wi2];
+      var privCard = null, delCard = null;
+      if (wsG2) for (var ci2 = 0; ci2 < wsG2.items.length; ci2++){
+        if (wsG2.items[ci2].name === '打开隐私授权') privCard = wsG2.items[ci2];
+        if (wsG2.items[ci2].name === '删除代理') delCard = wsG2.items[ci2];
+      }
+      ok('R5 打开隐私授权卡片存在', !!privCard && privCard.cmd === ':sxlog set',
+         privCard ? privCard.cmd : '没有');
+      ok('R2 删除代理卡片存在且走 :proxydel', !!delCard && delCard.cmd === ':proxydel',
+         delCard ? delCard.cmd : '没有');
+
       var nsIdx = grpIdx('网络模拟');
       ok('NS 存在「网络模拟」分组', nsIdx >= 0, nsIdx);
       if(nsIdx >= 0){

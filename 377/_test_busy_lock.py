@@ -65,6 +65,9 @@ BEHAVIOR = r"""
 
   function main(){
     try{
+      // R1（2026-11-19）：无设备时卡片会被 applyOnlineGate 置灰、点击直接拦掉。
+      // 这个套件测的是"并发互斥"，场景本身要求设备在线，所以先置在线。
+      setStatus({dev:'test-dev', online:true, rooted:true});
       // 切到快捷指令页，取前两张卡片
       switchTab('quick');
       var cards = document.querySelectorAll('#quick-grid .qcard');
