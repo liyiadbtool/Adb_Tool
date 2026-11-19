@@ -290,6 +290,88 @@ JS = r"""
       ok('删除后旧内容消失', textOf('apk-out').indexOf('3.2.1.261026') < 0, textOf('apk-out').slice(0, 60));
       ok('删除后回到空态', textOf('apk-out').indexOf('还没有输出') >= 0, textOf('apk-out').slice(0, 60));
 
+      /* ---------- T7（2026-11-19）：包名输入框（输入框优先） ---------- */
+      var pi = document.getElementById('apk-pkg-input');
+      var ph = document.getElementById('apk-pkg-hint');
+      ok('T7 包名输入框与提示已就位', !!pi && !!ph);
+
+      // 未选、未输 → 全部禁用
+      _apkSel = null; pi.value = ''; apkPkgInput();
+      ok('T7 两者都空时动作按钮禁用',
+         document.getElementById('apk-btn-clear').disabled &&
+         document.getElementById('apk-btn-query').disabled);
+
+      // 非法输入 → 红边 + 提示 + 仍禁用
+      pi.value = 'com'; apkPkgInput();
+      ok('T7 非法包名显示红边与提示',
+         pi.classList.contains('bad') && ph.textContent.indexOf('带点') >= 0 &&
+         document.getElementById('apk-btn-query').disabled,
+         'bad=' + pi.classList.contains('bad') + ' hint=' + ph.textContent);
+
+      // 合法输入 → 解除禁用 + 打勾（按钮启停依赖 _online 与 _apkBusy，先复位）
+      _online = true; _apkBusy = false;
+      pi.value = 'com.gac.user.center'; apkPkgInput();
+      ok('T7 合法包名解除禁用并打勾',
+         !pi.classList.contains('bad') &&
+         document.getElementById('apk-btn-query').disabled === false &&
+         ph.textContent.indexOf('✓') >= 0, ph.textContent);
+
+      // 回车 = 查询，且 pkg 就是输入值
+      _online = true;                      // 前面几段把离线态留在这儿，先复位
+      pi.value = 'com.gac.user.center'; apkPkgInput();
+      var beforeN = SENT.length;
+      apkPkgKey({key:'Enter', preventDefault:function(){}});
+      var lastSent = SENT.length ? SENT[SENT.length-1] : null;
+      ok('T7 回车发出 apkquery 且 pkg 等于输入值',
+         SENT.length === beforeN + 1 && lastSent && lastSent.kind === 'apkquery'
+         && lastSent.pkg === 'com.gac.user.center',
+         lastSent ? (lastSent.kind + ':' + lastSent.pkg) : '无');
+
+      // 两者同时有值 → 输入框优先
+      _apkSel = 'com.android.settings';
+      pi.value = 'com.gac.user.center'; apkPkgInput();
+      ok('T7 两者同时有值时以输入框为准', apkTarget() === 'com.gac.user.center', apkTarget());
+
+      // 清空输入框 → 回落到下拉选中项
+      pi.value = ''; apkPkgInput();
+      ok('T7 清空输入框回落到下拉选中项', apkTarget() === 'com.android.settings', apkTarget());
+
+      // 下拉选中 → 清空输入框
+      pi.value = 'com.gac.user.center';
+      pickApk('com.android.settings');
+      ok('T7 从下拉选中会清空输入框', pi.value === '', 'v=' + pi.value);
+
+      // 粘贴 package: 前缀 → 自动剥掉
+      pi.value = '';
+      apkPkgPaste({clipboardData:{getData:function(){ return 'package:com.gac.user.center'; }},
+                   preventDefault:function(){}});
+      ok('T7 粘贴 package: 前缀自动剥离', pi.value === 'com.gac.user.center', pi.value);
+
+      // 「填入」把前台包名写进输入框
+      _apkFront = 'com.gac.user.center';
+      pi.value = '';
+      apkFillFront();
+      ok('T7 「填入」把前台包名写进输入框', pi.value === 'com.gac.user.center', pi.value);
+
+      pi.value = ''; apkPkgInput();
+
+
+      /* ---------- T8（2026-11-19）：卸载按钮（无二次确认） ---------- */
+      _online = true; _apkBusy = false;
+      pi.value = ''; pickApk('com.gac.user.center'); apkPkgInput();
+      ok('T8 选中应用后卸载按钮解除禁用',
+         document.getElementById('apk-btn-uninstall').disabled === false);
+      var beforeU = SENT.length;
+      apkAct('uninstall');
+      var uMsg = SENT.length ? SENT[SENT.length-1] : null;
+      ok('T8 点击发出 apkact 且 act=uninstall、pkg 正确',
+         SENT.length === beforeU + 1 && uMsg && uMsg.kind === 'apkact'
+         && uMsg.act === 'uninstall' && uMsg.pkg === 'com.gac.user.center',
+         uMsg ? (uMsg.kind + ':' + uMsg.act + ':' + uMsg.pkg) : '无');
+      ok('T8 头行写明卸载对象',
+         textOf('apk-out').indexOf('卸载APK') >= 0, textOf('apk-out').slice(0, 60));
+      _apkBusy = false;
+
     }catch(e){
       ok('运行异常', false, e.message);
     }

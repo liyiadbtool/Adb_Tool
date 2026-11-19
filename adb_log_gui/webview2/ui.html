@@ -845,6 +845,18 @@ body{
 }
 .apk-row{display:flex;align-items:center;gap:8px;min-width:0;}
 .apk-row .btn{height:32px;flex:0 0 auto;}
+/* T7：包名输入框（单独一行）。非法时红边 + 右侧提示，按钮同时保持禁用。 */
+.apk-pkg{
+  flex:1;min-width:0;height:32px;padding:0 10px;
+  background:var(--bg);color:var(--text);
+  border:1px solid var(--border);border-radius:6px;
+  font-family:var(--font-mono);font-size:13px;
+}
+.apk-pkg:focus{outline:none;border-color:var(--accent);}
+.apk-pkg.bad{border-color:var(--err);}
+.apk-pkg::placeholder{color:var(--text-faint);font-family:var(--font-ui);}
+.apk-pkghint{flex:0 0 auto;font-size:12px;color:var(--err);white-space:nowrap;}
+.apk-pkghint.ok{color:var(--ok);}
 /* 下拉容器：面板里唯一会"浮起来"的东西，因此自己带定位上下文 */
 .apk-select{position:relative;flex:1;min-width:0;}
 .apk-selbtn{
@@ -3486,6 +3498,14 @@ body::after{
                交互顺序刻意照用户习惯排：先选应用 → 再点动作；
                下拉里只显示名称（包名只在管理列表里出现，避免一眼两列信息打架）。 -->
           <div class="apk-panel" id="apk-panel" style="display:none;">
+            <!-- T7（2026-11-19）：包名可以直接手输 —— 与下拉互为备份，**输入框优先**。
+                 刻意单独占一行：下拉自己带过滤框，并排会被误认为"又一个过滤框"。 -->
+            <div class="apk-row apk-pkgrow">
+              <input id="apk-pkg-input" class="apk-pkg" autocomplete="off" spellcheck="false"
+                     placeholder="或直接输入包名，如 com.example.app（回车查询）"
+                     oninput="apkPkgInput()" onkeydown="apkPkgKey(event)" onpaste="apkPkgPaste(event)">
+              <span class="apk-pkghint" id="apk-pkg-hint"></span>
+            </div>
             <div class="apk-row">
               <div class="apk-select" id="apk-select">
                 <button class="apk-selbtn" id="apk-selbtn" onclick="toggleApkDrop(event)" title="选择要操作的应用">
@@ -3502,11 +3522,15 @@ body::after{
               <button class="btn" id="apk-btn-kill" onclick="apkAct('kill')" disabled>关闭进程</button>
               <button class="btn" id="apk-btn-query" onclick="apkQuerySel()" disabled title="查询选中应用：名称 / 版本 / 包名 / 路径 / pid">查询</button>
               <button class="btn" id="apk-btn-export" onclick="apkAct('export')" disabled>导出APK</button>
+              <!-- T8（2026-11-19）：卸载不加二次确认（用户明确要求），
+                   不可逆风险由"正反双判 + 明确结果提示"承担。 -->
+              <button class="btn" id="apk-btn-uninstall" onclick="apkAct('uninstall')" disabled title="adb uninstall：卸载选中的应用（不可撤销）">卸载APK</button>
             </div>
 
             <div class="apk-row">
               <span class="apk-front" id="apk-front">当前前台：—</span>
               <button class="btn ghost" onclick="apkQueryFront()" title="查询当前前台应用（等价 :pkg now）">查询前台应用</button>
+              <button class="btn ghost" id="apk-btn-fillfront" onclick="apkFillFront()" disabled title="把当前前台应用的包名填进上面的输入框">填入</button>
               <button class="btn ghost" onclick="apkAddCurrentFront()" title="把当前前台应用加进列表">加入列表</button>
               <div class="spacer"></div>
               <button class="btn ghost" onclick="openApkMgr()">＋ 管理列表</button>
@@ -6376,23 +6400,107 @@ var APK_TIPS = {
   query:'查询选中应用的名称 / 版本 / 包名 / 路径 / pid（一条 dumpsys，不动应用状态）',
   clear:'pm clear：清理全部应用数据（登录态、授权都会没），应用回到刚安装状态',
   kill:'am force-stop：只关闭进程，应用数据完整保留',
-  export:'导出到 桌面\\logcat\\<日期>\\APK（多 split 会一起导出，不打包）'
+  export:'导出到 桌面\\logcat\\<日期>\\APK（多 split 会一起导出，不打包）',
+  uninstall:'adb uninstall：卸载应用（不可撤销；系统应用通常不允许卸载）'
 };
 /* T6（2026-11-19）：原来漏了 apk-btn-query —— HTML 上写死的 disabled 永远没人清，
    查询按钮永远是灰的。apkQuerySel() 自身有 _apkSel 守卫，这里补一行即可。 */
 var APK_BTNS = { 'apk-btn-query':'query', 'apk-btn-clear':'clear',
-                 'apk-btn-kill':'kill', 'apk-btn-export':'export' };
+                 'apk-btn-kill':'kill', 'apk-btn-export':'export',
+                 'apk-btn-uninstall':'uninstall' };
+
+/* ===== T7（2026-11-19）：包名输入框（与下拉互为备份，**输入框优先**）=====
+   需求模型：目标 = 输入框（手输）或下拉（预设），输入框有内容就以它为准。
+   不新增 message kind —— apkquery / apkact 本来就只收一个 pkg 字符串。 */
+
+/* 与后端 App.ApkPkgValid 同口径：≥3 字符、含点、不以点结尾、仅 a-zA-Z0-9._ */
+function apkPkgOk(p){
+  p = (p || '').replace(/^\s+|\s+$/g, '');
+  if (p.length < 3 || p.length > 200) return false;
+  if (p.indexOf('.') <= 0) return false;
+  if (p.charAt(p.length - 1) === '.') return false;
+  return /^[A-Za-z0-9._]+$/.test(p);
+}
+
+/* 当前生效的目标：输入框优先，空了回落到下拉选中项 */
+function apkTarget(){
+  var el = document.getElementById('apk-pkg-input');
+  var t = el ? (el.value || '').replace(/^\s+|\s+$/g, '') : '';
+  return t ? t : _apkSel;
+}
+
+/* 输入合法性 + 红边 + 提示 + 按钮启停 */
+function apkPkgInput(){
+  var el = document.getElementById('apk-pkg-input');
+  var hint = document.getElementById('apk-pkg-hint');
+  if(!el || !hint) return;
+  var t = (el.value || '').replace(/^\s+|\s+$/g, '');
+  if(!t){
+    el.classList.remove('bad');
+    hint.textContent = '';
+    hint.className = 'apk-pkghint';
+  } else if (apkPkgOk(t)){
+    el.classList.remove('bad');
+    var hit = apkFind(t);
+    hint.textContent = hit ? ('✓ ' + hit.name) : '✓ 格式正确';
+    hint.className = 'apk-pkghint ok';
+  } else {
+    el.classList.add('bad');
+    hint.textContent = '包名要写成 com.example.app 这种带点的形式';
+    hint.className = 'apk-pkghint';
+  }
+  updateApkButtons();
+}
+
+/* 回车 = 查询 */
+function apkPkgKey(ev){
+  if(ev && ev.key === 'Enter'){
+    ev.preventDefault();
+    apkQuerySel();
+  }
+}
+
+/* 粘贴时剥掉 package: 前缀（adb 输出、系统设置里复制出来的都带它） */
+function apkPkgPaste(ev){
+  try{
+    var txt = (ev.clipboardData || window.clipboardData).getData('text') || '';
+    var m = txt.match(/package:\s*([A-Za-z0-9._]+)/);
+    if(m){
+      ev.preventDefault();
+      var el = document.getElementById('apk-pkg-input');
+      el.value = m[1];
+      apkPkgInput();
+    }
+  }catch(e){}
+}
+
+/* 「填入」：把当前前台应用的包名塞进输入框（执行后不清空） */
+function apkFillFront(){
+  if(!_apkFront){ toast('先点「查询前台应用」拿到当前应用'); return; }
+  var el = document.getElementById('apk-pkg-input');
+  if(!el) return;
+  el.value = _apkFront;
+  apkPkgInput();
+  toast('已填入 ' + _apkFront);
+}
 
 function updateApkButtons(){
   var online = !!_online;
+  // T7：目标以 apkTarget() 为准（输入框优先），并且手输的包名要先过格式校验
+  var tgt = apkTarget();
+  var hasTgt = !!tgt && (!apkFind(tgt) ? apkPkgOk(tgt) : true);
   for(var id in APK_BTNS){
     var b = document.getElementById(id);
     if(!b) continue;
-    b.disabled = !_apkSel || _apkBusy || !online;
+    b.disabled = !hasTgt || _apkBusy || !online;
     if(!online) b.title = '设备未连接';
-    else if(!_apkSel) b.title = '先在左侧选一个应用';
+    else if(!tgt) b.title = '先选一个应用，或直接输入包名';
+    else if(!hasTgt) b.title = '包名格式不对：要写成 com.example.app 这种带点的形式';
     else b.title = APK_TIPS[APK_BTNS[id]];
   }
+  // 「填入」按钮跟随"有没有拿到前台包名"
+  var fb = document.getElementById('apk-btn-fillfront');
+  if(fb) fb.disabled = !_apkFront;
   var vb = document.getElementById('apk-btn-ver');
   if(vb){
     vb.disabled = _apkBusy || !online || _apkApps.length === 0;
@@ -6502,6 +6610,10 @@ function onApkFilterKey(ev){
 
 function pickApk(pkg){
   _apkSel = pkg;
+  // T7 互斥规则：从下拉选一项 → 清空输入框（否则"输入框优先"会让下拉看起来没生效）
+  var el = document.getElementById('apk-pkg-input');
+  if(el && el.value){ el.value = ''; }
+  if(typeof apkPkgInput === 'function') apkPkgInput();
   closeApkDrop();
   renderApkSelect();
   updateApkButtons();
@@ -6641,12 +6753,17 @@ function apkOutText(text, level){
 
 function apkAct(act){
   if(_apkBusy) return;
-  if(!_apkSel){ toast('先选一个应用'); return; }
-  var label = act === 'clear' ? '清理数据' : (act === 'kill' ? '关闭进程' : '导出APK');
-  apkOutSection(label + '  ' + apkSelName() + '（' + _apkSel + '）');
+  var tgt = apkTarget();                     // T7：输入框优先
+  if(!tgt){ toast('先选一个应用，或直接输入包名'); return; }
+  if(!apkFind(tgt) && !apkPkgOk(tgt)){ toast('包名要写成 com.example.app 这种带点的形式'); return; }
+  var label = act === 'clear' ? '清理数据'
+            : (act === 'kill' ? '关闭进程'
+            : (act === 'uninstall' ? '卸载APK' : '导出APK'));
+  var a = apkFind(tgt);
+  apkOutSection(label + '  ' + (a ? a.name : tgt) + '（' + tgt + '）');
   _apkBusy = true;
   updateApkButtons();
-  postObj({kind:'apkact', pkg:_apkSel, act:act});
+  postObj({kind:'apkact', pkg:tgt, act:act});
 }
 
 function apkQueryVersions(){
@@ -6670,16 +6787,18 @@ function apkQueryFront(){
 // 单点查询选中应用：包名 / Activity / 路径 / 版本 / pid
 // 与「查前台」的区别：这个查"你选中的包"，用 adb 直接取，不依赖当前前台是谁。
 function apkQuerySel(){
-  if(!_apkSel){ toast('先选一个应用'); return; }
+  var tgt = apkTarget();                     // T7：输入框优先
+  if(!tgt){ toast('先选一个应用，或直接输入包名'); return; }
   if(!_online){ toast('设备未连接'); return; }
+  if(!apkFind(tgt) && !apkPkgOk(tgt)){ toast('包名要写成 com.example.app 这种带点的形式'); return; }
 
-  var a = apkFind(_apkSel);
-  var name = a ? a.name : _apkSel;
+  var a = apkFind(tgt);
+  var name = a ? a.name : tgt;
   apkOutSection('查询：' + name);
   if(_apkCurBody){
     _apkCurBody.innerHTML = '<div class="apk-mgr-empty">查询中…</div>';
   }
-  postObj({kind:'apkquery', pkg:_apkSel});
+  postObj({kind:'apkquery', pkg:tgt});
 }
 
 function onApkDetail(m){

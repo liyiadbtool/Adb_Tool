@@ -1410,6 +1410,13 @@ namespace AdbLogExport
                     !PmClearSucceeded("Success\nFailed to clear package"));
             STCheck("pm clear 权限拒绝判失败",
                     !PmClearSucceeded("Error: java.lang.SecurityException: Permission Denial"));
+
+            // T8（2026-11-19）：卸载同样要双判 —— rc=0 但输出 Failure 必须判失败
+            STCheck("uninstall Success 判成功", UninstallSucceeded("Success"));
+            STCheck("uninstall rc=0 但 Failure 判失败",
+                    !UninstallSucceeded("Failure [DELETE_FAILED_INTERNAL_ERROR]"));
+            STCheck("uninstall 系统包拒绝判失败",
+                    !UninstallSucceeded("Failure [DELETE_FAILED_INTERNAL_ERROR]\nSuccess"));
             STCheck("pm clear 空输出判失败", !PmClearSucceeded(""));
 
             List<string> pm = ParsePmPathLines(

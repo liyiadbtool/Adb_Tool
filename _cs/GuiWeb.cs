@@ -2834,6 +2834,11 @@ namespace AdbLogExport.Gui
             {
                 RunApkJob(delegate { return App.ExportPkg(pkg); }, "导出APK " + pkg);
             }
+            else if (act == "uninstall")
+            {
+                // T8：不加二次确认弹层（用户明确要求），风险靠正反双判 + 明确提示兜
+                RunApkJob(delegate { return App.UninstallPkg(pkg); }, "卸载APK " + pkg);
+            }
             else
             {
                 PushApkAck(false, "未知动作：" + act, "act");
@@ -2898,6 +2903,15 @@ namespace AdbLogExport.Gui
         private void RunApkQuery(string pkg)
         {
             if (string.IsNullOrEmpty(pkg)) return;
+            // T7（2026-11-19）：前端现在允许**直接手输包名**，这条路原来完全没有校验，
+            // 会把用户输入原样 ShQuote 塞进 shell。补一道与前端同口径的守卫
+            // （≥3 字符、含点、不以点结尾、仅 a-zA-Z0-9._），非法就只提示、不落 shell。
+            string perr = "";
+            if (!App.ApkPkgValid(pkg, out perr))
+            {
+                PushApkAck(false, "包名不合法：" + perr + "（收到的值是「" + pkg + "」）", "query");
+                return;
+            }
 
             Thread th = new Thread(new ThreadStart(delegate()
             {

@@ -136,6 +136,21 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-19 · D6-D7：T7 / T8）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **T7 APK 包名输入框** | `ui.html` 新增一行 + `apkTarget()`/`apkPkgOk()`/`apkPkgInput()`/`apkPkgKey()`/`apkPkgPaste()`/`apkFillFront()` | 输入框**优先**于下拉；从下拉选一项自动清空输入框、清空输入框回落下拉；格式不合法红边+提示+按钮禁用；回车查询；粘贴剥 `package:` 前缀；「填入」把前台包名写进框。校验口径与后端 `App.ApkPkgValid` 一致（≥3 字符、含点、不以点结尾、仅 `a-zA-Z0-9._`） |
+| 2 | T7 后端守卫 | `GuiWeb.RunApkQuery` | 原来手输包名会**原样 ShQuote 进 shell**，补 `ApkPkgValid` 守卫，非法只回 `apkack` 不落 shell |
+| 3 | **T8 卸载 APK** | `ApkCmds.UninstallPkg` + `RunApkAct` + 按钮 | 不加二次确认（用户明确要求）；`adb uninstall` 失败时退出码也可能 0，抽出纯函数 `UninstallSucceeded` 做**正反双判**（Success 且无 Failure/Failed/Exception/denied/unknown package/not installed）；系统包失败给原因提示 |
+| 4 | 门禁登记 | `_gate_invariants.py` `A29_ADDS` | 新 id：`apk-pkg-input` / `apk-pkg-hint` / `apk-btn-fillfront` / `apk-btn-uninstall`；新 onclick：`apkPkgInput` / `apkPkgKey` / `apkPkgPaste` / `apkFillFront` |
+| 5 | 回归 | `_test_apk_ui.py` 63 → **76 条**；CLI 自检 +3 | T7 十条（含互斥四条）、T8 三条；`UninstallSucceeded` 三处打靶（Success / rc=0 但 Failure / 系统包拒绝） |
+| 6 | 文档 | `docs/用户使用手册.md` | 6.3 补「查询」「卸载APK」两行 + 「直接输入包名」小节 |
+
+验收：**28 项 / 0 失败（159s）**；APK 管理 76/76；功能不变量 44 项 0 失败。
+
+---
+
 ### 本轮做了什么（2026-11-19 · D4：T4 / T6 / T9）
 
 | # | 需求 | 落点 | 说明 |

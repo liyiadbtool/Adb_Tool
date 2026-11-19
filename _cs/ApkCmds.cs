@@ -92,6 +92,75 @@ namespace AdbLogExport
             return true;
         }
 
+        // ==================== 卸载（adb uninstall）====================
+        // T8（2026-11-19）：用户明确"无需二次确认"。不可逆风险由
+        // 「正反双判 + 明确结果提示」承担 —— 和 pm clear 同一套口径：
+        //   正向：输出里出现 Success
+        //   反向：Failed / Exception / DELETE_FAILED_* / denied / unknown package
+        // 注意：`adb uninstall` 在 Failure [DELETE_FAILED_INTERNAL_ERROR] 时
+        // 退出码也可能是 0，只看 rc 会把失败当成功。
+        internal static bool UninstallPkg(string pkg)
+        {
+            string err = "";
+            if (!ApkPkgValid(pkg, out err))
+            {
+                Fail("包名不合法：" + err);
+                return false;
+            }
+            if (!RequireDevice("")) return false;
+
+            Echo("adb uninstall", pkg);
+
+            string o = "";
+            string e = "";
+            int rc = ShellCall(CUR, "adb uninstall " + pkg, out o, out e);
+            if (rc != 0 && (o + e).Trim().Length == 0)
+            {
+                // 某些机型 adb 在设备 shell 里不接受嵌套 adb，退一步用 pm uninstall
+                rc = ShellCall(CUR, "pm uninstall " + pkg, out o, out e);
+            }
+
+            string combined = (o + "\n" + e).Trim();
+            string low = combined.ToLowerInvariant();
+            string detail = FirstLine(combined);
+
+            if (!UninstallSucceeded(combined))
+            {
+                CMD_OK = false;
+                Fail("卸载失败" + (detail.Length > 0 ? "：" + detail : "（没有返回 Success）"));
+                if (low.IndexOf("intern") >= 0 || low.IndexOf("system") >= 0)
+                    Hint("系统应用通常不允许卸载；确认包名是否正确，或换用「清理数据」");
+                else if (low.IndexOf("unknown package") >= 0 || low.IndexOf("not installed") >= 0)
+                    Hint("设备上没装这个包：" + pkg);
+                else if (low.IndexOf("denied") >= 0)
+                    Hint("权限不足：先点顶部 ROOT 按钮提权");
+                return false;
+            }
+
+            CMD_OK = true;
+            Ok("已卸载  " + pkg);
+            Hint("卸载不可撤销；需要时可重新安装 APK");
+            return true;
+        }
+
+        // adb uninstall 的结果判定（纯函数，自检直接打靶）
+        //   正向：输出里出现 Success
+        //   反向：Failure / Failed / Exception / denied / unknown package / not installed
+        // 为什么要双判：`adb uninstall` 在 Failure [DELETE_FAILED_INTERNAL_ERROR] 时
+        // 退出码也可能是 0 —— 只看 rc 会把失败当"卸载成功"。
+        internal static bool UninstallSucceeded(string combined)
+        {
+            string low = (combined == null) ? "" : combined.ToLowerInvariant();
+            if (low.IndexOf("success") < 0) return false;
+            if (low.IndexOf("failure") >= 0) return false;
+            if (low.IndexOf("failed") >= 0) return false;
+            if (low.IndexOf("exception") >= 0) return false;
+            if (low.IndexOf("denied") >= 0) return false;
+            if (low.IndexOf("unknown package") >= 0) return false;
+            if (low.IndexOf("not installed") >= 0) return false;
+            return true;
+        }
+
         // ==================== 关闭进程（am force-stop）====================
         internal static bool KillPkg(string pkg)
         {

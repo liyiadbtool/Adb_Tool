@@ -237,6 +237,18 @@ A27_ADDS = {
     "ids": set(["build-stamp"]),
 }
 
+# A29（2026-11-19）：T7 APK 包名输入框。
+#   apk-pkg-input   手输包名的输入框（与下拉互为备份，输入框优先）
+#   apk-pkg-hint    右侧校验提示（非法红字 / 合法打勾 + 命中的中文名）
+#   apk-btn-fillfront 「填入」：把当前前台包名写进输入框
+#   三个 onclick 都是新增函数：输入校验 / 回车查询 / 粘贴剥 package: 前缀
+A29_ADDS = {
+    "kinds": set(),
+    "onclicks": set(["apkPkgInput", "apkPkgKey", "apkPkgPaste", "apkFillFront"]),
+    "ids": set(["apk-pkg-input", "apk-pkg-hint", "apk-btn-fillfront",
+              "apk-btn-uninstall"]),
+}
+
 labels = {
     "kinds": "onMessage 的 kind（基线 %d）" % len(base["kinds"]),
     "onclicks": "onclick 绑定函数（基线 %d）" % len(base["onclicks"]),
@@ -252,7 +264,8 @@ for k in ("kinds", "onclicks", "ids"):
              if x not in A9_ADDS[k] and x not in A12_ADDS[k]
              and x not in A13_ADDS[k] and x not in A14_ADDS[k]
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
-             and x not in A17_ADDS[k] and x not in A27_ADDS[k]]
+             and x not in A17_ADDS[k] and x not in A27_ADDS[k]
+             and x not in A29_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k] and x not in A18_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,
