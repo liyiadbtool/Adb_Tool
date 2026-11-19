@@ -139,7 +139,10 @@ chk("启动层颜色跟随强调色", "AccentColor" in guiweb)
 chk("搜索框外壳透明、只有 input 有凹陷面",
     ".qsearch{" in css and "background:transparent" in css
     and ".qsearch input{" in css and "var(--surface-2)" in css)
-chk("浮层内滚动不再关闭", "pop.contains(ev.target)" in s)
+# T16（2026-11-18）：判断收进了浮层管理器，pop.contains / Overlay.contains 等价，
+# 断言口径保持不变（浮层内部的事件不触发关闭）。
+chk("浮层内滚动不再关闭",
+    "pop.contains(ev.target)" in s or "Overlay.contains(ev.target)" in s)
 chk("锚点滚出视口才关（否则重定位）", "repositionPop" in s)
 
 bad = [r for r in rows if not r[1]]

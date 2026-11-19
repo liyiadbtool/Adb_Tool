@@ -319,6 +319,36 @@ JS = r"""
            'disabled=' + vrInp.disabled + ' cursor=' + getComputedStyle(vrLab).cursor);
       }
 
+      /* ---------- I. T16：浮层管理器 Overlay ----------
+         抽出来的目的：外点关闭 / Esc / 滚动跟随 / 层级只留三档，
+         以后右键菜单等新浮层直接复用，不再各写一套。 */
+      ok('T16 Overlay 已挂到 window 且层级分三档',
+         !!window.Overlay && Overlay.LEVEL.pop < Overlay.LEVEL.modal &&
+         Overlay.LEVEL.modal < Overlay.LEVEL.toast,
+         window.Overlay ? JSON.stringify(Overlay.LEVEL) : '无');
+
+      switchTab('ui');
+      var fontSel = document.getElementById('set-font');
+      if (fontSel){
+        drive.mouseDown(fontSel);
+        var op = document.querySelector('.a14-selpop');
+        ok('T16 打开后 current() 命中且全页只有 1 个浮层',
+           !!op && Overlay.current() === op && document.querySelectorAll('.a14-selpop').length === 1,
+           'cur=' + !!Overlay.current() + ' n=' + document.querySelectorAll('.a14-selpop').length);
+        ok('T16 浮层层级取 LEVEL.pop',
+           !!op && parseInt(getComputedStyle(op).zIndex, 10) === Overlay.LEVEL.pop,
+           op ? 'z=' + getComputedStyle(op).zIndex : '无浮层');
+
+        if (op){
+          drive.key(op, 'Escape');
+          ok('T16 Esc 能关闭浮层', !Overlay.current(),
+             'cur=' + (Overlay.current() ? '仍在' : '已关'));
+        }
+      } else {
+        ok('T16 字体下拉存在', false, '找不到 #set-font');
+      }
+      switchTab('quick');
+
       emit();
     }catch(e){ R.push('FAIL | 脚本异常 | '+(e&&e.stack?e.stack:e)); emit(); }
   }

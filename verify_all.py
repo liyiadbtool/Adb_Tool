@@ -51,12 +51,23 @@ def record(name, ok, detail):
 
 def run(cmd, cwd, timeout, name, pick=None):
     t0 = time.time()
-    try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=timeout)
-    except subprocess.TimeoutExpired:
-        record(name, False, "超时 %ds" % timeout)
-        return False, ""
+    # 2026-11-19：起 node / msedge 偶尔会瞬时 PermissionError [WinError 5]
+    # （安全软件扫描可执行文件的窗口期），单独跑却永远正常。
+    # 这种不该算门禁失败 —— 重试一次再判。
+    p = None
+    for attempt in (1, 2):
+        try:
+            p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=timeout)
+            break
+        except subprocess.TimeoutExpired:
+            record(name, False, "超时 %ds" % timeout)
+            return False, ""
+        except OSError as ex:
+            if attempt == 2:
+                record(name, False, "无法启动 %s（%s）" % (cmd[0], ex))
+                return False, ""
+            time.sleep(0.6)
     out = (p.stdout or "") + (p.stderr or "")
     ok = (p.returncode == 0)
     detail = ""

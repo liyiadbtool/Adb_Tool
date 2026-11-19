@@ -26,10 +26,12 @@
   · 返回 `__NO_RESULT__` 表示页面没跑起来（脚本异常/加载失败），与"断言失败"区分；
   · 真实 WebView2 是**实时时钟**，动画会正常播完，等待时间按最慢的用例给。
 """
+import io
 import os
 import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -72,13 +74,29 @@ def dump(html_path, wait_ms=3000, timeout=180):
 
     _kill_leftover()
     cmd = [exe, "--uitest", os.path.abspath(html_path), str(int(wait_ms))]
-    try:
-        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        _kill_leftover()
-        return NO_RESULT
 
-    text = (r.stdout or b"").decode("utf-8", "replace")
+    # 必须落文件，不能用管道：exe 的 WebView2 子进程会继承 stdout 句柄，
+    # 用 PIPE 时要等到子进程也退出才 EOF —— 表现为"exe 4 秒就跑完了，
+    # 读的一方却一直挂着"（与 _test_interaction.py 注释里记的 Edge 坑同源）。
+    fd, out_path = tempfile.mkstemp(prefix="uitest_out_", suffix=".txt")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", errors="replace") as fh:
+            try:
+                subprocess.run(cmd, stdout=fh, stderr=subprocess.DEVNULL,
+                               timeout=timeout)
+            except subprocess.TimeoutExpired:
+                _kill_leftover()
+        try:
+            with io.open(out_path, "r", encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError:
+            text = ""
+    finally:
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+
     # GUI 进程的 stdout 可能带 BOM，去掉再判断
     text = text.lstrip("\ufeff").strip()
     return text if text else NO_RESULT

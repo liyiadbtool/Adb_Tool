@@ -10505,6 +10505,10 @@ document.addEventListener('DOMContentLoaded', function (){
 
 
 
+
+
+
+
 /* === V14 JS START === */
 /* ==========================================================================
    A14 · 下拉浮层 / 字体大小 / 启动图标颜色 / 浅色主题补充
@@ -10523,31 +10527,65 @@ document.addEventListener('DOMContentLoaded', function (){
        · 选中后写回原生 select 再派发 change → 既有的 onchange 全部照常工作
        · 只拦 mousedown，不动 DOM 结构，动态生成的 select（投屏 6 格）也覆盖
   */
+  /* ===== T16（2026-11-18）：浮层管理器 Overlay =====
+     动机：全仓 9 个浮层容器（accent-pop / apk-mgr / apk-panel / custom-mgr /
+     custom-panel / netsim-panel / vr-panel / wadb-pop + 动态 a14-selpop）、
+     z-index 8 档（220~9999），"外点关闭 / Esc / 滚动跟随"各写一套。
+     T14b 还要加右键菜单 —— 再写一套就是第 10 个。
+     这里只抽**生命周期 + 定位 + 关闭**三件事，浮层内容仍由各自负责。
+     层级收敛成三档，别再随手写 9998/9999。
+     pop 沿用 1400（.a14-selpop 的现有值）—— 不改它，避免和弹窗/提示的层序打架。 */
+  var LEVEL = { pop: 1400, modal: 9000, toast: 9990 };
+
+  var _cur = null;         // { el, anchor, onClose }
+
+  /* 定位：优先贴锚点下方，放不下翻到上方；左右夹在窗口内；
+     锚点被滚出可视区就关掉（不是"一滚就关"，见 A15 的教训）。 */
+  function placeOverlay(el, anchor){
+    if (!el || !anchor || !anchor.getBoundingClientRect) return;
+    var r = anchor.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight){ Overlay.close(); return; }
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var top = r.bottom + 4;
+    if (top + h > window.innerHeight - 8 && r.top - h - 4 > 8) top = r.top - h - 4;
+    var left = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - w - 8));
+    el.style.top = Math.max(8, top) + 'px';
+    el.style.left = left + 'px';
+  }
+
+  var Overlay = window.Overlay = {
+    LEVEL: LEVEL,
+    current: function(){ return _cur ? _cur.el : null; },
+    contains: function(node){ return !!(_cur && _cur.el && _cur.el.contains(node)); },
+    /* 一次只留一个浮层：开新的先关旧的 */
+    open: function(o){
+      Overlay.close();
+      _cur = { el: o.el, anchor: o.anchor || null, onClose: o.onClose || null };
+      if (o.el.parentNode !== document.body) document.body.appendChild(o.el);
+      o.el.style.zIndex = String(o.z || LEVEL.pop);
+      if (_cur.anchor) placeOverlay(o.el, _cur.anchor);
+    },
+    close: function(){
+      var c = _cur;
+      if (!c) return;
+      _cur = null;
+      try { if (c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el); } catch (e) {}
+      try { if (c.onClose) c.onClose(); } catch (e) {}
+    },
+    reposition: function(){ if (_cur && _cur.anchor) placeOverlay(_cur.el, _cur.anchor); }
+  };
+
   var pop = null;
   var popAnchor = null;
 
   function closePop(){
-    if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
+    Overlay.close();          // 真正摘节点/清状态在 Overlay.close 的 onClose 里
     pop = null;
     popAnchor = null;
   }
 
-  /* 浮层跟着锚点走：外面滚动时重新定位，而不是直接关掉。
-     （A15 修）原来是"一滚就关"，设置面板往下滑一下字体下拉就没了，
-     用户以为控件坏掉。真正该关的只有"锚点被滚出可视区"。 */
   function repositionPop(){
-    if (!pop || !popAnchor || !popAnchor.getBoundingClientRect) return;
-    var r = popAnchor.getBoundingClientRect();
-    if (r.bottom < 0 || r.top > window.innerHeight){
-      closePop();
-      return;
-    }
-    var w = pop.offsetWidth, h = pop.offsetHeight;
-    var top = r.bottom + 4;
-    if (top + h > window.innerHeight - 8 && r.top - h - 4 > 8) top = r.top - h - 4;
-    var left = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - w - 8));
-    pop.style.top = Math.max(8, top) + 'px';
-    pop.style.left = left + 'px';
+    if (pop && popAnchor) placeOverlay(pop, popAnchor);
   }
 
   function openPop(sel){
@@ -10583,21 +10621,17 @@ document.addEventListener('DOMContentLoaded', function (){
       pop.appendChild(it);
     }
 
-    document.body.appendChild(pop);
-
+    // T16：挂载 / 层级 / 定位统一交给 Overlay。
+    // minWidth 仍在这里算 —— 它跟"这一层里最长的那条选项"有关，属于内容侧。
     var r = sel.getBoundingClientRect();
     var w = Math.max(r.width, 180);
     if (w + 16 > window.innerWidth) w = window.innerWidth - 16;
     pop.style.minWidth = w + 'px';
 
-    var h = pop.offsetHeight;
-    var top = r.bottom + 4;
-    // 下方放不下就翻到上面（文本页那排工具条贴着顶，弹层往下压最自然，
-    // 但输出区上面的搜索框就得翻上来）
-    if (top + h > window.innerHeight - 8 && r.top - h - 4 > 8) top = r.top - h - 4;
-    var left = Math.min(Math.max(r.left, 8), Math.max(8, window.innerWidth - w - 8));
-    pop.style.top = top + 'px';
-    pop.style.left = left + 'px';
+    Overlay.open({
+      el: pop, anchor: sel, z: LEVEL.pop,
+      onClose: function(){ pop = null; popAnchor = null; }
+    });
 
     pop.addEventListener('click', function(ev){
       var t = ev.target;
@@ -10654,23 +10688,25 @@ document.addEventListener('DOMContentLoaded', function (){
        等 click 派发时节点已脱离文档，pop 上的 click 监听收不到 →
        选中无效、change 不派发（字体切换/预置环境值/屏号/编码全都"点了没反应"）。
        现在：点到浮层内部就不关（让 click 正常走 choose 逻辑），
-       只有点到浮层外面才关。 */
-    if (pop && pop.contains(ev.target)) return;
-    closePop();
+       只有点到浮层外面才关。
+       T16：判断改为 Overlay.contains —— 以后右键菜单等浮层也自动被保护。 */
+    if (Overlay.contains(ev.target)) return;
+    Overlay.close();
   }, true);
 
   document.addEventListener('keydown', function(ev){
     if (ev.key === 'Escape') closePop();
   }, true);
-  window.addEventListener('resize', repositionPop);
+  window.addEventListener('resize', function(){ Overlay.reposition(); });
   /* A15：原实现是 scroll → closePop()，于是设置面板往下滑一点、
      或浮层自身因为项多而要滚，都会把下拉直接关掉（用户以为控件坏了）。
      现在：浮层内部的滚动忽略，外部滚动改为跟随重定位；
-     只有锚点被滚出可视区时才关。 */
+     只有锚点被滚出可视区时才关（判断在 placeOverlay 里）。 */
   document.addEventListener('scroll', function(ev){
-    if (!pop) return;
-    if (pop.contains(ev.target)) return;
-    repositionPop();
+    var el = Overlay.current();
+    if (!el) return;
+    if (el.contains(ev.target)) return;
+    Overlay.reposition();
   }, true);
 
   /* ---------------- §2 字体大小（需求 8） ----------------

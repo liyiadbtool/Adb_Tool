@@ -135,8 +135,9 @@ chk("④ 贴锚点算坐标 placePop（下方不够翻上方、左右溢出贴�
     "function placePop" in v15 and "innerHeight" in v15 and "innerWidth" in v15)
 chk("④ 窗口尺寸变化要重定位 repositionPops",
     "function repositionPops" in v15 and "repositionPops()" in v15)
-chk("④ 点弹窗自己不算点空白（pop.contains 判断，V14 层也在用）",
-    "pop.contains" in s)
+# T16（2026-11-18）：V14 的 self-dismiss 判断已收进 Overlay，语义相同。
+chk("④ 点弹窗自己不算点空白（contains 判断，V14 层也在用）",
+    "pop.contains" in s or "Overlay.contains" in s)
 chk("⑤ 弹窗开着时不再冒 hover 提示（showTip 开头拦）",
     "if (anyPopOpen()) return;" in v15)
 chk("⑥ .v15-pop 默认隐藏 + .on 显示（内联 style 复位会落回 display:none，不可靠）",

@@ -136,6 +136,21 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-19 · T16 浮层管理器）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **T16 `Overlay` 浮层管理器** | `_v14.js`（已重注） | 抽出**生命周期 + 定位 + 关闭**三件事：`Overlay.open({el,anchor,z,onClose})` / `close` / `reposition` / `contains`，层级收敛成 `pop 1400 < modal 9000 < toast 9990`（pop 沿用原值，不动层序）。外点关闭 / Esc / 滚动跟随 / resize 改为**只注册一次**并分发给当前浮层。动机：9 个浮层容器各写一套，T14b 的右键菜单会是第 10 个 |
+| 2 | 自绘下拉改走 Overlay | `openPop` / `closePop` / `repositionPop` | 内容构建、click 选中、键盘导航仍留在原处，只把挂载/层级/定位/关闭交出去；`minWidth` 仍由内容侧算 |
+| 3 | 回归断言 | `377/_test_interaction.py` 39 → **43 条** | Overlay 三档层级存在 / 打开后 `current()` 命中且全页只有 1 个浮层 / 层级取 `LEVEL.pop` / Esc 能关 |
+| 4 | ⚠️ **`_wv2` 读结果改落文件** | `377/_wv2.py` | 原来用 `capture_output`（管道）读 exe 的 stdout —— 但 WebView2 子进程会**继承 stdout 句柄**，管道要等子进程也退出才 EOF。表现：exe 4 秒就跑完，读的一方挂到 180s 超时，于是"单独跑 20s、进全量变 240s 超时"。改为写临时文件再读，单次调用从 180s 降到 ~9s |
+| 5 | 门禁瞬时启动失败重试 | `verify_all.py` | 起 node/msedge 偶发 `PermissionError [WinError 5]`（安全软件扫描窗口期），单独跑永远正常。`run()` 对 `OSError` 重试一次再判失败 |
+| 6 | 两条落点机检按语义更新 | `_v15_checks.py`、`_v16_checks.py` | 它们匹配的是源码字符串 `pop.contains(ev.target)`，T16 收进了 `Overlay.contains`。断言口径（浮层内事件不触发关闭）不变，改为两种写法都认 |
+
+验收：**28 项 / 0 失败（122s）**；交互一致性 43/43；GUI 自检 19 条。
+
+---
+
 ### 本轮做了什么（2026-11-18 · T15/T17 + T5，批次 3 起步）
 
 | # | 需求 | 落点 | 说明 |
