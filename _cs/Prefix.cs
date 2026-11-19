@@ -275,6 +275,22 @@ namespace AdbLogExport
             // :proxydel  删除代理（三个键分别删、分别回显）
             if (n == "proxydel" || n == "delproxy") { DoProxyDel(); return; }
 
+            // :tbosprod yes / :tbospre yes / :tboschek   TBOX 环境切换（写 mcu_spi + 重启 MCU）
+            if (n == "tbosprod" || n == "tbosformal") { DoTbox(false, arg); return; }
+            if (n == "tbospre" || n == "tbosstaging") { DoTbox(true, arg); return; }
+            if (n == "tbos" || n == "tboschek" || n == "tboshelp")
+            {
+                // 不带子命令时给两套环境的差异对照，避免用户靠记
+                Console.WriteLine();
+                Console.WriteLine("  TBOX 环境切换（写 /dev/mcu_spi，末帧重启 MCU）");
+                Console.WriteLine("    :tbosprod yes    正式：mqtt-*-access.gacicv.com / cms-sm-access.gacicv.com");
+                Console.WriteLine("    :tbospre  yes    预发布：pre-mqtt-*-access.gacicv.com / pre-sm-cms.gacicv.com");
+                Console.WriteLine("    不带 yes 只做 dry-run，不写设备");
+                Console.WriteLine();
+                OkLocal();
+                return;
+            }
+
             if (n == "wsdevid" || n == "devid") { DoDeviceId(); return; }
 
             // :url <地址>  用桌面系统默认浏览器打开（不是车机）

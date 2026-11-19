@@ -5648,6 +5648,14 @@ var quickGroups = [
     {name:'音区对照表', desc:'0主驾 1副驾 2/3 二排 4/5 三排', cmd:':vr area'},
     {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log'}
   ]},
+  // TBOX 环境切换（2026-11-19）：参考 Downloads\正式环境.bat / 预发布环境.bat，
+  // 往 /dev/mcu_spi 写 15 帧，末帧重启 MCU。命令不带 yes 只做 dry-run，卡片直接带 yes。
+  { name:'TBOX', color:'var(--accent)', items:[
+    {name:'TBOX 正式环境', desc:'mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbosprod yes'},
+    {name:'TBOX 预发布环境', desc:'pre-mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbospre yes'},
+    {name:'TBOX 环境对照', desc:'只打印两套环境的域名/端口，不写设备', cmd:':tboschek'}
+  ]},
+
   // 需求（2026-11-12）：删除「应用操作 / 设备信息 / 性能监控 / 系统控制 / 文件管理」
   // 五个分组及其命令（命令也从 cmds.ini 移除，见 cmds.ini 历史）。
   // 保留「夜间模式」相关命令 yes/no/autotheme —— 它们仍被「指令执行 → 主题模式」引用。

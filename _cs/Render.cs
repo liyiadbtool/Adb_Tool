@@ -1014,6 +1014,25 @@ namespace AdbLogExport
             STCheck("唤醒 99 含 type=99", vw99.IndexOf("type=99") > 0, vw99);
             STCheck("唤醒 99 含 canSleep=false", vw99.IndexOf("canSleep=false") > 0, vw99);
 
+            // 7.4b TBOX 帧表（2026-11-19）：15 帧、末帧重启、两套环境只差 3 帧
+            string[] tf = TboxFrames(false);
+            string[] tpre = TboxFrames(true);
+            STCheck("TBOX 帧数 15", tf.Length == 15, tf.Length.ToString());
+            STCheck("TBOX 末帧是重启帧", tf[14] == "05550203000101", tf[14]);
+            STCheck("TBOX 每帧都以 05 75 23 开头或为重启帧",
+                    AllStartWith(tf, "057523", 14), "检查前 14 帧");
+            int diffN = 0;
+            for (int ti = 0; ti < tf.Length; ti++) if (tf[ti] != tpre[ti]) diffN++;
+            STCheck("TBOX 正式/预发布只差 3 帧", diffN == 3, diffN.ToString());
+            STCheck("TBOX 预发布域名带 pre- 前缀",
+                    FrameAscii(tpre[0]) == "pre-mqtt-public-access.gacicv.com", FrameAscii(tpre[0]));
+            STCheck("TBOX 正式域名无 pre- 前缀",
+                    FrameAscii(tf[0]) == "mqtt-public-access.gacicv.com", FrameAscii(tf[0]));
+            // 转义后再还原：echo -n '\x05\x75...' 必须与原始字节一一对应
+            STCheck("TBOX hex→shell 转义长度一致",
+                    HexToEscaped(tf[0]).Length == tf[0].Length * 2,
+                    HexToEscaped(tf[0]).Length.ToString());
+
             // 7.5 离线白名单：:vr 帮助类命令在无设备时也能看
             STCheck("离线允许 :vr", OfflineAllowed(":vr"));
             STCheck("离线允许 :voice", OfflineAllowed(":voice"));
