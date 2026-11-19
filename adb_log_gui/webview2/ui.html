@@ -3607,6 +3607,10 @@ body::after{
               <button class="btn" onclick="nsRun('proxyget')" title="读 global http_proxy（stproxyget）">配置代理</button>
               <button class="btn primary" onclick="nsRun('wekon')" title="用上面的参数下发 stweak">开启</button>
               <button class="btn" onclick="nsRun('wekoff')" title="删除 tc qdisc 规则（stweakoff）">关闭</button>
+              <!-- T3（2026-11-19）：原来只能"下发"，没有回读 —— 命令返回 0 不等于真生效
+                   （su 不在、wlan0 名不对、tc 模块缺失都会静默失败）。 -->
+              <button class="btn ghost sm" onclick="nsRun('weakstat')" title="回读设备当前 tc 规则与 http_proxy（stweakstat）">回读现状</button>
+              <button class="btn ghost sm" onclick="nsRun('weakreset')" title="删 tc 规则 + 三个代理键（stweakreset）">一键还原</button>
               <span class="ns-sep"></span>
               <input id="ns-proxy" class="ns-proxy" placeholder="代理 IP:端口  例 10.41.152.100:8888">
               <button class="btn ghost sm" onclick="nsRun('proxyon')" title="stproxyon <IP:端口>">开启代理</button>
@@ -8795,22 +8799,52 @@ function nsOutClear(){
   if(box) box.innerHTML = '<div class="ns-out-empty">还没有操作记录。点上面的按钮下发命令，设备回显在「输出」区。</div>';
 }
 
+/* T3（2026-11-19）：参数校验。tc netem 对越界值不报错、直接按怪值生效
+   （loss>100 会被截成 100，rate=0 等于断网），所以下发前先挡一道。 */
+function nsCheckVals(v){
+  function n(x){ var s = String(x === null || x === undefined ? '' : x).replace(/[^0-9.]/g,'');
+                 return s === '' ? null : parseFloat(s); }
+  var delay = n(v.delay), loss = n(v.loss), rate = n(v.rate);
+  if(delay !== null && (delay < 0 || delay > 60000)) return '延迟要在 0~60000 ms 之间';
+  if(loss !== null && (loss < 0 || loss > 100)) return '丢包率要在 0~100 % 之间';
+  if(rate !== null && rate <= 0) return '速率要大于 0 kbps（不限速就别开弱网）';
+  return '';
+}
+
 function nsRun(act){
-  var cmd = '', note = '';
+  var cmd = '', note = '', after = '';
   if(act === 'proxyget'){ cmd = 'stproxyget'; note = '查询设备当前代理设置'; }
   else if(act === 'proxyon'){
     var el = document.getElementById('ns-proxy');
     var ip = el ? String(el.value).replace(/^\s+|\s+$/g,'') : '';
     if(!ip){ toast('先填代理 IP:端口'); nsOut('未下发：代理地址为空', 'e'); return; }
+    // T3：格式校验（IP 或主机名 + 端口），避免把 "8888" 这种只写端口的值写进系统代理
+    if(!/^[A-Za-z0-9._-]+:\d{1,5}$/.test(ip)){
+      toast('代理要写成 IP:端口，例 10.41.152.100:8888');
+      nsOut('未下发：代理地址格式不对（' + ip + '）', 'e');
+      return;
+    }
     cmd = 'stproxyon ' + ip; note = '把车机代理指向 ' + ip;
   }
   else if(act === 'proxyoff'){ cmd = 'stproxyoff'; note = '删除三个代理键'; }
-  else if(act === 'wekon'){ cmd = nsWeakCmd(nsReadVals()); note = '按当前上行参数开启弱网'; }
-  else if(act === 'wekoff'){ cmd = 'stweakoff'; note = '删除 tc qdisc，恢复原网络'; }
+  else if(act === 'wekon'){
+    var err = nsCheckVals(nsReadVals());
+    if(err){ toast(err); nsOut('未下发：' + err, 'e'); return; }
+    cmd = nsWeakCmd(nsReadVals()); note = '按当前上行参数开启弱网';
+    // 双判：下发成功 ≠ 生效。补一条回读，让用户当场看到 tc 里到底有没有规则。
+    after = 'stweakstat';
+  }
+  else if(act === 'wekoff'){ cmd = 'stweakoff'; note = '删除 tc qdisc，恢复原网络'; after = 'stweakstat'; }
+  else if(act === 'weakstat'){ cmd = 'stweakstat'; note = '回读当前 tc 规则与 http_proxy'; }
+  else if(act === 'weakreset'){ cmd = 'stweakreset'; note = '删 tc + 三个代理键，回到出厂网络设置'; after = 'stweakstat'; }
   if(!cmd) return;
   if(!_online){ toast('设备未连接'); nsOut('未下发（设备未连接）：' + cmd, 'e'); return; }
   nsOut('→ ' + cmd + '   # ' + note, 'c');
   post('quick', cmd);
+  if(after){
+    // 隔一拍再发回读：两条命令走同一个 busy 通道，紧接着发会被互斥挡掉
+    setTimeout(function(){ nsOut('→ ' + after + '   # 回读复核（别只看退出码）', 'c'); post('quick', after); }, 900);
+  }
   toast('已下发：' + cmd);
 }
 

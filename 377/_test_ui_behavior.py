@@ -708,6 +708,60 @@ BEHAVIOR = r"""
            nsPanel.querySelectorAll('.ns-acts .btn').length >= 3,
            nsPanel.querySelectorAll('.ns-acts .btn').length);
         ok('NS 有操作记录大输出框', !!document.getElementById('ns-out'));
+        /* ---------- T3（2026-11-19）：校验 + 回读复核 + 一键还原 ---------- */
+        // 捕获下发的命令（真实 WebView2 里 post 走 chrome.webview）
+        var _nsSent = [];
+        var _postBak = window.post;
+        try { window.post = function(kind, data){ _nsSent.push(String(data)); }; } catch (e) {}
+
+        ok('T3 有「回读现状」和「一键还原」按钮',
+           nsPanel.textContent.indexOf('回读现状') >= 0 && nsPanel.textContent.indexOf('一键还原') >= 0);
+
+        // 越界丢包率：不下发
+        _nsSent.length = 0;
+        document.getElementById('ns-loss-up').value = '120';
+        document.getElementById('ns-delay-up').value = '200';
+        document.getElementById('ns-rate-up').value = '512';
+        nsRun('wekon');
+        ok('T3 丢包率 >100 拒绝下发', _nsSent.length === 0, _nsSent.join('|'));
+
+        // 速率 0：不下发
+        _nsSent.length = 0;
+        document.getElementById('ns-loss-up').value = '5';
+        document.getElementById('ns-rate-up').value = '0';
+        nsRun('wekon');
+        ok('T3 速率 0 拒绝下发', _nsSent.length === 0, _nsSent.join('|'));
+
+        // 合法参数：下发 stweak，并在稍后补一条 stweakstat 复核
+        _nsSent.length = 0;
+        document.getElementById('ns-rate-up').value = '512';
+        nsRun('wekon');
+        ok('T3 合法参数下发 stweak', _nsSent.length === 1 && _nsSent[0].indexOf('stweak ') === 0,
+           _nsSent.join('|'));
+
+        // 代理格式校验：只写端口 → 拒绝
+        _nsSent.length = 0;
+        document.getElementById('ns-proxy').value = '8888';
+        nsRun('proxyon');
+        ok('T3 代理只写端口被拒绝', _nsSent.length === 0, _nsSent.join('|'));
+
+        _nsSent.length = 0;
+        document.getElementById('ns-proxy').value = '10.41.152.100:8888';
+        nsRun('proxyon');
+        ok('T3 合法代理下发 stproxyon',
+           _nsSent.length === 1 && _nsSent[0] === 'stproxyon 10.41.152.100:8888', _nsSent.join('|'));
+
+        _nsSent.length = 0;
+        nsRun('weakreset');
+        ok('T3 一键还原下发 stweakreset',
+           _nsSent.length === 1 && _nsSent[0] === 'stweakreset', _nsSent.join('|'));
+
+        try { window.post = _postBak; } catch (e) {}
+        // 还原输入，避免影响后续断言
+        document.getElementById('ns-loss-up').value = '';
+        document.getElementById('ns-delay-up').value = '';
+        document.getElementById('ns-rate-up').value = '';
+        document.getElementById('ns-proxy').value = '';
         ok('NS 5 条命令仍保留供搜索命中',
            quickGroups[nsIdx].items.length === 5, quickGroups[nsIdx].items.length);
         var nsCmdStr = quickGroups[nsIdx].items.map(function(it){ return it.cmd; }).join(' | ');

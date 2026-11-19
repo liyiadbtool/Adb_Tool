@@ -136,6 +136,20 @@ toast 显示「已切换」。真正的问题是**机器上同时开着两个实
 2. `GUI 自检 1 条` —— 断言 `scrcpy 探测覆盖 winget Packages 目录` 需要本机真装过
    winget 版 scrcpy。`winget install Genymobile.scrcpy` 即转绿。
 
+### 本轮做了什么（2026-11-19 · D5：T3 网络模拟）
+
+| # | 需求 | 落点 | 说明 |
+|---|---|---|---|
+| 1 | **回读现状** | `cmds.ini` 新 `stweakstat` + 面板按钮 | `su 0 tc qdisc show dev wlan0; echo ---PROXY---; settings get global http_proxy`。原来面板只能"下发"，没有任何回读 —— 而 `tc`/`su`/网卡名任一不对都会**静默失败**，退出码 0 不代表生效。真机实测输出：无 netem 规则 + `null` 代理 |
+| 2 | **双判复核** | `nsRun` | 「开启/关闭/还原」下发后 900ms 自动补一条 `stweakstat`，让用户当场看到 tc 里到底有没有规则。间隔是因为两条命令共用 busy 通道，紧挨着发会被互斥挡掉 |
+| 3 | **一键还原** | `cmds.ini` 新 `stweakreset` | `tc qdisc del` + **三个代理键一起删**。只删 `http_proxy` 会留下 `global_http_proxy_host/port` 残值，下次连网仍走代理 |
+| 4 | **参数校验** | `nsCheckVals` / 代理格式 | 延迟 0~60000ms、丢包 0~100%、速率>0；代理必须 `IP:端口`（原来只写 `8888` 也会照样写进系统代理）。非法一律不下发 + 记录原因 |
+| 5 | ⚠️ **构建脚本 bug** | `adb_log_gui/build_gui.bat` | cmds.ini 原来是"**只在不存在时**拷贝"，于是仓库根改了命令、`adb_log_gui\cmds.ini` 已存在就不同步 → 新命令编不进 exe，运行时报「没有这个命令」。改成每次构建都覆盖（ASCII 注释，bat 不能写 UTF-8 中文） |
+
+验收：**28 项 / 0 失败（98s）**；窗口与记录 212 → **219 条**；真机 `:stweakstat` 回读正常。
+
+---
+
 ### 本轮做了什么（2026-11-19 · D8-D9：T10 / T12 / T13）
 
 | # | 需求 | 落点 | 说明 |

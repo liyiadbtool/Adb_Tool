@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 127,
- "totalBytes": 3299072,
+ "totalBytes": 3304551,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -176,8 +176,8 @@
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 52514,
-   "sha256": "f15a4291afe08daf55cb4e9977c0b28b430b0bbdb8910cc664233e5dbd882301"
+   "size": 55068,
+   "sha256": "3526063a177239aa4cf42e083cf890f45f15b2013a03e6e0652ac4337f131e1c"
   },
   {
    "path": "377/_test_ux.py",
@@ -491,13 +491,13 @@
   },
   {
    "path": "adb_log_gui/build_gui.bat",
-   "size": 12427,
-   "sha256": "6fe3cf26e93bf87536c7ebb672405b63854364a03d8016bc6f507b8c46d3cfaa"
+   "size": 12551,
+   "sha256": "05c2fb1a199cc57778a41da5ac310fc4cb36eb8e90027376f09dc3538cff14bf"
   },
   {
    "path": "adb_log_gui/cmds.ini",
-   "size": 17965,
-   "sha256": "5ae51452db6b51213f249db78ebaac52f45358be47fc7a2bafd8e9632502b51e"
+   "size": 18190,
+   "sha256": "b734354190706b159e65039150f1a8dedfb0826b07cda46153462c1a851dff0b"
   },
   {
    "path": "adb_log_gui/make_min.bat",
@@ -506,13 +506,13 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 845824,
-   "sha256": "c6df0d94b4b0197b92113d23fbd3fc600aec8f16092f776453dde90bed9f33e2"
+   "size": 848175,
+   "sha256": "c6c80259c8906bb35bc523306da33bffd0b742525608e7d562bbea8c888e7e6d"
   },
   {
    "path": "cmds.ini",
-   "size": 17965,
-   "sha256": "5ae51452db6b51213f249db78ebaac52f45358be47fc7a2bafd8e9632502b51e"
+   "size": 18190,
+   "sha256": "b734354190706b159e65039150f1a8dedfb0826b07cda46153462c1a851dff0b"
   },
   {
    "path": "docs/ACCENT-CONTRAST.md",

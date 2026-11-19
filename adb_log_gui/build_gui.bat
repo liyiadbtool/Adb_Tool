@@ -72,9 +72,9 @@ rem   silently produce an exe with no default config, so fail loudly here.
 if not exist "%~dp0adb_log_export.ini" (
     if exist "%~dp0..\adb_log_export.ini" copy /y "%~dp0..\adb_log_export.ini" "%~dp0adb_log_export.ini" >nul
 )
-if not exist "%~dp0cmds.ini" (
-    if exist "%~dp0..\cmds.ini" copy /y "%~dp0..\cmds.ini" "%~dp0cmds.ini" >nul
-)
+rem 2026-11-19: always sync cmds.ini (used to be "copy only if missing", so edits
+rem to the repo copy were silently ignored and new commands never got embedded).
+if exist "%~dp0..\cmds.ini" copy /y "%~dp0..\cmds.ini" "%~dp0cmds.ini" >nul
 if not exist "%~dp0adb_log_export.ini" (
     echo [ERROR] adb_log_export.ini not found - it is embedded as the default config
     %DOPAUSE%
