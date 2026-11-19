@@ -249,6 +249,16 @@ A29_ADDS = {
               "apk-btn-uninstall"]),
 }
 
+# A30（2026-11-19）：T14a 文件偶发打不开。
+#   fsRetry  错误行里的一键重试（重新读取该目录）
+#   另外三处是行为改造、没有新增 DOM：请求序号（丢过期响应）、超时自动重试一次、
+#   35 秒加载看门狗。
+A30_ADDS = {
+    "kinds": set(),
+    "onclicks": set(["fsRetry"]),
+    "ids": set(),
+}
+
 labels = {
     "kinds": "onMessage 的 kind（基线 %d）" % len(base["kinds"]),
     "onclicks": "onclick 绑定函数（基线 %d）" % len(base["onclicks"]),
@@ -265,7 +275,7 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A13_ADDS[k] and x not in A14_ADDS[k]
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
              and x not in A17_ADDS[k] and x not in A27_ADDS[k]
-             and x not in A29_ADDS[k]]
+             and x not in A29_ADDS[k] and x not in A30_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k] and x not in A18_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,

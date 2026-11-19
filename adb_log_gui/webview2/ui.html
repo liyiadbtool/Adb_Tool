@@ -8043,7 +8043,27 @@ function fsClearDevCache(){
 }
 
 function fsRequest(side, path){
-  postObj({ kind: 'fslist', side: side, path: (path === undefined || path === null) ? '' : path });
+  var st = _fs[side];
+  if (!st) return;
+  // T14a-1：每个请求带递增序号。快速切换目录时，先发的慢响应可能最后到，
+  // 没序号就会把新目录的内容覆盖掉（表现为"点进去又弹回去 / 打不开"）。
+  st.seq = (st.seq || 0) + 1;
+  var seq = st.seq;
+  var p = (path === undefined || path === null) ? '' : path;
+  postObj({ kind: 'fslist', side: side, path: p, seq: seq });
+
+  // T14a-3：看门狗。adb 侧超时是 30s，这里留 35s；到点还没有对应响应
+  // 就把 loading 摘掉并给出可重试的错误，不让它永远转圈。
+  if (st.wd) clearTimeout(st.wd);
+  st.wd = setTimeout(function(){
+    st.wd = null;
+    if (st.seq !== seq) return;          // 已经有更新的请求，不管这条
+    var n = st.nodes[fsNorm(p)];
+    if (!n || !n.loading) return;
+    n.loading = false;
+    n.err = '读取超时（35 秒），目录可能很大或设备繁忙 —— 点这里重试';
+    renderFs(side);
+  }, 35000);
 }
 
 function fsReload(side){
@@ -8066,6 +8086,13 @@ function fsCollapseAll(side){
 function onFsList(m){
   var side = (m.side === 'dev') ? 'dev' : 'local';
   var st = _fs[side];
+  // T14a-1：只接受比"已应用序号"更新的响应。乱序到达的旧响应直接丢弃，
+  // 否则会把用户刚点开的新目录内容冲掉。
+  var seq = (typeof m.seq === 'number') ? m.seq : 0;
+  if (seq > 0){
+    if (seq < (st.applied || 0)) return;
+    st.applied = seq;
+  }
   var p = fsNorm((m.path === undefined || m.path === null) ? st.root : m.path);
 
   var node = st.nodes[p];
@@ -8174,7 +8201,12 @@ function fsWalk(side, node, depth){
     return out;
   }
   if (node.err && (!node.children || node.children.length === 0)) {
-    out += '<div class="fs-empty err" style="padding-left:' + (pad + 16) + 'px">' + escHtml(node.err) + '</div>';
+    // T14a-4：错误行给一键重试（原来只有一行红字，用户只能靠再点一次目录或重启工具）
+    out += '<div class="fs-empty err" style="padding-left:' + (pad + 16) + 'px">'
+         + escHtml(node.err)
+         + ' <button class="fs-ico" title="重新读取这个目录" onclick="fsRetry(\'' + escAttr(side) + '\',\''
+         + escAttr(node.e.path).replace(/'/g, "\\'") + '\')">重试</button>'
+         + '</div>';
     return out;
   }
   if (!node.children || node.children.length === 0) {
@@ -8318,6 +8350,19 @@ function fsClick(side, row, ev){
   if (s && s.active) { renderFs(side); return; }
 
   if (isDir) fsToggle(side, p); else renderFs(side);
+}
+
+/* T14a-4：错误行的一键重试 —— 清掉错误/加载态后重发同一个路径 */
+function fsRetry(side, path){
+  var st = _fs[side];
+  if (!st) return;
+  var key = fsNorm(path);
+  var n = st.nodes[key];
+  if (n) { n.err = ''; n.loading = true; }
+  else { st.nodes[key] = { e:{ name: key, path: key, dir:true }, children:null,
+                           expanded:true, loading:true, err:'', shown:FS_PAGE }; }
+  renderFs(side);
+  fsRequest(side, key);
 }
 
 function fsToggle(side, path){

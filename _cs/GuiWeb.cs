@@ -1864,7 +1864,9 @@ namespace AdbLogExport.Gui
 
                 // ---------------- 文件管理 ----------------
                 case "fslist":
-                    RunFsList(GetField(json, "side"), GetField(json, "path"));
+                    // T14a：带上请求序号，前端据此丢弃"迟到的旧响应"
+                    RunFsList(GetField(json, "side"), GetField(json, "path"),
+                              GetInt(json, "seq"));
                     break;
 
                 // 文件页搜索（左右各自独立：side=local 只搜电脑，side=dev 只搜设备）
@@ -3614,12 +3616,15 @@ namespace AdbLogExport.Gui
         // 为什么进度用单独消息而不是 console 行：文件页没有日志区，
         // 进度条要的是 done/total 两个数字，塞进文本行还得回头解析。
 
-        private void PushFsList(string side, string path, string parent, List<App.FsEntry> items, string err)
+        private void PushFsList(string side, string path, string parent,
+                               List<App.FsEntry> items, string err, int seq)
         {
             try
             {
                 StringBuilder sb = new StringBuilder(512 + items.Count * 120);
-                sb.Append("{\"kind\":\"fslist\",\"side\":").Append(Json(side))
+                // T14a：seq 原样回传，前端用它丢掉乱序到达的旧响应
+                sb.Append("{\"kind\":\"fslist\",\"seq\":").Append(seq)
+                  .Append(",\"side\":").Append(Json(side))
                   .Append(",\"path\":").Append(Json(path))
                   .Append(",\"parent\":").Append(Json(parent == null ? "" : parent))
                   .Append(",\"err\":").Append(Json(err))
@@ -3717,34 +3722,43 @@ namespace AdbLogExport.Gui
             catch (Exception ex) { GuiEntry.Dump("PushFsSearch", ex); }
         }
 
-        private void RunFsList(string side, string path)
-            {
+        private void RunFsList(string side, string path, int seq)
+        {
             Thread th = new Thread(new ThreadStart(delegate()
             {
                 string err = "";
                 string parent = "";
                 List<App.FsEntry> items = null;
-                try
+                // T14a-2：超时自动重试一次。设备上 /sdcard/Android/data 这类大目录
+                // 首次 ls 常顶到 30s 上限（遍历 + FUSE），第二次往往命中页缓存。
+                // 只对"超时"重试 —— 权限不足/目录不存在重试没有意义。
+                for (int attempt = 1; attempt <= 2; attempt++)
                 {
-                    if (side == "dev")
+                    err = "";
+                    try
                     {
-                        items = App.FsDeviceList(path, out err);
-                        parent = App.FsDeviceParent(path);
+                        if (side == "dev")
+                        {
+                            items = App.FsDeviceList(path, out err);
+                            parent = App.FsDeviceParent(path);
+                        }
+                        else
+                        {
+                            items = App.FsLocalList(path, out err);
+                            parent = App.FsLocalParent(path);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        items = App.FsLocalList(path, out err);
-                        parent = App.FsLocalParent(path);
+                        err = ex.Message;
+                        items = new List<App.FsEntry>();
                     }
-                }
-                catch (Exception ex)
-                {
-                    err = ex.Message;
-                    items = new List<App.FsEntry>();
+                    bool timedOut = (err != null && err.IndexOf("超时") >= 0);
+                    if (!timedOut || attempt == 2) break;
                 }
                 if (items == null) items = new List<App.FsEntry>();
 
-                FinishInvoke(delegate { PushFsList(side, path, parent, items, err); });
+                FinishInvoke(delegate { PushFsList(side, path, parent, items, err, seq); });
             }));
             th.IsBackground = true;
             th.Start();

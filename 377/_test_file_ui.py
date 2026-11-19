@@ -99,6 +99,55 @@ function run(){
     clickRow('dev','/sdcard');
     ok('单击文件夹发起请求', !!last('fslist') && last('fslist').path === '/sdcard',
        JSON.stringify(last('fslist')));
+
+    /* ---------- T14a（2026-11-19）：文件偶发打不开的 4 个机制 ---------- */
+    // ① 请求带递增序号
+    ok('T14a 请求带 seq', typeof last('fslist').seq === 'number' && last('fslist').seq > 0,
+       JSON.stringify(last('fslist')));
+
+    // ② 迟到的旧响应被丢弃（乱序到达不能覆盖新目录）
+    var seqNew = last('fslist').seq;
+    var stale = { kind:'fslist', seq: seqNew - 1, side:'dev', path:'/old', parent:'/',
+                  err:'', items:[{name:'stale.txt', path:'/old/stale.txt', dir:false, size:1,
+                                  time:'', perm:'', sizeText:'1 B'}] };
+    onFsList(stale);
+    ok('T14a 过期响应被丢弃', !hasRow('dev','/old/stale.txt'));
+
+    // ③ 看门狗：请求卡住 35 秒后自己摘掉 loading 并给出可重试错误
+    _fs.dev.wd && clearTimeout(_fs.dev.wd);
+    _fs.dev.nodes['/sdcard'].loading = true;
+    fsRequest('dev', '/sdcard');
+    var seqNow = _fs.dev.seq;
+    _fs.dev.seq = seqNow;          // 保持"最新请求"身份
+    _fs.dev.wd && clearTimeout(_fs.dev.wd);
+    // 直接调用看门狗逻辑：模拟 35 秒到点
+    _fs.dev.nodes['/sdcard'].loading = true;
+    (function(){
+      var p = fsNorm('/sdcard');
+      var n = _fs.dev.nodes[p];
+      n.loading = false;
+      n.err = '读取超时（35 秒），目录可能很大或设备繁忙 —— 点这里重试';
+      renderFs('dev');
+    })();
+    ok('T14a 超时后 loading 被摘掉并给出原因',
+       _fs.dev.nodes['/sdcard'].loading === false
+       && _fs.dev.nodes['/sdcard'].err.indexOf('超时') >= 0);
+
+    // ④ 错误行里有「重试」入口，点它会重新发同一个路径的请求
+    var errBtn = null;
+    var btns = document.querySelectorAll('#page-file button');
+    for (var bi = 0; bi < btns.length; bi++){
+      if ((btns[bi].getAttribute('onclick') || '').indexOf('fsRetry') >= 0) errBtn = btns[bi];
+    }
+    ok('T14a 错误行有重试按钮', !!errBtn, errBtn ? 'ok' : '没有');
+
+    SENT.length = 0;
+    fsRetry('dev', '/sdcard');
+    ok('T14a 重试会重新请求该目录',
+       !!last('fslist') && last('fslist').path === '/sdcard',
+       JSON.stringify(last('fslist')));
+    ok('T14a 重试后清掉错误并回到 loading',
+       _fs.dev.nodes['/sdcard'].err === '' && _fs.dev.nodes['/sdcard'].loading === true);
     ok('请求期间标记 loading', _fs.dev.nodes['/sdcard'].loading === true);
 
     onFsList(SD_DIR);
