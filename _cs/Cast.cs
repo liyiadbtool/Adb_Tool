@@ -742,15 +742,42 @@ namespace AdbLogExport
         }
 
         // png 一条路：设备压 PNG（体积小）→ 本地解码 → 统一成 JPEG
+        // S5（2026-11-19）：这一次抓到的帧是不是"纯色/全黑"
+        // FLAG_SECURE 的屏 screencap 也会"成功"，只是内容全黑，必须主动识别，
+        // 否则用户看到黑块，分不清是屏没亮还是系统禁止采集。
+        internal static volatile bool LastBlank;
+
         private static bool GrabPngJpeg(int displayId, out byte[] jpg, out long ms)
         {
             jpg = null;
             byte[] png;
             if (!CastGrabPng(displayId, out png, out ms)) return false;
+            LastBlank = IsSolidPng(png);
             jpg = JpegFromPng(png);
             if (jpg == null) return false;
             LastGrabPath = "png → JPEG（传输小，设备编码慢）";
             return true;
+        }
+
+        /// <summary>
+        /// 纯色 PNG 判定：从 IHDR 读宽高，再看"压缩后字节数 ÷ 像素数"。
+        /// 实测：1920×720 纯黑 PNG = 7135 B（1 字节 / 194 像素）；
+        /// 正常桌面 2560×1440 = 1.06 MB（1 字节 / 3 像素）。
+        /// 阈值取 1 字节 / 100 像素：黑图命中，正常画面差两个数量级，不会误判。
+        /// </summary>
+        internal static bool IsSolidPng(byte[] png)
+        {
+            if (png == null || png.Length < 24) return false;
+            try
+            {
+                // PNG: 8B signature + 4B len + "IHDR" + 4B w + 4B h (big-endian)
+                int w = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+                int h = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+                if (w <= 0 || h <= 0) return false;
+                long px = (long)w * h;
+                return (long)png.Length * 100L < px;
+            }
+            catch { return false; }
         }
 
         private static byte[] JpegFromPng(byte[] png)
@@ -842,6 +869,16 @@ namespace AdbLogExport
                 bool ok = CastGrabFrame(s.DisplayId, out jpg, out ms, firstTry);
                 if (ok && !s.Stop)
                 {
+                    // S5：非默认屏首帧就是纯色 → 基本可以确定是受保护/未点亮，
+                    // 与其推一帧黑图让用户猜，不如停下来把原因和出路说清楚。
+                    if (firstTry && s.DisplayId > 0 && LastBlank)
+                    {
+                        s.Err = "该屏画面全黑（受 FLAG_SECURE 保护或未点亮），"
+                              + "工具内采不到；可用「外部」按钮开 scrcpy 窗口再看";
+                        s.Stop = true;
+                        App.Trace("cast: display " + s.DisplayId + " 首帧纯色，判定为受保护");
+                        break;
+                    }
                     CastServer.Publish(s.Slot, jpg);
                     s.Frames++;
                     s.LastMs = ms;

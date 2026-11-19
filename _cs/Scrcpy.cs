@@ -483,9 +483,16 @@ namespace AdbLogExport
             a.Append("--display-id=").Append(displayId);
             a.Append(" --window-title=\"").Append(title).Append('"');
             a.Append(" --window-borderless");
-            a.Append(" --max-size=1600");
-            a.Append(" --max-fps=60");
-            a.Append(" --video-bit-rate=16M");
+            // S4（2026-11-19）：内嵌是**多格并发**（最多 6 格同时投），不能按单窗口的
+            // 1600/60fps/16M 给 —— 6 路一起会把设备硬编和 USB 带宽全吃满，
+            // 结果是每路都掉帧。这里降到 1280/30fps/8M：
+            //   · 实测主屏 1280 下 scrcpy 可稳 30fps（打满 --max-fps）
+            //   · 8M 对 1280 宽足够，文字不糊
+            //   · 6 路合计约 48Mbps ≈ 6MB/s，USB2 也在余量内
+            // 单窗「外部」模式仍用 1600/60/16M（见上面的非内嵌分支），要高清就看外部窗口。
+            a.Append(" --max-size=1280");
+            a.Append(" --max-fps=30");
+            a.Append(" --video-bit-rate=8M");
             a.Append(" --no-audio");
             // 内嵌时不打 --print-fps：帧率数字对用户没意义，而且 stderr 每秒一行
             // 在高帧率下会放大到几十行/秒，白白占管道带宽。

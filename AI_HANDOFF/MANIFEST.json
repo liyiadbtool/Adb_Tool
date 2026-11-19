@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 129,
- "totalBytes": 3370313,
+ "totalBytes": 3372337,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -281,8 +281,8 @@
   },
   {
    "path": "_cs/Cast.cs",
-   "size": 51184,
-   "sha256": "59ec3d54418581c5d66d8d940841d9ef04f86e285816a6c12001e169ff56413d"
+   "size": 52116,
+   "sha256": "67cfb45157fbdb89d204b6749de25c789f503c86ea408010baec9016f0f1893a"
   },
   {
    "path": "_cs/CmdRegistry.cs",
@@ -406,8 +406,8 @@
   },
   {
    "path": "_cs/Scrcpy.cs",
-   "size": 27683,
-   "sha256": "d05b1ff953e20bc4769ac96a7754ce672468c218221415b7ebf9e11da69d2623"
+   "size": 27700,
+   "sha256": "dfa0c1fa9a88401dfd0239f05dd3b7c033ea40eebadf7be8fdca179a981c6651"
   },
   {
    "path": "_cs/Send.cs",
@@ -491,8 +491,8 @@
   },
   {
    "path": "adb_log_gui/adb_log_export.ini",
-   "size": 8383,
-   "sha256": "28e9327d121aedb8229230fdd0de3072fb4988ef8292a37c471630a696b63f5c"
+   "size": 8355,
+   "sha256": "f9ef9c7861bb124f2b5039774bee94b513f2463247006d9eebe1c1a4a32fdfd9"
   },
   {
    "path": "adb_log_gui/build_gui.bat",
@@ -606,8 +606,8 @@
   },
   {
    "path": "docs/投屏6格需求排期_20261119.md",
-   "size": 4434,
-   "sha256": "cd5f9454b9844ba392b739b3691861c193eb58b2b5aed320668a5bcb91189171"
+   "size": 5537,
+   "sha256": "af7074d5bbe498648a413e495162247c155fe5a814e9398aa06318045e6cbeae"
   },
   {
    "path": "docs/明天到公司继续开发.md",
