@@ -5,6 +5,62 @@
 
 ---
 
+## 0. 开工 / 收工：两条不可违反的操作纪律
+
+> **这两条是本项目的最高优先级规则，任何设备、任何人、任何 AI 拉取本仓库后都必须遵守。**
+> 详细执行细则见 `WORKFLOW.md`。
+
+### 「开工」= 仅拉取代码，不做任何修改
+
+收到「开工」指令时，**只做一件事**：把本地更新到与 `origin/main` 一致。
+
+```bash
+git fetch origin
+git status -s          # 必须先看：本地有未提交改动就停下来问，不要 reset --hard 硬覆盖
+git pull --ff-only origin main      # 或用 git reset --hard origin/main（确认无本地改动时）
+```
+
+禁止事项（开工时一律不许做）：
+
+- 不许改任何源码、配置、文档（包括"顺手修一下"）。
+- 不许编译、不许跑测试、不许出包。
+- 不许 `git commit` / `git push`。
+- 不许因为看到问题就动手 —— 只汇报"当前版本、与远程是否一致、工作区是否干净"。
+
+### 「收工」= 仅上传代码，不做任何修改
+
+收到「收工」指令时，**只做一件事**：把已完成的工作提交并推送到 `origin/main`。
+
+```bash
+git status -s          # 先看改了什么
+git add -A
+git commit -m "feat/fix/chore: <本轮做了什么>"
+git push origin main
+```
+
+禁止事项（收工时一律不许做）：
+
+- 不许再改任何代码（收工就是收工，想改留给下一轮）。
+- 不许 `--amend` 已有提交、不许强推 `--force`（除用户明确要求）。
+- 不许把 `dist*/`、`release/`、`*.exe`、`ffmpeg.exe` 提进 Git（见 §7 红线与 `.gitignore`）。
+- **不许提交运行态污染**：`adb_log_gui/adb_log_export.ini` 会被程序运行时自动改写
+  （theme / accent / prefs / 设备信息）。提交前必须检查它是否只是运行态变化，
+  是则 `git checkout -- adb_log_gui/adb_log_export.ini` 丢弃，**不要**把它当成果提交。
+
+### 收工前必须确认（缺一不可）
+
+| 检查 | 命令 | 期望 |
+|---|---|---|
+| 编译通过 | `adb_log_gui/build_gui.bat`（自动化加 `NO_PAUSE=1`） | `Compile success` |
+| 门禁绿 | `python verify_all.py --fast` | `失败 0 项` |
+| 工作区只剩要提交的改动 | `git status -s` | 无 `dist/`、无运行态 ini |
+| 推送成功 | `git push origin main` | `main -> main` |
+
+> 如果用户明确说了"只拉代码/只推代码，不做任何修改"，则**严格按字面执行**：
+> 跳过编译与测试，只做 git 操作。用户的口头范围优先于本节的检查表。
+
+---
+
 ## 1. 这是什么
 
 一个 Windows 单 exe 的**车机（Android IVI）测试工具**：CLI + 自绘 WebView2 GUI 双形态，同一个仓库出两个可执行文件。
@@ -120,6 +176,8 @@ python verify_all.py
 
 | 路径 | 作用 |
 |---|---|
+| `AGENTS.md` | **本文件**：硬约束总纲。开工前必读 |
+| `WORKFLOW.md` | **开工/收工操作细则**：只拉 / 只推的执行步骤与常见错误 |
 | `_cs/*.cs` | 全部 C# 源码（32 个文件，两个 bat 的编译列表必须覆盖所有 .cs） |
 | `adb_log_gui/webview2/ui.html` | 唯一页面（≈715 KB，含 4 层注入） |
 | `_v14..v17.js/.css` | 前端分层源文件，见 §3 |

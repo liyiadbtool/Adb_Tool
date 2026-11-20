@@ -167,8 +167,9 @@ UX = r"""
       ok('Ctrl+K 聚焦搜索框', focusCalled);
       sEl.focus = rawFocus;
 
-      // ---------- 8. 「自定义」分组：2026-11-14 起固定为空壳 ----------
+      // ---------- 8. 「自定义指令」分组：2026-11-14 起固定为空壳 ----------
       // 用户要求把原「自定义命令」改名为「自定义」并清空，作为后续新功能的入口；
+      // 2026-11-20（第 5 批需求 16）：再次改名为「自定义指令」。
       // cmds.ini 里的命令仍在终端页可用，不再生成卡片。
       applyServerCommands([
         {cmd:':mycmd', name:'我的命令', desc:'测试用', group:'别名', arg:false},
@@ -177,11 +178,11 @@ UX = r"""
       ]);
       var cg = null;
       for (var gi = 0; gi < quickGroups.length; gi++) {
-        if (quickGroups[gi].name === '自定义') cg = quickGroups[gi];
+        if (quickGroups[gi].name === '自定义指令') cg = quickGroups[gi];
       }
-      ok('存在「自定义」分组', !!cg);
-      ok('分组名是「自定义」', !!cg && cg.name === '自定义', cg ? cg.name : 'none');
-      ok('自定义分组已清空（cmds.ini 不再生成卡片）', !!cg && cg.items.length === 0,
+      ok('存在「自定义指令」分组', !!cg);
+      ok('分组名是「自定义指令」', !!cg && cg.name === '自定义指令', cg ? cg.name : 'none');
+      ok('自定义指令分组已清空（cmds.ini 不再生成卡片）', !!cg && cg.items.length === 0,
          cg ? cg.items.length : -1);
 
       applyServerCommands([
@@ -190,9 +191,9 @@ UX = r"""
       ]);
       var cg2 = null;
       for (var gj = 0; gj < quickGroups.length; gj++) {
-        if (quickGroups[gj].name === '自定义') cg2 = quickGroups[gj];
+        if (quickGroups[gj].name === '自定义指令') cg2 = quickGroups[gj];
       }
-      ok('重复推送后自定义组仍为空', !!cg2 && cg2.items.length === 0,
+      ok('重复推送后自定义指令组仍为空', !!cg2 && cg2.items.length === 0,
          cg2 ? cg2.items.length : -1);
 
       // 文本输入模式（2026-11-14）：命令走 adb shell input text

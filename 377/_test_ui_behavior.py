@@ -146,13 +146,16 @@ BEHAVIOR = r"""
       // 顺序：指令执行 / 网联服务 / 方控按键 / 手车互联 / 语音助手 / ...
       // 2026-11-15（A16）：用户要求「删掉独立的投屏（scrcpy）组，6 张卡并进指令执行」，
       // 所以从第三位起整体前移一位。
-      // 顺序：指令执行 / 网联服务 / 方控按键 / 手车互联 / 语音助手 / ...
+      // 2026-11-20（第 5 批需求 16）：用户明确给出 11 项顺序，整页重排：
+      //   指令执行 / 网联服务 / 手车互联 / 语音助手 / 智驾出行 /
+      //   方控按键 / Tbox / Scrcpy投屏 / Apk管理 / 网络模拟 / 自定义指令
       ok('P6 网联服务在第二位', names[1] === '网联服务', names.join('/'));
+      ok('P6 手车互联在第三位', names[2] === '手车互联', names.join('/'));
+      ok('P6 语音助手在第四位', names[3] === '语音助手', names.join('/'));
+      ok('P6 智驾出行在第五位', names[4] === '智驾出行', names.join('/'));
+      ok('P6 方控按键在第六位', names[5] === '方控按键', names.join('/'));
       ok('P6 没有独立的投屏组（已并入指令执行）',
          names.indexOf('投屏（scrcpy）') < 0 && names.indexOf('投屏') < 0, names.join('/'));
-      ok('P6 方控按键在第三位', names[2] === '方控按键', names.join('/'));
-      ok('P6 手车互联在第四位', names[3] === '手车互联', names.join('/'));
-      ok('P6 语音助手在第五位', names[4] === '语音助手', names.join('/'));
 
       // ---------- 问题8：卡片点击后不消失 ----------
       switchQuickGroup(grpIdx('指令执行'));
@@ -618,7 +621,34 @@ BEHAVIOR = r"""
         var cpGrid = document.getElementById('quick-grid');
         var cpCards = cpGrid.querySelectorAll('.qcard');
         var cpTxt = cpGrid.textContent;
-        ok('CP 手车互联共 8 张卡', cpCards.length === 8, cpCards.length);
+        ok('CP 手车互联共 16 张卡', cpCards.length === 16, cpCards.length);
+        // ---- 2026-11-20 第 5 批需求 1~8：讯飞音频 / SELinux / 拾音 / dump ----
+        ok('CP 新增「讯飞音频」分类', cpTxt.indexOf('讯飞音频') >= 0);
+        ok('CP 新增「SELinux」分类', cpTxt.indexOf('SELinux') >= 0);
+        ok('CP 新增「拾音日志」分类', cpTxt.indexOf('拾音日志') >= 0);
+        ok('CP 新增「音频 dump」分类', cpTxt.indexOf('音频 dump') >= 0);
+        ok('CP 含导出audio_dsp_hal.config卡', cpTxt.indexOf('导出讯飞audio_dsp_hal.config') >= 0);
+        ok('CP 含导出audio.service.rc卡', cpTxt.indexOf('导出讯飞audio.service.rc') >= 0);
+        ok('CP 含关闭se_linux卡', cpTxt.indexOf('关闭se_linux') >= 0);
+        ok('CP 含打开se_linux卡', cpTxt.indexOf('打开se_linux') >= 0);
+        ok('CP 含查找siri拾音日志卡', cpTxt.indexOf('查找siri拾音日志') >= 0);
+        ok('CP 含导出拾音日志卡', cpTxt.indexOf('导出拾音日志') >= 0);
+        ok('CP 含创建dump卡', cpTxt.indexOf('创建dump') >= 0);
+        ok('CP 含导出dump卡', cpTxt.indexOf('导出dump') >= 0);
+        // 命令本身不渲染进 DOM（卡片只显示 name + desc），
+        // 所以这几条必须查数据源 quickGroups，不能查 innerHTML。
+        var cpItems = quickGroups[cpIdx].items;
+        var cpCmds = [];
+        for(var ci=0; ci<cpItems.length; ci++){ cpCmds.push(cpItems[ci].cmd); }
+        var cpCmdStr = cpCmds.join(' | ');
+        ok('CP 命令含 :audiohal config', cpCmdStr.indexOf(':audiohal config') >= 0, cpCmdStr);
+        ok('CP 命令含 :audiohal rc', cpCmdStr.indexOf(':audiohal rc') >= 0, cpCmdStr);
+        ok('CP 命令含 :selinux off', cpCmdStr.indexOf(':selinux off') >= 0, cpCmdStr);
+        ok('CP 命令含 :selinux on', cpCmdStr.indexOf(':selinux on') >= 0, cpCmdStr);
+        ok('CP 命令含 :md5so', cpCmdStr.indexOf(':md5so') >= 0, cpCmdStr);
+        ok('CP 命令含 :md5pull', cpCmdStr.indexOf(':md5pull') >= 0, cpCmdStr);
+        ok('CP 命令含 :audiodump', cpCmdStr.indexOf(':audiodump') >= 0, cpCmdStr);
+        ok('CP 命令含 :audiodumppull', cpCmdStr.indexOf(':audiodumppull') >= 0, cpCmdStr);
         ok('CP 有 CarPlay 认证分类', cpTxt.indexOf('CarPlay 认证') >= 0);
         ok('CP 有 CarPlay 调试分类', cpTxt.indexOf('CarPlay 调试') >= 0);
         ok('CP 有 HiCar 分类', cpTxt.indexOf('HiCar') >= 0);
@@ -702,6 +732,47 @@ BEHAVIOR = r"""
          !!testCard && testCard.cmd.indexOf(':url ') === 0
          && testCard.cmd.indexOf('web-test.syncore.space') > 0,
          testCard ? testCard.cmd : '没有');
+
+      /* ---- 2026-11-20 第 5 批需求 9~14：网联服务新增 PKI / 广汽云 ---- */
+      var wsCards = {};
+      if (wsG) for (var pk = 0; pk < wsG.items.length; pk++) wsCards[wsG.items[pk].name] = wsG.items[pk];
+      ok('WS 含「删除PKI证书」卡且走 :pki del',
+         !!wsCards['删除PKI证书'] && wsCards['删除PKI证书'].cmd === ':pki del',
+         wsCards['删除PKI证书'] ? wsCards['删除PKI证书'].cmd : '没有');
+      ok('WS 含「PKI证书切换预发布」卡且走 :pki pre',
+         !!wsCards['PKI证书切换预发布'] && wsCards['PKI证书切换预发布'].cmd === ':pki pre',
+         wsCards['PKI证书切换预发布'] ? wsCards['PKI证书切换预发布'].cmd : '没有');
+      ok('WS 含「PKI证书切换正式」卡且走 :pki prod',
+         !!wsCards['PKI证书切换正式'] && wsCards['PKI证书切换正式'].cmd === ':pki prod',
+         wsCards['PKI证书切换正式'] ? wsCards['PKI证书切换正式'].cmd : '没有');
+      ok('WS 含切广汽云预发布卡且是 ini 名 gacpre',
+         !!wsCards['切广汽云预发布环境'] && wsCards['切广汽云预发布环境'].cmd === 'gacpre',
+         wsCards['切广汽云预发布环境'] ? wsCards['切广汽云预发布环境'].cmd : '没有');
+      ok('WS 含切广汽云测试卡且是 ini 名 gactest',
+         !!wsCards['切广汽云测试环境'] && wsCards['切广汽云测试环境'].cmd === 'gactest',
+         wsCards['切广汽云测试环境'] ? wsCards['切广汽云测试环境'].cmd : '没有');
+      ok('WS 含查询广汽云环境卡且是 ini 名 gacquery',
+         !!wsCards['查询广汽云环境'] && wsCards['查询广汽云环境'].cmd === 'gacquery',
+         wsCards['查询广汽云环境'] ? wsCards['查询广汽云环境'].cmd : '没有');
+
+      /* ---- 2026-11-20 第 5 批需求 15：智驾出行分组 ---- */
+      var zdIdx = grpIdx('智驾出行');
+      ok('ZD 存在「智驾出行」分组', zdIdx >= 0, zdIdx);
+      if (zdIdx >= 0){
+        switchQuickGroup(zdIdx);
+        var zdTxt = document.getElementById('quick-grid').textContent;
+        ok('ZD 含「导出高德日志」卡', zdTxt.indexOf('导出高德日志') >= 0);
+        var zdItems = quickGroups[zdIdx].items;
+        ok('ZD 导出高德日志走 :gmqtlog',
+           zdItems.length > 0 && zdItems[0].cmd === ':gmqtlog',
+           zdItems.length > 0 ? zdItems[0].cmd : '空');
+      }
+      /* ---- 需求 16：改名校验 ---- */
+      ok('P16 TBOX 已改名为 Tbox', grpIdx('TBOX') < 0 && grpIdx('Tbox') >= 0);
+      ok('P16 APK管理 已改名为 Apk管理', grpIdx('APK管理') < 0 && grpIdx('Apk管理') >= 0);
+      ok('P16 自定义 已改名为 自定义指令',
+         grpIdx('自定义') < 0 && grpIdx('自定义指令') >= 0);
+      ok('P16 分组总数为 11', quickGroups.length === 11, quickGroups.length);
 
       /* ---- 历史记录（2026-11-19）：持久化 + Win11 边界语义 + 每槽独立 ---- */
       try{

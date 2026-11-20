@@ -5532,6 +5532,22 @@ var quickGroups = [
     {name:'查询星河云埋点设置', desc:'读 privacy_enabled / datacenter.debug / log.privacy', cmd:':sxlog get', cat:'星河云埋点'},
     {name:'设置星河云埋点true', desc:'privacy_enabled=true（写后自动回读确认）', cmd:':sxlog set', cat:'星河云埋点'},
     {name:'查询设备ID', desc:'navi.did / android_id / navi.uuid', cmd:':wsdevid', cat:'星河云埋点'},
+    // ---- 2026-11-20 第 5 批需求（9~14）：广汽云环境 / PKI 证书 ----
+    // 命令定义在 cmds.ini（[cmd.gac*]，改域名不用重编译）；
+    // 需要 root + 多步的 PKI 三条是内置 :pki 子命令。
+    {name:'删除PKI证书', desc:'root → rm /mnt/vendor/persist/certs/*（按文件数双判）',
+     cmd:':pki del', progress:true, cat:'PKI 证书'},
+    {name:'PKI证书切换预发布', desc:'root → 开云 App → setprop test_domain 119.29.43.208:12443',
+     cmd:':pki pre', progress:true, cat:'PKI 证书'},
+    {name:'PKI证书切换正式', desc:'root → setprop env_config/enable_domain_port/test_domain',
+     cmd:':pki prod', progress:true, cat:'PKI 证书'},
+    // ---- 广汽云环境（TSP 域名）----
+    {name:'切广汽云预发布环境', desc:'pre-platform-access.gacicv.com:8443',
+     cmd:'gacpre', cat:'广汽云环境'},
+    {name:'切广汽云测试环境', desc:'pv-release.gacicv.com:8080',
+     cmd:'gactest', cat:'广汽云环境'},
+    {name:'查询广汽云环境', desc:'读 persist.sys.tsp.platform.domain',
+     cmd:'gacquery', cat:'广汽云环境'},
     // ---- 云平台 ----
     // 这两条是"在电脑上打开"，不是"在车机上打开" —— 走 :url 调系统默认浏览器
     {name:'打开星河埋点云', desc:'浏览器打开埋点校验页（testVerification）',
@@ -5544,7 +5560,92 @@ var quickGroups = [
     {name:'测试星河座舱云', desc:'web-test 运营平台（用电脑浏览器打开）', cmd:':url https://web-test.syncore.space:20443/operation-platform/index.html#/pandect', cat:'云平台'},
     {name:'打开星河自动化测试云', desc:'autotest 任务报告（用电脑浏览器打开）', cmd:':url http://autotest.gxatek.com/task_report', cat:'云平台'}
   ]},
-  // 方控按键：独立分组（用户要求"方控独立的页面"）。
+  // ========================================================================
+  //  2026-11-20 第 5 批需求 16：指令页分组顺序按用户指定重排
+  //
+  //  最终顺序（严格照用户给的 11 项）：
+  //    1 指令执行  2 网联服务  3 手车互联  4 语音助手  5 智驾出行
+  //    6 方控按键  7 Tbox      8 Scrcpy投屏 9 Apk管理  10 网络模拟  11 自定义指令
+  //
+  //  两处改名：TBOX → Tbox、APK管理 → Apk管理、自定义 → 自定义指令。
+  //  改名时同步更新了 377/_test_ui_behavior.py 与 377/_test_ux.py 的断言，
+  //  以及本文件里按 name 查找分组的逻辑（见 switchQuickGroup / vr-panel 判断）。
+  //
+  //  新增「智驾出行」（需求 15）：高德导航侧日志，与"导 logcat/语音/网联"分开。
+  // ========================================================================
+
+  // 手车互联：CarPlay / HiCar 相关（2026-11-12 需求1）。
+  // 从「采集导出」「开关调试」里抽出来独立成组 —— 这几条都是手机投屏
+  // 生态的排障指令，跟"导日志""改开关"不是一类事，混在一起找不到。
+  { name:'手车互联', color:'var(--accent)', items:[
+    // ---- CarPlay 认证 ----
+    {name:'CarPlay认证-查询', desc:'getprop persist.connectivityphone.carplay.CERT', cmd:':carplaycert', cat:'CarPlay 认证'},
+    {name:'CarPlay认证-开启', desc:'setprop CERT true（设完自动回读确认）', cmd:':carplaycert on', cat:'CarPlay 认证'},
+    {name:'CarPlay认证-关闭', desc:'setprop CERT false（设完自动回读确认）', cmd:':carplaycert off', cat:'CarPlay 认证'},
+    // ---- CarPlay 采集与开关 ----
+    {name:'导出carplay音频文件', desc:'pull /data/carplay/records 到logcat文件', cmd:':carplay', progress:true, cat:'CarPlay 调试'},
+    {name:'打开carplay音频', desc:'setprop record.audio input/output', cmd:':carplayon', cat:'CarPlay 调试'},
+    // ---- HiCar ----
+    {name:'清除HiCar历史设备', desc:'hdc bm clean -d（清后需重新配对手机）', cmd:':hicarclear', cat:'HiCar'},
+    {name:'打开HiCarSDK日志', desc:'root→remount→setprop→sync→reboot', cmd:':hicar', progress:true, cat:'HiCar'},
+    // ---- hdc 通道 ----
+    {name:'hdc设备列表', desc:'hdc list targets（排查 hdc 是否连上）', cmd:':hdclist', cat:'hdc 通道'},
+    // ---- 2026-11-20 第 5 批需求（1~8）：讯飞音频 / SELinux / 拾音 / dump ----
+    // 这四条导出都落 桌面\logcat\<今天>\audiohal（与 :dlog / :qnxlog 同一套口径），
+    // 因为用户要的是"放到桌面 logcat 日期文件夹"，方便和当天的 logcat 对着看。
+    {name:'导出讯飞audio_dsp_hal.config',
+     desc:'pull /vendor/etc/audio_dsp_hal.config → 桌面logcat\\日期\\audiohal',
+     cmd:':audiohal config', progress:true, cat:'讯飞音频'},
+    {name:'导出讯飞audio.service.rc',
+     desc:'pull /vendor/etc/init/android.hardware.audio.service.rc → 桌面logcat\\日期\\audiohal',
+     cmd:':audiohal rc', progress:true, cat:'讯飞音频'},
+    {name:'关闭se_linux', desc:'root → remount → setenforce 0（关完回读确认）',
+     cmd:':selinux off', progress:true, cat:'SELinux'},
+    {name:'打开se_linux', desc:'root → remount → setenforce 1（开完回读确认）',
+     cmd:':selinux on', progress:true, cat:'SELinux'},
+    {name:'查找siri拾音日志',
+     desc:'root → remount → 对 /vendor/lib(64) 全部 .so 求 md5 → /data/md5.txt',
+     cmd:':md5so', progress:true, cat:'拾音日志'},
+    {name:'导出拾音日志', desc:'pull /data/md5.txt → 桌面logcat\\日期\\audiohal',
+     cmd:':md5pull', progress:true, cat:'拾音日志'},
+    {name:'创建dump',
+     desc:'mkdir /data/misc/audio/audioserver/audiotrack 并 chmod 777（回读权限）',
+     cmd:':audiodump', progress:true, cat:'音频 dump'},
+    {name:'导出dump', desc:'root → remount → pull /data/misc/audio/audioserver',
+     cmd:':audiodumppull', progress:true, cat:'音频 dump'}
+  ]},
+  // 问题6：语音助手挪到「指令执行」下面（原来排在最后一位）。
+  // 语音是这个工具最常用的场景，放最后每次都要往下找。
+  // 2026-11-19：语音助手按「唤醒 / 调试」两分类重排。
+  // 删掉的四张卡与替代入口：
+  //   唤醒(原参)   :vr wake 99   → 终端仍可敲
+  //   语音识别     :vr sr        → 语音助手页有输入框 + 发送按钮
+  //   断网识别     :vr local     → 语音助手页有「断网识别」勾选
+  //   音区对照表   :vr area      → 终端仍可敲，且唤醒卡已按音区命名
+  { name:'语音助手', color:'var(--accent)', items:[
+    {name:'主驾唤醒',   desc:'vr:// type=1 · voiceArea=0', cmd:':vr wake -a 0', cat:'唤醒'},
+    {name:'副驾唤醒',   desc:'voiceArea=1', cmd:':vr wake -a 1', cat:'唤醒'},
+    {name:'二排左唤醒', desc:'voiceArea=2', cmd:':vr wake -a 2', cat:'唤醒'},
+    {name:'二排右唤醒', desc:'voiceArea=3', cmd:':vr wake -a 3', cat:'唤醒'},
+    {name:'三排左唤醒', desc:'voiceArea=4', cmd:':vr wake -a 4', cat:'唤醒'},
+    {name:'三排右唤醒', desc:'voiceArea=5', cmd:':vr wake -a 5', cat:'唤醒'},
+    {name:'语助版本号', desc:'versionName + versionCode', cmd:':vr ver', cat:'调试'},
+    {name:'重启语助进程', desc:'force-stop 后由语音拉起', cmd:':vr restart', cat:'调试'},
+    {name:'打开后台设置', desc:'SettingDebugActivity', cmd:':vr set', cat:'调试'},
+    {name:'文本语义调试', desc:'DebugTextExecuteSemantic', cmd:':vr dbg', cat:'调试'},
+    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log', cat:'调试'}
+  ]},
+
+
+  // 5. 智驾出行（2026-11-20 需求 15 新增）
+  // 目前只有一条：导出高德日志 /data/misc/bllog（属高德私有目录，需 root）。
+  // 单独成组是因为"智驾/导航"的排障动作会越来越多，混进指令执行会被淹掉。
+  { name:'智驾出行', color:'var(--accent)', items:[
+    {name:'导出高德日志', desc:'pull /data/misc/bllog → 桌面logcat\\日期\\amap（需 root）',
+     cmd:':gmqtlog', progress:true, cat:'高德日志'}
+  ]},
+
+  // 6. 方控按键
   // 这类命令都走 dumpsys car_service inject-key <键值>，语义上是"模拟按一下
   // 方向盘按键"，与其它指令不是同一类东西，混在「指令执行」里会淹掉。
   // 组内再按功能分三段：音量控制 / 播放控制 / 功能按键 / 组合键。
@@ -5568,44 +5669,15 @@ var quickGroups = [
     // ---- 组合键 ----
     {name:'强制重启', desc:'电话+星号 同时按住 20 秒，车机会强制重启', cmd:':fkforce', progress:true, cat:'组合键'}
   ]},
-  // 手车互联：CarPlay / HiCar 相关（2026-11-12 需求1）。
-  // 从「采集导出」「开关调试」里抽出来独立成组 —— 这几条都是手机投屏
-  // 生态的排障指令，跟"导日志""改开关"不是一类事，混在一起找不到。
-  { name:'手车互联', color:'var(--accent)', items:[
-    // ---- CarPlay 认证 ----
-    {name:'CarPlay认证-查询', desc:'getprop persist.connectivityphone.carplay.CERT', cmd:':carplaycert', cat:'CarPlay 认证'},
-    {name:'CarPlay认证-开启', desc:'setprop CERT true（设完自动回读确认）', cmd:':carplaycert on', cat:'CarPlay 认证'},
-    {name:'CarPlay认证-关闭', desc:'setprop CERT false（设完自动回读确认）', cmd:':carplaycert off', cat:'CarPlay 认证'},
-    // ---- CarPlay 采集与开关 ----
-    {name:'导出carplay音频文件', desc:'pull /data/carplay/records 到logcat文件', cmd:':carplay', progress:true, cat:'CarPlay 调试'},
-    {name:'打开carplay音频', desc:'setprop record.audio input/output', cmd:':carplayon', cat:'CarPlay 调试'},
-    // ---- HiCar ----
-    {name:'清除HiCar历史设备', desc:'hdc bm clean -d（清后需重新配对手机）', cmd:':hicarclear', cat:'HiCar'},
-    {name:'打开HiCarSDK日志', desc:'root→remount→setprop→sync→reboot', cmd:':hicar', progress:true, cat:'HiCar'},
-    // ---- hdc 通道 ----
-    {name:'hdc设备列表', desc:'hdc list targets（排查 hdc 是否连上）', cmd:':hdclist', cat:'hdc 通道'}
+  // TBOX 环境切换（2026-11-19）：参考 Downloads\正式环境.bat / 预发布环境.bat，
+  // 往 /dev/mcu_spi 写 15 帧，末帧重启 MCU。命令不带 yes 只做 dry-run，卡片直接带 yes。
+  // 2026-11-20（需求16）：组名 TBOX → Tbox，顺序调到 Scrcpy投屏 之前。
+  { name:'Tbox', color:'var(--accent)', items:[
+    {name:'TBOX 正式环境', desc:'mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbosprod yes'},
+    {name:'TBOX 预发布环境', desc:'pre-mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbospre yes'},
+    {name:'TBOX 环境对照', desc:'只打印两套环境的域名/端口，不写设备', cmd:':tboschek'}
   ]},
-  // 问题6：语音助手挪到「指令执行」下面（原来排在最后一位）。
-  // 语音是这个工具最常用的场景，放最后每次都要往下找。
-  // 2026-11-19：语音助手按「唤醒 / 调试」两分类重排。
-  // 删掉的四张卡与替代入口：
-  //   唤醒(原参)   :vr wake 99   → 终端仍可敲
-  //   语音识别     :vr sr        → 语音助手页有输入框 + 发送按钮
-  //   断网识别     :vr local     → 语音助手页有「断网识别」勾选
-  //   音区对照表   :vr area      → 终端仍可敲，且唤醒卡已按音区命名
-  { name:'语音助手', color:'var(--accent)', items:[
-    {name:'主驾唤醒',   desc:'vr:// type=1 · voiceArea=0', cmd:':vr wake -a 0', cat:'唤醒'},
-    {name:'副驾唤醒',   desc:'voiceArea=1', cmd:':vr wake -a 1', cat:'唤醒'},
-    {name:'二排左唤醒', desc:'voiceArea=2', cmd:':vr wake -a 2', cat:'唤醒'},
-    {name:'二排右唤醒', desc:'voiceArea=3', cmd:':vr wake -a 3', cat:'唤醒'},
-    {name:'三排左唤醒', desc:'voiceArea=4', cmd:':vr wake -a 4', cat:'唤醒'},
-    {name:'三排右唤醒', desc:'voiceArea=5', cmd:':vr wake -a 5', cat:'唤醒'},
-    {name:'语助版本号', desc:'versionName + versionCode', cmd:':vr ver', cat:'调试'},
-    {name:'重启语助进程', desc:'force-stop 后由语音拉起', cmd:':vr restart', cat:'调试'},
-    {name:'打开后台设置', desc:'SettingDebugActivity', cmd:':vr set', cat:'调试'},
-    {name:'文本语义调试', desc:'DebugTextExecuteSemantic', cmd:':vr dbg', cat:'调试'},
-    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log', cat:'调试'}
-  ]},
+
   // Scrcpy 投屏（2026-11-19）：投屏 tab 要删，改成指令卡片直接开外部 scrcpy 窗口。
   // 实测两个 scrcpy 实例可并行（各自随机 scid/端口），所以这里不需要分配端口。
   // 屏号沿用 CAST_NAMES：0 主屏 / 1 后排 / 3 HUD / 4 副驾 / 9 PHUD-B / 10 PHUD-C
@@ -5620,14 +5692,6 @@ var quickGroups = [
     {name:'取消全部投屏', desc:'关掉所有 scrcpy 窗口（投屏是独立进程，不关会一直活着）', cmd:':caststop all'}
   ]},
 
-  // TBOX 环境切换（2026-11-19）：参考 Downloads\正式环境.bat / 预发布环境.bat，
-  // 往 /dev/mcu_spi 写 15 帧，末帧重启 MCU。命令不带 yes 只做 dry-run，卡片直接带 yes。
-  { name:'TBOX', color:'var(--accent)', items:[
-    {name:'TBOX 正式环境', desc:'mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbosprod yes'},
-    {name:'TBOX 预发布环境', desc:'pre-mqtt-*-access.gacicv.com · 写 15 帧后重启', cmd:':tbospre yes'},
-    {name:'TBOX 环境对照', desc:'只打印两套环境的域名/端口，不写设备', cmd:':tboschek'}
-  ]},
-
   // 需求（2026-11-12）：删除「应用操作 / 设备信息 / 性能监控 / 系统控制 / 文件管理」
   // 五个分组及其命令（命令也从 cmds.ini 移除，见 cmds.ini 历史）。
   // 保留「夜间模式」相关命令 yes/no/autotheme —— 它们仍被「指令执行 → 主题模式」引用。
@@ -5636,7 +5700,7 @@ var quickGroups = [
   // 用 panel:'apk' 标记，renderQuickItems 见到它就把 grid 换成 #apk-panel。
   // items 故意留空：这组没有"点一下就执行"的命令，是"选应用 → 点动作"的流程，
   // 硬塞几张空卡片只会让人以为漏了东西。导航里的计数改成显示「管理」。
-  { name:'APK管理', color:'var(--accent)', panel:'apk', items:[] },
+  { name:'Apk管理', color:'var(--accent)', panel:'apk', items:[] },
   // 网络模拟（2026-11-15 重构）：按 SynTestUtil 参考图改成「参数表单面板」，
   // 复用 renderQuickItems 的 panel 机制（与 apk-panel 同一套，不新造机制）。
   // items 只留给「指令搜索」命中，面板本身不渲染卡片；命令仍走 post('quick',cmd)。
@@ -5650,7 +5714,7 @@ var quickGroups = [
     {name:'关闭弱网', desc:'删除 tc qdisc 规则，恢复原网络', cmd:'stweakoff', cat:'弱网'}
   ]},
   // 2026-11-15：用户自定义 ADB 指令，复用 panel 机制（与 apk / netsim 同源）
-  { name:'自定义', color:'var(--accent)', panel:'custom', items:[] }
+  { name:'自定义指令', color:'var(--accent)', panel:'custom', items:[] }
 ];
 // 图标态（方案3）：待机▶ / 执行中转圈或■ / 完成✓ / 失败✗
 var ICON_PLAY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><g transform="scale(1.5)"><path d="M6 4l6 4-6 4z" fill="currentColor" stroke="none"/></g></svg>';

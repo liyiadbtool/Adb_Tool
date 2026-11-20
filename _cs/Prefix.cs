@@ -294,6 +294,25 @@ namespace AdbLogExport
             // :qnxlog [路径]  导出 QNX 侧日志（默认 /share/log）到 桌面\logcat\<日期>\qnx
             if (n == "qnxlog" || n == "qnxl" || n == "qnx") { DoQnxLog(arg); return; }
 
+            // ---- 2026-11-20 第 5 批：手车互联 / 智驾出行 ----
+            // :audiohal [config|rc]   导讯飞音频 HAL 配置（两个文件都落 \audiohal）
+            // :selinux [off|on]       关/开 SELinux（root → remount → setenforce）
+            // :md5so                  生成 /vendor/lib(64) 下 .so 的 md5 清单
+            // :md5pull                导 /data/md5.txt
+            // :audiodump              建 /data/misc/audio/audioserver/audiotrack（777）
+            // :audiodumppull          导整个 /data/misc/audio/audioserver
+            // :gmqtlog                导高德日志 /data/misc/bllog
+            if (n == "audiohal" || n == "audiohalcfg" || n == "xfyunaudio") { DoAudioHalCfg(arg); return; }
+            if (n == "selinux" || n == "se" || n == "selinuxset") { DoSelinuxCmd(arg); return; }
+            if (n == "md5so" || n == "md5find" || n == "sofind") { DoMd5So(); return; }
+            if (n == "md5pull" || n == "md5export") { DoMd5Pull(); return; }
+            if (n == "audiodumpcreate" || n == "audiodump") { DoAudioDumpCreate(); return; }
+            if (n == "audiodumppull" || n == "dumppull") { DoAudioDumpPull(); return; }
+            if (n == "gmqtlog" || n == "amap" || n == "amapbllog") { DoAmapLog(); return; }
+
+            // :pki [del|pre|prod]   PKI 证书：删除 / 切预发布 / 切正式（root + 多步）
+            if (n == "pki" || n == "pkicert") { DoPkiCmd(arg); return; }
+
             // :castrec <屏号> [秒]  投屏并录制（scrcpy --record，默认 60 秒）
             if (n == "castrec" || n == "castrecord") { DoCastRec(arg); return; }
 

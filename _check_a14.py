@@ -108,7 +108,9 @@ JS = r"""
     var items = quickGroups[ws].items;
     // 2026-11-19：新增星河座舱云两条（准上线/测试），13 → 15
     // 2026-11-19：+打开隐私授权 +删除代理 → 17；2026-11-20：+打开星河自动化测试云 → 18
-    ok('网联服务 18 条卡片', items.length === 18, items.length);
+    // 2026-11-20（第 5 批需求 9~14）：+删除PKI证书/PKI切预发布/PKI切正式
+    //   +切广汽云预发布/切广汽云测试/查询广汽云环境 → 24
+    ok('网联服务 24 条卡片', items.length === 24, items.length);
 
     var want = ['AI智能推荐后台','配置中心后台','支付宝后台','上传支付宝日志',
                 '导出支付宝日志','导出微信小程序日志','导出车载微信日志',
@@ -120,7 +122,8 @@ JS = r"""
 
     var cats = {};
     items.forEach(function(it){ if(it.cat) cats[it.cat]=1; });
-    ok('按 4 个分类分组', Object.keys(cats).length === 4, Object.keys(cats).join('/'));
+    // 2026-11-20（第 5 批）：新增「PKI 证书」「广汽云环境」两个分类 → 6 个
+    ok('按 6 个分类分组', Object.keys(cats).length === 6, Object.keys(cats).join('/'));
 
     function find(n){ for(var i=0;i<items.length;i++) if(items[i].name===n) return items[i]; return null; }
     ok('AI智能推荐 在网联服务里也有一张',
@@ -154,9 +157,10 @@ JS = r"""
     if (hit >= 0){
       nav[hit].click();
       var cards = document.querySelectorAll('#quick-grid .qcard');
-      ok('渲染出 18 张卡', cards.length === 18, cards.length);   // 2026-11-20：+自动化测试云
+      // 2026-11-20：+自动化测试云 → 18；第 5 批 +6 条 PKI/广汽云 → 24
+      ok('渲染出 24 张卡', cards.length === 24, cards.length);
       var _cats = document.querySelectorAll('#quick-grid .qcat');
-      ok('渲染出 4 个分类小标题', _cats.length === 4,
+      ok('渲染出 6 个分类小标题', _cats.length === 6,
          _cats.length + '：' + [].map.call(_cats, function(e){ return e.textContent; }).join('/'));
       var nm = document.getElementById('quick-group-name');
       ok('分组标题是「网联服务」', nm && nm.textContent === '网联服务', nm && nm.textContent);

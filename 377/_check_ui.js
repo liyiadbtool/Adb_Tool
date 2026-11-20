@@ -283,7 +283,7 @@ ck('需求 重启卡片走 :reboot', /name:'重启车机'[^}]*cmd:':reboot'/.tes
 // 挪到「APK管理」分组，这里改成断言"卡片下架 + 命令仍在 C# 侧可用"。
 ck('需求 清理前台应用卡片已下架', !/name:'清理前台应用'/.test(js));
 ck('需求 导出APK 卡片已下架', !/name:'导出APK'/.test(js));
-ck('需求 有 APK管理 面板分组', /name:'APK管理'[^}]*panel:'apk'/.test(js));
+ck('需求 有 Apk管理 面板分组', /name:'Apk管理'[^}]*panel:'apk'/.test(js));
 // 星河云环境：查询 + 三套环境，四条都要在
 ck('需求 有「查询星河云环境」卡片', /name:'查询星河云环境'/.test(js));
 ck('需求 有「切预发布环境」卡片', /name:'切预发布环境'[^}]*cmd:':env pre'/.test(js));
@@ -377,10 +377,28 @@ ck('需求 手车互联含 hdc 设备列表卡',
      ieSeg.indexOf('导出carplay音频文件') < 0
      && ieSeg.indexOf('打开HiCarSDK日志') < 0
      && ieSeg.indexOf('打开carplay音频') < 0);
-  ck('需求 手车互联组在方控之后、语音助手之前',
-     z2 >= 0 && c2 > z2
-     && js.indexOf("name:'方控按键'") < c2
-     && js.indexOf("name:'语音助手'") > c2);
+  // 2026-11-20（第 5 批需求 16）：分组顺序整页重排，改为按用户给定的 11 项顺序断言。
+  //   指令执行 / 网联服务 / 手车互联 / 语音助手 / 智驾出行 /
+  //   方控按键 / Tbox / Scrcpy投屏 / Apk管理 / 网络模拟 / 自定义指令
+  var ORDER = ['指令执行','网联服务','手车互联','语音助手','智驾出行',
+               '方控按键','Tbox','Scrcpy投屏','Apk管理','网络模拟','自定义指令'];
+  var pos = [];
+  var orderOk = true;
+  for (var oi = 0; oi < ORDER.length; oi++){
+    var at = js.indexOf("name:'" + ORDER[oi] + "'");
+    pos.push(at);
+    if (at < 0) orderOk = false;
+  }
+  for (var pi = 1; pi < pos.length; pi++){
+    if (pos[pi] < pos[pi-1]) orderOk = false;
+  }
+  ck('需求 11 个分组按指定顺序排列（需求16）', orderOk, pos.join(','));
+
+  // 手车互联现在紧跟网联服务，在语音助手之前（不再是"在方控之后"）
+  var ws2 = js.indexOf("name:'网联服务'");
+  var vc2 = js.indexOf("name:'语音助手'");
+  ck('需求 手车互联组在网联服务之后、语音助手之前',
+     z2 >= 0 && c2 > ws2 && vc2 > c2);
 })();
 
 ck('需求 旧的「环境切换」卡片已移除（与环境组重复）',
@@ -390,8 +408,9 @@ ck('需求 旧的「环境切换」卡片已移除（与环境组重复）',
   var z = js.indexOf("name:'指令执行'");
   var fk = js.indexOf("name:'方控按键'");
   var yy = js.indexOf("name:'语音助手'");
-  ck('需求 方控组在指令执行之后、语音助手之前',
-     z >= 0 && fk > z && yy > fk);
+  // 2026-11-20（第 5 批需求 16）：方控现在排在语音助手之后，只要仍在指令执行之后即可
+  ck('需求 方控组在指令执行之后（且不早于语音助手）',
+     z >= 0 && fk > z && fk > yy);
   ck('需求 方控命令未混入指令执行',
      z >= 0 && js.slice(z, fk).indexOf(':fk') < 0);
 })();

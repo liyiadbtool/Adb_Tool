@@ -1924,5 +1924,512 @@ namespace AdbLogExport
             }
             return 0;
         }
+
+        // ====================================================================
+        //  2026-11-20 第 5 批需求：手车互联 / 网联服务 / 智驾出行 新增指令
+        //
+        //  这一批共 15 条，分成两类：
+        //    A. 单条 adb 命令（setprop / rm / getprop / pull）
+        //       → 全部走 cmds.ini，改命令不用重编译。卡片 cmd 用 ini 名（不带 :）
+        //    B. 需要 "adb root" / 需要落到桌面 logcat 日期目录 / 需要先建目录
+        //       → 做成内置 : 命令，因为 cmds.ini 的一条 run 只能是一行，
+        //         表达不了 "先 root 再 remount 再执行"（见 docs/DESIGN.md §4）
+        //
+        //  【落点口径】与 :dlog / :carplay / :qnxlog 完全一致：
+        //      桌面\logcat\<yyyy-MM-dd>\<分类>      （OutDir 会即时建目录）
+        //    不做成 "桌面\logcat\光秃秃" —— 用户原话是"到桌面logcat日期文件夹"。
+        // ====================================================================
+
+        // ---- 通用：把设备上的一个文件 pull 到 桌面\logcat\<今天>\<分类> ----
+        //
+        // 为什么不一上来就 pull：目标文件在 /vendor/etc、/data/misc 这些受保护目录，
+        // 没 root 时 adb pull 只会甩一句 "remote open failed: Permission denied"，
+        // 用户分不清是"路径写错""文件不存在"还是"没权限"。
+        // 这里先探测一次（存在性 + 可读性），把三种情况分开说清楚。
+        private static void PullToLogcat(string devPath, string kind, string title)
+        {
+            if (!RequireDevice("")) return;
+
+            if (devPath.Length == 0 || devPath[0] != '/')
+            {
+                Fail("设备路径要以 / 开头：" + devPath);
+                return;
+            }
+
+            // 一次往返判三态：none(不存在) / noperm(存在但读不了) / ok(可读)
+            // 用 ls -l 而不是 test -r：部分 ROM 上 test -r 对 root:root 文件恒真。
+            string probe = ShellValue(
+                "if [ ! -e '" + devPath + "' ]; then echo none; "
+                + "elif ls '" + devPath + "' >/dev/null 2>&1; then echo ok; "
+                + "else echo noperm; fi");
+            probe = (probe ?? "").Trim();
+
+            if (probe == "none")
+            {
+                Fail("设备上没有：" + devPath);
+                Hint("确认路径 / 固件版本是否匹配；可先 :ls " + ParentDir(devPath) + " 看目录内容");
+                return;
+            }
+            if (probe == "noperm")
+            {
+                Fail("没有读取权限：" + devPath);
+                Hint("先 :root 提权（adb root），再点一次");
+                return;
+            }
+
+            string dst = OutDir(kind);
+            Echo("pull", devPath + "  →  " + dst);
+
+            string o = "", e = "";
+            int rc = AdbCall(new List<string> { "pull", devPath, dst }, out o, out e);
+            string all = (o + "\n" + e).Trim();
+            CMD_OK = (rc == 0);
+
+            if (CMD_OK)
+            {
+                Ok(title + " 已导出到 " + dst);
+                string last = all.Length > 0 ? all.Substring(all.LastIndexOf('\n') + 1).Trim() : "";
+                if (last.Length > 0) Hint(last);
+            }
+            else
+            {
+                Fail(title + " 导出失败（rc=" + rc + "）");
+                if (all.Length > 0) Hint(FirstLine(all));
+                Hint("受保护目录通常需要先 :root 再 remount");
+            }
+        }
+
+        private static string ParentDir(string p)
+        {
+            int i = p.LastIndexOf('/');
+            if (i <= 0) return "/";
+            return p.Substring(0, i);
+        }
+
+        // ---- 通用：adb root → adb remount → 若干条 shell ----
+        //
+        // 关/开 SELinux 都用这个。为什么要先 root 再 remount：
+        //   setenforce 走的是 init 的 selinux 属性，非 root 时 shell 用户
+        //   直接 Permission denied；remount 是给部分 ROM 上 /system 只读
+        //   导致的属性写入失败兜底（N 系车机实测需要）。
+        //
+        // autodetect=true 时先读 getenforce 当作"现状"，只在状态不符时才下发，
+        // 避免用户重复点时反复 setprop。
+        private static void DoSelinux(bool enforce, bool quietWhenSame)
+        {
+            if (!RequireDevice("")) return;
+
+            int want = enforce ? 1 : 0;
+            string cur = ShellValue("getenforce").ToUpperInvariant();
+            // Enforcing 记为 1 / Permissive 记为 0；其它（Disabled / 空）不判
+            int curVal = (cur == "ENFORCING") ? 1 : ((cur == "PERMISSIVE") ? 0 : -1);
+
+            if (quietWhenSame && curVal == want)
+            {
+                Ok("SELinux 已经是" + (enforce ? " Enforcing（已打开）" : " Permissive（已关闭）")
+                    + "，无需重复设置");
+                Hint("当前 getenforce = " + cur);
+                return;
+            }
+
+            Echo("selinux", (enforce ? "打开" : "关闭") + " SELinux（当前 " + (cur.Length > 0 ? cur : "未知") + "）");
+
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "remount" });          // 部分 ROM 需要；失败不影响后续
+            steps.Add(new string[] { "shell", "setenforce " + want });
+
+            int fail = RunSteps((enforce ? "打开" : "关闭") + " SELinux", steps);
+
+            // 双判：remount 在部分车机上是 "not running as root" 之类的噪声失败，
+            // 所以最终结论以 setenforce 之后的回读为准，而不是以步骤失败数为准。
+            string after = ShellValue("getenforce").ToUpperInvariant();
+            int afterVal = (after == "ENFORCING") ? 1 : ((after == "PERMISSIVE") ? 0 : -1);
+            CMD_OK = (afterVal == want);
+
+            if (CMD_OK) Ok("已生效：getenforce = " + after);
+            else
+            {
+                Fail("设置后回读 getenforce = " + (after.Length > 0 ? after : "空") + "，未生效");
+                Hint("确认设备已 root（adb root 成功）后再试；部分量产固件锁了 SELinux 开关");
+                if (fail > 0) Hint("上面有 " + fail + " 条步骤报错，先看报错的是哪一条");
+            }
+        }
+
+        // :audiohal <config|rc>   讯飞音频 HAL 配置文件导出
+        //
+        // 需求 1/2：pull /vendor/etc/audio_dsp_hal.config
+        //           pull /vendor/etc/init/android.hardware.audio.service.rc
+        // 两个文件都在 /vendor/etc 下（只读分区，普通 shell 可读，不需要 root）。
+        // 落到 桌面\logcat\<今天>\audiohal，两个文件同名共存，不会互相覆盖。
+        private static void DoAudioHalCfg(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim().ToLowerInvariant();
+            if (a.Length == 0)
+            {
+                // 不带参数 = 两个都导（用户最常要的就是"两个一起拉下来对比"）
+                PullToLogcat("/vendor/etc/audio_dsp_hal.config", "audiohal", "讯飞 audio_dsp_hal.config");
+                PullToLogcat("/vendor/etc/init/android.hardware.audio.service.rc", "audiohal",
+                             "讯飞 android.hardware.audio.service.rc");
+                return;
+            }
+            if (a == "config" || a == "dsp" || a == "audio_dsp_hal.config")
+            {
+                PullToLogcat("/vendor/etc/audio_dsp_hal.config", "audiohal", "讯飞 audio_dsp_hal.config");
+                return;
+            }
+            if (a == "rc" || a == "service" || a == "android.hardware.audio.service.rc")
+            {
+                PullToLogcat("/vendor/etc/init/android.hardware.audio.service.rc", "audiohal",
+                             "讯飞 android.hardware.audio.service.rc");
+                return;
+            }
+            Fail(":audiohal 的参数不认识：" + argRaw);
+            Hint("用法：:audiohal          两个文件都导");
+            Hint("      :audiohal config  只导 audio_dsp_hal.config");
+            Hint("      :audiohal rc      只导 android.hardware.audio.service.rc");
+        }
+
+        // :selinux off|on   关闭 / 打开 SELinux（root → remount → setenforce）
+        // :selinux          不带参数 = 只报当前状态
+        private static void DoSelinuxCmd(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim().ToLowerInvariant();
+
+            if (a.Length == 0 || a == "get" || a == "status" || a == "q")
+            {
+                if (!RequireDevice("")) return;
+                string cur = ShellValue("getenforce");
+                string curU = (cur ?? "").Trim().ToUpperInvariant();
+                if (curU == "ENFORCING") Ok("SELinux = Enforcing（已打开）");
+                else if (curU == "PERMISSIVE") Ok("SELinux = Permissive（已关闭）");
+                else Warn("SELinux = " + (curU.Length > 0 ? curU : "读取失败"));
+                Hint("用法：:selinux off   关闭    :selinux on   打开");
+                return;
+            }
+            if (a == "off" || a == "0" || a == "disable" || a == "close" || a == "关")
+            {
+                DoSelinux(false, false);
+                return;
+            }
+            if (a == "on" || a == "1" || a == "enable" || a == "open" || a == "开")
+            {
+                DoSelinux(true, false);
+                return;
+            }
+            Fail(":selinux 的参数不认识：" + argRaw);
+            Hint("用法：:selinux off   关闭（root → remount → setenforce 0）");
+            Hint("      :selinux on    打开（root → remount → setenforce 1）");
+        }
+
+        // :md5so            查找 siri 拾音日志：对 /vendor/lib(64) 下所有 .so 求 md5
+        //
+        // 需求 5：root → remount → find ... | xargs md5sum > /data/md5.txt
+        // 注意 find 的结果可能上万行，全量回显会瞬间刷满输出框，
+        // 所以只回显"写了多少行"这种可核对的信息，内容靠下一步 :md5pull 导出。
+        private static void DoMd5So()
+        {
+            if (!RequireDevice("")) return;
+
+            Echo("md5", "对 /vendor/lib 与 /vendor/lib64 下全部 .so 求 md5 → /data/md5.txt");
+
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "remount" });
+            // xargs 调 md5sum；用 tee 让文件写好之后还能数行数
+            steps.Add(new string[] { "shell",
+                "find /vendor/lib/ /vendor/lib64/ -name '*.so' 2>/dev/null | xargs md5sum > /data/md5.txt" });
+
+            RunSteps("查找 siri 拾音日志（md5 清单）", steps);
+
+            // 回读：文件在不在、多少行。比"命令 rc=0"更能说明真的写成功了。
+            string size = ShellValue("wc -l < /data/md5.txt 2>/dev/null");
+            size = (size ?? "").Trim();
+
+            if (size.Length > 0 && size != "0")
+            {
+                CMD_OK = true;
+                Ok("已生成 /data/md5.txt（" + size + " 行）");
+                Hint("接着点「导出拾音日志」把 /data/md5.txt 拉到桌面 logcat");
+            }
+            else
+            {
+                CMD_OK = false;
+                Fail("/data/md5.txt 没有内容或不存在");
+                Hint("需要 root：先确认 adb root 成功（输出 restarting adbd as root）");
+                Hint("若设备上没有 /vendor/lib64，只有 lib，也会导致空清单");
+            }
+        }
+
+        // :md5pull          导出拾音日志（/data/md5.txt → 桌面\logcat\<今天>\audiohal）
+        private static void DoMd5Pull()
+        {
+            PullToLogcat("/data/md5.txt", "audiohal", "拾音日志 md5.txt");
+        }
+
+        // :audiodump        创建 dump 目录（/data/misc/audio/audioserver/audiotrack）
+        //
+        // 需求 7：cd /data/misc/audio/audioserver; mkdir audiotrack; chmod 777 audiotrack
+        // 这个目录是给 audioserver 写 dump 用的，权限必须 777 否则 audioserver
+        // （跑在 audioserver 用户下）写不进去。所以建完要回读权限确认。
+        private static void DoAudioDumpCreate()
+        {
+            if (!RequireDevice("")) return;
+
+            string dir = "/data/misc/audio/audioserver/audiotrack";
+            Echo("mkdir", dir + "（chmod 777）");
+
+            // 一步做完：建父目录 → 建自身 → 改权限。中间任一步失败都要能看出来。
+            // 注意 -p 对已存在目录是幂等的，重复点不会报错。
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "shell", "mkdir -p " + dir });
+            steps.Add(new string[] { "shell", "chmod 777 " + dir });
+
+            RunSteps("创建 dump 目录", steps);
+
+            // 回读权限，确认真的是 777（chmod 静默失败在只读分区上很常见）
+            string perm = ShellValue("ls -ld " + dir + " 2>/dev/null");
+            perm = (perm ?? "").Trim();
+
+            if (perm.IndexOf("drwxrwxrwx", StringComparison.Ordinal) >= 0)
+            {
+                CMD_OK = true;
+                Ok("dump 目录已就绪（777）：" + dir);
+                Hint("去触发一次音频场景后，再点「导出 dump」把整目录拉下来");
+            }
+            else if (perm.Length > 0)
+            {
+                CMD_OK = false;
+                Fail("目录存在但权限不是 777：" + FirstLine(perm));
+                Hint("先 :root 提权再点一次；/data 分区一般不需要 remount");
+            }
+            else
+            {
+                CMD_OK = false;
+                Fail("目录没有建出来：" + dir);
+                Hint("检查 /data/misc/audio 是否存在；必要时 :ls /data/misc/audio");
+            }
+        }
+
+        // :audiodumppull    导出 dump（root → remount → pull /data/misc/audio/audioserver）
+        private static void DoAudioDumpPull()
+        {
+            if (!RequireDevice("")) return;
+
+            string src = "/data/misc/audio/audioserver";
+
+            // 先确认目录在，否则 pull 会报 remote object 不存在
+            string kind = ShellValue("if [ -d " + src + " ]; then echo dir; else echo none; fi");
+            if ((kind ?? "").Trim() != "dir")
+            {
+                Fail("设备上没有目录：" + src);
+                Hint("先点「创建dump」把 audiotrack 目录建出来，触发音频场景后再导");
+                return;
+            }
+
+            // 需求里带了 adb root / adb remount：这个目录属于 audioserver:audioserver，
+            // 权限 770，普通 shell 读不了，必须先 root。
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "remount" });
+            RunSteps("导出 dump 前准备（root / remount）", steps);
+
+            string dst = OutDir("audiodump");
+            Echo("pull", src + "  →  " + dst);
+
+            string o = "", e = "";
+            int rc = AdbCall(new List<string> { "pull", src, dst }, out o, out e);
+            string all = (o + "\n" + e).Trim();
+            CMD_OK = (rc == 0);
+
+            if (CMD_OK)
+            {
+                Ok("dump 已导出到 " + dst);
+                string last = all.Length > 0 ? all.Substring(all.LastIndexOf('\n') + 1).Trim() : "";
+                if (last.Length > 0) Hint(last);
+            }
+            else
+            {
+                Fail("导出失败（rc=" + rc + "）");
+                if (all.Length > 0) Hint(FirstLine(all));
+                Hint("该目录属 audioserver:audioserver（770），必须 root 才能读");
+            }
+        }
+
+        // :gmqtlog          导出高德日志（/data/misc/bllog → 桌面\logcat\<今天>\amap）
+        //
+        // 需求 15：智驾出行页新增「导出高德日志」。
+        // bllog 属于高德（导航）应用私有目录，普通 shell 读不到，需要 root。
+        private static void DoAmapLog()
+        {
+            PullToLogcat("/data/misc/bllog", "amap", "高德日志");
+        }
+
+        // ==================== PKI 证书（2026-11-20 需求 9 / 13 / 14）====================
+        //
+        // 三条都是"root + 多步"，所以是内置命令而不是 ini 里的一行。
+        //
+        // :pki del    删 /mnt/vendor/persist/certs/* （需求 9）
+        // :pki pre    切 PKI 预发布环境（需求 13）
+        // :pki prod   切 PKI 正式环境（需求 14）
+        // :pki        不带参数 → 报当前 PKI 相关属性
+        private static void DoPkiCmd(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim().ToLowerInvariant();
+
+            if (a.Length == 0 || a == "get" || a == "q" || a == "status")
+            {
+                if (!RequireDevice("")) return;
+                Console.WriteLine();
+                string[] props = new string[]
+                {
+                    "persist.sys.pki.test_domain",
+                    "sys.pki.env_config",
+                    "persist.sys.pki.enable_domain_port"
+                };
+                for (int i = 0; i < props.Length; i++)
+                {
+                    string v = ShellValue("getprop " + props[i]);
+                    Console.WriteLine("  " + props[i] + " = "
+                        + (string.IsNullOrEmpty(v) ? "(空)" : v));
+                }
+                // 证书目录列一下，便于确认"删了没有"
+                string ls = ShellValue("ls /mnt/vendor/persist/certs/ 2>/dev/null | wc -l");
+                Console.WriteLine("  /mnt/vendor/persist/certs/ 文件数 = " + (ls ?? "?"));
+                Console.WriteLine();
+                CMD_OK = true;
+                Hint("用法：:pki del 删证书  :pki pre 预发布  :pki prod 正式");
+                return;
+            }
+
+            if (a == "del" || a == "delete" || a == "rm" || a == "删")
+            {
+                DoPkiDeleteCerts();
+                return;
+            }
+            if (a == "pre" || a == "preview" || a == "预发布")
+            {
+                DoPkiPre();
+                return;
+            }
+            if (a == "prod" || a == "production" || a == "正式")
+            {
+                DoPkiProd();
+                return;
+            }
+
+            Fail(":pki 的参数不认识：" + argRaw);
+            Hint("用法：:pki         查看当前 PKI 属性");
+            Hint("      :pki del     删除 PKI 证书（root → rm /mnt/vendor/persist/certs/*）");
+            Hint("      :pki pre     切 PKI 预发布环境");
+            Hint("      :pki prod    切 PKI 正式环境");
+        }
+
+        // 需求 9：删除 PKI 证书
+        //   adb root
+        //   adb shell rm /mnt/vendor/persist/certs/*
+        //
+        // 【重要】这条命令真正生效的前提是 root：certs 目录属 root:root，
+        // 非 root 时 rm 只会报 "Permission denied"，但**退出码仍是 0**，
+        // 看起来"成功"其实一个文件都没删。所以删之前先删后都数一次文件数。
+        private static void DoPkiDeleteCerts()
+        {
+            if (!RequireDevice("")) return;
+
+            string dir = "/mnt/vendor/persist/certs";
+
+            string kind = ShellValue("if [ -d " + dir + " ]; then echo dir; else echo none; fi");
+            if ((kind ?? "").Trim() != "dir")
+            {
+                Fail("设备上没有证书目录：" + dir);
+                Hint("确认固件版本；部分项目证书目录在 /data/vendor/ 下");
+                return;
+            }
+
+            string before = ShellValue("ls " + dir + " 2>/dev/null | wc -l");
+            before = (before ?? "").Trim();
+            Echo("rm", dir + "/*    （删除前 " + before + " 个文件）");
+
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "shell", "rm -f " + dir + "/*" });
+            int fail = RunSteps("删除 PKI 证书", steps);
+
+            string after = ShellValue("ls " + dir + " 2>/dev/null | wc -l");
+            after = (after ?? "").Trim();
+
+            // 判据用"文件数归零"，不用步骤 rc：rm 权限不足时 rc 也是 0（见上）
+            if (after == "0")
+            {
+                CMD_OK = true;
+                Ok("PKI 证书已删除（" + before + " → 0）");
+                Hint("证书是内存态删除，重启后会恢复；需要保持删除状态请重新下发");
+            }
+            else
+            {
+                CMD_OK = false;
+                Fail("删除后仍有 " + (after.Length > 0 ? after : "?") + " 个文件");
+                Hint("确认 adb root 成功（应输出 restarting adbd as root）");
+                if (fail > 0) Hint("上面有 " + fail + " 条步骤报错，先看是哪一条");
+            }
+        }
+
+        // 需求 13：PKI 证书切换预发布环境
+        //   adb root
+        //   adb shell am start -n com.gac.cloud.app/.app.MainActivity
+        //   adb shell setprop persist.sys.pki.test_domain 119.29.43.208:12443
+        private static void DoPkiPre()
+        {
+            if (!RequireDevice("")) return;
+
+            Echo("pki", "切 PKI 预发布：119.29.43.208:12443");
+
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "shell", "am start -n com.gac.cloud.app/.app.MainActivity" });
+            steps.Add(new string[] { "shell", "setprop persist.sys.pki.test_domain 119.29.43.208:12443" });
+            RunSteps("PKI 切预发布环境", steps);
+
+            string v = ShellValue("getprop persist.sys.pki.test_domain");
+            v = (v ?? "").Trim();
+            CMD_OK = (v == "119.29.43.208:12443");
+            if (CMD_OK) Ok("PKI 预发布域名已生效：" + v);
+            else
+            {
+                Fail("设置后回读是「" + (v.Length > 0 ? v : "空") + "」，未生效");
+                Hint("确认 adb root 成功；persist.* 属性在部分固件上需要 remount");
+            }
+        }
+
+        // 需求 14：PKI 证书切换正式环境
+        //   adb root
+        //   adb shell setprop sys.pki.env_config 0
+        //   adb shell setprop persist.sys.pki.enable_domain_port true
+        //   adb shell setprop persist.sys.pki.test_domain cms-sm-access.gacicv.com:12443
+        private static void DoPkiProd()
+        {
+            if (!RequireDevice("")) return;
+
+            Echo("pki", "切 PKI 正式：cms-sm-access.gacicv.com:12443");
+
+            List<string[]> steps = new List<string[]>();
+            steps.Add(new string[] { "root" });
+            steps.Add(new string[] { "shell", "setprop sys.pki.env_config 0" });
+            steps.Add(new string[] { "shell", "setprop persist.sys.pki.enable_domain_port true" });
+            steps.Add(new string[] { "shell",
+                "setprop persist.sys.pki.test_domain cms-sm-access.gacicv.com:12443" });
+            RunSteps("PKI 切正式环境", steps);
+
+            string v = ShellValue("getprop persist.sys.pki.test_domain");
+            v = (v ?? "").Trim();
+            CMD_OK = (v == "cms-sm-access.gacicv.com:12443");
+            if (CMD_OK) Ok("PKI 正式域名已生效：" + v);
+            else
+            {
+                Fail("设置后回读是「" + (v.Length > 0 ? v : "空") + "」，未生效");
+                Hint("注意 sys.pki.env_config 不是 persist 属性，重启后会丢");
+            }
+        }
     }
 }
