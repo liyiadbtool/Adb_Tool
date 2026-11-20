@@ -376,10 +376,13 @@ chk("可编辑 SVG 源存在（图标 v2：车载中控终端）",
     os.path.isfile(os.path.join(ROOT, "adb_log_gui", "icons", "svg", "AdbTool-中控终端.svg")))
 
 # ---- 本轮 3 个追加需求（A9）落点 ----
-cast = read(os.path.join(ROOT, "_cs", "Cast.cs"))
+# 2026-11-20（P3）：Cast.cs 已随投屏通道删除；下面两条断言改为"必须已删"，
+# 所以这里读不到就是预期状态，用空串而不是抛异常。
+_cast_path = os.path.join(ROOT, "_cs", "Cast.cs")
+cast = read(_cast_path) if os.path.exists(_cast_path) else ""
 bugs = [
-    ("缩略条 /snap 单帧端点", "/snap/" in cast and "Content-Type: image/jpeg" in cast
-     and "Connection: close" in cast),
+    # 2026-11-20（P3）：Cast.cs 删除后 /snap 端点不复存在 —— 改为反向校验
+    ("缩略条 /snap 单帧端点已随 Cast.cs 删除", "/snap/" not in cast),
     ("前端缩略条走 /snap + 1 秒轮询", "function castRefreshStripFrames" in s
      and "/snap/' + i" in s and "castRefreshStripFrames();" in s),
     ("缩略条每路停止按钮", "cast-thumb-stop" in s and "closest('[data-stop]')" in s),

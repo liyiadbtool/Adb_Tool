@@ -533,31 +533,7 @@ namespace AdbLogExport
                 if (string.Equals(a, "-perf", StringComparison.OrdinalIgnoreCase)) { PERF = true; continue; }
                 if (string.Equals(a, "-v", StringComparison.OrdinalIgnoreCase)) { VERBOSE = true; continue; }
                 if (string.Equals(a, "-selftest", StringComparison.OrdinalIgnoreCase)) { SELFTEST = true; continue; }
-                // 投屏流服务自测：起服务 → 发一帧 → 用真 socket 拉回来校验
-                if (string.Equals(a, "-casttest", StringComparison.OrdinalIgnoreCase))
-                {
-                    Environment.ExitCode = CastSelfTest();
-                    return false;
-                }
-                // 真机探针：抓一帧指定屏 → 经流服务发出去 → 再从 socket 收回校验
-                // 诊断：把流服务挂在后台跑若干秒，便于用浏览器直接验证画面
-                if (string.Equals(a, "-castserve", StringComparison.OrdinalIgnoreCase))
-                {
-                    string ids = "0", secsRaw = "60";
-                    if (i + 1 < args.Length) ids = args[++i];
-                    if (i + 1 < args.Length) secsRaw = args[++i];
-                    int secs = 60;
-                    int.TryParse(secsRaw, out secs);
-                    CastServe(ids, secs);
-                    return false;
-                }
-                if (string.Equals(a, "-castprobe", StringComparison.OrdinalIgnoreCase))
-                {
-                    int probeId = 0;
-                    if (i + 1 < args.Length) int.TryParse(args[++i], out probeId);
-                    Environment.ExitCode = CastProbe(probeId);
-                    return false;
-                }
+                // 2026-11-20（P3）：-casttest / -castserve / -castprobe 随投屏通道一起删除
                 if (string.Equals(a, "-adb", StringComparison.OrdinalIgnoreCase))
                 {
                     if (i + 1 >= args.Length) { Console.WriteLine("缺少 -adb 的路径参数"); return false; }

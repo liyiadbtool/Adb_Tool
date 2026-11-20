@@ -53,6 +53,7 @@ const RETIRED = [
     { id: "cast.strip-stop", gone: ["cast-thumb-stop"] },
     { id: "ui.a16",          gone: ["function castOpenScrcpy"] },
     { id: "ui.a17",          gone: ["if (_sc.ok) {"] },
+    { id: "perf.crash-guard", gone: ["App.CastStopAll();", "CastTapWorker"] },
 ];
 const retiredIds = new Set(RETIRED.map(r => r.id));
 for (const r of RETIRED) {

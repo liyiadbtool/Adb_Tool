@@ -42,7 +42,7 @@ rem /langversion:5 locks C# 5.0 so newer syntax does not slip in
 rem Common.cs is the shared pure-function utility
 "%CSC%" /nologo /optimize+ /target:exe /platform:anycpu /codepage:65001 /main:AdbLogExport.App ^
     /out:"%TMPOUT%" ^
-    "%~dp0Program.cs" "%~dp0Prefix.cs" "%~dp0Adb.cs" "%~dp0AdbCmd.cs" "%~dp0CmdRegistry.cs" "%~dp0PkgVer.cs" "%~dp0Env.cs" "%~dp0Render.cs" "%~dp0LineEdit.cs" "%~dp0Send.cs" "%~dp0Voice.cs" "%~dp0Common.cs" "%~dp0Probe.cs" "%~dp0Reconnect.cs" "%~dp0Root.cs" "%~dp0CarInfo.cs" "%~dp0TaskCmds.cs" "%~dp0Hdc.cs" "%~dp0ApkList.cs" "%~dp0ApkCmds.cs" "%~dp0Wireless.cs" "%~dp0DeviceWatcher.cs" "%~dp0FileBrowser.cs" "%~dp0Embed.cs" "%~dp0Ffmpeg.cs" "%~dp0Scrcpy.cs" "%~dp0Tbox.cs" "%~dp0Cast.cs" "%~dp0CustomStore.cs"
+    "%~dp0Program.cs" "%~dp0Prefix.cs" "%~dp0Adb.cs" "%~dp0AdbCmd.cs" "%~dp0CmdRegistry.cs" "%~dp0PkgVer.cs" "%~dp0Env.cs" "%~dp0Render.cs" "%~dp0LineEdit.cs" "%~dp0Send.cs" "%~dp0Voice.cs" "%~dp0Common.cs" "%~dp0Probe.cs" "%~dp0Reconnect.cs" "%~dp0Root.cs" "%~dp0CarInfo.cs" "%~dp0TaskCmds.cs" "%~dp0Hdc.cs" "%~dp0ApkList.cs" "%~dp0ApkCmds.cs" "%~dp0Wireless.cs" "%~dp0DeviceWatcher.cs" "%~dp0FileBrowser.cs" "%~dp0Embed.cs" "%~dp0Ffmpeg.cs" "%~dp0Scrcpy.cs" "%~dp0Tbox.cs" "%~dp0CustomStore.cs"
 
 if errorlevel 1 (
     echo.

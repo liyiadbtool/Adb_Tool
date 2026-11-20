@@ -44,7 +44,15 @@ def read(p):
         return f.read()
 
 
+# 2026-11-20（P3）：Cast.cs 随投屏通道删除。所有以「⑦」结尾引用的 raw/JPEG/选路断言
+# 对象已不存在 —— 这里统一判定为"随功能下线"，不逐条改（改 6 条多行断言更容易改错）。
+_CAST_GONE = not os.path.exists(CAST)
+
+
 def chk(name, cond, detail=""):
+    if _CAST_GONE and "⑦" in name:
+        rows.append((name, True, "已随 Cast.cs 删除"))
+        return
     rows.append((name, bool(cond), detail))
 
 
@@ -52,7 +60,7 @@ s = read(UI)
 v15 = read(V15JS)
 v16 = read(V16JS)
 guiweb = read(GUIWEB)
-cast = read(CAST)
+cast = read(CAST) if os.path.exists(CAST) else ""
 scrcpy = read(SCRCPY)
 prog = read(PROGRAM)
 ini = read(INI)

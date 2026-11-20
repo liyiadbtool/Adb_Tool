@@ -1,8 +1,8 @@
 {
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
- "count": 130,
- "totalBytes": 3360274,
+ "count": 129,
+ "totalBytes": 3280989,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -246,8 +246,8 @@
   },
   {
    "path": "_check_features.js",
-   "size": 5176,
-   "sha256": "efa50c446f92c050a4ab0430ee2af98e624d9fb5945691dbeacf205ff84f7748"
+   "size": 5255,
+   "sha256": "110bee103484942fabf8cb632dfc6ace6a25bc0b078965f10d75c062921b2ee4"
   },
   {
    "path": "_check_features.json",
@@ -278,11 +278,6 @@
    "path": "_cs/CarInfo.cs",
    "size": 9742,
    "sha256": "56f9724e046cbf10c871c1edba30b692a67290a0e8d680e693b382d2f24673ae"
-  },
-  {
-   "path": "_cs/Cast.cs",
-   "size": 52116,
-   "sha256": "67cfb45157fbdb89d204b6749de25c789f503c86ea408010baec9016f0f1893a"
   },
   {
    "path": "_cs/CmdRegistry.cs",
@@ -351,8 +346,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 218601,
-   "sha256": "f2226270b580cd2c4b46a70183eeec80ee7b5819ae023f9383e37ce30539f79f"
+   "size": 194005,
+   "sha256": "cf029fae1d7891f9d39a7e6721bcea681855b87869f09f1f6742a2365e5e1a12"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -386,8 +381,8 @@
   },
   {
    "path": "_cs/Program.cs",
-   "size": 78505,
-   "sha256": "2645a82e14b009fd336b2f160de0343479cb800d8f53f866cf0715afadfc009b"
+   "size": 77267,
+   "sha256": "740b696a29790b877d7d3f2696122d2d66830f7fc9459ea501168e833ad39cab"
   },
   {
    "path": "_cs/Reconnect.cs",
@@ -396,8 +391,8 @@
   },
   {
    "path": "_cs/Render.cs",
-   "size": 109219,
-   "sha256": "a283d320683ff795a0273917b997a72e7749d8be6c8c06f87c56144e3eac8c1b"
+   "size": 107856,
+   "sha256": "883a39e6b6db4d903ff1578a752e5862d0bfc8492a6040dc5e701c2e63e9dd72"
   },
   {
    "path": "_cs/Root.cs",
@@ -436,8 +431,8 @@
   },
   {
    "path": "_cs/build.bat",
-   "size": 5131,
-   "sha256": "7318a3c7e4de7f2d9dd6dadd4f748d8306805762eb9b4125ab6da6d9643a464c"
+   "size": 5116,
+   "sha256": "c9668e14cc354d991f0f8b02cc6fd5166d9c52e69ff62ab32f1178bafbbfe243"
   },
   {
    "path": "_cs/console_input_test/README.md",
@@ -496,13 +491,13 @@
   },
   {
    "path": "adb_log_gui/adb_log_export.ini",
-   "size": 8399,
-   "sha256": "6715c88144d4ede3be0f3c4fd9b3d32d5450b9ca0015e2f33b407da018b88306"
+   "size": 8358,
+   "sha256": "0e1146c5444de56e9ac60ac0080febf4c3a34e61189c92426eeb2cf2e6f3aef3"
   },
   {
    "path": "adb_log_gui/build_gui.bat",
-   "size": 12804,
-   "sha256": "89d67a7a0f29df19661ba3531e4caa4751645874fa09b1b60971df280e17c64b"
+   "size": 12788,
+   "sha256": "bd56d0dc4e2c536032823d3965f431ec913b0f137c5f5e30163856c5d3e3a7e7"
   },
   {
    "path": "adb_log_gui/cmds.ini",
@@ -566,8 +561,8 @@
   },
   {
    "path": "docs/INVARIANT-DIFF.md",
-   "size": 6888,
-   "sha256": "a551441f4ea338ea033f356c45382049e9cd0e8bf71976b9ab0ed83b8823d940"
+   "size": 6909,
+   "sha256": "1470dcd8cd03261930865d3f8e304032afcd59f739165f2854a82039d2a907a3"
   },
   {
    "path": "docs/RESKIN-FINAL-REPORT.md",

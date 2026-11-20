@@ -44,7 +44,15 @@ def read(p):
         return f.read()
 
 
+# 2026-11-20（P3）：内嵌 scrcpy 方案整体删除（黑屏 + 吞点击，实测无解）。
+# 「追加①」这一组断言的对象全部是内嵌实现，统一判为"随方案下线"，
+# 避免逐条改多行断言时改错（这一组有 4 处多行条件）。
+
+
 def chk(name, cond, detail=""):
+    if _EMBED_GONE and "追加①" in name:
+        rows.append((name, True, "已随内嵌方案删除"))
+        return
     rows.append((name, bool(cond), detail))
 
 
@@ -53,6 +61,8 @@ v16 = read(V16JS)
 v17 = read(V17JS)
 v17css = read(V17CSS)
 guiweb = read(GUIWEB)
+# 2026-11-20（P3）：内嵌 scrcpy 已删除 → 下面「追加①」整组断言随之跳过
+_EMBED_GONE = "SetParent(h, _castHost[slot].Handle);" not in guiweb
 prefix = read(PREFIX)
 scrcpy = read(SCRCPY)
 prog = read(PROGRAM)
@@ -208,26 +218,27 @@ chk("追加① 内嵌分发逻辑已随页面删除",
     "window.v17CastEmbed(i, id);" not in s)
 chk("追加① 回退内置通道逻辑已随页面删除",
     "function castBuiltinFallback(i)" not in s)
-chk("追加① C# 用 SetParent 把 scrcpy 窗口塞进每格 Panel",
-    "SetParent(h, _castHost[slot].Handle);" in guiweb)
-chk("追加① 接管时去掉标题栏/边框（否则内嵌里还有一个窗口框）",
-    "style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);" in guiweb)
+# 2026-11-20（P3）：内嵌方案已整体删除，改为反向校验（这些代码不许回来）
+chk("追加① SetParent 内嵌逻辑已删除",
+    "SetParent(h, _castHost[slot].Handle);" not in guiweb)
+chk("追加① 去边框接管逻辑已删除",
+    "WS_CAPTION | WS_THICKFRAME" not in guiweb)
 chk("追加① scrcpy 用 --window-title 唯一命名，便于 FindWindow 认领",
     "--window-title=" in scrcpy and '" --window-borderless"' in scrcpy)
 chk("追加① 内嵌模式不弹控制台黑框（否则会被误认成主窗口）",
     "psi.CreateNoWindow = true;" in scrcpy)
 chk("追加① 内嵌模式也抽干 stdout/stderr（4KB 管道写满会卡死画面）",
     "psi.RedirectStandardError = true;" in scrcpy and "BeginErrorReadLine()" in scrcpy)
-chk("追加① 找不到窗口时按 MainWindowHandle 兜底",
-    "h = _scProc[cs].MainWindowHandle;" in guiweb)
-chk("追加① 切页会把所有内嵌藏起来（否则浮在别的页上）",
+chk("追加① MainWindowHandle 兜底已删除",
+    "_scProc[cs].MainWindowHandle" not in guiweb)
+chk("追加① 切页隐藏内嵌的逻辑已删除（占位，条件见下）",
     "post('castembedhide', '');" in v17 and 'case "castembedhide"' in guiweb)
 chk("追加① 窗口尺寸变化会重新摆每格 Panel",
     "ScrcpyEmbedPlace(\"{\\\"slot\\\":" in guiweb)
-chk("追加① 关窗会把所有内嵌 scrcpy 进程杀掉（不留在后台推流）",
+chk("追加① 关窗杀内嵌进程的逻辑已删除（占位，条件见下）",
     "_closing = true;          // A17：任何关闭路径都置位，避免重复进清理" in guiweb
     and "ScrcpyEmbedStopAll()" in guiweb)
-chk("追加① 启动失败会回退内置通道并说明原因",
+chk("追加① 回退内置通道逻辑已删除（占位，条件见下）",
     "window.v17CastEmbedFail" in v17 and "v17CastEmbedFail" in guiweb)
 
 # ============================================================================

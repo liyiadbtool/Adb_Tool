@@ -1,0 +1,20 @@
+refactor(P3): 删除 Cast.cs 与 GuiWeb 投屏处理（投屏通道彻底下线）
+
+UI 层上一提交已删完，这里清后端死代码：
+- 删 _cs/Cast.cs（CastServer / CastSlot / CastDisplays / ffmpeg 录制，约 1500 行）
+- GuiWeb 删：8 个 case（castlist/start/stop/stat/tap/rec + scrcpyembed/stop +
+  castembedrect/hide）、PushCastStat / RunCastTap / CastTapWorker / RunCastList /
+  RunCastRecord、EnsureCastHosts / ResizeEmbedded / ScrcpyEmbed* / AttachEmbedded
+  整段（约 19KB），以及 OnFormClosing 里的 ScrcpyEmbedStopAll / CastStopAll
+- Program.cs 删 -casttest / -castserve / -castprobe 三个自测入口
+- Render.cs 删「自检：投屏」段（CastParseDisplays 已不存在）
+- 两个 bat 的编译列表去掉 Cast.cs
+
+测试侧（Cast.cs 删了会让这些断言"找不到对象"）：
+- _gate_invariants：读 Cast.cs 改为缺失容错；/snap 断言改反向（必须已删）
+- _v16_checks：Cast.cs 缺失时「⑦」组统一判为随功能下线（原 6 条多行断言不动，
+  避免逐条改错）
+- _v17_checks：同样方式处理「追加①」内嵌方案整组
+- _check_features.js：perf.crash-guard 加入 RETIRED 反向清单
+
+门禁 27 项 / 0 失败；CLI 自检 501 条全过。

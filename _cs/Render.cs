@@ -1737,24 +1737,7 @@ namespace AdbLogExport
 
             // ---- 投屏：dumpsys display 解析 ----
             Console.WriteLine();
-            Console.WriteLine("== 自检：投屏 ==");
-            string dump = "  mViewports=[DisplayViewport{type=INTERNAL, valid=true, isActive=true, displayId=0,"
-                + " uniqueId='local:129', physicalPort=129, logicalFrame=Rect(0, 0 - 2560, 1440),"
-                + " deviceWidth=2560, deviceHeight=1440}, DisplayViewport{type=EXTERNAL, valid=true,"
-                + " isActive=true, displayId=2, uniqueId='local:3', logicalFrame=Rect(0, 0 - 1920, 720),"
-                + " deviceWidth=1920, deviceHeight=720}]";
-            List<CastDisplay> cds = CastParseDisplays(dump);
-            STCheck("解析出 2 块屏", cds.Count == 2, "" + cds.Count);
-            STCheck("主屏 id=0 分辨率 2560x1440",
-                    cds.Count > 0 && cds[0].Id == 0 && cds[0].W == 2560 && cds[0].H == 1440,
-                    cds.Count > 0 ? (cds[0].Id + " " + cds[0].W + "x" + cds[0].H) : "空");
-            STCheck("副屏 id=2 分辨率 1920x720",
-                    cds.Count > 1 && cds[1].Id == 2 && cds[1].W == 1920 && cds[1].H == 720,
-                    cds.Count > 1 ? (cds[1].Id + " " + cds[1].W + "x" + cds[1].H) : "空");
-            STCheck("类型与 uniqueId 取到",
-                    cds.Count > 0 && cds[0].Type == "INTERNAL" && cds[0].UniqueId == "local:129",
-                    cds.Count > 0 ? (cds[0].Type + "/" + cds[0].UniqueId) : "空");
-            STCheck("空输入不抛异常", CastParseDisplays("").Count == 0);
+            // 2026-11-20（P3）：投屏通道删除，CastParseDisplays 自检段一并下线
 
             Console.WriteLine();
             Console.WriteLine(ST_FAIL == 0 ? "  自检全部通过" : "  自检失败 " + ST_FAIL + " 项");
