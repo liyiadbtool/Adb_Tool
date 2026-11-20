@@ -392,7 +392,58 @@ namespace AdbLogExport
             }
         }
 
-        /// <summary>该屏是否正在投（内存表 + 进程存活 + 跨会话 WMI 兜底）。</summary>
+        /// <summary>pid 文件目录：%LOCALAPPDATA%\adb_Tool\casts</summary>
+        private static string CastStateDir()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "adb_Tool", "casts");
+            try { Directory.CreateDirectory(dir); } catch { }
+            return dir;
+        }
+
+        private static string CastPidFile(int displayId)
+        {
+            return Path.Combine(CastStateDir(), "cast_" + displayId + ".pid");
+        }
+
+        private static void WritePid(int displayId, int pid)
+        {
+            try { File.WriteAllText(CastPidFile(displayId), pid.ToString()); } catch { }
+        }
+
+        private static void ErasePid(int displayId)
+        {
+            try { if (File.Exists(CastPidFile(displayId))) File.Delete(CastPidFile(displayId)); } catch { }
+        }
+
+        /// <summary>
+        /// 读 pid 文件判断这块屏是否在投。
+        /// 为什么不用 WMI 扫命令行：Win32_Process.CommandLine 在非管理员下是 null，
+        /// 实测会漏判（手工开的 scrcpy 认不出来），去重就形同虚设。
+        /// pid 文件 + GetProcessById 只依赖文件系统，不需要提权。
+        /// </summary>
+        private static Process FindCasting(int displayId)
+        {
+            string f = CastPidFile(displayId);
+            try
+            {
+                if (!File.Exists(f)) return null;
+                int pid;
+                if (!int.TryParse(File.ReadAllText(f).Trim(), out pid)) { ErasePid(displayId); return null; }
+                Process p = Process.GetProcessById(pid);
+                if (p == null || p.HasExited) { ErasePid(displayId); return null; }
+                return p;
+            }
+            catch
+            {
+                // 进程已退出（GetProcessById 抛 ArgumentException）→ 清掉过期 pid
+                ErasePid(displayId);
+                return null;
+            }
+        }
+
+        /// <summary>该屏是否正在投（内存表 + pid 文件，两条互相兜底）。</summary>
         internal static bool IsCasting(int displayId)
         {
             lock (ActiveLock)
@@ -404,31 +455,7 @@ namespace AdbLogExport
                     Active.Remove(displayId);
                 }
             }
-            return ScanByWmi(displayId).Count > 0;
-        }
-
-        /// <summary>用命令行里的 --display-id=N 找出正在投这块屏的 scrcpy 进程。</summary>
-        internal static List<Process> ScanByWmi(int displayId)
-        {
-            List<Process> found = new List<Process>();
-            try
-            {
-                string q = "SELECT ProcessId,CommandLine FROM Win32_Process WHERE Name='scrcpy.exe'";
-                using (System.Management.ManagementObjectSearcher se =
-                       new System.Management.ManagementObjectSearcher(q))
-                {
-                    foreach (System.Management.ManagementBaseObject o in se.Get())
-                    {
-                        string cmd = Convert.ToString(o["CommandLine"]);
-                        if (cmd == null) continue;
-                        if (cmd.IndexOf("--display-id=" + displayId, StringComparison.Ordinal) < 0) continue;
-                        try { found.Add(Process.GetProcessById(Convert.ToInt32(o["ProcessId"]))); }
-                        catch { }
-                    }
-                }
-            }
-            catch { }
-            return found;
+            return FindCasting(displayId) != null;
         }
 
         /// <summary>取消某块屏的投屏；返回被杀掉的进程数。</summary>
@@ -445,11 +472,13 @@ namespace AdbLogExport
                     Active.Remove(displayId);
                 }
             }
-            foreach (Process q in ScanByWmi(displayId))
+            Process q = FindCasting(displayId);
+            if (q != null)
             {
                 try { if (!q.HasExited) { q.Kill(); n++; } } catch { }
                 try { q.Dispose(); } catch { }
             }
+            ErasePid(displayId);
             return n;
         }
 
@@ -463,6 +492,17 @@ namespace AdbLogExport
                 ids = new List<int>(Active.Keys);
             }
             foreach (int id in ids) n += StopCast(id);
+            // 扫一遍 pid 文件目录：工具重启前开的那些，内存表里没有
+            try
+            {
+                foreach (string f in Directory.GetFiles(CastStateDir(), "cast_*.pid"))
+                {
+                    string num = Path.GetFileNameWithoutExtension(f).Substring(5);
+                    int did;
+                    if (int.TryParse(num, out did)) n += StopCast(did);
+                }
+            }
+            catch { }
             // 兜底：扫不到 display-id 的（比如手动开的）也一并关掉
             try
             {
@@ -586,6 +626,7 @@ namespace AdbLogExport
                     return false;
                 }
                 Remember(displayId, p);
+                WritePid(displayId, p.Id);
                 App.Trace("scrcpy: 已启动 display=" + displayId + " pid=" + p.Id
                           + " exe=" + exe);
                 return true;

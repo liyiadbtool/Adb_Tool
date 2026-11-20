@@ -1,0 +1,19 @@
+fix(投屏): 去重改用 pid 文件（WMI CommandLine 非管理员读不到）
+
+真机验证时发现 :cast 0 在"已有一个 --display-id=0 的 scrcpy 在跑"时仍然放行，
+说明 WMI 那条路不可靠：Win32_Process.CommandLine 在非管理员下是 null。
+
+改为 pid 文件：
+- %LOCALAPPDATA%\adb_Tool\casts\cast_<displayId>.pid
+- IsCasting：内存表（Process.HasExited）→ pid 文件（GetProcessById）
+- StopCast / StopAllCasts：按 pid 杀进程并清文件，工具重启前开的也能收掉
+只依赖文件系统，不需要提权。
+
+真机连测（746f2719 / T88M）：
+  :cast 0        → 已打开（可鼠标操作）
+  :cast 0        → 拦住「已经在投屏了，不重复打开」
+  :caststop 0    → 已取消
+  :cast 0        → 再次打开成功
+坐标自动关闭也已实测：settings 先置 1，投屏后回读为 0。
+
+门禁 27 项 / 0 失败。
