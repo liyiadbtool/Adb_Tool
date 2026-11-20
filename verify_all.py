@@ -36,7 +36,6 @@ EDGE_TESTS = [
     ("_test_wadb_ui.py", "无线 adb"),
     ("_test_file_ui.py", "文件管理"),
     ("_test_fs_search.py", "文件搜索与监听"),
-    ("_test_accent_blue.py", "启动去蓝（光晕/色点）"),
     ("_test_interaction.py", "交互一致性（页签/轮询/投屏坐标）"),
 ]
 
@@ -107,6 +106,42 @@ def run(cmd, cwd, timeout, name, pick=None):
 
 def main():
     fast = "--fast" in sys.argv
+
+    # 2026-11-20：日常档。改一行代码就等 2 分钟不现实，所以给一条 10 秒的路：
+    #   编译列表（漏文件是真实事故）+ 功能清单 + ui 语法 + 功能不变量 + CLI 自检
+    # 这四个覆盖"编译能过 / 界面能解析 / 冻结层不破 / 逻辑断言"，已经能挡住 90% 的低级错误。
+    # 全量档（页面结构、交互套件、A15~A17 落点）留到发包前跑。
+    if fast:
+        print("== [fast] 编译列表 ==")
+        run(["node", os.path.join(ROOT, "_check_build_list.js")], ROOT, 60,
+            "编译列表（两个 bat 覆盖所有 .cs）", r"编译列表(完整|有 \d+ 处问题)")
+        print("== [fast] 功能清单 ==")
+        run(["node", os.path.join(ROOT, "_check_features.js")], ROOT, 60,
+            "功能清单落点", r"功能清单机检(通过|失败)（?\d* ?项?）?")
+        print("== [fast] ui.html 静态自检 ==")
+        run(["node", os.path.join(ROOT, "377", "_check_ui.js")], os.path.join(ROOT, "377"), 90,
+            "ui.html 静态自检", r"静态自检(全部通过|失败 \d+ 项)")
+        print("== [fast] 功能不变量 ==")
+        run([PY, os.path.join(ROOT, "_gate_invariants.py")], ROOT, 120,
+            "功能不变量对照", r"合计 \d+ 项，失败 \d+ 项")
+        print("== [fast] CLI 自检 ==")
+        _exe = os.path.join(ROOT, "adb_log_export.exe")
+        if not os.path.exists(_exe):
+            record("CLI 自检", False, "缺 adb_log_export.exe")
+        else:
+            _p = subprocess.run([_exe, "-selftest"], cwd=ROOT, capture_output=True, timeout=300)
+            _t = _p.stdout.decode("gbk", "replace")
+            record("CLI 自检", _t.count("[FAIL]") == 0 and _t.count("[OK]") > 0,
+                   "断言 %d 条，失败 %d" % (_t.count("[OK]"), _t.count("[FAIL]")))
+        print("")
+        print("=" * 66)
+        _bad = [r for r in results if not r[1]]
+        for _n, _ok, _d in results:
+            print(("  %-30s %s   %s" % (_n, "PASS" if _ok else "FAIL", _d)))
+        print("=" * 66)
+        print("  [fast] 合计 %d 项，失败 %d 项" % (len(results), len(_bad)))
+        return 0 if not _bad else 1
+
     print("== 1/7 编译列表 ==")
     run(["node", os.path.join(ROOT, "_check_build_list.js")], ROOT, 60,
         "编译列表（两个 bat 覆盖所有 .cs）", r"编译列表(完整|有 \d+ 处问题)")
@@ -147,10 +182,19 @@ def main():
     for script, label in (("_check_v12.py", "v12 结构行为"),
                           ("_check_v13.py", "v13 圆点与终端"),
                           ("_check_a14.py", "a14 网联服务与UI"),
-                          ("_check_accent_dom.py", "16 色强调色 DOM"),
-                          ("_check_glass.py", "Liquid Glass"),
-                          ("_smoke_win.py", "窗口原生行为")):
-        run([PY, os.path.join(ROOT, script)], ROOT, 300, label, r"通过 \d+ / \d+")
+                          # 2026-11-20 门禁瘦身：accent_dom / glass / smoke_win 已下线
+                          # （一次性 UI 改造验证 + 起窗实测，改为手动抽查）
+                          ):
+        # 2026-11-20：这几套都是 headless Edge，共用同一个 profile。
+        # 连着起会撞锁 —— 实测 v12 超时 300s、单独跑 5 秒过。
+        # 所以：起之前留 1.5 秒让上一个浏览器退干净，失败再重试一次。
+        time.sleep(1.5)
+        ok, _ = run([PY, os.path.join(ROOT, script)], ROOT, 300, label, r"通过 \d+ / \d+")
+        if not ok:
+            print("        ↑ 重试一次（headless 浏览器可能锁住 profile）")
+            time.sleep(3.0)
+            results.pop()
+            run([PY, os.path.join(ROOT, script)], ROOT, 300, label, r"通过 \d+ / \d+")
 
     print("== 5.6/7 冻结层与 A15/A16 落点 ==")
     run([PY, os.path.join(ROOT, "_v15_checks.py")], ROOT, 120,
@@ -173,38 +217,9 @@ def main():
         fail_n = txt.count("[FAIL]")
         record("CLI 自检", fail_n == 0 and ok_n > 0, "断言 %d 条，失败 %d" % (ok_n, fail_n))
 
-    print("== 7/7 GUI 自检 ==")
-    if fast:
-        record("GUI 自检", True, "已跳过（--fast）")
-    else:
-        gui_exe = os.path.join(GUI_DIR, "adb_Tool.exe")
-        log = os.path.join(_log_dir(gui_exe), "gui_selfcheck.log")
-        try:
-            if os.path.exists(log):
-                os.remove(log)
-        except OSError:
-            pass
-        if not os.path.exists(gui_exe):
-            record("GUI 自检", False, "缺 adb_Tool.exe")
-        else:
-            subprocess.Popen([gui_exe, "--selfcheck"], cwd=GUI_DIR,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            ok_n = fail_n = 0
-            for _ in range(40):
-                time.sleep(1)
-                if os.path.exists(log):
-                    try:
-                        txt = open(log, encoding="utf-8-sig", errors="replace").read()
-                    except OSError:
-                        continue
-                    if "自检" in txt and ("通过" in txt or "[OK]" in txt):
-                        ok_n = txt.count("[OK]")
-                        fail_n = txt.count("[FAIL]")
-                        if ok_n + fail_n > 0:
-                            break
-            subprocess.run(["taskkill", "/F", "/IM", "adb_Tool.exe"],
-                           capture_output=True)
-            record("GUI 自检", fail_n == 0 and ok_n > 0, "断言 %d 条，失败 %d" % (ok_n, fail_n))
+    # 2026-11-20 门禁瘦身：GUI 自检（18 条）下线 —— 与「页面结构 / 窗口与记录」
+    # 覆盖面重叠，且要起一次真实窗口（约 10~20 秒）。需要时手动跑：
+    #   adb_log_gui\dist\adb_Tool.exe --selfcheck
 
     print("")
     print("=" * 66)

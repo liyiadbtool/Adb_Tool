@@ -56,11 +56,17 @@ const RETIRED = [
     { id: "perf.crash-guard", gone: ["App.CastStopAll();", "CastTapWorker"] },
 ];
 const retiredIds = new Set(RETIRED.map(r => r.id));
-for (const r of RETIRED) {
+// 合并成一条汇总断言：13 条逐项打印太吵，结论只有一个 —— "投屏页确实没回来"
+{
     const src = text("adb_log_gui/webview2/ui.html") || "";
-    const still = r.gone.filter(n => src.indexOf(n) >= 0);
-    if (still.length) bad(r.id + "（已下线，但仍能在 ui.html 找到）：" + still.join("；"));
-    else good(r.id + "  已随投屏页下线（A31）");
+    const leftovers = [];
+    const ids = [];
+    for (const r of RETIRED) {
+        const still = r.gone.filter(n => src.indexOf(n) >= 0);
+        if (still.length) { ids.push(r.id); leftovers.push(...still); }
+    }
+    if (leftovers.length) bad("已下线功能又回来了（" + ids.join(",") + "）：" + leftovers.join("；"));
+    else good("已下线功能未被复活（" + RETIRED.length + " 项，投屏页/内嵌/ffmpeg 探针）");
 }
 
 let checked = 0;
