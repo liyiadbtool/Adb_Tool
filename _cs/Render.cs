@@ -669,6 +669,9 @@ namespace AdbLogExport
             STCheck("离线允许 adb", OfflineAllowed("adb"));
             STCheck("离线允许 devices", OfflineAllowed("devices"));
             STCheck("离线允许 connect", OfflineAllowed("connect"));
+            STCheck("离线允许 :url（电脑侧开浏览器，不碰 adb）", OfflineAllowed(":url"));
+            STCheck("离线允许 :openurl / :link 别名",
+                    OfflineAllowed(":openurl") && OfflineAllowed(":link"));
             STCheck("离线拒绝 ls", !OfflineAllowed("ls"));
             STCheck("离线拒绝 send", !OfflineAllowed("send"));
             STCheck("离线拒绝 cd", !OfflineAllowed("cd"));

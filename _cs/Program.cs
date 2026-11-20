@@ -1305,7 +1305,10 @@ namespace AdbLogExport
                     || n == "r" || n == "rr" || n == "ri" || n == "i" || n == "rw"
                     || n == "which" || n == "ime" || n == "cn"
                     || n == "diag" || n == "doctor"
-                    || n == "vr" || n == "voice";   // :vr 内部按子命令自行判设备，帮助/音区表为纯本地
+                    || n == "vr" || n == "voice"   // :vr 内部按子命令自行判设备，帮助/音区表为纯本地
+                    // 2026-11-20：:url 是"在电脑上打开浏览器"，不碰 adb。
+                    // 漏在门外会导致设备掉线时点「云平台」四张卡全被拒（用户实际遇到）。
+                    || n == "url" || n == "openurl" || n == "link";
             }
 
             if (c[0] == '!') return false;
