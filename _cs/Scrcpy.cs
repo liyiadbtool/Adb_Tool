@@ -367,16 +367,25 @@ namespace AdbLogExport
         {
             err = "";
             if (seconds <= 0) seconds = 60;
-            return LaunchCore(displayId, name, outFile, seconds, out err);
+            // 录制不需要接管输入，保持只看（--no-control），避免录制时误操作车机
+            return LaunchCore(displayId, name, outFile, seconds, false, out err);
         }
 
         internal static bool Launch(int displayId, string name, out string err)
         {
-            return LaunchCore(displayId, name, null, 0, out err);
+            // 2026-11-20：默认带控制。之前写死 --no-control，用户反馈"投屏不能点击"——
+            // 那是防误触的代价，但对测试来说点不动等于没用。要只看请走 LaunchView。
+            return LaunchCore(displayId, name, null, 0, true, out err);
+        }
+
+        /// <summary>只看模式（--no-control）：画面能看，鼠标点不动，不会误触车机。</summary>
+        internal static bool LaunchView(int displayId, string name, out string err)
+        {
+            return LaunchCore(displayId, name, null, 0, false, out err);
         }
 
         private static bool LaunchCore(int displayId, string name, string recFile,
-                                       int recSeconds, out string err)
+                                       int recSeconds, bool control, out string err)
         {
             err = "";
             string ver = "";
@@ -390,8 +399,9 @@ namespace AdbLogExport
 
             StringBuilder a = new StringBuilder();
             if (!string.IsNullOrEmpty(serial)) a.Append("-s ").Append(serial).Append(' ');
-            // --no-control：只投屏不接管输入。测试场景下误触会改车机状态，风险太大。
-            a.Append("--no-control");
+            // 控制开关：control=true 才能用鼠标点车机（scrcpy 通过 adb 注入触摸）。
+            // 不加这个参数 = 纯画面，点了没反应 —— 用户反馈的"投屏不能点击"就是这个。
+            if (!control) a.Append("--no-control");
             a.Append(" --display-id=").Append(displayId);
             a.Append(" --window-title=\"adb_Tool · ").Append(name).Append('"');
             // ---- A16：画质 / 性能参数（原来一个都没传，全靠 scrcpy 默认值）----

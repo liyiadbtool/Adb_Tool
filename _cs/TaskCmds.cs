@@ -1724,9 +1724,23 @@ namespace AdbLogExport
         private static void DoScrcpy(string argRaw)
         {
             string a = (argRaw == null ? "" : argRaw).Trim();
+            // 2026-11-20：view / 只看 → 加 --no-control（鼠标点不动）。
+            // 默认不带，才能点车机；用户反馈的"投屏不能点击"就是默认带了 no-control。
+            bool ViewOnly = false;
+            string[] toks = a.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            if (toks.Length > 1)
+            {
+                string last = toks[toks.Length - 1].ToLowerInvariant();
+                if (last == "view" || last == "只看" || last == "ro" || last == "noctl")
+                {
+                    ViewOnly = true;
+                    a = string.Join(" ", toks, 0, toks.Length - 1);
+                }
+            }
             if (a.Length == 0)
             {
-                Info("用法：:scrcpy <屏号|名称>");
+                Info("用法：:scrcpy <屏号|名称> [view]");
+                Hint("默认可鼠标操作；加 view 只看（不接管输入，不会误触）");
                 Hint("主屏 0 · 后排屏 1 · HUD 3 · 副屏 4 · PHUD-B 9 · PHUD-C 10");
                 return;
             }
@@ -1757,14 +1771,21 @@ namespace AdbLogExport
             CMD_OK = false;
             string err = "";
             bool ok = false;
-            try { ok = Scrcpy.Launch(id, name, out err); }
+            try
+            {
+                ok = ViewOnly
+                    ? Scrcpy.LaunchView(id, name, out err)
+                    : Scrcpy.Launch(id, name, out err);
+            }
             catch (Exception ex) { err = "启动异常：" + ex.Message; }
 
             if (ok)
             {
                 CMD_OK = true;
-                Ok("已打开 scrcpy 窗口：「" + name + "」display-id=" + id);
-                Hint("只投屏不接管输入（--no-control），不会误触车机");
+                Ok("已打开 scrcpy 窗口：「" + name + "」display-id=" + id
+                   + (ViewOnly ? "（只看，不可点）" : "（可鼠标操作）"));
+                if (ViewOnly) Hint("只看模式：鼠标点不动车机，适合演示/录屏");
+                else Hint("点击会真的操作车机；不想误触请加 view，例如 :cast 0 view");
             }
             else
             {
