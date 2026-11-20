@@ -1292,7 +1292,8 @@ namespace AdbLogExport
         }
 
         // 离线模式下允许的命令：不依赖设备，或本身就是"连接设备"的操作
-        private static bool OfflineAllowed(string c)
+        // 2026-11-20：GUI 的命令入口也要用这份白名单（无设备快判）
+        internal static bool OfflineAllowed(string c)
         {
             if (string.IsNullOrEmpty(c)) return true;
 

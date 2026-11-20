@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 129,
- "totalBytes": 3295997,
+ "totalBytes": 3301833,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -246,8 +246,8 @@
   },
   {
    "path": "_check_features.js",
-   "size": 5255,
-   "sha256": "110bee103484942fabf8cb632dfc6ace6a25bc0b078965f10d75c062921b2ee4"
+   "size": 5565,
+   "sha256": "06d283ad1f5d4e7d3d87999d3544333b6ad5365bb175a382df81030063cb6005"
   },
   {
    "path": "_check_features.json",
@@ -346,8 +346,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 194005,
-   "sha256": "cf029fae1d7891f9d39a7e6721bcea681855b87869f09f1f6742a2365e5e1a12"
+   "size": 195442,
+   "sha256": "5d8570844f5b59caa919491dfdc379aaa740565851b009cfc56010dfd4ec696e"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -381,8 +381,8 @@
   },
   {
    "path": "_cs/Program.cs",
-   "size": 77547,
-   "sha256": "29abe3afdf5111960709c7188ba22ef71140daeb0c6db62e1f99cd1eb151e793"
+   "size": 77637,
+   "sha256": "b05f4331f306d4052d62868a93d76f00317670aa576c4940d1015ff6a0ccf37c"
   },
   {
    "path": "_cs/Reconnect.cs",
@@ -491,8 +491,8 @@
   },
   {
    "path": "adb_log_gui/adb_log_export.ini",
-   "size": 8358,
-   "sha256": "0e1146c5444de56e9ac60ac0080febf4c3a34e61189c92426eeb2cf2e6f3aef3"
+   "size": 8330,
+   "sha256": "8384a0f9eeb04f0f1999e5a29beb6f91e1204a9ed3fb3dd0d6f156bda52a61bc"
   },
   {
    "path": "adb_log_gui/build_gui.bat",
@@ -511,8 +511,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 833770,
-   "sha256": "ecd96996773359946135b660f131681ed6dadef077d58a9eb1786256194da97c"
+   "size": 836298,
+   "sha256": "40d32d3231cf545c2dc385a349ced6aff8966464503760a2a8f4ec338aa5e53b"
   },
   {
    "path": "cmds.ini",
@@ -646,8 +646,8 @@
   },
   {
    "path": "verify_all.py",
-   "size": 10126,
-   "sha256": "7aa9bdf6e3d33e084b2ab7e820f247778236033e5dabf7235f0c449abe029410"
+   "size": 11625,
+   "sha256": "c2e21a080d7f712610329c4ea28a6019ec4cd00d6eb0e435458cce996d558ada"
   }
  ]
 }

@@ -2242,6 +2242,32 @@ namespace AdbLogExport.Gui
             string cmd = App.NormalizeLead(raw.Trim());
             if (cmd.Length == 0) return;
 
+            // 2026-11-20：无设备快判。
+            //
+            // 痛点：卡片不再置灰之后，无设备点下去要等 adb 自己报错；涉及初始化/
+            // 重连链路的命令还会等 12~20 秒（WaitDevice 的预算），观感是"点了没反应"。
+            //
+            // 这里在**下发之前**用 1.2 秒问一次设备在不在，不在就直接回执失败。
+            // 为什么不会影响持久化指令：持久化指令（logcat / 录制 / scrcpy 窗口）本来
+            // 就要求设备在线，快判会直接放行；而 :url / :h 这些走离线白名单，压根不进
+            // 这段代码。所以它只会拦"无设备 + 必须设备"的组合。
+            if (!App.OfflineAllowed(cmd.ToLowerInvariant()) && App.DEVN == 0)
+            {
+                bool alive = false;
+                try { alive = App.Rec.WaitDevice(1200, false, false); } catch { }
+                if (!alive || App.DEVN == 0)
+                {
+                    _cmdSource[slot] = source;
+                    _lastCmd[slot] = cmd;
+                    PushEcho(cmd, slot);
+                    PushBegin(slot);
+                    App.Warn("设备未连接，命令未执行（快判 1.2 秒）");
+                    App.Hint("输入 :r 重连，或 :devices 看端口");
+                    PushEnd(false, 0, slot);
+                    return;
+                }
+            }
+
             // 写历史（复用命令行逻辑）
             App.Hist.Add(cmd);
             if (App.Hist.Count > 500) App.Hist.RemoveAt(0);

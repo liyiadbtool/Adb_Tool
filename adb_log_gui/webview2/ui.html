@@ -9128,12 +9128,24 @@ function setFont(id){
 }
 
 function prefsSave(){
-  try { post('prefsave', b64enc(JSON.stringify(_prefs))); } catch (e) {}
+  // 2026-11-20：落盘前把服务端给的完整 prefs 合并回来。
+  // 原来只写 _prefs，而 _prefs 里往往只有 font/size，于是 accent/tabOrder/oled/eye
+  // 被整体覆盖掉（实测 ini 里的 prefs 从 8 个字段缩成 2 个）。
+  try {
+    var out = {}, k;
+    for (k in _prefsBase) if (Object.prototype.hasOwnProperty.call(_prefsBase, k)) out[k] = _prefsBase[k];
+    for (k in _prefs) if (Object.prototype.hasOwnProperty.call(_prefs, k)) out[k] = _prefs[k];
+    post('prefsave', b64enc(JSON.stringify(out)));
+  } catch (e) {}
 }
+var _prefsBase = {};      // 服务端下发的完整偏好（落盘时作为底稿合并）
+
 function prefsApply(b64){
   try {
     var o = JSON.parse(b64dec(b64) || '{}');
     if (o && typeof o === 'object') {
+      // 2026-11-20：整份记下来，别只挑 font/custom —— 否则保存时把别的字段丢了
+      _prefsBase = o;
       if (typeof o.font === 'string' && o.font) _prefs.font = o.font;
       if (typeof o.custom === 'string') _prefs.custom = o.custom;
     }
