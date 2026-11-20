@@ -1,0 +1,17 @@
+feat(投屏): 自动关坐标 / 同屏不重复投 / :caststop 取消投屏
+
+1) 自动关坐标：启动投屏前检测 settings get system pointer_location，
+   为 1 时写 0 并提示。坐标条是画在**设备屏幕**上的，会被一起投出来，且设置持久。
+   关它不影响点击 —— 点击走 scrcpy 的控制通道，与 pointer_location 无关。
+
+2) 同屏去重：Scrcpy.IsCasting(displayId) 先查内存登记表（进程存活），
+   再用 WMI 扫 scrcpy.exe 命令行的 --display-id=N 兜底（工具重启后仍能认出）。
+   已投屏时不再拉起第二个窗口，提示 :caststop <屏号> 或 :caststop all。
+   不同屏互不影响。
+
+3) :caststop <屏号|all>：停掉对应 scrcpy 进程。投屏是独立进程，工具退出它仍活着
+   （即"持久化运行"），所以要再投同一块屏必须先取消。
+
+4) 卡片组新增「取消全部投屏」。
+
+门禁 27 项 / 0 失败。

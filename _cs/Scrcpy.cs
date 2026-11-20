@@ -371,6 +371,111 @@ namespace AdbLogExport
             return LaunchCore(displayId, name, outFile, seconds, false, out err);
         }
 
+        // ---------------- 投屏进程登记（去重 / 取消 / 跨会话识别）----------------
+        // 为什么要登记：同一块屏重复拉起会出现两个窗口抢同一路视频流，
+        // 用户看到的是"投了两次、点哪个都不对"。工具重启后也要能认出来，
+        // 所以除了内存表，还会用 WMI 扫 scrcpy 命令行里的 --display-id。
+        private static readonly Dictionary<int, Process> Active =
+            new Dictionary<int, Process>();
+        private static readonly object ActiveLock = new object();
+
+        private static void Remember(int displayId, Process p)
+        {
+            lock (ActiveLock)
+            {
+                Process old;
+                if (Active.TryGetValue(displayId, out old))
+                {
+                    try { if (old != null) old.Dispose(); } catch { }
+                }
+                Active[displayId] = p;
+            }
+        }
+
+        /// <summary>该屏是否正在投（内存表 + 进程存活 + 跨会话 WMI 兜底）。</summary>
+        internal static bool IsCasting(int displayId)
+        {
+            lock (ActiveLock)
+            {
+                Process p;
+                if (Active.TryGetValue(displayId, out p))
+                {
+                    try { if (p != null && !p.HasExited) return true; } catch { }
+                    Active.Remove(displayId);
+                }
+            }
+            return ScanByWmi(displayId).Count > 0;
+        }
+
+        /// <summary>用命令行里的 --display-id=N 找出正在投这块屏的 scrcpy 进程。</summary>
+        internal static List<Process> ScanByWmi(int displayId)
+        {
+            List<Process> found = new List<Process>();
+            try
+            {
+                string q = "SELECT ProcessId,CommandLine FROM Win32_Process WHERE Name='scrcpy.exe'";
+                using (System.Management.ManagementObjectSearcher se =
+                       new System.Management.ManagementObjectSearcher(q))
+                {
+                    foreach (System.Management.ManagementBaseObject o in se.Get())
+                    {
+                        string cmd = Convert.ToString(o["CommandLine"]);
+                        if (cmd == null) continue;
+                        if (cmd.IndexOf("--display-id=" + displayId, StringComparison.Ordinal) < 0) continue;
+                        try { found.Add(Process.GetProcessById(Convert.ToInt32(o["ProcessId"]))); }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+            return found;
+        }
+
+        /// <summary>取消某块屏的投屏；返回被杀掉的进程数。</summary>
+        internal static int StopCast(int displayId)
+        {
+            int n = 0;
+            lock (ActiveLock)
+            {
+                Process p;
+                if (Active.TryGetValue(displayId, out p))
+                {
+                    try { if (p != null && !p.HasExited) { p.Kill(); n++; } } catch { }
+                    try { if (p != null) p.Dispose(); } catch { }
+                    Active.Remove(displayId);
+                }
+            }
+            foreach (Process q in ScanByWmi(displayId))
+            {
+                try { if (!q.HasExited) { q.Kill(); n++; } } catch { }
+                try { q.Dispose(); } catch { }
+            }
+            return n;
+        }
+
+        /// <summary>取消全部投屏（含工具启动前就开着的那些）。</summary>
+        internal static int StopAllCasts()
+        {
+            int n = 0;
+            List<int> ids;
+            lock (ActiveLock)
+            {
+                ids = new List<int>(Active.Keys);
+            }
+            foreach (int id in ids) n += StopCast(id);
+            // 兜底：扫不到 display-id 的（比如手动开的）也一并关掉
+            try
+            {
+                foreach (Process q in Process.GetProcessesByName("scrcpy"))
+                {
+                    try { if (!q.HasExited) { q.Kill(); n++; } } catch { }
+                    try { q.Dispose(); } catch { }
+                }
+            }
+            catch { }
+            return n;
+        }
+
         internal static bool Launch(int displayId, string name, out string err)
         {
             // 2026-11-20：默认带控制。之前写死 --no-control，用户反馈"投屏不能点击"——
@@ -480,6 +585,7 @@ namespace AdbLogExport
                         err += " —— 这个版本可能不支持 --display-id，请升级 scrcpy 2.x";
                     return false;
                 }
+                Remember(displayId, p);
                 App.Trace("scrcpy: 已启动 display=" + displayId + " pid=" + p.Id
                           + " exe=" + exe);
                 return true;

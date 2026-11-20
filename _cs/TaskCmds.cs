@@ -1505,6 +1505,39 @@ namespace AdbLogExport
                : "星河云埋点：未完全开启（privacy_enabled=" + pv + "）");
         }
 
+        // :caststop <屏号|all>   取消投屏（杀掉对应的 scrcpy 进程）
+        //
+        // 为什么要显式取消：投屏是独立进程，工具退出它也活着（这是"持久化运行"）。
+        // 要再投同一块屏，必须先把它关掉，否则就是两个窗口抢一路流。
+        private static void DoCastStop(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim();
+            if (a.Length == 0)
+            {
+                Info("用法：:caststop <屏号|all>");
+                Hint("例：:caststop 0    ·    :caststop all（关掉全部投屏窗口）");
+                return;
+            }
+            if (a.Equals("all", StringComparison.OrdinalIgnoreCase) || a == "全部")
+            {
+                int n = Scrcpy.StopAllCasts();
+                CMD_OK = n > 0;
+                if (n > 0) Ok("已关闭 " + n + " 个投屏窗口");
+                else Warn("没有正在运行的投屏窗口");
+                return;
+            }
+            int id;
+            if (!int.TryParse(a, out id) || id < 0)
+            {
+                Fail("屏号要写数字，或者写 all：" + a);
+                return;
+            }
+            int k = Scrcpy.StopCast(id);
+            CMD_OK = k > 0;
+            if (k > 0) Ok("已取消屏 " + id + " 的投屏");
+            else Warn("屏 " + id + " 当前没有在投屏");
+        }
+
         // :castrec <屏号> [秒]   投屏并录制到 桌面\logcat\<日期>\screenrecord
         //
         // 投屏页要删掉，页内那个「录制」按钮随之消失；能力用这条命令保留，
@@ -1765,6 +1798,26 @@ namespace AdbLogExport
                     return;
                 }
                 name = "屏 " + id;
+            }
+
+            // 2026-11-20：同一块屏已经在投就不再拉起第二个（两个窗口抢一路流，
+            // 点了哪个都不对）。要重投先 :caststop <屏号>。
+            if (Scrcpy.IsCasting(id))
+            {
+                CMD_OK = false;
+                Warn("屏 " + id + "（" + name + "）已经在投屏了，不重复打开");
+                Hint("要重新投请先取消：:caststop " + id + "   或   :caststop all");
+                return;
+            }
+
+            // 投屏前顺手关掉系统坐标条：它画在**设备屏幕**上，会被一起投出来，
+            // 而且设置是持久的（重启也不还原）。关它不影响点击 —— 点击走的是
+            // scrcpy 的控制通道，跟 pointer_location 没关系。
+            string pl = ShellValue("settings get system pointer_location");
+            if (pl != null && pl.Trim() == "1")
+            {
+                ShellStep("settings put system pointer_location 0", "关闭系统坐标条");
+                Hint("已关闭设备上的「指针位置」坐标条（要恢复用 :stxyon）");
             }
 
             Echo("scrcpy", "--display-id=" + id + "  (" + name + ")");

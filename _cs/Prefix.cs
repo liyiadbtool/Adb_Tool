@@ -297,6 +297,9 @@ namespace AdbLogExport
             // :castrec <屏号> [秒]  投屏并录制（scrcpy --record，默认 60 秒）
             if (n == "castrec" || n == "castrecord") { DoCastRec(arg); return; }
 
+            // :caststop <屏号|all>  取消投屏（投屏是独立进程，不关会一直活着）
+            if (n == "caststop" || n == "castclose") { DoCastStop(arg); return; }
+
             if (n == "wsdevid" || n == "devid") { DoDeviceId(); return; }
 
             // :url <地址>  用桌面系统默认浏览器打开（不是车机）

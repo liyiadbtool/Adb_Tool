@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 129,
- "totalBytes": 3282922,
+ "totalBytes": 3290038,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -371,8 +371,8 @@
   },
   {
    "path": "_cs/Prefix.cs",
-   "size": 53332,
-   "sha256": "7d6c84c7393891cc43a935b7cdcb4edcb715e3105512771ce1fb308d67b048e1"
+   "size": 53518,
+   "sha256": "74c4a1506e6044a9d1411c5bc4e1e82a395e251a0c081f734c64a288d51ff80e"
   },
   {
    "path": "_cs/Probe.cs",
@@ -401,8 +401,8 @@
   },
   {
    "path": "_cs/Scrcpy.cs",
-   "size": 29665,
-   "sha256": "5c7942b1099f2ee865d0d7ee9ea99625470c52f4144608a3cc5f72401c899bb5"
+   "size": 33893,
+   "sha256": "90609aba72d906981f5d3cc4e3c45f763d1e134d04a74be580529b459836e714"
   },
   {
    "path": "_cs/Send.cs",
@@ -411,8 +411,8 @@
   },
   {
    "path": "_cs/TaskCmds.cs",
-   "size": 81058,
-   "sha256": "aea58dcda965a308bba4d84e421481d868ebd26f83d55c360345b6fef7e27065"
+   "size": 83620,
+   "sha256": "ebd85dc268f9d4697a14ff4c77ecc5533d8f17e04c899fa13986f3845752fa26"
   },
   {
    "path": "_cs/Tbox.cs",
@@ -511,8 +511,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 832433,
-   "sha256": "75f3085e202dff5e6661ab2d639bc8e895abd4ba96a51abf69dad1d8553a57c7"
+   "size": 832573,
+   "sha256": "633835c49109028bc0f11be5d96fd9d7748addafd0be9cc510aa5d1910484705"
   },
   {
    "path": "cmds.ini",
