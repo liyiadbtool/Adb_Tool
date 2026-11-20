@@ -318,8 +318,9 @@ body{
 .quick-nav::-webkit-scrollbar{width:10px;}
 .quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
 .quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
-.qnav-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--r-2);cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;}
-.qnav-item:hover{background:var(--surface-2);color:var(--text);}
+.qnav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-2);cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;}
+/* 2026-11-20 反馈3：hover 原来只有一层灰，看不出指向哪一项，改成强调色薄底 */
+.qnav-item:hover{background:color-mix(in srgb, var(--accent) 16%, transparent);color:var(--text);}
 .qnav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
 .qnav-item .qdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
 .qnav-item .qcnt{margin-left:auto;font-size:11px;color:var(--text-faint);}
@@ -398,8 +399,9 @@ body{
 .qcard.toggle.running .qcmd::after{content:" · 点击停止";}
 /* 图标态颜色（方案3）：待机灰 / 执行青绿 / 完成绿 / 失败红 */
 .qcard.running .qico{color:var(--accent);}
-.qcard.done{border-color:var(--ok);}
-.qcard.done .qico{color:var(--ok);}
+/* 2026-11-20 反馈6：执行成功的勾与描边跟随强调色（原来是固定绿） */
+.qcard.done{border-color:var(--accent);}
+.qcard.done .qico{color:var(--accent);}
 .qcard.error{border-color:var(--err);}
 .qcard.error .qico{color:var(--err);}
 /* 底部进度条（方案4，长任务卡片：HCI导出/录屏） */
@@ -506,7 +508,7 @@ body{
 .fb-row:hover{background:var(--surface);}
 .fb-row.copied{background:var(--accent-soft);}
 /* 成功/失败色用左边框提示，不占正文宽度（2px 与表头 border-left 对齐） */
-.fb-row.ok{border-left:2px solid var(--ok);}
+.fb-row.ok{border-left:2px solid var(--accent);}
 .fb-row.err{border-left:2px solid var(--err);}
 /* 新完成的一条闪一下：从终端页跳过来时，靠它还原来不及定位 */
 @keyframes fbflash{
@@ -583,7 +585,7 @@ body{
 }
 .fb-row .fb-right::-webkit-scrollbar{width:8px;}
 .fb-row .fb-right::-webkit-scrollbar-thumb{background:var(--border);border:2px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
-.fb-row .fb-right .o-ok{color:var(--ok);}
+.fb-row .fb-right .o-ok{color:var(--accent);}
 .fb-row .fb-right .o-err{color:var(--err);}
 .fb-row .fb-right .o-dim{color:var(--text-dim);}
 .fb-row .fb-right .o-faint{color:var(--text-faint);}
@@ -698,10 +700,14 @@ body{
 .vrmode.sel{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
 
 /* 单点查询结果：键值两列 */
-.apk-detail{display:flex;flex-direction:column;gap:4px;padding:6px 2px;}
+.apk-detail{display:flex;flex-direction:column;gap:4px;padding:6px 2px;
+  /* 2026-11-20 反馈1：查询结果要能选中复制 */
+  user-select:text;-webkit-user-select:text;cursor:text;}
 .apk-drow{display:flex;gap:10px;font-size:12.5px;line-height:1.7;}
-.apk-dk{flex:0 0 74px;color:var(--text-faint);}
-.apk-dv{flex:1;min-width:0;color:var(--text);word-break:break-all;font-family:var(--font-mono);}
+.apk-dk{flex:0 0 74px;color:var(--text-faint);user-select:text;-webkit-user-select:text;}
+.apk-dv{flex:1;min-width:0;color:var(--text);word-break:break-all;font-family:var(--font-mono);
+  /* 2026-11-20 反馈2：超长（Activity/路径）必须换行 */
+  white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text;}
 
 /* ============ 文件管理（2026-11-13） ============ */
 .fs-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 14px;gap:10px;}
@@ -851,7 +857,7 @@ body{
   color:var(--text-dim);white-space:pre-wrap;word-break:break-all;
   user-select:text;-webkit-user-select:text;
 }
-.apk-out .o-ok{color:var(--ok);}
+.apk-out .o-ok{color:var(--accent);}   /* 反馈4：成功文本跟随强调色 */
 .apk-out .o-err{color:var(--err);}
 .apk-out .o-dim{color:var(--text-dim);}
 .apk-out .o-faint{color:var(--text-faint);}
@@ -969,7 +975,7 @@ body{
 
 /* 失败记录更醒目：只加左侧色条不够，折叠态下完全看不到，所以配 toast */
 #toast.t-err{border-color:var(--err);color:var(--err);}
-#toast.t-ok{border-color:var(--ok);color:var(--ok);}
+#toast.t-ok{border-color:var(--accent);color:var(--accent);}   /* 反馈5：跟随强调色 */
 
 /* ============ 2026-11-15：网络模拟面板 / UI 对比页 / 状态栏占位 / 投屏禁拖拽 ============ */
 /* ---------- 网络模拟表单（参考 SynTestUtil 网络模拟页） ---------- */
@@ -2315,6 +2321,7 @@ select{ color-scheme:inherit; }
   margin-top:6px;font-size:12px;color:var(--text-faint);line-height:1.5;
 }
 /* 三个按钮本身就用字的实际大小示意，不用再额外加图标 */
+#set-fsize button[data-fsize="xs"]{ font-size:10.5px; }   /* 反馈9：新增超小 */
 #set-fsize button[data-fsize="s"]{ font-size:12px; }
 #set-fsize button[data-fsize="m"]{ font-size:13.5px; }
 #set-fsize button[data-fsize="l"]{ font-size:15.5px; }
@@ -10171,6 +10178,8 @@ document.addEventListener('DOMContentLoaded', function (){
      好处：窗口热区、tooltip 定位这类靠 getBoundingClientRect 的计算
      仍然自洽（devicePixelRatio 在 Chromium 里已含页面缩放）。 */
   var SIZES = {
+    // 2026-11-20 反馈9：新增超小，给笔记本上嫌「小」还大的场景
+    xs: { z: 0.85, name: '超小' },
     s: { z: 0.90, name: '小' },
     m: { z: 1.00, name: '中' },
     l: { z: 1.15, name: '大' }
@@ -10193,7 +10202,7 @@ document.addEventListener('DOMContentLoaded', function (){
   function buildSizeSeg(){
     var box = document.getElementById('set-fsize');
     if (!box || box.children.length) return;
-    var order = ['s', 'm', 'l'];
+    var order = ['xs', 's', 'm', 'l'];
     var html = '';
     for (var i = 0; i < order.length; i++){
       var k = order[i];
@@ -10916,6 +10925,26 @@ document.addEventListener('DOMContentLoaded', function (){
     seg($('set-eyelevel'), [{v:'light',name:'轻'},{v:'mid',name:'中'},{v:'deep',name:'深'}], DISP.eye, function(v){
       DISP.eye = v; applyDisplay(false);
     });
+    // 2026-11-20 反馈7：这五个按钮原来点了没反应 ——
+    // 不是没接线，是「纯黑 OLED 只在黑夜生效」「护眼强度只在护眼主题生效」，
+    // 而用户当时停在白天主题。现在按主题把它们置灰并写出原因，别让人白点。
+    (function lockByTheme(){
+      var th = document.documentElement.dataset.theme || 'dark';
+      function lock(id, on, why){
+        var box = $(id);
+        if (!box) return;
+        var bs = box.querySelectorAll('button');
+        for (var i = 0; i < bs.length; i++){
+          bs[i].disabled = !on;
+          bs[i].style.opacity = on ? '' : '.45';
+          bs[i].style.cursor = on ? '' : 'not-allowed';
+          bs[i].title = on ? '' : why;
+        }
+      }
+      lock('set-oled', th === 'dark', '仅黑夜主题生效，先切到「黑夜」');
+      lock('set-eyelevel', th === 'eye', '仅护眼主题生效，先切到「护眼」');
+    })();
+
     var hint = $('set-display-hint');
     if (hint){
       var t = document.documentElement.dataset.theme;

@@ -1,0 +1,14 @@
+feat(UI): 九条反馈 —— 可复制/换行/accent 跟随/显示项置灰/超小字号
+
+1. 前台应用查询结果可选中复制：.apk-detail/.apk-dk/.apk-dv 显式 user-select:text
+2. 超长值换行：.apk-dv 加 white-space:pre-wrap + overflow-wrap:anywhere
+3. 左侧分组导航 hover 加强调色薄底（原来只有一层灰，看不出指向）
+4. 终端/反馈里的成功文本改 var(--accent)（原来是固定绿）
+5. #toast.t-ok 改 accent
+6. .qcard.done 的描边与勾改 accent
+7. 显示五项"设置后无变化"：不是没接线，是 OLED 只黑夜、护眼强度只护眼，
+   用户停在白天。现在按主题置灰 + 写原因（title）
+8. 指令左侧 tab 项 padding 9px→6px，间距收紧
+9. 字号新增「超小」(0.85)，档位 xs/s/m/l
+
+验证：编译通过；--fast 5 项 0 失败；窗口与记录 243/243。
