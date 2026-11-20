@@ -6013,10 +6013,12 @@ function setEnabled(el, on, reason){
     el.removeAttribute('data-title');
   }
 }
-/* R1（2026-11-19）：无设备时的统一置灰。
-   原来只有"执行时拦截"，按钮看着是亮的 —— 用户点了才被告知没设备。
-   现在设备状态一变就把执行入口置灰（走 setEnabled，语义/命中/观感/可达性一次设全）。
-   注意：:url 是"用电脑浏览器打开链接"，不依赖设备，不能跟着禁。 */
+/* 无设备时的执行入口状态（2026-11-20 调整）。
+   R1 那轮曾把**卡片**也一起置灰，实测两个问题（用户报"点一下全灰"）：
+     1) 每次状态推送都重算，点完任意一条命令就整片变灰
+     2) it 查不到时 cmd 是空串，:url 的例外失效，连 H5 卡也被禁
+   现在卡片一律不禁用：能点就点，失败看回执（adb 会照实报 no devices）。
+   只保留语音发送按钮的门禁 —— 它没有回执区，点了没反应最难受。 */
 function applyOnlineGate(){
   var off = !_online;
   var why = off ? '设备未连接，连上后自动恢复' : '';
@@ -6024,16 +6026,14 @@ function applyOnlineGate(){
   var vb = document.getElementById('btn-vr-send');
   if (vb) setEnabled(vb, !off, why);
 
-  var cards = document.querySelectorAll('#quick-grid .qcard');
-  for (var i = 0; i < cards.length; i++){
-    var c = cards[i];
-    var g = parseInt(c.getAttribute('data-g'), 10);
-    var j = parseInt(c.getAttribute('data-j'), 10);
-    var it = (quickGroups[g] && quickGroups[g].items) ? quickGroups[g].items[j] : null;
-    var cmd = it ? String(it.cmd || '') : '';
-    if (cmd.indexOf(':url') === 0) continue;      // 电脑侧打开，不受设备状态影响
-    setEnabled(c, !off, why);
-  }
+  // 2026-11-20：卡片**不再置灰**。
+  //
+  // 原来的做法是"无设备时把需要设备的卡片禁用"，实测有两个问题：
+  //   1) 每次状态推送都会重算一遍，点完一条命令就整片变灰（用户："点一下全灰"）
+  //   2) 兜底方向写反了 —— it 查不到时 cmd 是空串，:url 的例外失效，连 H5 卡也灰
+  // 现在改成"能点就点，失败看回执"，无设备时命令会照实报
+  // error: no devices/emulators found，比灰着不给点更清楚。
+  // 只有语音发送按钮保留门禁：它没有回执区，点了没反应最难受。
 }
 
 function setVrMode(m){
@@ -11368,6 +11368,23 @@ document.addEventListener('DOMContentLoaded', function (){
       }
     }
     hits.sort(function (a, b) { return b.sc - a.sc || a.g - b.g || a.j - b.j; });
+
+    /* 2026-11-20：搜索按 name 去重。
+       同一个指令允许出现在多个分组（浏览时要能看到各 tab 各一份），
+       但搜索是"找那条指令"，重复出现只会让人以为有两套实现。
+       放在 sort 之后：留下的是相关度最高的那条。
+       只在搜索态去重（toks 非空），浏览态保持原样。 */
+    if (toks.length) {
+      var _seenName = {}, _uniq = [];
+      for (var _hi = 0; _hi < hits.length; _hi++) {
+        var _nm = String((hits[_hi].it && hits[_hi].it.name) || '')
+          .replace(/\s+/g, '').toLowerCase();
+        if (_nm && _seenName[_nm]) continue;
+        if (_nm) _seenName[_nm] = 1;
+        _uniq.push(hits[_hi]);
+      }
+      hits = _uniq;
+    }
 
     var shown = hits.length > MAX_HITS ? MAX_HITS : hits.length;
     if (nameEl) nameEl.textContent = '搜索结果';

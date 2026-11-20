@@ -738,13 +738,62 @@ BEHAVIOR = r"""
         hist.length = 0; histPos = {}; drafts = {};
       }catch(e){ ok('历史记录套件未抛异常', false, String(e)); }
 
-      /* ---- R1（2026-11-19）：无设备时指令入口置灰 ---- */
+      /* ---- R1（2026-11-19）：无设备时指令入口置灰
+         2026-11-20 调整：卡片**不再置灰**（点一下全灰的根因已去掉），
+         只保留语音发送按钮的门禁 —— 它没有回执区，点了没反应最难受。 ---- */
       setStatus({dev:'', online:false, rooted:false});
       var sendBtn = document.getElementById('btn-vr-send');
       ok('R1 离线时语音发送置灰', !!sendBtn && sendBtn.disabled === true && sendBtn.classList.contains('is-disabled'));
       ok('R1 置灰带原因', (sendBtn.title || '').indexOf('设备未连接') >= 0, sendBtn.title);
       setStatus({dev:'x', online:true, rooted:true});
       ok('R1 上线后恢复可点', sendBtn.disabled === false && !sendBtn.classList.contains('is-disabled'));
+
+      /* ---- R1b（2026-11-20）：离线时卡片全部可点 ---- */
+      (function(){
+        setStatus({dev:'', online:false, rooted:false});
+        var cards2 = document.querySelectorAll('#quick-grid .qcard');
+        var grey = 0;
+        for (var ci = 0; ci < cards2.length; ci++) if (cards2[ci].classList.contains('is-disabled')) grey++;
+        ok('R1b 离线时卡片不置灰', cards2.length > 0 && grey === 0, grey + '/' + cards2.length);
+        // 云平台 H5 卡当然也要可点
+        var urlOk = true;
+        for (var cj = 0; cj < cards2.length; cj++){
+          var nm = cards2[cj].querySelector('.qname');
+          if (nm && nm.textContent.indexOf('星河埋点云') >= 0 && cards2[cj].classList.contains('is-disabled')) urlOk = false;
+        }
+        ok('R1b 离线时 H5 卡可点', urlOk);
+        setStatus({dev:'x', online:true, rooted:true});
+      })();
+
+      /* ---- R6（2026-11-20）：搜索按 name 去重 ---- */
+      (function(){
+        var gW = null;
+        for (var wi = 0; wi < quickGroups.length; wi++) if (quickGroups[wi].name === '网联服务') gW = quickGroups[wi];
+        if (!gW){ ok('R6 网联服务分组存在', false); return; }
+        var dup = {name:'打开星河埋点云', desc:'故意重复', cmd:':url https://example.com/dup'};
+        gW.items.push(dup);
+        _quickFilter = '星河埋点云';
+        // 搜索走 window.renderSearchResults（不是 renderQuick）；
+        // 条数变了它内部会自动 buildIndex，不用手工重建
+        try { window.renderSearchResults(); } catch(e){ ok('R6 渲染未抛异常', false, String(e)); }
+        var cards3 = document.querySelectorAll('#quick-grid .qcard');
+        var cnt = 0;
+        for (var ck = 0; ck < cards3.length; ck++){
+          var n3 = cards3[ck].querySelector('.qname');
+          if (n3 && n3.textContent.replace(/\s+/g,'') === '打开星河埋点云') cnt++;
+        }
+        ok('R6 搜索同名指令只出 1 条', cnt === 1, cnt);
+        // 浏览态（无过滤）不去重：切到该分组，同名两条都该在
+        try { switchQuickGroup(quickGroups.indexOf(gW)); } catch(e){}
+        var all = document.querySelectorAll('#quick-grid .qcard'), cnt2 = 0;
+        for (var cl = 0; cl < all.length; cl++){
+          var n4 = all[cl].querySelector('.qname');
+          if (n4 && n4.textContent.replace(/\s+/g,'') === '打开星河埋点云') cnt2++;
+        }
+        ok('R6 浏览态不去重（同名 2 条都在）', cnt2 === 2, cnt2);
+        gW.items.pop();
+        try { renderQuickItems(); } catch(e){}
+      })();
 
       /* ---- R2/R5（2026-11-19）：网联服务新增两条卡片 ---- */
       var wsG2 = null;
