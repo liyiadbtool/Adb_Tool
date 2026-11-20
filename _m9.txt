@@ -1,9 +1,0 @@
-feat(云平台): 新增「打开星河自动化测试云」卡片
-
-- ui.html：网联服务 → 云平台 分组追加一张
-  cmd: ':url http://autotest.gxatek.com/task_report'
-  与其它四张 H5 卡一致：调电脑浏览器，不依赖设备在线
-- _check_a14.py：网联服务条数 17 → 18（两处断言）
-- 实测：adb_Tool.exe --exec ':url ...' → 已用系统浏览器打开
-
-门禁 27 项 / 0 失败；A14 57/57。
