@@ -306,23 +306,30 @@ JS = r"""
     ok('设置里有字体大小区', !!box);
     if (box){
       var bs = box.querySelectorAll('button');
-      ok('小/中/大三段', bs.length === 3, bs.length);
+      // 2026-11-20：新增「超小」档 → 四段 xs/s/m/l
+      ok('超小/小/中/大四段', bs.length === 4, bs.length);
       var txt = '';
       for (var b=0;b<bs.length;b++) txt += bs[b].textContent;
-      ok('文案是 小中大', txt.indexOf('小')>=0 && txt.indexOf('中')>=0 && txt.indexOf('大')>=0, txt);
+      ok('文案含 超小/小/中/大', txt.indexOf('超小')>=0 && txt.indexOf('小')>=0
+         && txt.indexOf('中')>=0 && txt.indexOf('大')>=0, txt);
       var before = posts('uizoom').length;
-      bs[2].click();
+      bs[3].click();
       var got = posts('uizoom');
       ok('点「大」会发 uizoom', got.length > before, got.length);
       ok('「大」= 1.15', got.length && parseFloat(got[got.length-1].data) === 1.15,
          got.length && got[got.length-1].data);
       ok('偏好里记下 size=l', _prefs.size === 'l', _prefs.size);
-      ok('「大」按钮进入选中态', bs[2].classList.contains('on'));
+      ok('「大」按钮进入选中态', bs[3].classList.contains('on'));
       bs[0].click();
+      var got0 = posts('uizoom');
+      ok('「超小」= 0.85', parseFloat(got0[got0.length-1].data) === 0.85,
+         got0[got0.length-1].data);
+      ok('偏好里记下 size=xs', _prefs.size === 'xs', _prefs.size);
+      bs[1].click();
       var got2 = posts('uizoom');
       ok('「小」= 0.9', parseFloat(got2[got2.length-1].data) === 0.9, got2[got2.length-1].data);
       ok('偏好里记下 size=s', _prefs.size === 's', _prefs.size);
-      bs[1].click();
+      bs[2].click();
       ok('回到「中」= 1.0', parseFloat(posts('uizoom').slice(-1)[0].data) === 1.0);
     }
 

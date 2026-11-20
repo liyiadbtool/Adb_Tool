@@ -5740,6 +5740,21 @@ function switchQuickGroup(idx){
   if(sc) sc.scrollTop = 0;
 }
 
+/* 2026-11-20 根治「黑卡闪」：整块替换卡片列表时不要先清空再插入。
+   grid.innerHTML = html 的语义是「清空 + 重建」，中间存在一帧空文档 ——
+   深色主题下就是肉眼可见的黑一下。
+   swapGrid 把新节点先建在游离容器里，再用 replaceChildren 一次性换上去：
+   只有一次 DOM 变更，任何一帧都不会出现空列表。 */
+function swapGrid(grid, html){
+  if (!grid) return;
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  var frag = document.createDocumentFragment();
+  while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+  if (grid.replaceChildren) grid.replaceChildren(frag);
+  else { while (grid.firstChild) grid.removeChild(grid.firstChild); grid.appendChild(frag); }
+}
+
 function renderQuickItems(){
   // 搜索态：结果来自全部分组，不能沿用 _quickIdx 的渲染逻辑
   if(_quickFilter){ renderSearchResults(); return; }
@@ -5796,7 +5811,7 @@ function renderQuickItems(){
       + '<div class="qbar"><i></i></div>'
       + '</div>';
   }
-  grid.innerHTML = html;
+  swapGrid(grid, html);
 }
 
 /* ---------- 指令搜索 ----------
@@ -5890,7 +5905,7 @@ function renderSearchResults(){
       + '<div class="qbar"><i></i></div>'
       + '</div>';
   }
-  grid.innerHTML = html;
+  swapGrid(grid, html);
 }
 
 function runQuick(j){
@@ -11462,7 +11477,7 @@ document.addEventListener('DOMContentLoaded', function (){
             + '<div class="qbar"><i></i></div>'
             + '</div>';
     }
-    grid.innerHTML = html;
+    swapGrid(grid, html);
     try { applyOnlineGate(); } catch (e) {}   // R1：新渲染的卡片同样按在线状态置灰
   };
 
