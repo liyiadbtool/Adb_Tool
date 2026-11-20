@@ -347,7 +347,11 @@ body{
    2026-11-11 调整：降级阈值从 900px 收紧到 660px —— 900px 太容易触发
    （默认窗口 1100px，减掉左导航 176px 后内容区只剩 ~920px，稍微拖窄就
    掉到两列，用户以为"一行三个"功能丢了）。660px 以下才降两列。 */
-.quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start;}
+.quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start;
+  /* 2026-11-20 治「黑卡闪」：整块重渲染（grid.innerHTML=）时会有一帧空档，
+     网格区域若透明就露出窗口黑底。给容器一个固定底色 + 独立绘制层，
+     空档期也只是同色底，不会黑一下。 */
+  background:var(--bg);contain:paint;}
 @media (max-width:660px){
   .quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
