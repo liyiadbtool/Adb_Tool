@@ -291,6 +291,47 @@ A30_ADDS = {
     "ids": set(["ns-state", "ns-stat"]),
 }
 
+# A33（2026-11-21 第 7 批需求）：UI / 文本两个一级页签并入「文件」页。
+#
+# 需求原话：「UI 和文本全部集成到文件下面，文件下面分类文件、UI、文本，仅改动位置不要改动功能」。
+# 落地方式：page-ui / page-text 的**整棵 DOM 子树原样搬进** #page-file，
+# 变成三个子视图（数据互传 / UI比对 / 文本阅读），由 fileNavSwitch() 切显隐。
+# 所以这是「容器改名 + 位置移动」，不是丢功能 —— 已用脚本对比过：
+#   onclick 零丢失、onchange 零丢失，唯一消失的 id 就是 page-ui / page-text 这两个**外壳**，
+#   它们的全部子 id（tx-body / ui-design-path / set-theme …）都还在。
+A33_ADDS = {
+    "kinds": set(),
+    #   fileNavSwitch  文件页内三个二级分组的切换
+    #   setNavLabels   设置里的「导航栏显示名称」开关（需求1）
+    "onclicks": set(["fileNavSwitch", "setNavLabels"]),
+    #   fileview-data/ui/text  三个子视图容器（原 page-file / page-ui / page-text 的内容宿主）
+    #   set-navlabels          名称开关的分段控件
+    "ids": set(["fileview-data", "fileview-ui", "fileview-text", "set-navlabels"]),
+}
+
+# A34（2026-11-21 第 7 批）：UI 比对补齐主流工具的能力。
+# 对标 pixelmatch / resemble.js 后新增三个比对选项 —— 都是纯前端 Canvas 运算，
+# 不新增任何 C# 消息 kind、不上传图片：
+#   ui-ignore-aa   忽略抗锯齿（边缘过渡差不算缺陷，否则误报率极高）
+#   ui-only-diff   只显示差异（隐藏底图，只留高亮，看缺陷位置最快）
+#   ui-struct      只比结构（转灰度后比，换主题后验布局是否走样）
+#   ui-dim-hint    尺寸一致性提示（尺寸不同时明确告知，原来静默取 min 裁剪会「假通过」）
+A34_ADDS = {
+    "kinds": set(),
+    "onclicks": set(),
+    "ids": set(["ui-ignore-aa", "ui-only-diff", "ui-struct", "ui-dim-hint"]),
+}
+
+# 经批准删除：ui / text 两个一级页签及其外壳容器。
+# 理由见上 —— 内容全部保留，只是不再作为一级页签存在。
+A33_REMOVED = {
+    "kinds": set(),
+    "onclicks": set(),
+    "ids": set(["page-ui", "page-text"]),
+}
+A33_TAB_REMOVED = ["ui", "text"]
+A33_PAGE_REMOVED = ["page-ui", "page-text"]
+
 labels = {
     "kinds": "onMessage 的 kind（基线 %d）" % len(base["kinds"]),
     "onclicks": "onclick 绑定函数（基线 %d）" % len(base["onclicks"]),
@@ -307,22 +348,28 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A13_ADDS[k] and x not in A14_ADDS[k]
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
              and x not in A17_ADDS[k] and x not in A27_ADDS[k]
-             and x not in A29_ADDS[k] and x not in A30_ADDS[k]]
+             and x not in A29_ADDS[k] and x not in A30_ADDS[k]
+             and x not in A33_ADDS[k] and x not in A34_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k]
-              and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]]
+              and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]
+              and x not in A33_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,
         "基线 %d / 当前 %d；新增 %s；经批准删除 %s；违约删除 %s；未登记新增 %s" %
         (len(a), len(b), added or "无", removed or "无", bad_rm or "无", unreg or "无"))
 # 页签 / 页面：顺序冻结，允许在末尾追加（必须登记）
 # 2026-11-19：删页签会破坏"前缀相同"的比较，先把经批准删除的项从两侧摘掉
-_base_t = [t for t in base["tabs"] if t not in A31_TAB_REMOVED]
-_cur_t = [t for t in cur["tabs"] if t not in A31_TAB_REMOVED]
+_base_t = [t for t in base["tabs"]
+           if t not in A31_TAB_REMOVED and t not in A33_TAB_REMOVED]
+_cur_t = [t for t in cur["tabs"]
+          if t not in A31_TAB_REMOVED and t not in A33_TAB_REMOVED]
 tabs_ok = _cur_t[:len(_base_t)] == _base_t and \
           set(_cur_t[len(_base_t):]) <= set(A12_TAB_ADD)
 chk(labels["tabs"], tabs_ok, "基线 %s / 当前 %s" % (base["tabs"], cur["tabs"]))
-_base_p = [p for p in base["pages"] if p not in A31_PAGE_REMOVED]
-_cur_p = [p for p in cur["pages"] if p not in A31_PAGE_REMOVED]
+_base_p = [p for p in base["pages"]
+           if p not in A31_PAGE_REMOVED and p not in A33_PAGE_REMOVED]
+_cur_p = [p for p in cur["pages"]
+          if p not in A31_PAGE_REMOVED and p not in A33_PAGE_REMOVED]
 pages_ok = _cur_p[:len(_base_p)] == _base_p and \
            set(_cur_p[len(_base_p):]) <= set(A12_PAGE_ADD)
 chk(labels["pages"], pages_ok, "基线 %s / 当前 %s" % (base["pages"], cur["pages"]))

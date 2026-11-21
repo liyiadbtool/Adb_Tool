@@ -40,7 +40,12 @@ try {
 console.log('\n== 2. DOM 引用完整性 ==');
 // 运行时才创建的节点不在静态 HTML 里，属于正常情况，单独白名单。
 // 新增动态节点时记得往这里加，否则会被误判成"引用不存在的 id"。
-var DYNAMIC_IDS = ['toast', 'fs-modal'];
+var DYNAMIC_IDS = ['toast', 'fs-modal',
+  // 2026-11-21（第 7 批需求3）：page-ui / page-text 两个一级页容器已并入文件页
+  // （内容搬进 #fileview-ui / #fileview-text）。switchTab 里仍保留
+  // `var pu = getElementById('page-ui'); if(pu) ...` 的兼容分支，
+  // 元素不存在时静默跳过 —— 这是刻意保留的旧路径兼容，不是漏写 id。
+  'page-ui', 'page-text'];
 var ids = [];
 var reId = /getElementById\(\s*'([^']+)'\s*\)/g, mm;
 while ((mm = reId.exec(js)) !== null) {

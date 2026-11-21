@@ -59,7 +59,11 @@ JS = r"""
   st.textContent='*{transition:none!important;animation:none!important;}';
   document.head.appendChild(st);
 
-  var TABS=['quick','cmd','file','ui','text'];
+  /* 2026-11-21（第 7 批需求3）：ui/text 已并入文件页，不再是独立一级页面。
+     所以"互斥检查"只看三个真实页面；ui/text 作为**别名**单独验证
+     （切过去应落到 file 页 + 对应子视图）。 */
+  var TABS=['quick','cmd','file'];
+  var ALIAS=[{n:'ui',fv:'ui'},{n:'text',fv:'text'}];
 
   function __runAll(){
     try{
@@ -77,7 +81,20 @@ JS = r"""
         var tabBtn=document.querySelector('.tab[data-tab="'+n+'"]');
         if(tabBtn && !tabBtn.classList.contains('active')) bad.push(n+':tab未高亮');
       }
-      ok('6 个页签逐一可切换且互斥', bad.length===0, bad.join(' ; '));
+      ok('3 个一级页签逐一可切换且互斥', bad.length===0, bad.join(' ; '));
+
+      /* 别名验证：switchTab('ui'/'text') 必须归一化到文件页对应子视图 */
+      var aliasBad=[];
+      for(var a=0;a<ALIAS.length;a++){
+        switchTab(ALIAS[a].n);
+        var fv=document.getElementById('fileview-'+ALIAS[a].fv);
+        var pf=document.getElementById('page-file');
+        if(!fv || !fv.classList.contains('active')) aliasBad.push(ALIAS[a].n+':子视图未激活');
+        if(!pf || !pf.classList.contains('active')) aliasBad.push(ALIAS[a].n+':文件页未激活');
+        var tabBtn2=document.querySelector('.tab[data-tab="file"]');
+        if(!tabBtn2 || !tabBtn2.classList.contains('active')) aliasBad.push(ALIAS[a].n+':文件页签未高亮');
+      }
+      ok('switchTab(ui/text) 归一化到文件页子视图', aliasBad.length===0, aliasBad.join(' ; '));
 
       /* ---------- B. 包装链连切 ---------- */
       var err=null;
@@ -88,7 +105,8 @@ JS = r"""
 
       /* ---------- C. Ctrl+1~6 ---------- */
       // 2026-11-19：Ctrl+4 不再切投屏页，改为跳指令页（Scrcpy投屏 分组）
-      var map={'1':'quick','2':'cmd','3':'file','4':'quick','5':'ui','6':'text'};
+      // 2026-11-21（第 7 批需求3）：5/6 原指向 ui/text，现归一化到 file（页面层）
+      var map={'1':'quick','2':'cmd','3':'file','4':'quick','5':'file','6':'file'};
       var wrong=[];
       for(var key in map){
         var ev=new KeyboardEvent('keydown',{key:key,ctrlKey:true,bubbles:true,cancelable:true});

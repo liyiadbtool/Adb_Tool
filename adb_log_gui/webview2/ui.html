@@ -3460,109 +3460,246 @@ body::after{
 .qz-foot .spacer{ flex:1 1 auto; }
 
 /* ==========================================================================
-   需求3：底部居中浮动玻璃停靠栏（Dock）
+   需求1（第 7 批）：左侧导航的「图标形态」+ 名称开关
    --------------------------------------------------------------------------
-   ⚠ 与现有左侧导航并存，不覆盖它 —— 由 JS 按"指令页 + 宽>=960"决定显隐。
-   ⚠ 只放图标，名称在上方气泡里显示（悬停时才出现）。
-   ⚠ 相邻图标放大：用相邻兄弟选择器实现，无需 JS 逐帧计算。
+   背景：底部 Dock 已按用户要求删除，但它的两个交互特征要保留下来，
+         迁到左侧导航上：
+           ① 图标化：每个分组一个图形图标
+           ② 悬停放大 + 名称气泡（只在「不显示名称」时才有气泡）
+   两种形态由 body[data-navlabels] 驱动：
+           "1"（默认）= 图标 + 名称 + 计数，宽 --nav-w
+           "0"        = 仅图标居中，导航栏自适应收窄，间隔加大
+   ⚠ 收窄用 CSS 变量 --nav-w 控制，不写死宽度 —— 与既有的导航宽度拖拽共存
+     （用户拖过宽度时以他为先，切到图标态时也不覆盖他的偏好）。
    ========================================================================== */
-.qdock{
-  position:fixed;
-  left:50%; bottom:14px;
-  transform:translateX(-50%) translateY(6px);
-  z-index:70;
 
-  display:flex; align-items:flex-end; gap:6px;
-  padding:8px 10px 7px;
-  border-radius:var(--r-5);
-  border:1px solid var(--edge);
-
-  /* 玻璃质感：半透明 + 模糊 + 顶部亮线 */
-  background:var(--well);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
-  box-shadow:
-    inset 0 1px 0 var(--rim-strong),
-    var(--shadow-modal);
-
-  opacity:0; pointer-events:none;
-  transition:opacity 240ms var(--ease-soft), transform 320ms var(--ease-spring);
-}
-.qdock.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
-
-/* 单个图标按钮 */
-.qdock-item{
-  position:relative;
-  width:42px;height:42px;flex:0 0 auto;
+/* ---------- 图标徽章 ---------- */
+.qnav-item .qico2{
+  flex:0 0 auto;
+  width:22px;height:22px;
   display:grid;place-items:center;
-  border:none;background:transparent;
-  border-radius:var(--r-5);
+  border-radius:var(--r-2);
   color:var(--text-dim);
-  cursor:pointer;
-  transform-origin:bottom center;
-  transition:
-    transform 220ms cubic-bezier(.34,1.56,.64,1),
-    color 160ms linear,
-    background 160ms linear;
-  will-change:transform;
+  transition:color 160ms linear, background 160ms linear;
 }
-.qdock-item svg{
-  width:21px;height:21px;
-  stroke:currentColor;fill:none;stroke-width:1.7;
-  stroke-linecap:round;stroke-linejoin:round;
+.qnav-item .qico2 svg{
+  width:16px;height:16px;
+  stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
   pointer-events:none;
 }
+.qnav-item.active .qico2{ color:var(--accent); }
+.qnav-item:hover .qico2{ color:var(--text); }
 
-/* 悬停：当前放大 1.34，左右相邻 1.16 / 1.07（模拟苹果 Dock 的磁吸） */
-.qdock-item:hover{ transform:scale(1.34) translateY(-6px); color:var(--accent); }
-.qdock-item:hover + .qdock-item{ transform:scale(1.16) translateY(-3px); }
-.qdock-item:hover + .qdock-item + .qdock-item{ transform:scale(1.07) translateY(-1px); }
-.qdock-item:has(+ .qdock-item:hover){ transform:scale(1.16) translateY(-3px); }
-.qdock-item:has(+ .qdock-item + .qdock-item:hover){ transform:scale(1.07) translateY(-1px); }
-
-/* 当前分组：底部一个小圆点指示 */
-.qdock-item.on{ color:var(--accent); }
-.qdock-item.on::after{
-  content:"";
-  position:absolute; left:50%; bottom:3px;
-  width:4px;height:4px;margin-left:-2px;
-  border-radius:50%;
-  background:var(--accent);
-  box-shadow:0 0 6px var(--accent);
+/* 名称在标签里，方便整体隐藏/显示 */
+.qnav-item .qname2{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
-/* 名称气泡（悬停时在上方显示） */
-.qdock-tip{
+/* ---------- 名称气泡（仅图标态悬停时出现） ---------- */
+.qnav-item .qnav-tip{
   position:absolute;
-  left:50%; bottom:calc(100% + 12px);
-  transform:translateX(-50%) translateY(4px) scale(.92);
+  left:calc(100% + 10px);
+  top:50%;
+  transform:translateY(-50%) translateX(-4px) scale(.94);
   padding:4px 9px;
   border-radius:var(--r-3);
   background:var(--chrome-solid);
   border:1px solid var(--edge);
   box-shadow:var(--shadow-card);
   color:var(--text);
-  font-size:11.5px; font-weight:500;
+  font-size:11.5px;font-weight:500;
   white-space:nowrap;
-  opacity:0; pointer-events:none;
+  opacity:0;pointer-events:none;
   transition:opacity 140ms linear, transform 200ms var(--ease-spring);
+  z-index:12;
 }
-.qdock-item:hover .qdock-tip{
+.qnav-item{ position:relative; }
+
+/* ==========================================================================
+   形态 B：不显示名称（data-navlabels="0"）
+   ========================================================================== */
+body[data-navlabels="0"] .qnav-item .qname2,
+body[data-navlabels="0"] .qnav-item .qcnt{
+  display:none;
+}
+body[data-navlabels="0"] .qnav-item{
+  justify-content:center;
+  padding:6px 0;
+  gap:0;
+  /* 间隔加大：图标态下每项高度撑开，触达面积不缩水 */
+  margin-bottom:4px;
+}
+body[data-navlabels="0"] .qnav-item .qico2{
+  width:32px;height:32px;
+  border-radius:var(--r-3);
+}
+body[data-navlabels="0"] .qnav-item .qico2 svg{
+  width:19px;height:19px;
+}
+/* 图标态：悬停放大（当前 1.18，与相邻形成轻微磁吸） */
+body[data-navlabels="0"] .qnav-item:hover{
+  transform:scale(1.10);
+  z-index:5;
+}
+body[data-navlabels="0"] .qnav-item:hover .qnav-tip{
   opacity:1;
+  transform:translateY(-50%) translateX(0) scale(1);
+}
+body[data-navlabels="0"] .qnav-item:hover .qico2{
+  background:var(--accent-soft);
+  color:var(--accent);
+}
+
+/* 图标态下选中项：左侧竖条改成整块底色 + 外发光 */
+body[data-navlabels="0"] .qnav-item.active{
+  background:var(--accent-soft);
+}
+body[data-navlabels="0"] .qnav-item.active .qico2{
+  color:var(--accent);
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+/* 图标态：导航栏整体收窄 */
+body[data-navlabels="0"]{ --nav-w:64px; }
+
+/* 图标态下隐藏「导航分隔条」的拖拽提示（宽度已由形态决定，拖了也会被覆盖，
+   避免用户以为拖不动是坏的） */
+body[data-navlabels="0"] .qsplit{ cursor:default; }
+
+/* ==========================================================================
+   需求3（第 7 批）：文件页内的二级分组导航
+   --------------------------------------------------------------------------
+   三个分组：数据互传 / UI 比对 / 文本阅读。
+   视觉沿用指令页左侧导航的语言（图标 + 名称 + 选中竖条），
+   但这里是**顶部横向**排布 —— 因为文件页本身要吃掉整个右侧宽度，
+   再塞一列纵向导航会把文件双栏挤窄了。
+   ========================================================================== */
+#page-file{
+  flex-direction:column;
+}
+
+.filenav{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px 0;
+  border-bottom:1px solid var(--border);
+}
+
+.filenav-item{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  height:34px;
+  padding:0 14px;
+  border:none;
+  border-radius:var(--r-3) var(--r-3) 0 0;
+  background:transparent;
+  color:var(--text-dim);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  transition:background 160ms linear, color 160ms linear;
+}
+.filenav-item .qico2{
+  width:20px;height:20px;
+  display:grid;place-items:center;
+  color:inherit;
+}
+.filenav-item .qico2 svg{
+  width:15px;height:15px;
+  stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
+}
+.filenav-item .qname2{
+  white-space:nowrap;
+}
+/* 横向排布不需要气泡（名称已经在旁边），只在图标态才用得上 */
+.filenav-item .qnav-tip{ display:none; }
+
+.filenav-item:hover{
+  background:var(--surface-hover);
+  color:var(--text);
+}
+.filenav-item.active{
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-weight:600;
+}
+/* 选中项底部一条强调色横线，替代左竖条（横向导航的常规做法） */
+.filenav-item.active::after{
+  content:"";
+  position:absolute;
+  left:12px;right:12px;bottom:0;
+  height:2px;
+  border-radius:var(--r-pill);
+  background:var(--accent);
+  box-shadow:0 0 8px var(--accent);
+}
+
+/* 子视图容器：只有 .active 的显示，其余完全隐藏 */
+.filenav-body{
+  flex:1 1 auto;
+  min-height:0;
+  position:relative;
+  display:flex;
+}
+.fileview{
+  display:none;
+  flex:1 1 auto;
+  min-width:0;
+  min-height:0;
+  flex-direction:column;
+}
+.fileview.active{
+  display:flex;
+}
+
+/* 图标形态（导航栏不显示名称）时，文件页导航也一起收成纯图标 */
+body[data-navlabels="0"] .filenav-item .qname2{ display:none; }
+body[data-navlabels="0"] .filenav-item{ padding:0 11px; }
+body[data-navlabels="0"] .filenav-item .qnav-tip{
+  display:block;
+  left:50%;
+  top:calc(100% + 6px);
+  transform:translateX(-50%) translateY(-4px) scale(.94);
+}
+body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
   transform:translateX(-50%) translateY(0) scale(1);
 }
 
-/* 停靠栏显示时，给页面底部留出空间，避免遮住最后一行卡片 */
-.page.qdock-space{ padding-bottom:76px; }
-
-/* 窄屏 / 非指令页：不显示停靠栏（退回原左侧导航） */
-@media (max-width:959px){
-  .qdock{ display:none; }
+/* 文件页导航的图标态适配放在上面；这里补 UI 比对新增选项行的样式 */
+.ui-adv{
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
 }
+.ui-adv .ui-radio{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  font-size:12px;
+  color:var(--text-dim);
+  cursor:pointer;
+  white-space:nowrap;
+}
+.ui-adv .ui-radio input[type="checkbox"]{
+  width:13px;height:13px;
+  accent-color:var(--accent);
+  cursor:pointer;
+  margin:0;
+}
+.ui-adv .ui-radio:hover{ color:var(--text); }
 
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce){
-  .tab-glider, .qz-panel, .qdock, .qdock-item, .qdock-tip{
+  .tab-glider, .qz-panel{
     transition-duration:1ms !important;
     animation-duration:1ms !important;
   }
@@ -3702,10 +3839,6 @@ body::after{
       <svg viewBox="0 0 24 24"><rect x="2.8" y="4.4" width="18.4" height="15.2" rx="3"/><path d="M7 10l2.3 2.1L7 14.2"/><path d="M12.6 14.6h4"/></svg><span>终端</span></button>
     <button class="tab" data-tab="file" onclick="switchTab('file')">
       <svg viewBox="0 0 24 24"><path d="M3.4 7.6a2 2 0 012-2h3.6l2 2.2h7.6a2 2 0 012 2v8.2a2 2 0 01-2 2H5.4a2 2 0 01-2-2z"/></svg><span>文件</span></button>
-    <button class="tab" data-tab="ui" onclick="switchTab('ui')">
-      <svg viewBox="0 0 24 24"><rect x="3.2" y="3.6" width="7.6" height="16.8" rx="2"/><rect x="13.2" y="3.6" width="7.6" height="16.8" rx="2"/></svg><span>UI</span></button>
-    <button class="tab" data-tab="text" onclick="switchTab('text')">
-      <svg viewBox="0 0 24 24"><path d="M6 3.6h7.4L19 8.8v11.6H6z"/><path d="M13.4 3.6v5.2H19"/><path d="M9 13.2h6.6M9 16.4h4.6"/></svg><span>文本</span></button>
   </div>
 
   <div class="main">
@@ -3959,83 +4092,32 @@ body::after{
          路径/透明度/双栏/结果区/按钮布局；功能在本应用内重做：
          图片用本地文件选择（File API），叠加与像素差异用 Canvas 纯前端算，
          不引入 Python/PIL，不新增 C# 消息 kind，图片不出本机。 -->
-    <div class="page" id="page-ui">
-      <div class="ui-wrap">
-        <div class="ui-head">
-          <span class="fs-title">UI 对比</span>
-          <span class="fs-hint" id="ui-hint">设计图与实景图叠加对齐、标记像素差异（本地运算，不上传图片）</span>
-        </div>
-
-        <div class="ui-form">
-          <div class="ui-line">
-            <span class="ui-lbl">图片路径</span>
-            <input class="ui-path" id="ui-design-path" placeholder="选择设计图 PNG / JPG" readonly>
-            <input type="file" id="ui-design-file" accept="image/*" style="display:none" onchange="uiPick(event,'design')">
-            <button class="btn ghost sm" onclick="uiBrowse('design')">选择…</button>
-            <span class="ui-lbl">透明度</span>
-            <input type="range" id="ui-design-op" min="0" max="100" value="100" oninput="uiOpacity()">
-            <span class="ui-opv" id="ui-design-opv">100%</span>
-          </div>
-          <div class="ui-line">
-            <span class="ui-lbl">本地图路径</span>
-            <input class="ui-path" id="ui-real-path" placeholder="选择实景图 / 截图 PNG / JPG" readonly>
-            <input type="file" id="ui-real-file" accept="image/*" style="display:none" onchange="uiPick(event,'real')">
-            <button class="btn ghost sm" onclick="uiBrowse('real')">选择…</button>
-            <button class="btn ghost sm" id="ui-shot-front" onclick="uiShot('front')" title="执行 :shot，把主屏截图存到 桌面 logcat 的日期目录 screencap，再回来选择该文件">直接截图</button>
-            <button class="btn ghost sm" id="ui-shot-rear" onclick="uiShot('rear')" title="取投屏页「后排屏」格子的当前帧用于预览；对比请先把截图保存为本地文件">后屏截图</button>
-          </div>
-          <div class="ui-line">
-            <span class="ui-lbl">透明度</span>
-            <input type="range" id="ui-real-op" min="0" max="100" value="100" oninput="uiOpacity()">
-            <span class="ui-opv" id="ui-real-opv">100%</span>
-            <span class="ui-lbl">是否标记差异</span>
-            <label class="ui-radio"><input type="radio" name="ui-mark" value="1" checked> 是</label>
-            <label class="ui-radio"><input type="radio" name="ui-mark" value="0"> 否（只看叠加）</label>
-            <span class="spacer"></span>
-            <span class="ui-note">差异阈值 <input class="ui-thr" id="ui-thr" type="number" min="0" max="255" value="30"> / 255</span>
-          </div>
-        </div>
-
-        <div class="ui-stage">
-          <div class="ui-col">
-            <div class="ui-col-t">设计图</div>
-            <div class="ui-canvas" id="ui-design-box">
-              <span class="ui-empty" id="ui-design-empty">未选择设计图</span>
-              <img id="ui-design-img" alt="设计图">
-            </div>
-          </div>
-          <div class="ui-col">
-            <div class="ui-col-t">实景图（叠加设计图对齐）</div>
-            <div class="ui-canvas" id="ui-real-box">
-              <span class="ui-empty" id="ui-real-empty">未选择实景图</span>
-              <img id="ui-real-img" alt="实景图">
-              <img id="ui-overlay-img" alt="设计图叠加层">
-            </div>
-          </div>
-        </div>
-
-        <div class="ui-form ui-result-form">
-          <div class="ui-line">
-            <span class="ui-lbl">结果图路径</span>
-            <input class="ui-path" id="ui-result-path" placeholder="点「开始对比」后在本页生成，可导出 PNG" readonly>
-            <span class="ui-lbl">2016车机是否需要打开</span>
-            <label class="ui-radio"><input type="radio" name="ui-2016" value="1"> 是</label>
-            <label class="ui-radio"><input type="radio" name="ui-2016" value="0" checked> 否</label>
-            <span class="ui-note">（记录项，不参与对比运算）</span>
-            <div class="spacer"></div>
-            <button class="btn primary" onclick="uiCompareRun()">开始对比</button>
-            <button class="btn" id="ui-open-result" onclick="uiOpenResult()" title="把结果图导出为 PNG（等价替代原工具的「打开结果图」）">打开结果图</button>
-          </div>
-        </div>
-
-        <div class="ui-resultbox" id="ui-resultbox">
-          <span class="ui-empty" id="ui-result-empty">结果图会显示在这里</span>
-          <img id="ui-result-img" alt="" onerror="uiResultImgErr()">
-        </div>
-      </div>
-    </div>
-
     <div class="page" id="page-file">
+      <!-- 2026-11-21（第 7 批需求3）：文件页内三个二级分组。
+           原 page-ui / page-text 的整棵 DOM 子树原样搬进来，
+           不重写任何节点 —— id、onclick、消息 kind 全部保持不变，
+           所以既有功能一个都不会失效（只改位置）。
+           切换由 fileNavSwitch() 控制，见 A33 JS 层。 -->
+      <div class="filenav">
+        <button class="filenav-item active" data-fn="data" onclick="fileNavSwitch('data')">
+          <span class="qico2"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+          <span class="qname2">数据互传</span>
+          <span class="qnav-tip">数据互传</span>
+        </button>
+        <button class="filenav-item" data-fn="ui" onclick="fileNavSwitch('ui')">
+          <span class="qico2"><svg viewBox="0 0 24 24"><rect x="3.2" y="3.6" width="7.6" height="16.8" rx="2"/><rect x="13.2" y="3.6" width="7.6" height="16.8" rx="2"/></svg></span>
+          <span class="qname2">UI 比对</span>
+          <span class="qnav-tip">UI 比对</span>
+        </button>
+        <button class="filenav-item" data-fn="text" onclick="fileNavSwitch('text')">
+          <span class="qico2"><svg viewBox="0 0 24 24"><path d="M6 3.6h7.4L19 8.8v11.6H6z"/><path d="M13.4 3.6v5.2H19"/><path d="M9 13.2h6.6M9 16.4h4.6"/></svg></span>
+          <span class="qname2">文本阅读</span>
+          <span class="qnav-tip">文本阅读</span>
+        </button>
+      </div>
+      <div class="filenav-body">
+        <!-- 子视图 A：数据互传（原 page-file 全部内容） -->
+        <div class="fileview active" id="fileview-data">
       <div class="fs-wrap">
         <div class="fs-head">
           <span class="fs-title">文件管理</span>
@@ -4098,10 +4180,99 @@ body::after{
           </div>
         </div>
       </div>
-    </div>
+        </div>
+        <!-- 子视图 B：UI 比对（原 page-ui 全部内容，DOM 原样） -->
+        <div class="fileview" id="fileview-ui">
+      <div class="ui-wrap">
+        <div class="ui-head">
+          <span class="fs-title">UI 对比</span>
+          <span class="fs-hint" id="ui-hint">设计图与实景图叠加对齐、标记像素差异（本地运算，不上传图片）</span>
+        </div>
 
-    <!-- V12:TEXT START -->
-    <div class="page" id="page-text">
+        <div class="ui-form">
+          <div class="ui-line">
+            <span class="ui-lbl">图片路径</span>
+            <input class="ui-path" id="ui-design-path" placeholder="选择设计图 PNG / JPG" readonly>
+            <input type="file" id="ui-design-file" accept="image/*" style="display:none" onchange="uiPick(event,'design')">
+            <button class="btn ghost sm" onclick="uiBrowse('design')">选择…</button>
+            <span class="ui-lbl">透明度</span>
+            <input type="range" id="ui-design-op" min="0" max="100" value="100" oninput="uiOpacity()">
+            <span class="ui-opv" id="ui-design-opv">100%</span>
+          </div>
+          <div class="ui-line">
+            <span class="ui-lbl">本地图路径</span>
+            <input class="ui-path" id="ui-real-path" placeholder="选择实景图 / 截图 PNG / JPG" readonly>
+            <input type="file" id="ui-real-file" accept="image/*" style="display:none" onchange="uiPick(event,'real')">
+            <button class="btn ghost sm" onclick="uiBrowse('real')">选择…</button>
+            <button class="btn ghost sm" id="ui-shot-front" onclick="uiShot('front')" title="执行 :shot，把主屏截图存到 桌面 logcat 的日期目录 screencap，再回来选择该文件">直接截图</button>
+            <button class="btn ghost sm" id="ui-shot-rear" onclick="uiShot('rear')" title="取投屏页「后排屏」格子的当前帧用于预览；对比请先把截图保存为本地文件">后屏截图</button>
+          </div>
+          <div class="ui-line">
+            <span class="ui-lbl">透明度</span>
+            <input type="range" id="ui-real-op" min="0" max="100" value="100" oninput="uiOpacity()">
+            <span class="ui-opv" id="ui-real-opv">100%</span>
+            <span class="ui-lbl">是否标记差异</span>
+            <label class="ui-radio"><input type="radio" name="ui-mark" value="1" checked> 是</label>
+            <label class="ui-radio"><input type="radio" name="ui-mark" value="0"> 否（只看叠加）</label>
+            <span class="spacer"></span>
+            <span class="ui-note">差异阈值 <input class="ui-thr" id="ui-thr" type="number" min="0" max="255" value="30"> / 255</span>
+          </div>
+          <!-- 2026-11-21（第 7 批）：对标 pixelmatch / resemble.js 的比对选项。
+               这三个是主流工具里最常被用到、而原实现缺的：
+                 · 忽略抗锯齿：单像素级的边缘过渡差异不算缺陷（否则误报率极高）
+                 · 只显示差异：隐藏底图，只留差异高亮（看缺陷位置最快）
+                 · 结构比对：忽略颜色，只比布局/形状（换主题后验布局是否走样）
+               都是纯前端计算，不上传任何图片。 -->
+          <div class="ui-line ui-adv">
+            <span class="ui-lbl">比对选项</span>
+            <label class="ui-radio"><input type="checkbox" id="ui-ignore-aa" checked> 忽略抗锯齿</label>
+            <label class="ui-radio"><input type="checkbox" id="ui-only-diff"> 只显示差异</label>
+            <label class="ui-radio"><input type="checkbox" id="ui-struct"> 只比结构（忽略颜色）</label>
+            <span class="spacer"></span>
+            <span class="ui-note" id="ui-dim-hint">尺寸：—</span>
+          </div>
+        </div>
+
+        <div class="ui-stage">
+          <div class="ui-col">
+            <div class="ui-col-t">设计图</div>
+            <div class="ui-canvas" id="ui-design-box">
+              <span class="ui-empty" id="ui-design-empty">未选择设计图</span>
+              <img id="ui-design-img" alt="设计图">
+            </div>
+          </div>
+          <div class="ui-col">
+            <div class="ui-col-t">实景图（叠加设计图对齐）</div>
+            <div class="ui-canvas" id="ui-real-box">
+              <span class="ui-empty" id="ui-real-empty">未选择实景图</span>
+              <img id="ui-real-img" alt="实景图">
+              <img id="ui-overlay-img" alt="设计图叠加层">
+            </div>
+          </div>
+        </div>
+
+        <div class="ui-form ui-result-form">
+          <div class="ui-line">
+            <span class="ui-lbl">结果图路径</span>
+            <input class="ui-path" id="ui-result-path" placeholder="点「开始对比」后在本页生成，可导出 PNG" readonly>
+            <span class="ui-lbl">2016车机是否需要打开</span>
+            <label class="ui-radio"><input type="radio" name="ui-2016" value="1"> 是</label>
+            <label class="ui-radio"><input type="radio" name="ui-2016" value="0" checked> 否</label>
+            <span class="ui-note">（记录项，不参与对比运算）</span>
+            <div class="spacer"></div>
+            <button class="btn primary" onclick="uiCompareRun()">开始对比</button>
+            <button class="btn" id="ui-open-result" onclick="uiOpenResult()" title="把结果图导出为 PNG（等价替代原工具的「打开结果图」）">打开结果图</button>
+          </div>
+        </div>
+
+        <div class="ui-resultbox" id="ui-resultbox">
+          <span class="ui-empty" id="ui-result-empty">结果图会显示在这里</span>
+          <img id="ui-result-img" alt="" onerror="uiResultImgErr()">
+        </div>
+      </div>
+        </div>
+        <!-- 子视图 C：文本阅读（原 page-text 全部内容，DOM 原样） -->
+        <div class="fileview" id="fileview-text">
       <div class="tx-wrap">
         <div class="tx-bar">
           <div class="tx-grp">
@@ -4168,6 +4339,8 @@ body::after{
           <span id="tx-st-enc">UTF-8</span>
           <span id="tx-st-eol">CRLF</span>
           <span id="tx-st-font">13px</span>
+        </div>
+      </div>
         </div>
       </div>
     </div>
@@ -4252,6 +4425,18 @@ body::after{
           <div class="set-h">字体大小 <span class="set-sub">整页跟随缩放，含标题栏与输出区</span></div>
           <div class="set-seg" id="set-fsize"></div>
           <div class="set-fsize-hint">改完立即生效，下次启动保持（小 90% / 中 100% / 大 115%）。</div>
+        </div>
+
+        <!-- 2026-11-21（第 7 批需求1）：导航栏名称开关。
+             关闭后左侧导航只显示图标、收窄自适应，悬停出名称气泡。
+             存 _prefs.navLabels，默认开（保持原有观感）。 -->
+        <div class="set-fsize-row">
+          <div class="set-h">导航栏显示名称 <span class="set-sub">关闭后只显示图标，悬停看名称</span></div>
+          <div class="set-seg" id="set-navlabels">
+            <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
+            <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
+          </div>
+          <div class="set-fsize-hint">关闭时导航栏自动收窄、图标间隔加大；改完立即生效。</div>
         </div>
       </section>
 
@@ -4998,6 +5183,42 @@ function accentPopClick(ev){
    若声明写在后面，初始化时的 switchTab 赋值会被这里的 ='cmd' 覆盖掉。 */
 var _tab = 'quick';
 
+/* 2026-11-21（第 7 批需求3）：文件页内的二级分组。
+   data=数据互传 / ui=UI比对 / text=文本阅读 —— 后两个就是原来独立的
+   page-ui / page-text，DOM 原样搬进来，这里只负责显隐。 */
+var _fileNavCur = 'data';
+
+function fileNavSwitch(sub){
+  if (!sub) sub = 'data';
+  if (sub !== 'data' && sub !== 'ui' && sub !== 'text') sub = 'data';
+  _fileNavCur = sub;
+
+  var views = document.querySelectorAll('.fileview');
+  for (var i = 0; i < views.length; i++){
+    views[i].classList.toggle('active', views[i].id === 'fileview-' + sub);
+  }
+  var items = document.querySelectorAll('.filenav-item');
+  for (var j = 0; j < items.length; j++){
+    items[j].classList.toggle('active', items[j].getAttribute('data-fn') === sub);
+  }
+
+  // 切到「文本阅读」时，编辑器需要一次尺寸重算（隐藏时量不出宽度，
+  // 行号栏和光标位置会错位）。这里补一次 refresh，不改任何编辑逻辑。
+  if (sub === 'text'){
+    try { if (typeof txSyncCaret === 'function') setTimeout(txSyncCaret, 30); } catch (e) {}
+  }
+  // 切到「数据互传」时，文件列表若还没初始化过就补一次
+  if (sub === 'data'){
+    try { if (typeof fsEnsureInit === 'function') fsEnsureInit(); } catch (e) {}
+  }
+}
+
+/* 供外部按名字进入（帮助页跳「文本」等场景） */
+function fileNavGo(sub, thenTab){
+  if (thenTab !== false) switchTab('file');
+  fileNavSwitch(sub);
+}
+
 /* 投屏页删除后的替代入口：跳指令页并把「Scrcpy投屏」分组滚到眼前。 */
 function gotoScrcpyGroup(){
   switchTab('quick');
@@ -5013,6 +5234,17 @@ function gotoScrcpyGroup(){
 }
 
 function switchTab(name){
+  /* 2026-11-21（第 7 批需求3）：ui / text 已并入文件页，不再是独立一级页签。
+     为了不让任何既有入口失效（V12 钩子、帮助跳转、快捷键都还在用
+     switchTab('ui') / switchTab('text')），这里做一次归一化：
+     收到 ui/text 就转成「文件页 + 对应子分组」，语义完全等价。 */
+  var alias = { ui: 'ui', text: 'text' };
+  var subTab = null;
+  if (name === 'ui' || name === 'text'){
+    subTab = name;
+    name = 'file';
+  }
+
   document.querySelectorAll('.tab').forEach(function(t){
     t.classList.toggle('active', t.dataset.tab === name);
   });
@@ -5020,13 +5252,18 @@ function switchTab(name){
   document.getElementById('page-quick').classList.toggle('active', name === 'quick');
   var pf = document.getElementById('page-file');
   if(pf) pf.classList.toggle('active', name === 'file');
+  // 旧的两个一级页容器已不存在（内容搬进 #fileview-ui / #fileview-text），
+  // 保留这两行只为兼容可能存在的极早期代码路径；元素不存在时静默跳过。
   var pu = document.getElementById('page-ui');
-  if(pu) pu.classList.toggle('active', name === 'ui');
-  // 2026-11-16 交互走查 I3：文本页原本只靠 V12 的 switchTab 包装钩子补 .active，
-  // 主函数里没有这一支 —— 谁重构主函数，文本页就会静默打不开且不报错。
-  // 这里补成主函数自己的职责；V12 的钩子保留（幂等，同一个值）。
+  if(pu) pu.classList.toggle('active', false);
   var pt2 = document.getElementById('page-text');
-  if(pt2) pt2.classList.toggle('active', name === 'text');
+  if(pt2) pt2.classList.toggle('active', false);
+
+  if (name === 'file'){
+    // 进文件页时决定显示哪个子视图：显式指定 > 上次记忆 > 数据互传
+    try { fileNavSwitch(subTab || _fileNavCur || 'data'); } catch (e) {}
+  }
+
   _tab = name;
   // 需求2：切回指令页时回到顶部（滚动容器已上移，不会自动复位）
   if(name === 'quick'){
@@ -6282,6 +6519,29 @@ function initNavSplit(){
   });
 }
 
+/* 2026-11-21（第 7 批需求1）：分组图标。
+   底部 Dock 已删除，图标迁到这里。按分组名映射，新增分组没配图标时
+   落到默认圆点 —— 不会因为漏配而渲染成空白。
+   图形统一 24×24 视框、stroke 走 currentColor，跟随强调色。 */
+var NAV_ICONS = {
+  '指令执行': '<path d="M4 6h6.5M4 12h6.5M4 18h6.5"/><path d="M14.5 7.2L18 10.6l-3.5 3.4"/><path d="M14.5 18h5"/>',
+  '网联服务': '<path d="M18 10h-1.3A7 7 0 1 0 5 15h13a5 5 0 0 0 0-5z"/>',
+  '手车互联': '<path d="M5 17h14M6 17V9l2-4h8l2 4v8"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
+  '语音助手': '<path d="M12 3a2.4 2.4 0 0 0-2.4 2.4v5.2a2.4 2.4 0 0 0 4.8 0V5.4A2.4 2.4 0 0 0 12 3z"/><path d="M18 10.6a6 6 0 0 1-12 0"/><path d="M12 16.6V20"/>',
+  '智驾出行': '<path d="M3 11l18-8-8 18-2.2-8.2z"/>',
+  '方控按键': '<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="2.8"/><path d="M12 3.6v5.6"/><path d="M5 16.4l4.4-2.6"/><path d="M19 16.4l-4.4-2.6"/>',
+  'Tbox': '<path d="M21 16V8l-9-4-9 4v8l9 4z"/><path d="M3.4 7.6L12 11.6l8.6-4"/><path d="M12 21v-9.4"/>',
+  'Scrcpy投屏': '<rect x="2.8" y="4.4" width="18.4" height="12.2" rx="2"/><path d="M9 20h6"/><path d="M12 16.6V20"/>',
+  'Apk管理': '<path d="M21 16V8l-9-4-9 4v8l9 4z"/><path d="M7.6 9.4l8.8 4"/><path d="M16.4 9.4l-8.8 4"/>',
+  '网络模拟': '<path d="M5 12.6a10 10 0 0 1 14 0"/><path d="M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19.4" r="1"/>',
+  '自定义指令': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.6-3.6a6 6 0 0 1-7.7 7.7l-6.6 6.6a2 2 0 0 1-2.8-2.8l6.6-6.6a6 6 0 0 1 7.7-7.7z"/>'
+};
+
+function navIconSvg(name){
+  var body = NAV_ICONS[name] || '<circle cx="12" cy="12" r="8"/>';
+  return '<svg viewBox="0 0 24 24">' + body + '</svg>';
+}
+
 function renderQuickNav(){
   var nav = document.getElementById('quick-nav');
   if(!nav) return;
@@ -6289,9 +6549,12 @@ function renderQuickNav(){
   var html = '';
   for(var i=0;i<quickGroups.length;i++){
     var g = quickGroups[i];
+    // 需求1：图标 + 名称（名称放 qname2，图标态时整块隐藏）+ 名称气泡
     html += '<div class="qnav-item'+(i===_quickIdx?' active':'')+'" data-i="'+i+'">'
-      + '<span>'+g.name+'</span>'
+      + '<span class="qico2">'+navIconSvg(g.name)+'</span>'
+      + '<span class="qname2">'+escHtml(g.name)+'</span>'
       + '<span class="qcnt">'+(g.panel ? '管理' : g.items.length)+'</span>'
+      + '<span class="qnav-tip">'+escHtml(g.name)+'</span>'
       + '</div>';
   }
   nav.innerHTML = html;
@@ -9249,16 +9512,67 @@ function uiShot(which){
 
 /* 纯函数：逐像素比两张 RGBA 数组的 RGB 差值，返回差异像素数与占比。
    单独拎出来便于 377 自检直接打靶（不依赖 canvas / DOM）。 */
-function uiDiffPixels(a, b, thr){
+function uiDiffPixels(a, b, thr, opt){
+  opt = opt || {};
+  var ignoreAA  = !!opt.ignoreAA;    // 忽略抗锯齿（pixelmatch 的核心思想）
+  var structOnly= !!opt.structOnly;  // 只比结构（灰度），忽略颜色差异
+  var w = opt.w || 0, h = opt.h || 0;
+
   var n = Math.min(a.length, b.length) >> 2;
   var hit = 0;
+  var limit = thr * 3;
+
   for(var i = 0; i < n; i++){
     var p = i << 2;
-    var d = Math.abs(a[p]-b[p]) + Math.abs(a[p+1]-b[p+1]) + Math.abs(a[p+2]-b[p+2]);
-    if(d > thr * 3) hit++;
+    var ar = a[p], ag = a[p+1], ab = a[p+2];
+    var br = b[p], bg = b[p+1], bb = b[p+2];
+    var d;
+    if (structOnly){
+      // 结构比对：先转亮度再比，颜色换了但形状没变就不算差异
+      var la = 0.299*ar + 0.587*ag + 0.114*ab;
+      var lb = 0.299*br + 0.587*bg + 0.114*bb;
+      d = Math.abs(la - lb) * 3;
+    } else {
+      d = Math.abs(ar-br) + Math.abs(ag-bg) + Math.abs(ab-bb);
+    }
+
+    if (d > limit){
+      /* 抗锯齿判定（借鉴 pixelmatch 的 intensity slope 思路）：
+         如果这个像素在两张图里都处于「颜色渐变区」（和邻域有明显差异），
+         那这点差异很可能只是渲染时的抗锯齿不同，不该算作真实缺陷。
+         判据：两图在该点都与自己的邻域差异较大，且差异方向不一致。 */
+      if (ignoreAA && w > 2 && h > 2){
+        var x = i % w, y = (i / w) | 0;
+        if (x > 0 && x < w-1 && y > 0 && y < h-1){
+          var isAA = _uiIsAA(a, b, i, w, h) || _uiIsAA(b, a, i, w, h);
+          if (isAA) continue;
+        }
+      }
+      hit++;
+    }
   }
   return { hit: hit, total: n, rate: n ? hit/n : 0 };
 }
+
+/* 判断某个像素是否是抗锯齿像素：
+   若该点与右/下邻居的亮度差明显，而「另一张图」在同一点附近也有相近的
+   梯度方向 —— 说明这里是边缘的过渡像素，不是内容真的变了。 */
+function _uiIsAA(src, other, i, w, h){
+  var p = i << 2;
+  var lum = function(data, idx){
+    var q = idx << 2;
+    return 0.299*data[q] + 0.587*data[q+1] + 0.114*data[q+2];
+  };
+  var c  = lum(src, i);
+  var r  = lum(src, i + 1);
+  var dn = lum(src, i + w);
+  var oc = lum(other, i);
+  // 自身处于边缘（与邻居差 > 32），且另一图在同一点也是边缘或已经接近自身
+  var gradSelf = Math.min(Math.abs(c - r), Math.abs(c - dn));
+  var gradOther = Math.abs(oc - c);
+  return gradSelf > 32 && gradOther < 96;
+}
+
 
 function uiGrab(img, w, h){
   var c = document.createElement('canvas');
@@ -9283,6 +9597,36 @@ function uiCompareRun(){
   var thrEl = document.getElementById('ui-thr');
   var thr = thrEl ? Math.max(0, Math.min(255, Number(thrEl.value) || 30)) : 30;
 
+  // 2026-11-21：新增三个比对选项（对标 pixelmatch / resemble.js）
+  var aaEl  = document.getElementById('ui-ignore-aa');
+  var odEl  = document.getElementById('ui-only-diff');
+  var stEl  = document.getElementById('ui-struct');
+  var ignoreAA   = !!(aaEl && aaEl.checked);
+  var onlyDiff   = !!(odEl && odEl.checked);
+  var structOnly = !!(stEl && stEl.checked);
+
+  /* 尺寸不一致必须明确告知：原来静默取 min 后裁剪比较，
+     用户以为"整图比过了"，实际右侧/下侧被切掉了 —— 这是最容易被忽略的假通过。 */
+  var dw = di.naturalWidth, dh = di.naturalHeight;
+  var rw = ri.naturalWidth, rh = ri.naturalHeight;
+  if (dw !== rw || dh !== rh){
+    var stillGo = true;
+    try {
+      stillGo = confirm('两张图尺寸不一致：\n'
+        + '设计图 ' + dw + '×' + dh + '\n'
+        + '实景图 ' + rw + '×' + rh + '\n\n'
+        + '将按较小的 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 区域比较，'
+        + '超出部分不参与比对。是否继续？');
+    } catch (e) { stillGo = true; }
+    if (!stillGo) return;
+    var dh2 = document.getElementById('ui-dim-hint');
+    if (dh2) dh2.textContent = '尺寸不一致：' + dw + '×' + dh + ' vs ' + rw + '×' + rh
+                             + '（按 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 比较）';
+  } else {
+    var dh3 = document.getElementById('ui-dim-hint');
+    if (dh3) dh3.textContent = '尺寸：' + dw + '×' + dh + '（一致）';
+  }
+
   var w = Math.min(di.naturalWidth, ri.naturalWidth);
   var h = Math.min(di.naturalHeight, ri.naturalHeight);
   var A, B;
@@ -9294,22 +9638,44 @@ function uiCompareRun(){
     toast('读图失败：' + (err && err.message ? err.message : '跨域限制') + '。请把截图保存为本地文件后「选择…」');
     return;
   }
-  var diff = uiDiffPixels(A.data, B.data, thr);
+  var diff = uiDiffPixels(A.data, B.data, thr, {
+    ignoreAA: ignoreAA, structOnly: structOnly, w: w, h: h
+  });
   var out = document.createElement('canvas');
   out.width = w; out.height = h;
   var g = out.getContext('2d');
   var od = g.createImageData(w, h);
   for(var i=0;i<w*h;i++){
     var p = i << 2;
-    var d = Math.abs(A.data[p]-B.data[p]) + Math.abs(A.data[p+1]-B.data[p+1]) + Math.abs(A.data[p+2]-B.data[p+2]);
+    var d;
+    if (structOnly){
+      var la = 0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2];
+      var lb = 0.299*B.data[p] + 0.587*B.data[p+1] + 0.114*B.data[p+2];
+      d = Math.abs(la - lb) * 3;
+    } else {
+      d = Math.abs(A.data[p]-B.data[p]) + Math.abs(A.data[p+1]-B.data[p+1]) + Math.abs(A.data[p+2]-B.data[p+2]);
+    }
     od.data[p]   = A.data[p];
     od.data[p+1] = A.data[p+1];
     od.data[p+2] = A.data[p+2];
     od.data[p+3] = 255;
+
     if(mark && d > thr*3){
-      od.data[p]   = Math.min(255, A.data[p] + 60);
-      od.data[p+1] = Math.round(A.data[p+1] * 0.35);
-      od.data[p+2] = Math.round(A.data[p+2] * 0.35);
+      // 只有差异模式：底图压暗，差异点用高饱和色，一眼看清缺陷位置
+      if (onlyDiff){
+        od.data[p]   = 255;
+        od.data[p+1] = 40;
+        od.data[p+2] = 60;
+      } else {
+        od.data[p]   = Math.min(255, A.data[p] + 60);
+        od.data[p+1] = Math.round(A.data[p+1] * 0.35);
+        od.data[p+2] = Math.round(A.data[p+2] * 0.35);
+      }
+    } else if (onlyDiff){
+      // 非差异区在"只显示差异"模式下压成深灰，不影响判读
+      var gray = Math.round(0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2]);
+      gray = Math.round(gray * 0.18);
+      od.data[p] = gray; od.data[p+1] = gray; od.data[p+2] = gray;
     }
   }
   g.putImageData(od, 0, 0);
@@ -9319,13 +9685,20 @@ function uiCompareRun(){
   if(rim){ rim.src = _uiResult; rim.classList.add("has"); }
   var rem = document.getElementById('ui-result-empty');
   if(rem) rem.style.display = 'none';
+  var optTxt = [];
+  if (ignoreAA) optTxt.push('忽略抗锯齿');
+  if (onlyDiff) optTxt.push('只显示差异');
+  if (structOnly) optTxt.push('结构比对');
   var rp = document.getElementById('ui-result-path');
   if(rp) rp.value = '本页生成 · ' + w + '×' + h + ' · 差异 '
-                  + (diff.rate*100).toFixed(2) + '%（可「打开结果图」导出 PNG）';
+                  + (diff.rate*100).toFixed(2) + '%'
+                  + (optTxt.length ? '（' + optTxt.join(' / ') + '）' : '')
+                  + ' · 可「打开结果图」导出 PNG';
   var rb = document.getElementById('ui-resultbox');
   if(rb) rb.scrollTop = 0;
   toast('对比完成：' + w + '×' + h + '，差异像素 ' + diff.hit + '/'
-        + diff.total + '（' + (diff.rate*100).toFixed(2) + '%）');
+        + diff.total + '（' + (diff.rate*100).toFixed(2) + '%）'
+        + (optTxt.length ? ' · ' + optTxt.join(' / ') : ''));
 }
 
 function uiOpenResult(){
@@ -9836,6 +10209,33 @@ function setFont(id){
     if (!_prefs.custom) { applyFont('system'); return; }
   }
   applyFont(id);
+}
+
+/* 2026-11-21（第 7 批需求1）：导航栏显示名称开关。
+   两种形态只差一个 body 属性，CSS 里用 [data-navlabels="0"] 全权接管：
+     · 名称/计数隐藏、图标放大、项间距加大、悬停出名称气泡
+     · 变量 --nav-w 收窄到 64px
+   存 _prefs.navLabels（'1'/'0'），启动时由 applyNavLabels 恢复。 */
+function applyNavLabels(v){
+  var on = (String(v) !== '0');
+  document.body.setAttribute('data-navlabels', on ? '1' : '0');
+  var seg = document.getElementById('set-navlabels');
+  if (seg){
+    var bs = seg.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++){
+      bs[i].classList.toggle('on', bs[i].getAttribute('data-nl') === (on ? '1' : '0'));
+    }
+  }
+  // 导航栏宽度变了，页签胶囊/卡片区不受影响，但导航自身的拖拽热区要复位
+  try { if (typeof window.a32Glider === 'function') window.a32Glider(false); } catch (e) {}
+}
+
+function setNavLabels(v){
+  var on = (String(v) !== '0');
+  _prefs.navLabels = on ? '1' : '0';
+  applyNavLabels(on ? '1' : '0');
+  try { prefsSave(); } catch (e) {}
+  try { toast(on ? '导航栏已显示名称' : '导航栏已切换为仅图标', 'ok'); } catch (e) {}
 }
 
 function prefsSave(){
@@ -11927,8 +12327,27 @@ document.addEventListener('DOMContentLoaded', function (){
     if (o.uiSplit && o.uiSplit.nav) {
       try { applyNavWidth(o.uiSplit.nav); } catch (e) {}   // 2026-11-21：导航宽度记忆
     }
+    // 2026-11-21（第 7 批需求1）：导航栏名称开关
+    if (typeof o.navLabels !== 'undefined') {
+      try { applyNavLabels(o.navLabels); } catch (e) {}
+    }
     if (Array.isArray(o.navOrder) && o.navOrder.length) {
-      try { applyNavOrder(o.navOrder); } catch (e) {}   // 2026-11-21：分组拖拽顺序
+      try { applyNavOrder(o.navOrder); } catch (e) {}
+      /* 2026-11-21 修复：applyNavOrder 只重排了 quickGroups 数组，
+         但启动时 renderQuickNav() 已在 6864 行先按默认顺序渲染过了
+         （prefsApply 来得更晚）。不在这里补一次重渲染的话，
+         数组顺序变了、界面却还是旧顺序 —— 表现就是「拖了没记忆」。
+         重渲染用 rAF 推一拍，避免和首屏其它初始化抢同一个任务。 */
+      try {
+        requestAnimationFrame(function(){
+          try { if (typeof renderQuickNav === 'function') renderQuickNav(); } catch (e) {}
+          try {
+            if (typeof renderQuickItems === 'function'
+                && typeof _tab !== 'undefined' && _tab === 'quick') renderQuickItems();
+          } catch (e) {}
+          try { if (typeof window.a32Glider === 'function') window.a32Glider(false); } catch (e) {}
+        });
+      } catch (e) {}
     }
     if (Array.isArray(o.tabOrder) && o.tabOrder.length) {
       try { applyTabOrder(o.tabOrder); } catch (e) {}
@@ -11987,6 +12406,16 @@ document.addEventListener('DOMContentLoaded', function (){
     }
     bar.appendChild(frag);
     if (typeof window.v15SyncTabOrder === 'function') window.v15SyncTabOrder();
+    /* 2026-11-21：DOM 顺序变了，玻璃胶囊滑块的位置必须重算，
+       否则启动后胶囊会停在默认顺序里那个页签的位置上。 */
+    try {
+      if (typeof window.a32Glider === 'function') {
+        requestAnimationFrame(function(){
+          try { window.a32Glider(false); } catch (e) {}
+          setTimeout(function(){ try { window.a32Glider(false); } catch (e) {} }, 80);
+        });
+      }
+    } catch (e) {}
   }
 
   function saveTabOrder() {
@@ -13248,113 +13677,7 @@ document.addEventListener('DOMContentLoaded', function (){
     qzOpen(card, it);
   }, true);
 
-  /* ======================================================================
-     需求3：底部居中浮动玻璃停靠栏（只放图标）
-     ----------------------------------------------------------------------
-     数据源复用 quickGroups（11 个分组），不新增数据结构。
-     显隐策略：仅在「指令页」且视口 >= 960 时显示；
-       其它页面 / 窄屏自动隐藏，退回原左侧导航（不破坏既有布局）。
-     ====================================================================== */
-  var _dock = null;
 
-  function dockIconFor(g){
-    // 按分组名映射一个图标（沿用页面里已有的 svg 风格）
-    var m = {
-      '指令执行': '<path d="M4 6h6.5M4 12h6.5M4 18h6.5"/><path d="M14.5 7.2L18 10.6l-3.5 3.4"/><path d="M14.5 18h5"/>',
-      '网联服务': '<path d="M18 10h-1.3A7 7 0 1 0 5 15h13a5 5 0 0 0 0-5z"/>',
-      '手车互联': '<path d="M5 17h14M6 17V9l2-4h8l2 4v8"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
-      '语音助手': '<path d="M12 3a2.4 2.4 0 0 0-2.4 2.4v5.2a2.4 2.4 0 0 0 4.8 0V5.4A2.4 2.4 0 0 0 12 3z"/><path d="M18 10.6a6 6 0 0 1-12 0"/><path d="M12 16.6V20"/>',
-      '智驾出行': '<path d="M3 11l18-8-8 18-2.2-8.2z"/>',
-      '方控按键': '<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="2.8"/><path d="M12 3.6v5.6"/><path d="M5 16.4l4.4-2.6"/><path d="M19 16.4l-4.4-2.6"/>',
-      'Tbox': '<path d="M21 16V8l-9-4-9 4v8l9 4z"/><path d="M3.4 7.6L12 11.6l8.6-4"/><path d="M12 21v-9.4"/>',
-      'Scrcpy投屏': '<rect x="2.8" y="4.4" width="18.4" height="12.2" rx="2"/><path d="M9 20h6"/><path d="M12 16.6V20"/>',
-      'Apk管理': '<path d="M21 16V8l-9-4-9 4v8l9 4z"/><path d="M7.6 9.4l8.8 4"/><path d="M16.4 9.4l-8.8 4"/>',
-      '网络模拟': '<path d="M5 12.6a10 10 0 0 1 14 0"/><path d="M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19.4" r="1"/>',
-      '自定义指令': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.6-3.6a6 6 0 0 1-7.7 7.7l-6.6 6.6a2 2 0 0 1-2.8-2.8l6.6-6.6a6 6 0 0 1 7.7-7.7z"/>'
-    };
-    return m[g] || '<circle cx="12" cy="12" r="8"/>';
-  }
-
-  function dockBuild(){
-    if (_dock) return _dock;
-    if (typeof quickGroups === 'undefined' || !quickGroups.length) return null;
-
-    var d = document.createElement('div');
-    d.className = 'qdock';
-
-    for (var i = 0; i < quickGroups.length; i++){
-      var g = quickGroups[i];
-      var b = document.createElement('button');
-      b.className = 'qdock-item' + (i === _quickIdx ? ' on' : '');
-      b.setAttribute('data-g', i);
-      b.setAttribute('aria-label', g.name);
-      b.innerHTML =
-        '<svg viewBox="0 0 24 24">' + dockIconFor(g.name) + '</svg>'
-        + '<span class="qdock-tip">' + escHtml(g.name) + '</span>';
-      d.appendChild(b);
-    }
-
-    d.addEventListener('click', function(e){
-      var b = e.target.closest ? e.target.closest('.qdock-item') : null;
-      if (!b) return;
-      var gi = parseInt(b.getAttribute('data-g'), 10);
-      // 复用既有切换逻辑（会同时刷新导航高亮和卡片）
-      if (typeof switchQuickGroup === 'function') switchQuickGroup(gi);
-      dockSync();
-    });
-
-    document.body.appendChild(d);
-    _dock = d;
-    return d;
-  }
-
-  function dockSync(){
-    var d = _dock || dockBuild();
-    if (!d) return;
-    var items = d.querySelectorAll('.qdock-item');
-    for (var i = 0; i < items.length; i++){
-      items[i].classList.toggle('on', i === _quickIdx);
-    }
-  }
-
-  function dockRefresh(){
-    var d = _dock || dockBuild();
-    if (!d) return;
-    // 只在指令页 + 宽屏显示
-    var onQuick = (typeof _tab !== 'undefined') && _tab === 'quick';
-    var wide = window.innerWidth >= 960;
-    var show = onQuick && wide;
-    d.classList.toggle('show', !!show);
-
-    var qp = document.getElementById('page-quick');
-    if (qp) qp.classList.toggle('qdock-space', !!show);
-
-    if (show) dockSync();
-  }
-
-  // 分组切换后同步小圆点
-  if (typeof window.renderQuickNav === 'function' && !window.__a32NavWrapped){
-    var _origNav = window.renderQuickNav;
-    window.renderQuickNav = function(){
-      var r = _origNav.apply(this, arguments);
-      try { dockSync(); } catch(e){}
-      return r;
-    };
-    window.__a32NavWrapped = true;
-  }
-
-  // 页签切换后刷新显隐
-  if (typeof window.switchTab === 'function' && !window.__a32DockWrapped){
-    var _o2 = window.switchTab;
-    window.switchTab = function(){
-      var r = _o2.apply(this, arguments);
-      try { dockRefresh(); } catch(e){}
-      return r;
-    };
-    window.__a32DockWrapped = true;
-  }
-
-  window.a32DockRefresh = dockRefresh;
 
   /* ======================================================================
      初始化
@@ -13365,13 +13688,9 @@ document.addEventListener('DOMContentLoaded', function (){
     setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 60);
     setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 260);
 
-    // 2) Dock
-    try { dockRefresh(); } catch(e){}
-
-    // 3) 窗口尺寸变化：两者都要重算
+    // 2) 窗口尺寸变化：胶囊位置需要重算
     window.addEventListener('resize', function(){
       try { moveGlider(false); } catch(e){}
-      try { dockRefresh(); } catch(e){}
     });
   }
 

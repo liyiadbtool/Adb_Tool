@@ -139,7 +139,13 @@ BEHAVIOR = r"""
       ok('P5 快捷指令一行三个', cols.split(' ').length === 3, cols);
       var names = [];
       var navs = document.querySelectorAll('.qnav-item');
-      for(var i=0;i<navs.length;i++) names.push(navs[i].textContent.replace(/\d+$/,'').trim());
+      /* 2026-11-21（第 7 批需求1）：导航项内部结构变成
+         「图标 qico2 + 名称 qname2 + 计数 qcnt + 名称气泡 qnav-tip」，
+         直接取 textContent 会拼成「指令执行53指令执行」。只读 .qname2。 */
+      for(var i=0;i<navs.length;i++){
+        var nmEl = navs[i].querySelector('.qname2');
+        names.push((nmEl ? nmEl.textContent : navs[i].textContent).trim());
+      }
       // 2026-11-12：方控按键独立成组插在「指令执行」之后；
       // 同日又插入「手车互联」，语音助手再顺延到第四位。
       // 2026-11-15（A14）：用户在「指令执行」下面又加了「网联服务」，后面整体顺延一位。

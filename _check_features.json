@@ -628,8 +628,7 @@
         {
           "file": "adb_log_gui/webview2/ui.html",
           "has": [
-            "id=\"page-ui\"",
-            "data-tab=\"ui\"",
+            "id=\"fileview-ui\"",
             "id=\"ui-resultbox\"",
             "function uiDiffPixels",
             "function uiCompareRun",
@@ -1197,7 +1196,7 @@
         {
           "file": "adb_log_gui/webview2/ui.html",
           "has": [
-            "id=\"page-text\"",
+            "id=\"fileview-text\"",
             "id=\"tx-edit\"",
             "id=\"tx-gutter\"",
             "id=\"tx-find\"",

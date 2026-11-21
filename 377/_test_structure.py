@@ -53,7 +53,10 @@ JS = r"""
     R.push((cond ? 'PASS' : 'FAIL') + ' | ' + name + (cond ? '' : ' | ' + (extra===undefined?'':extra)));
   }
   // 2026-11-19：投屏页已删除（A31），页面清单去掉 cast
-  var PAGES = ['cmd','quick','file','ui'];
+  // 2026-11-21（第 7 批需求3）：ui / text 不再是独立一级页面，
+  // 内容搬进 #page-file 的三个子视图（fileview-data / fileview-ui / fileview-text）。
+  var PAGES = ['cmd','quick','file'];
+  var FILEVIEWS = ['data','ui','text'];
   var KEY = {
     cmd:   ['slots', 'cmd-input-0', 'logbox-0'],
     quick: ['quick-grid', 'feedback'],
@@ -74,12 +77,24 @@ JS = r"""
       for (var ti = 0; ti < tabs.length; ti++) order.push(tabs[ti].getAttribute('data-tab'));
       // 2026-11-15 第二轮：末尾追加「文本」页（需求 4），顺序仍是前五个冻结
       // 2026-11-19：投屏页已删除（改外部 scrcpy 窗口），页签 6 → 5
-      ok('页签顺序为 指令→终端→文件→UI→文本',
-         order.join(',') === 'quick,cmd,file,ui,text', order.join(','));
+      // 2026-11-21（第 7 批需求3）：UI / 文本并入文件页，一级页签只剩三个
+      ok('页签顺序为 指令→终端→文件',
+         order.join(',') === 'quick,cmd,file', order.join(','));
       ok('第一个页签文字是「指令」', tabs[0].textContent.trim() === '指令', tabs[0].textContent);
       ok('第二个页签文字是「终端」', tabs[1].textContent.trim() === '终端', tabs[1].textContent);
-      ok('第四个页签文字是「UI」', tabs[3].textContent.trim() === 'UI',
-         tabs[3] ? tabs[3].textContent : 'no-tab');
+      ok('第三个页签文字是「文件」', tabs[2].textContent.trim() === '文件',
+         tabs[2] ? tabs[2].textContent : 'no-tab');
+      // 文件页内三个二级分组
+      for (var fv = 0; fv < FILEVIEWS.length; fv++){
+        ok('fileview-' + FILEVIEWS[fv] + ' 存在',
+           !!document.getElementById('fileview-' + FILEVIEWS[fv]));
+      }
+      ok('文件页导航有 3 个分组',
+         document.querySelectorAll('.filenav-item').length === 3,
+         document.querySelectorAll('.filenav-item').length);
+      ok('文件页默认显示「数据互传」',
+         document.getElementById('fileview-data')
+         && document.getElementById('fileview-data').classList.contains('active'));
       ok('默认激活的是「指令」页',
          document.getElementById('page-quick').classList.contains('active')
          && !document.getElementById('page-cmd').classList.contains('active'));
@@ -137,20 +152,29 @@ JS = r"""
          typeof castHasDisplay === 'undefined' && typeof castRow === 'undefined'
          && typeof castToggle === 'undefined');
 
-      // 5) UI 对比页（投屏右侧）：是 .main 直接子节点，且切过去有实际尺寸
-      var pui = document.getElementById('page-ui');
-      ok('page-ui 存在且是 .main 的直接子节点',
-         !!pui && pui.parentElement === main,
-         pui && pui.parentElement ? (pui.parentElement.className || pui.parentElement.id) : 'null');
+      // 5) UI 比对（2026-11-21 起并入文件页）：switchTab('ui') 应归一化到
+      //    「文件页 + fileview-ui 子视图」，其它一级页面全部隐藏。
       switchTab('ui');
-      var uiVisible = PAGES.filter(function(q){
+      var fileVisible = PAGES.filter(function(q){
         var e = document.getElementById('page-' + q);
         return e && getComputedStyle(e).display !== 'none';
       });
-      ok('切到 UI 后只有 UI 页可见',
-         uiVisible.length === 1 && uiVisible[0] === 'ui', uiVisible.join(','));
-      ok('UI 页有开始对比/打开结果图按钮',
+      ok('switchTab(ui) 归一化到文件页且只有文件页可见',
+         fileVisible.length === 1 && fileVisible[0] === 'file', fileVisible.join(','));
+      ok('文件页内切换到 UI 比对子视图',
+         document.getElementById('fileview-ui')
+         && document.getElementById('fileview-ui').classList.contains('active'));
+      ok('数据互传子视图已隐藏',
+         document.getElementById('fileview-data')
+         && !document.getElementById('fileview-data').classList.contains('active'));
+      ok('UI 比对子视图有开始对比/打开结果图按钮',
          !!document.getElementById('ui-open-result'));
+      switchTab('text');
+      ok('switchTab(text) 切到文本阅读子视图',
+         document.getElementById('fileview-text')
+         && document.getElementById('fileview-text').classList.contains('active'));
+      ok('文本阅读子视图有编辑器',
+         !!document.getElementById('tx-edit'));
 
       switchTab('cmd');
 

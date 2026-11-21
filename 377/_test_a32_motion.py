@@ -163,93 +163,49 @@ JS = r"""
     }
 
     function testReq3(){
-      /* ============ 需求 3：底部玻璃停靠栏 ============ */
-      var dock = document.querySelector('.qdock');
-      ok('A32-3 停靠栏已创建', !!dock);
+      /* ============ 需求 3（已改向）：底部 Dock 删除，特征迁到导航 ============
+         2026-11-21 用户明确要求「底部的 dock 栏要删除」。
+         所以这里反过来断言：Dock 必须不存在；而它的两个交互特征
+         （图标化 + 悬停名称气泡）必须已经落在左侧导航项上。 */
+      ok('A32-3 底部 Dock 已删除', !document.querySelector('.qdock'));
+      ok('A32-3 无残留 .qdock-item', !document.querySelector('.qdock-item'));
+      ok('A32-3 无残留 .qdock-tip', !document.querySelector('.qdock-tip'));
 
-      if (dock){
-        var items = dock.querySelectorAll('.qdock-item');
-        ok('A32-3 停靠栏图标数 = 分组数',
-           items.length === quickGroups.length,
-           items.length + ' vs ' + quickGroups.length);
-
-        // 只放图标：不能有可见文本节点（名称在 tooltip 里）
-        var visible = false;
-        for (var i=0;i<items.length;i++){
-          var it = items[i];
-          // 直接子文本
-          for (var n=0;n<it.childNodes.length;n++){
-            if (it.childNodes[n].nodeType === 3 && it.childNodes[n].textContent.trim()){
-              visible = true;
-            }
-          }
-        }
-        ok('A32-3 图标按钮无裸露文字', !visible);
-
-        // 每个都有 svg 图标 + 名称气泡
-        var allIco = true, allTip = true;
-        for (var k=0;k<items.length;k++){
-          if (!items[k].querySelector('svg')) allIco = false;
-          if (!items[k].querySelector('.qdock-tip')) allTip = false;
-        }
-        ok('A32-3 每个图标都有 svg', allIco);
-        ok('A32-3 每个图标都有名称气泡', allTip);
-
-        // 名称气泡内容 = 分组名
-        var tip = items[0].querySelector('.qdock-tip');
-        ok('A32-3 气泡文字是分组名',
-           tip && tip.textContent.trim() === quickGroups[0].name,
-           tip ? tip.textContent : 'none');
-
-        // 底部居中
-        var dcs = getComputedStyle(dock);
-        ok('A32-3 停靠栏固定在底部', dcs.position === 'fixed', dcs.position);
-        ok('A32-3 水平居中（left:50% + translateX）',
-           /50%/.test(dcs.left), dcs.left);
-
-        // 玻璃质感
-        var dbf = dcs.backdropFilter || dcs.webkitBackdropFilter;
-        ok('A32-3 停靠栏有玻璃模糊', /blur/.test(dbf||''), dbf);
-        ok('A32-3 停靠栏有内高光', /inset/.test(dcs.boxShadow), dcs.boxShadow.slice(0,50));
-
-        // 悬停放大规则必须存在（读 CSS 规则）
-        var cssTxt = '';
-        for (var s=0;s<document.styleSheets.length;s++){
-          try{
-            var rules = document.styleSheets[s].cssRules || [];
-            for (var r=0;r<rules.length;r++){
-              if (rules[r].selectorText && /qdock-item/.test(rules[r].selectorText)){
-                cssTxt += rules[r].selectorText + '{' + rules[r].style.cssText + '}\n';
-              }
-            }
-          }catch(e){}
-        }
-        ok('A32-3 有 hover 放大规则', /\.qdock-item:hover[^{]*\{[^}]*scale/.test(cssTxt),
-           (cssTxt.match(/\.qdock-item:hover[^{]*/)||[''])[0]);
-        ok('A32-3 有相邻图标跟随放大规则',
-           /\+ \.qdock-item/.test(cssTxt), '见 CSS');
-        ok('A32-3 悬停时气泡显示规则',
-           /qdock-item:hover \.qdock-tip/.test(cssTxt), '见 CSS');
-
-        // 点击图标切换分组
-        var beforeG = document.getElementById('quick-group-name').textContent;
-        var second = items[1];
-        if (second){
-          second.click();
-          setTimeout(function(){
-            var afterG = document.getElementById('quick-group-name').textContent;
-            ok('A32-3 点击图标切换分组', beforeG !== afterG,
-               beforeG + ' -> ' + afterG);
-            ok('A32-3 被点的图标高亮',
-               second.classList.contains('on'));
-            finish();
-          }, 260);
-        } else {
-          finish();
-        }
-      } else {
-        finish();
+      // 特征迁移：导航项必须带图标 + 名称气泡
+      var navItems = document.querySelectorAll('.qnav-item');
+      ok('A32-3 导航项存在', navItems.length > 0, navItems.length);
+      var allIco = true, allTip = true, allName = true;
+      for (var i = 0; i < navItems.length; i++){
+        if (!navItems[i].querySelector('.qico2 svg')) allIco = false;
+        if (!navItems[i].querySelector('.qnav-tip')) allTip = false;
+        if (!navItems[i].querySelector('.qname2')) allName = false;
       }
+      ok('A32-3 每个导航项都有图标', allIco);
+      ok('A32-3 每个导航项都有名称气泡', allTip);
+      ok('A32-3 每个导航项都有名称节点', allName);
+
+      // 名称气泡内容 = 分组名
+      var tip0 = navItems[0] ? navItems[0].querySelector('.qnav-tip') : null;
+      ok('A32-3 气泡文字是分组名',
+         tip0 && tip0.textContent.trim() === quickGroups[0].name,
+         tip0 ? tip0.textContent : 'none');
+
+      // 收集 CSS 规则，验证图标态的悬停放大与气泡显示
+      var cssTxt = '';
+      for (var si = 0; si < document.styleSheets.length; si++){
+        try{
+          var rules = document.styleSheets[si].cssRules || [];
+          for (var ri = 0; ri < rules.length; ri++){
+            if (rules[ri].selectorText) cssTxt += rules[ri].selectorText + '\n';
+          }
+        }catch(e){}
+      }
+      ok('A32-3 有图标态悬停放大规则',
+         /data-navlabels="0"\] \.qnav-item:hover/.test(cssTxt), '见 CSS');
+      ok('A32-3 有图标态气泡显示规则',
+         /data-navlabels="0"\] \.qnav-item:hover \.qnav-tip/.test(cssTxt), '见 CSS');
+
+      finish();
     }
 
     function finish(){
