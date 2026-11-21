@@ -1673,6 +1673,42 @@ namespace AdbLogExport.Gui
                     DoDeviceDisconnect(GetField(json, "data"));
                     break;
 
+                // 2026-11-21：配置文件导出 / 导入（设置页两个按钮）
+                // 对话框必须走 UI 线程 —— 这两个 case 就在 UI 线程上，直接调即可。
+                case "cfgexport":
+                    {
+                        string p = Profile.DefaultExportPath();
+                        string msg = "";
+                        string file = p;
+                        using (SaveFileDialog dlg = new SaveFileDialog())
+                        {
+                            dlg.Title = "导出配置文件";
+                            dlg.Filter = "adb_Tool 配置文件 (*.adtprofile)|*.adtprofile|所有文件 (*.*)|*.*";
+                            dlg.FileName = Path.GetFileName(p);
+                            dlg.InitialDirectory = Path.GetDirectoryName(p);
+                            if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                            file = dlg.FileName;
+                        }
+                        bool ok = Profile.Export(file, out msg);
+                        PostToast(ok, msg);
+                    }
+                    break;
+                case "cfgimport":
+                    {
+                        string file = "";
+                        using (OpenFileDialog dlg = new OpenFileDialog())
+                        {
+                            dlg.Title = "导入配置文件（会覆盖当前配置并自动备份）";
+                            dlg.Filter = "adb_Tool 配置文件 (*.adtprofile;*.zip)|*.adtprofile;*.zip|所有文件 (*.*)|*.*";
+                            if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                            file = dlg.FileName;
+                        }
+                        string msg = "";
+                        bool ok = Profile.Import(file, out msg);
+                        PostToast(ok, msg);
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -2251,7 +2287,12 @@ namespace AdbLogExport.Gui
             // 为什么不会影响持久化指令：持久化指令（logcat / 录制 / scrcpy 窗口）本来
             // 就要求设备在线，快判会直接放行；而 :url / :h 这些走离线白名单，压根不进
             // 这段代码。所以它只会拦"无设备 + 必须设备"的组合。
-            if (!App.OfflineAllowed(cmd.ToLowerInvariant()) && App.DEVN == 0)
+            // 注意：OfflineAllowed 只认「第一个 token」（CLI 那边是 SplitLine 后传进来的），
+            // 这里传整行会把 ":url https://..." 当成未知命令，于是 :url/:cfg 全被误拦。
+            string headTok = cmd;
+            int spTok = cmd.IndexOf(' ');
+            if (spTok > 0) headTok = cmd.Substring(0, spTok);
+            if (!App.OfflineAllowed(headTok.ToLowerInvariant()) && App.DEVN == 0)
             {
                 bool alive = false;
                 try { alive = App.Rec.WaitDevice(1200, false, false); } catch { }
@@ -2460,6 +2501,19 @@ namespace AdbLogExport.Gui
 
         // 通用 ini 键写入：只改那一行，其它原样保留；没有这个键就追加。
         // 不新建 ini（单 exe 目录本来就没有配置文件，凭空造一个反而是垃圾）。
+        /// <summary>给页面发一条 toast（不打断当前输出）。</summary>
+        private void PostToast(bool ok, string text)
+        {
+            try
+            {
+                _web.CoreWebView2.PostWebMessageAsJson(
+                    "{\"kind\":\"toast\",\"ok\":" + (ok ? "true" : "false")
+                    + ",\"text\":\"" + (text ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
+                        .Replace("\r", "").Replace("\n", " ") + "\"}");
+            }
+            catch { }
+        }
+
         private static void SaveIniKey(string key, string val)
         {
             try

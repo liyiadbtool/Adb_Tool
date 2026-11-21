@@ -1,0 +1,21 @@
+feat: 配置文件导出/导入 + 三处拖拽排序 + 离线快判修复
+
+【配置文件（新）】_cs/Profile.cs
+导出 .adtprofile（zip）= manifest + prefs + custom_cmds.b64 + apk_apps.txt + README
+导入策略 A：覆盖 + 自动备份(*.bak.时间戳) + 临时文件原子替换 + schema 校验
+白名单导出：不带 adb/scrcpy 路径、历史、设备别名、任何口令
+入口：:cfg export|import|info、设置页两个按钮、:cfg 加入离线白名单
+
+【拖拽】
+- 分组导航：pointer + 4px 死区 + transform 让位，存 _prefs.navOrder
+- 指令卡片：3 列网格按最近中心点落位，存 _prefs.cardOrder（按分组名）
+- 顶部 tab：重写为跟手 translateX + 兄弟让位 ±宽度（旧版瞬时跳位）
+
+【修复】
+- :url / :cfg 在 GUI 被快判误拦：白名单只认第一个 token，原来传了整行
+- prefs 落盘丢字段：prefsApply 整份存 _prefsBase，保存时合并
+- 设置页「配置文件」区块；导航留白 20px→12px
+
+【测试】
+--fast 5/5；窗口与记录 277/277；页面结构 35/35；A14 59/59；v12 75/75；
+功能不变量 44/44（登记 toast / cfgExport / cfgImport）

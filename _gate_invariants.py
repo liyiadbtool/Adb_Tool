@@ -115,7 +115,8 @@ A9_ADDS = {
 # 全部收进设置抽屉（需求 5）。所以这里同时登记「新增」和「经批准删除」——
 # 删除必须逐条写理由，不能因为"反正门禁会过"就悄悄抹掉功能。
 A12_ADDS = {
-    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr"]),
+    # 2026-11-21：toast（C# 主动弹提示，配置文件导出/导入的结果反馈）
+    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast"]),
     "onclicks": set([
         # 自绘标题栏
         "tbDrag", "tbMin", "tbMax", "tbClose", "appClose", "toggleSettings", "closeSettings",
@@ -126,6 +127,8 @@ A12_ADDS = {
         "txNew", "txOpen", "txSave", "txFindOpen", "txFindNext", "txFindClose",
         "txReplaceOne", "txReplaceAll", "txGoto", "txSetEnc", "txSetEol",
         "txToggleWrap", "txZoom", "txUndoRedo", "txSyncCaret", "txSelect", "txClose",
+        # 2026-11-21：配置文件（设置页两个按钮）
+        "cfgExport", "cfgImport",
         # 文件页
         "fsSwapSides", "fsColDown", "fsColReset",
         # 结果图空态

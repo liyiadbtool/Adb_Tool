@@ -1,8 +1,8 @@
 {
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
- "count": 129,
- "totalBytes": 3302910,
+ "count": 130,
+ "totalBytes": 3375264,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -21,8 +21,8 @@
   },
   {
    "path": "377/_check_ui.js",
-   "size": 30087,
-   "sha256": "53102582486b97f2c32e14da361292ed32b931170da886e21e3d0bdb7661cf6a"
+   "size": 31179,
+   "sha256": "48d9e7e4d1775e44bf48c5391e7b538218852e3ecddb2a3a0cd7e988961eee5b"
   },
   {
    "path": "377/_cmds_shot.txt",
@@ -117,7 +117,7 @@
   {
    "path": "377/_test_apk_ui.py",
    "size": 19701,
-   "sha256": "3adfc95ae8001870fe8b185e815a2db9f3e988affb0015049ac55bfdc1d6c8bd"
+   "sha256": "5d3acc63db90bc5b6197edb060b1f471c9447f744f9b2189c266c1f80533e958"
   },
   {
    "path": "377/_test_batch_ui.py",
@@ -176,13 +176,13 @@
   },
   {
    "path": "377/_test_ui_behavior.py",
-   "size": 64289,
-   "sha256": "b651f7daea24e8592264206f41732d03785c643148a78038d1bdb25e49938d67"
+   "size": 69566,
+   "sha256": "c4869da72c3bf0832a7661ec90712cec68395614ed821ab4957e35514b3cddee"
   },
   {
    "path": "377/_test_ux.py",
-   "size": 22845,
-   "sha256": "0745cd970d0588d34106b389c62da437d55e341221f77fa973fd7c4cb3a10ac1"
+   "size": 22979,
+   "sha256": "02f7029dbb6e375b938883ebed92ade28e8788c38fcc06dbaa159ec0f2796ad5"
   },
   {
    "path": "377/_test_vr_ui.py",
@@ -346,8 +346,8 @@
   },
   {
    "path": "_cs/GuiWeb.cs",
-   "size": 195442,
-   "sha256": "5d8570844f5b59caa919491dfdc379aaa740565851b009cfc56010dfd4ec696e"
+   "size": 198254,
+   "sha256": "d9f3506cb90995190d1b46b6d5ba4197401d1efb1ecd926691057cdd96c54286"
   },
   {
    "path": "_cs/Hdc.cs",
@@ -371,8 +371,8 @@
   },
   {
    "path": "_cs/Prefix.cs",
-   "size": 53518,
-   "sha256": "74c4a1506e6044a9d1411c5bc4e1e82a395e251a0c081f734c64a288d51ff80e"
+   "size": 55164,
+   "sha256": "f2a59eff7ec2e1f883ac6923e73569ded6c1bca9e29fc7bca2752fdc80ca31fb"
   },
   {
    "path": "_cs/Probe.cs",
@@ -380,9 +380,14 @@
    "sha256": "e7e51e226466cd8011c3ff69ce942f6a7d2e93ce57f5bb214fb57aaf2d2259de"
   },
   {
+   "path": "_cs/Profile.cs",
+   "size": 14089,
+   "sha256": "d2ee1c4106f14dc614a0b2db477b76280011aa2fefe008096bea30dfdfba0fd6"
+  },
+  {
    "path": "_cs/Program.cs",
-   "size": 77637,
-   "sha256": "b05f4331f306d4052d62868a93d76f00317670aa576c4940d1015ff6a0ccf37c"
+   "size": 77795,
+   "sha256": "575521c334c102818530552ee1fa1dc997a1c3b0399d7d01f677ef0e294ec00c"
   },
   {
    "path": "_cs/Reconnect.cs",
@@ -411,8 +416,8 @@
   },
   {
    "path": "_cs/TaskCmds.cs",
-   "size": 83620,
-   "sha256": "ebd85dc268f9d4697a14ff4c77ecc5533d8f17e04c899fa13986f3845752fa26"
+   "size": 109488,
+   "sha256": "b9ecccb9da8945ebc7d919a64d3f63d139e4f7bd0b083dde376ca13c62dda34f"
   },
   {
    "path": "_cs/Tbox.cs",
@@ -431,8 +436,8 @@
   },
   {
    "path": "_cs/build.bat",
-   "size": 5116,
-   "sha256": "c9668e14cc354d991f0f8b02cc6fd5166d9c52e69ff62ab32f1178bafbbfe243"
+   "size": 5226,
+   "sha256": "443d1222d4c47a2bcfade5c89633b2e079fa3148e2e8e649c82cf7ce38124806"
   },
   {
    "path": "_cs/console_input_test/README.md",
@@ -496,13 +501,13 @@
   },
   {
    "path": "adb_log_gui/build_gui.bat",
-   "size": 12788,
-   "sha256": "bd56d0dc4e2c536032823d3965f431ec913b0f137c5f5e30163856c5d3e3a7e7"
+   "size": 12892,
+   "sha256": "b1d0a29e46ee073525a7de2fc0466e8a39f25b7ba0f6b5aa281ec1d5dadb5f32"
   },
   {
    "path": "adb_log_gui/cmds.ini",
-   "size": 19869,
-   "sha256": "f5792f8c16fad430eb4d5923e8fc217a31a4437407567431e4ec9c69c8d1e2ca"
+   "size": 22381,
+   "sha256": "3d1aa8753639cd694428c525cbfa89910d26365a9c25ed4db6bbf9983997e385"
   },
   {
    "path": "adb_log_gui/make_min.bat",
@@ -511,13 +516,13 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 837375,
-   "sha256": "8c4df87a63276bf5789f8fc6b65f1a5d80fa809a7eac6355a040c9bbb7426f45"
+   "size": 853380,
+   "sha256": "71cc26e56dc1fbd8c3baec5120f235d2ac0b77bc06e8a63ef760443d6238c89b"
   },
   {
    "path": "cmds.ini",
-   "size": 19869,
-   "sha256": "f5792f8c16fad430eb4d5923e8fc217a31a4437407567431e4ec9c69c8d1e2ca"
+   "size": 22381,
+   "sha256": "3d1aa8753639cd694428c525cbfa89910d26365a9c25ed4db6bbf9983997e385"
   },
   {
    "path": "docs/ACCENT-CONTRAST.md",
@@ -561,8 +566,8 @@
   },
   {
    "path": "docs/INVARIANT-DIFF.md",
-   "size": 6909,
-   "sha256": "1470dcd8cd03261930865d3f8e304032afcd59f739165f2854a82039d2a907a3"
+   "size": 6944,
+   "sha256": "4652551f5c18004ec47e51a04657949b1b1d798aca1753ef9c5d4fb9d8639066"
   },
   {
    "path": "docs/RESKIN-FINAL-REPORT.md",

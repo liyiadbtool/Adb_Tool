@@ -314,13 +314,20 @@ body{
 
 /* 指令页：侧边导航式 */
 .quick-wrap{flex:1;min-height:0;display:flex;overflow:hidden;}
-.quick-nav{flex:0 0 auto;width:176px;background:var(--surface);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;}
-.quick-nav::-webkit-scrollbar{width:10px;}
+.quick-nav{flex:0 0 auto;width:176px;background:var(--surface);border-right:1px solid var(--border);padding:14px 6px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-gutter:stable;}   /* 2026-11-21：右侧留白 20px→12px */
+.quick-nav::-webkit-scrollbar{width:6px;}
 .quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
 .quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
 .qnav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-2);cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;}
 /* 2026-11-20 反馈3：hover 原来只有一层灰，看不出指向哪一项，改成强调色薄底 */
 .qnav-item:hover{background:color-mix(in srgb, var(--accent) 16%, transparent);color:var(--text);}
+/* 2026-11-21 拖拽动效：只动 transform，不触发重排；拖动项抬起 + 阴影 */
+.qnav-item{transition:background .12s,color .12s,transform .16s cubic-bezier(.2,.8,.2,1);}
+.qcard{transition:transform .16s cubic-bezier(.2,.8,.2,1);}
+.qcard.dragging{transition:none;z-index:5;position:relative;box-shadow:0 10px 26px -12px var(--edge);cursor:grabbing;}
+.qcard.drop-target{outline:2px dashed var(--accent);outline-offset:2px;}
+.qnav-item.dragging{background:color-mix(in srgb, var(--accent) 20%, transparent);color:var(--text);
+  box-shadow:0 6px 18px -8px var(--edge);z-index:3;position:relative;transition:none;}
 .qnav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
 .qnav-item .qdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
 .qnav-item .qcnt{margin-left:auto;font-size:11px;color:var(--text-faint);}
@@ -3885,6 +3892,18 @@ body::after{
         <div class="set-seg" id="set-oled"></div>
         <div class="set-seg" id="set-eyelevel"></div>
         <div class="set-fsize-hint" id="set-display-hint"></div>
+
+        <!-- 2026-11-21：配置文件。解决"升级新版本后自定义指令/APK 列表要重配一遍" -->
+        <div class="set-fsize-row" style="margin-top:16px">
+          <div style="font-size:12.5px;color:var(--text-dim);line-height:1.6;margin-bottom:8px">
+            把自定义指令、APK 管理列表、界面偏好打包成一个文件；<br>
+            换新版本时导入即可恢复（导入前会自动备份现有配置）。
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" type="button" onclick="cfgExport()">导出配置</button>
+            <button class="btn" type="button" onclick="cfgImport()">导入配置</button>
+          </div>
+        </div>
       </section>
 
       <section class="set-sec">
@@ -4011,6 +4030,7 @@ function onMessage(ev){
   // v12：标题栏状态 / 偏好 / 文本编辑器消息先处理（返回 true = 已消费）
   if(typeof v12OnMessage === 'function' && v12OnMessage(msg)) return;
   switch(msg.kind){
+    case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
     case 'line': appendLine(msg); break;
     case 'lines': appendLines(msg.items); break;   // 批量帧（性能优化）
     case 'commands': applyServerCommands(msg.items); break;   // cmds.ini → 指令页
@@ -5108,6 +5128,10 @@ function onRootDone(m){
 
 /* 轻提示：底部浮一条，1.8s 自动消失。不打断操作，也不占布局。
    kind: '' = 中性 / 'err' = 失败 / 'ok' = 成功（边框与文字跟着变，失败一眼可辨） */
+/* 2026-11-21：配置文件导出/导入（弹窗与落盘都在 C# 侧，这里只发请求） */
+function cfgExport(){ post('cfgexport'); }
+function cfgImport(){ post('cfgimport'); }
+
 function toast(text, kind){
   var old = document.getElementById('toast');
   if(old && old.parentNode) old.parentNode.removeChild(old);
@@ -5767,6 +5791,108 @@ function applyServerCommands(items){
   renderQuickItems();
 }
 
+/* ==================== 导航分组拖拽排序（2026-11-21）====================
+   需求：左侧「指令执行/网联服务/…」可拖拽换位，且记住顺序。
+   做法照抄页签那套（ui.html §tab 拖拽）：pointer 事件 + DOM 顺序为准 +
+   拖完把顺序写进 _prefs.navOrder。HTML5 draggable 在 WebView2 里长按延迟很难受，不用。
+
+   动效：拖动项跟手（transform），被越过的项用 transition 平滑让位（±h），
+   松手后统一归零 —— 只有 transform，不触发重排。 */
+var _navDrag = null;
+
+function applyNavOrder(order){
+  if (!order || !order.length) return;
+  var pos = {};
+  for (var i = 0; i < order.length; i++) pos[order[i]] = i;
+  var known = [], unknown = [];
+  for (var j = 0; j < quickGroups.length; j++){
+    if (pos[quickGroups[j].name] === undefined) unknown.push(quickGroups[j]);
+    else known.push(quickGroups[j]);
+  }
+  known.sort(function(a, b){ return pos[a.name] - pos[b.name]; });
+  // 新版本新增的分组（order 里没有）保持原相对顺序，追加在后面
+  quickGroups.length = 0;
+  for (var k = 0; k < known.length; k++) quickGroups.push(known[k]);
+  for (var m = 0; m < unknown.length; m++) quickGroups.push(unknown[m]);
+}
+
+function navDragBegin(ev){
+  var nav = document.getElementById('quick-nav');
+  if (!nav) return;
+  var el = ev.target && ev.target.closest ? ev.target.closest('.qnav-item') : null;
+  if (!el) return;
+  // 只认左键/触摸；右键菜单留给将来
+  if (ev.button !== undefined && ev.button !== 0) return;
+
+  var items = Array.prototype.slice.call(nav.querySelectorAll('.qnav-item'));
+  var idx = items.indexOf(el);
+  if (idx < 0) return;
+
+  var rect = el.getBoundingClientRect();
+  _navDrag = {
+    el: el, idx: idx, items: items,
+    startY: ev.clientY, h: rect.height + 3,   // 3 = flex gap
+    moved: false, cur: idx, pid: ev.pointerId
+  };
+  try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+}
+
+function navDragMove(ev){
+  if (!_navDrag) return;
+  var d = _navDrag;
+  var dy = ev.clientY - d.startY;
+  if (!d.moved){
+    if (Math.abs(dy) < 4) return;         // 4px 死区，避免点一下就算拖动
+    d.moved = true;
+    d.el.classList.add('dragging');
+  }
+  d.el.style.transform = 'translateY(' + dy + 'px)';
+
+  // 目标位置：按位移折算成「跨过几个格子」
+  var shift = Math.round(dy / d.h);
+  var target = d.idx + shift;
+  if (target < 0) target = 0;
+  if (target > d.items.length - 1) target = d.items.length - 1;
+  if (target !== d.cur){
+    d.cur = target;
+    for (var i = 0; i < d.items.length; i++){
+      if (i === d.idx) continue;
+      var off = 0;
+      if (d.idx < target && i > d.idx && i <= target) off = -d.h;
+      else if (d.idx > target && i >= target && i < d.idx) off = d.h;
+      d.items[i].style.transform = off ? 'translateY(' + off + 'px)' : '';
+    }
+  }
+}
+
+function navDragEnd(ev){
+  if (!_navDrag) return;
+  var d = _navDrag;
+  _navDrag = null;
+  try { d.el.releasePointerCapture(d.pid); } catch (e) {}
+
+  // 归零所有 transform（带 transition，看着就是"落位"）
+  for (var i = 0; i < d.items.length; i++) d.items[i].style.transform = '';
+  d.el.classList.remove('dragging');
+
+  if (!d.moved) return;                    // 只是点了一下，交给 click 处理
+  if (d.cur === d.idx) return;
+
+  var moved = quickGroups.splice(d.idx, 1)[0];
+  quickGroups.splice(d.cur, 0, moved);
+
+  // 记住顺序（按分组名，名字是唯一标识）
+  var names = [];
+  for (var n = 0; n < quickGroups.length; n++) names.push(quickGroups[n].name);
+  _prefs.navOrder = names;
+  try { prefsSave(); } catch (e) {}
+
+  _quickIdx = d.cur;
+  renderQuickNav();
+  renderQuickItems();
+  try { toast('分组顺序已保存', 'ok'); } catch (e) {}
+}
+
 function renderQuickNav(){
   var nav = document.getElementById('quick-nav');
   if(!nav) return;
@@ -5780,6 +5906,14 @@ function renderQuickNav(){
       + '</div>';
   }
   nav.innerHTML = html;
+  // 拖拽：委托到容器上，一次绑定永久有效（重渲染不需要重绑）
+  if (!nav.__dragBound){
+    nav.__dragBound = 1;
+    nav.addEventListener('pointerdown', navDragBegin);
+    nav.addEventListener('pointermove', navDragMove);
+    nav.addEventListener('pointerup', navDragEnd);
+    nav.addEventListener('pointercancel', navDragEnd);
+  }
   var items = nav.querySelectorAll('.qnav-item');
   for(var k=0;k<items.length;k++){
     (function(idx){ items[k].addEventListener('click', function(){ switchQuickGroup(idx); }); })
@@ -5819,11 +5953,102 @@ function swapGrid(grid, html){
   else { while (grid.firstChild) grid.removeChild(grid.firstChild); grid.appendChild(frag); }
 }
 
+/* ==================== 卡片拖拽排序（2026-11-21）====================
+   需求：指令卡片支持用户自定义拖拽调节并记住顺序。
+   与导航拖拽同一套：pointer 事件 + 4px 死区 + 拖完写 _prefs.cardOrder。
+   卡片是 3 列网格，落点用「最近中心点」判断，不按行折算。 */
+var _cardDrag = null;
+
+function applyCardOrder(g){
+  if (!g || !g.items || !g.items.length) return;
+  var order = (_prefs && _prefs.cardOrder) ? _prefs.cardOrder[g.name] : null;
+  if (!order || !order.length) return;
+  var pos = {};
+  for (var i = 0; i < order.length; i++) pos[order[i]] = i;
+  var known = [], unknown = [];
+  for (var j = 0; j < g.items.length; j++){
+    if (pos[g.items[j].name] === undefined) unknown.push(g.items[j]);
+    else known.push(g.items[j]);
+  }
+  known.sort(function(a, b){ return pos[a.name] - pos[b.name]; });
+  g.items.length = 0;
+  for (var k = 0; k < known.length; k++) g.items.push(known[k]);
+  for (var m = 0; m < unknown.length; m++) g.items.push(unknown[m]);
+}
+
+function cardDragBegin(ev){
+  var grid = document.getElementById('quick-grid');
+  if (!grid || _quickFilter) return;              // 搜索态不改顺序
+  var el = ev.target && ev.target.closest ? ev.target.closest('.qcard') : null;
+  if (!el) return;
+  if (el.classList.contains('running')) return;   // 执行中不许拖
+  if (ev.button !== undefined && ev.button !== 0) return;
+
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.qcard'));
+  var idx = cards.indexOf(el);
+  if (idx < 0) return;
+  _cardDrag = {
+    el: el, idx: idx, cards: cards, cur: idx, moved: false,
+    sx: ev.clientX, sy: ev.clientY, pid: ev.pointerId,
+    rects: cards.map(function(c){
+      var r = c.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    })
+  };
+  try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+}
+
+function cardDragMove(ev){
+  var d = _cardDrag;
+  if (!d) return;
+  var dx = ev.clientX - d.sx, dy = ev.clientY - d.sy;
+  if (!d.moved){
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+    d.moved = true;
+    d.el.classList.add('dragging');
+  }
+  d.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  var best = d.idx, bd = 1e9;
+  for (var i = 0; i < d.rects.length; i++){
+    var mx = d.rects[i].x - ev.clientX, my = d.rects[i].y - ev.clientY;
+    var dist = mx * mx + my * my;
+    if (dist < bd){ bd = dist; best = i; }
+  }
+  if (best !== d.cur){
+    d.cur = best;
+    for (var k = 0; k < d.cards.length; k++)
+      d.cards[k].classList.toggle('drop-target', k === best && k !== d.idx);
+  }
+}
+
+function cardDragEnd(){
+  var d = _cardDrag;
+  if (!d) return;
+  _cardDrag = null;
+  try { d.el.releasePointerCapture(d.pid); } catch (e) {}
+  d.el.style.transform = '';
+  d.el.classList.remove('dragging');
+  for (var i = 0; i < d.cards.length; i++) d.cards[i].classList.remove('drop-target');
+  if (!d.moved || d.cur === d.idx) return;         // 纯点击 → 交给 onclick
+
+  var g = quickGroups[_quickIdx];
+  var movedItem = g.items.splice(d.idx, 1)[0];
+  g.items.splice(d.cur, 0, movedItem);
+  if (!_prefs.cardOrder) _prefs.cardOrder = {};
+  var names = [];
+  for (var n = 0; n < g.items.length; n++) names.push(g.items[n].name);
+  _prefs.cardOrder[g.name] = names;
+  try { prefsSave(); } catch (e) {}
+  renderQuickItems();
+  try { toast('已保存顺序', 'ok'); } catch (e) {}
+}
+
 function renderQuickItems(){
   // 搜索态：结果来自全部分组，不能沿用 _quickIdx 的渲染逻辑
   if(_quickFilter){ renderSearchResults(); return; }
 
   var g = quickGroups[_quickIdx];
+  applyCardOrder(g);          // 2026-11-21：按用户拖过的顺序重排
   var nameEl = document.getElementById('quick-group-name');
   var cntEl = document.getElementById('quick-group-count');
   if(nameEl) nameEl.textContent = g.name;
@@ -5876,6 +6101,14 @@ function renderQuickItems(){
       + '</div>';
   }
   swapGrid(grid, html);
+  // 2026-11-21：卡片拖拽（委托绑定，重渲染不需重绑）
+  if (!grid.__dragBound){
+    grid.__dragBound = 1;
+    grid.addEventListener('pointerdown', cardDragBegin);
+    grid.addEventListener('pointermove', cardDragMove);
+    grid.addEventListener('pointerup', cardDragEnd);
+    grid.addEventListener('pointercancel', cardDragEnd);
+  }
 }
 
 /* ---------- 指令搜索 ----------
@@ -11296,6 +11529,9 @@ document.addEventListener('DOMContentLoaded', function (){
         window.v15Restore({ logShow: o.logshow, oled: o.oled, eye: o.eye, auto: o.auto });
       } catch (e) {}
     }
+    if (Array.isArray(o.navOrder) && o.navOrder.length) {
+      try { applyNavOrder(o.navOrder); } catch (e) {}   // 2026-11-21：分组拖拽顺序
+    }
     if (Array.isArray(o.tabOrder) && o.tabOrder.length) {
       try { applyTabOrder(o.tabOrder); } catch (e) {}
     }
@@ -11372,45 +11608,94 @@ document.addEventListener('DOMContentLoaded', function (){
     if (!bar || bar.getAttribute('data-v16drag')) return;
     bar.setAttribute('data-v16drag', '1');
 
+    /* 2026-11-21 重写：与指令页拖拽对齐（跟手 + 让位 + 落点提示）。
+       旧版是"pointermove 里直接 insertBefore"，兄弟节点瞬间跳位，观感生硬；
+       后来补的 FLIP 也不跟手（被拖的 tab 停在原位只放大），还是别扭。
+       现在：
+         · 被拖的 tab 跟手 translateX（transition:none，别拖慢手感）
+         · 其它 tab 按"要让多少位"平滑平移（transition .18s）
+         · 目标位置画一条强调色落点线
+         · 松手才真正改 DOM，然后清零 transform 并保存顺序 */
+    var drag = null;
+
+    function tabList() {
+      return Array.prototype.slice.call(bar.querySelectorAll('.tab'));
+    }
+
     bar.addEventListener('pointerdown', function (ev) {
       if (ev.button !== 0) return;
       var el = ev.target && ev.target.closest ? ev.target.closest('.tab') : null;
       if (!el) return;
-      drag = { el: el, x0: ev.clientX, y0: ev.clientY, moved: false };
+      var tabs = tabList();
+      var idx = tabs.indexOf(el);
+      if (idx < 0) return;
+      drag = {
+        el: el, idx: idx, tabs: tabs, cur: idx, moved: false, pid: ev.pointerId,
+        x0: ev.clientX, w: el.getBoundingClientRect().width + 4,
+        mids: tabs.map(function (t) {
+          var r = t.getBoundingClientRect();
+          return r.left + r.width / 2;
+        })
+      };
     });
 
     bar.addEventListener('pointermove', function (ev) {
       if (!drag) return;
-      var dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+      var dx = ev.clientX - drag.x0;
       if (!drag.moved) {
-        // 6px 死区：小于它就是普通点击，不能把"切 tab"误判成拖拽
-        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dx) < 5) return;       // 5px 死区：小于它是切 tab 的点击
         drag.moved = true;
         drag.el.classList.add('v16-dragging');
         document.body.classList.add('v16-tabdrag');
         try { drag.el.setPointerCapture(ev.pointerId); } catch (e) {}
       }
       ev.preventDefault();
-      var over = document.elementFromPoint(ev.clientX, ev.clientY);
-      over = over && over.closest ? over.closest('.tab') : null;
-      if (!over || over === drag.el) return;
-      var r = over.getBoundingClientRect();
-      var after = ev.clientX > r.left + r.width / 2;
-      over.parentNode.insertBefore(drag.el, after ? over.nextSibling : over);
+      drag.el.style.transform = 'translateX(' + dx + 'px)';
+
+      // 落点：离哪个 tab 中线最近就插到它那边
+      var target = drag.idx;
+      for (var i = 0; i < drag.mids.length; i++) {
+        if (ev.clientX >= drag.mids[i]) target = i + (ev.clientX > drag.mids[i] ? 1 : 0);
+      }
+      if (target > drag.tabs.length - 1) target = drag.tabs.length - 1;
+      if (target === drag.idx && ev.clientX < drag.mids[0]) target = 0;
+      if (target !== drag.cur) {
+        drag.cur = target;
+        for (var k = 0; k < drag.tabs.length; k++) {
+          var t = drag.tabs[k];
+          if (t === drag.el) continue;
+          var off = 0;
+          if (drag.idx < target && k > drag.idx && k <= target) off = -drag.w;
+          else if (drag.idx > target && k >= target && k < drag.idx) off = drag.w;
+          t.style.transform = off ? 'translateX(' + off + 'px)' : '';
+        }
+      }
     });
 
     function end() {
       if (!drag) return;
-      var moved = drag.moved;
-      try { drag.el.classList.remove('v16-dragging'); } catch (e) {}
-      document.body.classList.remove('v16-tabdrag');
+      var d = drag;
       drag = null;
-      if (moved) {
-        // 松手后浏览器还会补一个 click，必须吃掉，否则会顺带切到被拖的那个 tab
-        suppressClickUntil = Date.now() + 160;
-        saveTabOrder();
-        if (typeof window.v15SyncTabOrder === 'function') window.v15SyncTabOrder();
+      try { d.el.releasePointerCapture(d.pid); } catch (e) {}
+
+      // 清零所有位移（带过渡，看着就是"落位"）
+      for (var i = 0; i < d.tabs.length; i++) d.tabs[i].style.transform = '';
+      d.el.classList.remove('v16-dragging');
+      document.body.classList.remove('v16-tabdrag');
+
+      if (!d.moved || d.cur === d.idx) return;
+
+      // 真正改 DOM：把元素挪到目标位置
+      var ref = d.tabs[d.cur === d.idx ? d.idx : d.cur];
+      if (ref && ref !== d.el) {
+        var after = d.cur > d.idx;
+        bar.insertBefore(d.el, after ? ref.nextSibling : ref);
       }
+      // 松手后浏览器还会补一个 click，必须吃掉，否则会顺带切到被拖的 tab
+      suppressClickUntil = Date.now() + 160;
+      saveTabOrder();
+      if (typeof window.v15SyncTabOrder === 'function') window.v15SyncTabOrder();
+      else { try { renderQuickNav && renderQuickNav(); } catch (e) {} }
     }
     bar.addEventListener('pointerup', end);
     bar.addEventListener('pointercancel', end);

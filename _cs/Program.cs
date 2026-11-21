@@ -1309,7 +1309,9 @@ namespace AdbLogExport
                     || n == "vr" || n == "voice"   // :vr 内部按子命令自行判设备，帮助/音区表为纯本地
                     // 2026-11-20：:url 是"在电脑上打开浏览器"，不碰 adb。
                     // 漏在门外会导致设备掉线时点「云平台」四张卡全被拒（用户实际遇到）。
-                    || n == "url" || n == "openurl" || n == "link";
+                    || n == "url" || n == "openurl" || n == "link"
+                    // 2026-11-21：:cfg 是本地文件读写（导出/导入配置），与设备无关
+                    || n == "cfg" || n == "profile";
             }
 
             if (c[0] == '!') return false;

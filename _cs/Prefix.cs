@@ -319,6 +319,9 @@ namespace AdbLogExport
             // :caststop <屏号|all>  取消投屏（投屏是独立进程，不关会一直活着）
             if (n == "caststop" || n == "castclose") { DoCastStop(arg); return; }
 
+            // :cfg export|import|info  配置文件（自定义指令 + APK 列表 + 界面偏好）
+            if (n == "cfg" || n == "profile") { DoCfg(arg); return; }
+
             if (n == "wsdevid" || n == "devid") { DoDeviceId(); return; }
 
             // :url <地址>  用桌面系统默认浏览器打开（不是车机）

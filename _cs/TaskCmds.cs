@@ -1505,6 +1505,50 @@ namespace AdbLogExport
                : "星河云埋点：未完全开启（privacy_enabled=" + pv + "）");
         }
 
+        // :cfg export|import|info   配置文件导出 / 导入 / 查看
+        //
+        // 解决"升级新版本要重配一遍自定义指令和 APK 列表"。
+        // 导出成 .adtprofile（zip），导入是"覆盖 + 自动备份"，导入后需重启生效。
+        private static void DoCfg(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim();
+            int sp = a.IndexOf(' ');
+            string sub = (sp > 0 ? a.Substring(0, sp) : a).ToLowerInvariant();
+            string rest = (sp > 0 ? a.Substring(sp + 1).Trim() : "");
+            string msg = "";
+
+            if (sub.Length == 0 || sub == "info" || sub == "看" || sub == "ls")
+            {
+                Info(Profile.Info());
+                CMD_OK = true;
+                Hint("导出：:cfg export   导入：:cfg import <文件>");
+                return;
+            }
+            if (sub == "export" || sub == "导出")
+            {
+                string path = rest.Length > 0 ? rest : Profile.DefaultExportPath();
+                bool ok = Profile.Export(path, out msg);
+                CMD_OK = ok;
+                if (ok) Ok(msg); else Fail(msg);
+                return;
+            }
+            if (sub == "import" || sub == "导入")
+            {
+                if (rest.Length == 0)
+                {
+                    Fail("要给一个 .adtprofile 文件路径");
+                    Hint("例：:cfg import C:////Users////me////Desktop////adb_Tool_配置_20261121.adtprofile");
+                    return;
+                }
+                bool ok = Profile.Import(rest, out msg);
+                CMD_OK = ok;
+                if (ok) { Ok(msg); Hint("请重启应用，配置在启动时读取"); }
+                else Fail(msg);
+                return;
+            }
+            Fail("用法：:cfg export [路径] | :cfg import <路径> | :cfg info");
+        }
+
         // :caststop <屏号|all>   取消投屏（杀掉对应的 scrcpy 进程）
         //
         // 为什么要显式取消：投屏是独立进程，工具退出它也活着（这是"持久化运行"）。
