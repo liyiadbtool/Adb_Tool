@@ -1110,7 +1110,7 @@
     },
     {
       "id": "ui.settings",
-      "desc": "设置抽屉（右上角齿轮）：主题三态 / 9 色强调色 / 字体 / 使用说明入口 / 关闭应用。偏好写 ini（theme= / accent= / prefs=），重启保持。对应需求 5/8",
+      "desc": "设置抽屉（右上角齿轮）：主题三态 / 强调色滑动条（吸附 16 锚点）/ 字体 / 字号五档 / 导航栏名称开关 / 工具区（配置文件·使用说明·关于均为问号按钮）。偏好写 ini（theme= / accent= / prefs=），重启保持。",
       "anchors": [
         {
           "file": "adb_log_gui/webview2/ui.html",
@@ -1119,8 +1119,10 @@
             "id=\"set-mask\"",
             "id=\"set-theme\"",
             "id=\"set-font\"",
-            "onclick=\"appClose()\"",
-            "function toggleSettings("
+            "id=\"accent-slider\"",
+            "id=\"about-mask\"",
+            "function toggleSettings(",
+            "appClose()"
           ]
         },
         {

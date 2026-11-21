@@ -49,57 +49,21 @@ JS = r"""
   function has(sel){ return !!document.querySelector(sel); }
 
   setTimeout(function(){
-    /* ============ 需求 1：页签玻璃胶囊滑块 ============ */
+    /* ============ 需求 1（已改向）：页签滑块去除 ============
+       2026-11-22 第 8 批需求 1 原话：「指令 tab 导航页标签底部的滑动条去除」。
+       所以断言反过来：滑块层必须**不存在**，且激活页签改回自带底色。 */
     var gl = document.querySelector('.tab-glider');
-    ok('A32-1 胶囊层已创建', !!gl);
-
-    if (gl){
-      var cs = getComputedStyle(gl);
-      // 半透明：背景不能是实色
-      var bg = cs.backgroundImage || cs.background;
-      ok('A32-1 胶囊底是渐变（非实色）', /gradient/.test(bg), bg.slice(0,80));
-      // 玻璃模糊
-      var bf = cs.backdropFilter || cs.webkitBackdropFilter;
-      ok('A32-1 胶囊带 backdrop-filter 玻璃', /blur/.test(bf||''), bf);
-      // 边缘高光：box-shadow 里必须有 inset
-      ok('A32-1 胶囊边缘有内高光(inset)', /inset/.test(cs.boxShadow), cs.boxShadow.slice(0,60));
-      // 过渡曲线必须是弹性（cubic-bezier 且有过冲）
-      var tr = cs.transition || cs.transitionProperty;
-      ok('A32-1 transform 过渡使用弹簧曲线',
-         /cubic-bezier/.test(cs.transition) && /transform/.test(cs.transition),
-         cs.transition.slice(0,90));
-      // 定位到当前激活页签
-      var act = document.querySelector('.tab.active');
-      var glW = parseFloat(cs.width) || 0;
-      ok('A32-1 胶囊有宽度（已定位）', glW > 10, glW);
-      ok('A32-1 胶囊可见（opacity=1）', parseFloat(cs.opacity) > 0.5, cs.opacity);
-
-      // 切换页签 → 胶囊应移动到新位置
-      var before = cs.transform;
-      var tabs = document.querySelectorAll('.tab');
-      var target = null;
-      for (var i=0;i<tabs.length;i++) if (tabs[i].dataset.tab === 'cmd') target = tabs[i];
-      if (target){
-        target.click();
-        setTimeout(function(){
-          var cs2 = getComputedStyle(gl);
-          var after = cs2.transform;
-          ok('A32-1 切换页签后胶囊位移变化', before !== after,
-             before + ' -> ' + after);
-
-          // 移回指令页，继续测后面
-          var back = null;
-          for (var j=0;j<tabs.length;j++) if (tabs[j].dataset.tab === 'quick') back = tabs[j];
-          back.click();
-
-          setTimeout(function(){ testReq2(); }, 260);
-        }, 260);
-      } else {
-        testReq2();
-      }
-    } else {
-      testReq2();
+    ok('A32-1 页签滑块层已移除（按需求）', !gl);
+    var actTab = document.querySelector('.tabs .tab.active');
+    ok('A32-1 有激活页签', !!actTab);
+    if (actTab){
+      var acs = getComputedStyle(actTab);
+      // 激活项应实色铺满（不再依赖底下的滑块层）
+      ok('A32-1 激活页签自带实色底',
+         acs.backgroundColor && acs.backgroundColor !== 'rgba(0, 0, 0, 0)',
+         acs.backgroundColor);
     }
+    testReq2();
 
     function testReq2(){
       /* ============ 需求 2：原位放大详情视图 ============ */

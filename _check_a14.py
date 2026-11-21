@@ -295,8 +295,11 @@ JS = r"""
     switchTab('quick');
 
     /* ================= 七、去掉中文（需求 6） ================= */
+    /* 2026-11-22（第 8 批需求6）：用户要求删除字体预览卡片
+       （"Adb_Tool 12345 ABCdef"）。元素不存在是**符合需求**的结果，
+       所以这里反过来断言它确实被删了。 */
     var pv = document.getElementById('set-font-preview');
-    ok('字体预览无中文', pv && !hasChinese(pv.textContent), pv && pv.textContent);
+    ok('字体预览卡片已删除（需求 6）', !pv, pv ? '仍存在' : 'ok');
     var abouts = document.querySelectorAll('.set-about'), cn = 0;
     for (var a=0;a<abouts.length;a++){
       if (abouts[a].className.indexOf('dim') >= 0) continue;  // dim 是"单机本地运行"说明行
@@ -310,8 +313,9 @@ JS = r"""
     ok('设置里有字体大小区', !!box);
     if (box){
       var bs = box.querySelectorAll('button');
-      // 2026-11-20：新增「超小」档 → 四段 xs/s/m/l
-      ok('超小/小/中/大四段', bs.length === 4, bs.length);
+      /* 2026-11-22（第 8 批需求7）：四段 → 五段。
+         比例按用户指定：超小 50% / 小 80% / 中 100% / 大 120% / 超大 150%。 */
+      ok('超小/小/中/大/超大五段', bs.length === 5, bs.length);
       var txt = '';
       for (var b=0;b<bs.length;b++) txt += bs[b].textContent;
       ok('文案含 超小/小/中/大', txt.indexOf('超小')>=0 && txt.indexOf('小')>=0
@@ -320,18 +324,18 @@ JS = r"""
       bs[3].click();
       var got = posts('uizoom');
       ok('点「大」会发 uizoom', got.length > before, got.length);
-      ok('「大」= 1.15', got.length && parseFloat(got[got.length-1].data) === 1.15,
+      ok('「大」= 1.20（需求 7）', got.length && parseFloat(got[got.length-1].data) === 1.20,
          got.length && got[got.length-1].data);
       ok('偏好里记下 size=l', _prefs.size === 'l', _prefs.size);
       ok('「大」按钮进入选中态', bs[3].classList.contains('on'));
       bs[0].click();
       var got0 = posts('uizoom');
-      ok('「超小」= 0.85', parseFloat(got0[got0.length-1].data) === 0.85,
+      ok('「超小」= 0.50（需求 7）', parseFloat(got0[got0.length-1].data) === 0.50,
          got0[got0.length-1].data);
       ok('偏好里记下 size=xs', _prefs.size === 'xs', _prefs.size);
       bs[1].click();
       var got2 = posts('uizoom');
-      ok('「小」= 0.9', parseFloat(got2[got2.length-1].data) === 0.9, got2[got2.length-1].data);
+      ok('「小」= 0.80（需求 7）', parseFloat(got2[got2.length-1].data) === 0.80, got2[got2.length-1].data);
       ok('偏好里记下 size=s', _prefs.size === 's', _prefs.size);
       bs[2].click();
       ok('回到「中」= 1.0', parseFloat(posts('uizoom').slice(-1)[0].data) === 1.0);

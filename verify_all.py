@@ -56,6 +56,7 @@ EDGE_TESTS = [
     ("_test_interaction.py", "交互一致性（页签/轮询/投屏坐标）"),
     ("_test_a32_motion.py", "A32 动效三件套（玻璃胶囊/原位放大/Dock）"),
     ("_test_ui_compare.py", "UI 比对（真实导入图片/抗锯齿/结构比对）"),
+    ("_test_settings_panel.py", "设置面板（滑动条/五档字号/问号按钮）"),
 ]
 
 # ---- 全量档专属：重型套件（--full 才跑）----

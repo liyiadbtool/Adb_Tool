@@ -45,7 +45,12 @@ var DYNAMIC_IDS = ['toast', 'fs-modal',
   // （内容搬进 #fileview-ui / #fileview-text）。switchTab 里仍保留
   // `var pu = getElementById('page-ui'); if(pu) ...` 的兼容分支，
   // 元素不存在时静默跳过 —— 这是刻意保留的旧路径兼容，不是漏写 id。
-  'page-ui', 'page-text'];
+  'page-ui', 'page-text',
+  // 2026-11-22（第 8 批需求6/10）：用户要求删除设置里的字体预览卡片
+  // （Adb_Tool 12345 ABCdef），「关于」也改成弹层不再有 #build-stamp。
+  // 但 JS 里仍有 `if (pv) pv.style.fontFamily=...` 这类**判空后静默跳过**的写法，
+  // 属于刻意保留的兼容分支（多设备/旧界面共存时不该炸），不是漏写 id。
+  'set-font-preview', 'build-stamp'];
 var ids = [];
 var reId = /getElementById\(\s*'([^']+)'\s*\)/g, mm;
 while ((mm = reId.exec(js)) !== null) {

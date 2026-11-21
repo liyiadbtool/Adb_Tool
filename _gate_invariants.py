@@ -322,6 +322,37 @@ A34_ADDS = {
     "ids": set(["ui-ignore-aa", "ui-only-diff", "ui-struct", "ui-dim-hint"]),
 }
 
+# A35（2026-11-22 第 8 批）：设置面板按用户要求重排 + 精简。
+# 需求原文：「去多余文案、按钮调小、强调色换滑动条、配置文件/关于改成问号按钮、
+#            去掉底部关闭应用与完成、按功能合理排序」。
+#
+# 新增 onclick：
+#   openCfgHelp / closeCfgHelp / cfgHelpAction  配置文件问号按钮 → 说明弹层 → 导出/导入
+#   openAbout   / closeAbout                    关于问号按钮 → 版本与应用介绍弹层
+# 新增 id：
+#   accent-slider / as-track / as-ticks / as-thumb / as-input   强调色滑动条
+#   cfg-help-mask                                               配置文件说明弹层
+#   about-mask / about-ver / about-exe / about-ui / about-dir   关于弹层与其版本字段
+#
+# 注意：强调色滑动条**吸附到 16 个既有锚点**，没有新增颜色名，
+# 所以 C# 的 ACCENTS 白名单与 prefs 存储格式都不需要改（见 ui.html 里 AS_ANCHORS 注释）。
+A35_ADDS = {
+    "kinds": set(),
+    "onclicks": set(["openCfgHelp", "closeCfgHelp", "cfgHelpAction",
+                     "openAbout", "closeAbout"]),
+    "ids": set(["accent-slider", "as-track", "as-ticks", "as-thumb", "as-input",
+                "cfg-help-mask",
+                "about-mask", "about-ver", "about-exe", "about-ui", "about-dir"]),
+}
+
+# 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
+# 关闭仍可用右上角 × 或 Esc；「关闭应用」入口移进关于弹层，避免误触。
+A35_REMOVED = {
+    "kinds": set(),
+    "onclicks": set(),
+    "ids": set(),
+}
+
 # 经批准删除：ui / text 两个一级页签及其外壳容器。
 # 理由见上 —— 内容全部保留，只是不再作为一级页签存在。
 A33_REMOVED = {
@@ -349,10 +380,11 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A15_ADDS[k] and x not in A16_ADDS[k]
              and x not in A17_ADDS[k] and x not in A27_ADDS[k]
              and x not in A29_ADDS[k] and x not in A30_ADDS[k]
-             and x not in A33_ADDS[k] and x not in A34_ADDS[k]]
+             and x not in A33_ADDS[k] and x not in A34_ADDS[k]
+             and x not in A35_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k]
               and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]
-              and x not in A33_REMOVED[k]]
+              and x not in A33_REMOVED[k] and x not in A35_REMOVED[k]]
     ok = (not bad_rm) and (not unreg)
     chk(labels[k], ok,
         "基线 %d / 当前 %d；新增 %s；经批准删除 %s；违约删除 %s；未登记新增 %s" %

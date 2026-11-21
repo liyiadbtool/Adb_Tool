@@ -321,7 +321,10 @@ body{
 .quick-nav::-webkit-scrollbar{width:6px;}
 .quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
 .quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
-.qnav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-2);cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;}
+.qnav-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r-2);cursor:pointer;font-size:13px;color:var(--text-dim);transition:background .12s,color .12s;user-select:none;-webkit-user-select:none;
+  /* 2026-11-22：名称不再截断，允许折行；用 min-height 而不是固定 height，
+     这样折成两行时整项会被撑高，不会和下一项挤在一起 */
+  min-height:32px;box-sizing:border-box;}
 /* 2026-11-20 反馈3：hover 原来只有一层灰，看不出指向哪一项，改成强调色薄底 */
 .qnav-item:hover{background:color-mix(in srgb, var(--accent) 16%, transparent);color:var(--text);}
 /* 2026-11-21 拖拽动效：只动 transform，不触发重排；拖动项抬起 + 阴影 */
@@ -2757,7 +2760,7 @@ body.v16-tabdrag .page{
   gap:8px;
 }
 /* 可拖分隔条：只改 --nav-w 一个变量，不动布局树 */
-:root{ --nav-w:148px; }
+:root{ --nav-w:168px; }   /* 2026-11-22：148→168，让分组名完整显示不截断 */
 .qsplit{
   flex:0 0 4px;cursor:col-resize;background:transparent;position:relative;z-index:4;
   transition:background .12s;
@@ -3286,87 +3289,23 @@ body::after{
         所以只在指令页启用、且宽度 >= 960 时显示；小窗自动退回原导航。
    ========================================================================== */
 
-/* ---------- 需求1：页签玻璃胶囊滑块 ---------- */
+/* ---------- 需求1（第 8 批）：页签样式 ----------
+   用户要求「指令 tab 页签标签底部的滑动条去除」。
+   原来 A32 用 .tab-glider 做玻璃胶囊滑块，现在整个下线，
+   改回「激活项自己带底色」这种最直接的写法 —— 也更不容易出错。 */
 .tabs{ position:relative; }
 
-/* 胶囊本体：半透明玻璃 + 边缘细高光 */
-.tab-glider{
-  position:absolute;
-  top:50%;
-  left:0;
-  height:36px;
-  margin-top:-18px;
-  border-radius:var(--r-pill);
-  pointer-events:none;
-  z-index:0;
-
-  /* 半透明玻璃底：不用实色 accent，否则"玻璃"不成立 */
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--accent) 30%, transparent) 0%,
-      color-mix(in srgb, var(--accent) 18%, transparent) 100%);
-  -webkit-backdrop-filter:blur(14px) saturate(180%);
-  backdrop-filter:blur(14px) saturate(180%);
-
-  /* 边缘一圈细高光：外描边 + 内顶部亮线 + 外发光 */
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--accent) 55%, white),
-    inset 0 -1px 0 0 color-mix(in srgb, var(--accent) 25%, transparent),
-    inset 1px 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent),
-    inset -1px 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent),
-    0 2px 10px -2px color-mix(in srgb, var(--accent) 55%, transparent),
-    0 6px 22px -8px color-mix(in srgb, var(--accent) 45%, transparent);
-
-  /* 位移：走弹簧曲线；宽度变化单独给，避免拉伸影响定位 */
-  transition:
-    transform 380ms cubic-bezier(.34,1.56,.64,1),
-    width 240ms cubic-bezier(.22,1,.36,1),
-    opacity 180ms linear;
-
-  opacity:0;
-  will-change:transform,width;
-}
-.tab-glider.on{ opacity:1; }
-
-/* 胶囊滑过高亮扫光（移动瞬间的一道流光，强化"液态"感） */
-.tab-glider::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-  background:linear-gradient(100deg,
-    transparent 20%,
-    color-mix(in srgb, var(--accent) 55%, white) 50%,
-    transparent 80%);
-  opacity:0;
-  transition:opacity 200ms linear;
-}
-.tab-glider.moving::after{ opacity:.55; }
-
-/* 激活页签文字要在胶囊之上，且不能自己再画底 */
 .tabs .tab{ position:relative; z-index:1; }
 .tabs .tab.active{
-  background:transparent !important;
-  border-color:transparent !important;
-  box-shadow:none !important;
-  color:var(--accent) !important;
+  background:var(--accent) !important;
+  border-color:var(--accent) !important;
+  color:var(--on-accent) !important;
+  font-weight:600;
+  box-shadow:var(--shadow-sm);
 }
-.tabs .tab.active svg{ stroke:var(--accent); }
+.tabs .tab.active svg{ stroke:var(--on-accent); }
 
-/* 浅色/护眼下"半透明 + 提饱和"容易糊，给实一点但仍保留玻璃感 */
-[data-theme="light"] .tab-glider,
-[data-theme="eye"] .tab-glider{
-  background:
-    linear-gradient(180deg,
-      color-mix(in srgb, var(--accent) 22%, var(--chrome-solid)) 0%,
-      color-mix(in srgb, var(--accent) 12%, var(--chrome-solid)) 100%);
-  box-shadow:
-    inset 0 1px 0 0 var(--rim-strong),
-    inset 0 -1px 0 0 color-mix(in srgb, var(--accent) 18%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent),
-    0 2px 10px -2px color-mix(in srgb, var(--accent) 38%, transparent);
-}
+/* 浅色/护眼下保持可读：底用 accent，字用 on-accent（在 tokens 里已配好对比度） */
 
 /* ==========================================================================
    需求2：点击 → 原位放大为详情视图，关闭原路收回
@@ -3491,11 +3430,18 @@ body::after{
 .qnav-item.active .qico2{ color:var(--accent); }
 .qnav-item:hover .qico2{ color:var(--text); }
 
-/* 名称在标签里，方便整体隐藏/显示 */
+/* 名称在标签里，方便整体隐藏/显示
+   2026-11-22（第 8 批需求1）：用户要求「显示名称时要完整显示，不能出现 ...」。
+   原来用 ellipsis + nowrap，导航宽 148px 时"Scrcpy投屏""自定义指令"会被截断。
+   现在改成：不截断、允许在词间断行（兜底），并且把导航默认宽度调宽一点，
+   让绝大多数分组名一行放得下；只有极长的才折成两行，绝不出现省略号。 */
 .qnav-item .qname2{
   flex:1 1 auto;
   min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  white-space:normal;          /* 允许换行，而不是截断 */
+  overflow-wrap:break-word;
+  word-break:break-word;
+  line-height:1.25;
 }
 
 /* ---------- 名称气泡（仅图标态悬停时出现） ---------- */
@@ -3662,8 +3608,30 @@ body[data-navlabels="0"] .qsplit{ cursor:default; }
 }
 
 /* 图标形态（导航栏不显示名称）时，文件页导航也一起收成纯图标 */
+/* 2026-11-22（第 8 批需求2）：仅图标态下文件页导航出现重叠错乱，修这里。
+   原写法只把 padding 从 14 改成 11，但 .filenav-item 仍是 inline-flex + gap:7px，
+   名称隐藏后 gap 依然参与宽度计算，加上各项文字长度不同 → 实际宽度不一致，
+   相邻按钮挤在一起、底部选中线互相压住。
+   改成：图标态下一律固定宽度（42px）、gap 归零、靠 .filenav 的 gap 统一间隔。 */
+body[data-navlabels="0"] .filenav{ gap:4px; }
+body[data-navlabels="0"] .filenav-item{
+  width:42px;
+  min-width:42px;
+  max-width:42px;
+  padding:0;
+  gap:0;
+  justify-content:center;
+  flex:0 0 auto;
+}
 body[data-navlabels="0"] .filenav-item .qname2{ display:none; }
-body[data-navlabels="0"] .filenav-item{ padding:0 11px; }
+body[data-navlabels="0"] .filenav-item .qico2{
+  width:26px;height:26px;
+}
+/* 选中线也收窄，避免跨到相邻项上 */
+body[data-navlabels="0"] .filenav-item.active::after{
+  left:8px;right:8px;
+}
+/* 气泡改到按钮正下方，宽度不受 42px 限制 */
 body[data-navlabels="0"] .filenav-item .qnav-tip{
   display:block;
   left:50%;
@@ -3697,9 +3665,150 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
 }
 .ui-adv .ui-radio:hover{ color:var(--text); }
 
+/* ============================================================================
+   2026-11-22（第 8 批需求）：设置面板新样式
+   ============================================================================ */
+
+/* ---------- 需求3：紧凑分段按钮（主题/字号等，按钮更小） ---------- */
+.set-seg-compact{
+  display:inline-flex;
+  gap:2px;
+  padding:2px;
+  border-radius:var(--r-2);
+  background:var(--surface);
+  border:1px solid var(--border);
+  align-self:flex-start;
+  flex-wrap:wrap;
+}
+.set-seg-compact button{
+  height:26px;
+  padding:0 11px;
+  border:none;
+  border-radius:var(--r-1);
+  background:transparent;
+  color:var(--text-dim);
+  font-family:inherit;
+  font-size:12px;
+  cursor:pointer;
+  transition:background 140ms linear, color 140ms linear;
+  white-space:nowrap;
+}
+.set-seg-compact button:hover{ color:var(--text); background:var(--surface-hover); }
+.set-seg-compact button.on{
+  background:var(--accent);
+  color:var(--on-accent);
+  font-weight:600;
+}
+
+/* ---------- 需求4：强调色滑动条 ---------- */
+.accent-slider{
+  padding:8px 0 2px;
+}
+.as-track{
+  position:relative;
+  height:16px;
+  border-radius:var(--r-pill);
+  box-shadow:
+    inset 0 1px 0 var(--rim),
+    inset 0 -1px 2px var(--shadow-sm),
+    0 1px 3px var(--shadow-sm);
+  cursor:pointer;
+}
+.as-ticks{ position:absolute; inset:0; pointer-events:none; }
+.as-ticks i{
+  position:absolute;
+  top:50%; width:1px; height:6px;
+  margin-top:-3px;
+  background:var(--rim-strong);
+  box-shadow:0 0 2px var(--shadow-sm);
+}
+.as-thumb{
+  position:absolute;
+  top:50%; left:0;
+  width:22px; height:22px;
+  margin-top:-11px; margin-left:-11px;
+  pointer-events:none;
+  transition:transform 160ms var(--ease-spring);
+}
+.as-ring{
+  position:absolute; inset:0;
+  border-radius:50%;
+  border:2px solid var(--rim-strong);
+  box-shadow:0 0 0 1px var(--shadow-sm), 0 2px 6px var(--shadow-sm);
+}
+.as-dot{
+  position:absolute; inset:5px;
+  border-radius:50%;
+  background:var(--accent);
+  transition:background 120ms linear;
+}
+.as-input{
+  position:absolute;
+  left:0; right:0; top:0;
+  width:100%; height:16px;
+  opacity:0;
+  cursor:pointer;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.as-input::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:22px; height:22px;
+}
+
+/* ---------- 需求5/9/10：工具区按钮（圈起来的问号 + 文字） ---------- */
+.set-link .q-badge{
+  flex:0 0 auto;
+  width:17px; height:17px;
+  display:inline-grid;
+  place-items:center;
+  border-radius:50%;
+  border:1.4px solid currentColor;
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  opacity:.85;
+}
+
+/* 关于弹层内部排版 */
+.about-box{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.about-row{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+  font-size:12.5px;
+  line-height:1.7;
+}
+.about-row .ak{
+  flex:0 0 64px;
+  color:var(--text-faint);
+  font-size:11.5px;
+}
+.about-row .av{
+  flex:1 1 auto;
+  color:var(--text);
+  word-break:break-all;
+}
+.about-row .av.mono{
+  font-family:var(--font-mono);
+  font-size:11.5px;
+  color:var(--text-dim);
+}
+.about-desc{
+  font-size:12px;
+  color:var(--text-dim);
+  line-height:1.8;
+  padding-top:8px;
+  border-top:1px solid var(--border);
+}
+
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce){
-  .tab-glider, .qz-panel{
+  .qz-panel{
     transition-duration:1ms !important;
     animation-duration:1ms !important;
   }
@@ -4362,16 +4471,43 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
       </button>
     </div>
     <div class="set-body">
+      <!-- ======================================================================
+           2026-11-22（第 8 批需求）：设置面板重排
+           排序原则：外观（一眼能看见效果）→ 工具（低频、点开才用）
+             1. 主题        明暗基调，最基础
+             2. 强调色      跟随主题，用滑动条选
+             3. 显示        深黑/护眼强度，属于"外观微调"
+             4. 字体        字体族
+             5. 字体大小    五档
+             6. 导航栏      显示名称 / 仅图标
+             7. 工具        配置文件 / 使用说明 / 关于（都用问号按钮，点开才解释）
+           需求 3/5/6/7/8/9/10/11 的"去文案"都落在这里。
+           ====================================================================== -->
+
+      <!-- 1. 主题（去「背景与文字明暗」，按钮收小） -->
       <section class="set-sec">
-        <div class="set-h">主题 <span class="set-sub">背景与文字明暗</span></div>
-        <div class="set-seg" id="set-theme"></div>
+        <div class="set-h">主题</div>
+        <div class="set-seg set-seg-compact" id="set-theme"></div>
       </section>
 
-      <!-- A18 建议4：强调色紧跟主题（Edge 顺序：明暗 → 强调色 → 字体） -->
+      <!-- 2. 强调色（色点网格 → 渐变滑动条；去所有说明文案） -->
       <section class="set-sec">
-        <div class="set-h">强调色 <span class="set-sub">按钮 / 进度条 / 选中态</span></div>
-              <div class="accent-pop" id="accent-pop" style="display:none;" role="menu" onclick="accentPopClick(event)">
-        <span class="accent-pop-label">强调色 · 影响按钮 / 进度条 / 选中态</span>
+        <div class="set-h">强调色</div>
+        <div class="accent-slider" id="accent-slider">
+          <div class="as-track" id="as-track">
+            <div class="as-ticks" id="as-ticks"></div>
+            <div class="as-thumb" id="as-thumb">
+              <span class="as-ring"></span>
+              <span class="as-dot"></span>
+            </div>
+          </div>
+          <input type="range" class="as-input" id="as-input" min="0" max="35" value="0" step="1"
+                 aria-label="强调色">
+        </div>
+        <!-- 色点网格保留在 DOM 里但隐藏：accentPopClick / syncAccentDots 等既有逻辑
+             仍以它为唯一数据源，直接删掉会让强调色保存链路断掉。
+             视觉上完全不可见（display:none 由 .accent-pop 自带），不影响需求。 -->
+        <div class="accent-pop" id="accent-pop" style="display:none;" role="menu" onclick="accentPopClick(event)">
 <!-- A15:DOTS -->
         <button class="accent-dot sel" data-accent="blue" style="--dot:#0A84FF" title="蓝" aria-label="蓝色">蓝</button>
         <button class="accent-dot" data-accent="cyan" style="--dot:#64D2FF" title="青" aria-label="青色">青</button>
@@ -4386,86 +4522,126 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
         <button class="accent-dot" data-accent="indigo" style="--dot:#5E5CE6" title="靛" aria-label="靛色">靛</button>
         <button class="accent-dot" data-accent="brown" style="--dot:#AC8E68" title="棕" aria-label="棕色">棕</button>
         <button class="accent-dot" data-accent="graphite" style="--dot:#AEAEB2" title="石墨" aria-label="石墨色">石墨</button>
-        <span class="accent-pop-label accent-pop-label-sep">中性色 · 浅色/护眼下会压成灰（白压到可读对比度必然是灰）</span>
         <button class="accent-dot" data-accent="purewhite" style="--dot:#F2F2F2" title="纯白" aria-label="纯白">纯白</button>
         <button class="accent-dot" data-accent="eyewhite" style="--dot:#F0F0F0" title="护眼白" aria-label="护眼白">护眼白</button>
         <button class="accent-dot" data-accent="glasswhite" style="--dot:#E6E6E6" title="玻璃白" aria-label="玻璃白">玻璃白</button>
-      </div>
+        </div>
       </section>
 
-      <!-- A15：显示选项（跟随系统 / 深黑 / 护眼强度）。内容由 _v15.js 填。 -->
+      <!-- 3. 显示（深黑 / 护眼强度，内容由 _v15.js 填） -->
       <section class="set-sec" id="a15-sec-display">
-        <div class="set-h">显示 <span class="set-sub">跟随系统 · 深黑 · 护眼强度</span></div>
-        <div class="set-seg" id="set-auto"></div>
-        <div class="set-seg" id="set-oled"></div>
-        <div class="set-seg" id="set-eyelevel"></div>
+        <div class="set-h">显示</div>
+        <div class="set-seg set-seg-compact" id="set-auto"></div>
+        <div class="set-seg set-seg-compact" id="set-oled"></div>
+        <div class="set-seg set-seg-compact" id="set-eyelevel"></div>
         <div class="set-fsize-hint" id="set-display-hint"></div>
-
-        <!-- 2026-11-21：配置文件。解决"升级新版本后自定义指令/APK 列表要重配一遍" -->
-        <div class="set-fsize-row" style="margin-top:16px">
-          <div style="font-size:12.5px;color:var(--text-dim);line-height:1.6;margin-bottom:8px">
-            把自定义指令、APK 管理列表、界面偏好打包成一个文件；<br>
-            换新版本时导入即可恢复（导入前会自动备份现有配置）。
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn" type="button" onclick="cfgExport()">导出配置</button>
-            <button class="btn" type="button" onclick="cfgImport()">导入配置</button>
-          </div>
-        </div>
       </section>
 
+      <!-- 4-6. 字体 / 字号 / 导航栏（去全部说明文案与预览卡片） -->
       <section class="set-sec">
-        <div class="set-h">字体 <span class="set-sub">全局生效，含标题栏与帮助</span></div>
+        <div class="set-h">字体</div>
         <select class="set-sel" id="set-font" onchange="setFont(this.value)"></select>
-        <div class="set-preview" id="set-font-preview">Adb_Tool 12345 ABCdef</div>
-
-        <!-- A14：字体大小（小/中/大）—— 用 WebView2 缩放整页等比放大，
-             按钮由 _v14.js 的 buildSizeSeg() 建，避免 html 里写三段重复标记 -->
-        <div class="set-fsize-row">
-          <div class="set-h">字体大小 <span class="set-sub">整页跟随缩放，含标题栏与输出区</span></div>
-          <div class="set-seg" id="set-fsize"></div>
-          <div class="set-fsize-hint">改完立即生效，下次启动保持（小 90% / 中 100% / 大 115%）。</div>
-        </div>
-
-        <!-- 2026-11-21（第 7 批需求1）：导航栏名称开关。
-             关闭后左侧导航只显示图标、收窄自适应，悬停出名称气泡。
-             存 _prefs.navLabels，默认开（保持原有观感）。 -->
-        <div class="set-fsize-row">
-          <div class="set-h">导航栏显示名称 <span class="set-sub">关闭后只显示图标，悬停看名称</span></div>
-          <div class="set-seg" id="set-navlabels">
-            <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
-            <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
-          </div>
-          <div class="set-fsize-hint">关闭时导航栏自动收窄、图标间隔加大；改完立即生效。</div>
-        </div>
       </section>
 
       <section class="set-sec">
-        <div class="set-h">帮助</div>
+        <div class="set-h">字体大小</div>
+        <div class="set-seg set-seg-compact" id="set-fsize"></div>
+      </section>
+
+      <section class="set-sec">
+        <div class="set-h">导航栏显示名称</div>
+        <div class="set-seg set-seg-compact" id="set-navlabels">
+          <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
+          <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
+        </div>
+      </section>
+
+      <!-- 7. 工具区：配置文件 / 使用说明 / 关于 —— 都是「圈起来的问号 + 文字」按钮，
+           点开才解释用途（需求 5 / 9 / 10）。 -->
+      <section class="set-sec">
+        <div class="set-h">工具</div>
+        <button class="set-link" onclick="openCfgHelp()" title="配置文件导入导出的作用">
+          <span class="q-badge">?</span>
+          <span>配置文件</span>
+          <span class="arr">›</span>
+        </button>
         <button class="set-link" onclick="openHelp()">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 114 2.1c-.9.6-1.6 1.1-1.6 2.2"/><path d="M12 17.2v.1"/></svg>
-          <span>使用说明（全部功能逐项说明）</span>
+          <span class="q-badge">?</span>
+          <span>使用说明</span>
+          <span class="arr">›</span>
+        </button>
+        <button class="set-link" onclick="openAbout()" title="查看版本与应用介绍">
+          <span class="q-badge">?</span>
+          <span>关于 Adb_Tool</span>
           <span class="arr">›</span>
         </button>
       </section>
-
-      <section class="set-sec">
-        <div class="set-h">关于</div>
-        <div class="set-about">adb_Tool</div>
-        <!-- 版本水印（2026-11-17）：由 C# 在 themeget 时推 build 消息填进来。
-             现场出现过"改了却看不到变化"，根因是同机器上还开着别的目录里的旧副本。
-             这里直接显示「程序时间 / 界面时间 / 运行目录」，一眼分辨。 -->
-        <div class="set-about dim" id="build-stamp">v8.3 · 单机本地运行，不上传任何数据</div>
-      </section>
     </div>
-    <div class="set-foot">
-      <button class="btn danger" onclick="appClose()">关闭应用</button>
-      <button class="btn" onclick="closeSettings()">完成</button>
-    </div>
+    <!-- 2026-11-22（第 8 批需求11）：底部「关闭应用 / 完成」按钮已删除。
+         关闭改由右上角 × 或 Esc 完成（原本就支持）。
+         关闭应用的入口移入「关于」弹层，避免误触。 -->
   </div>
 </div>
 
 <!-- 使用说明：左侧目录 + 右侧内容，支持搜索（2026-11-15） -->
+<!-- 2026-11-22（第 8 批需求5）：配置文件说明弹层。
+     设置面板里不再堆说明文字，改成"点按钮才解释"。 -->
+<div class="help-mask" id="cfg-help-mask" style="display:none;" onclick="closeCfgHelp()">
+  <div class="help-box" style="width:min(520px,92vw);" onclick="event.stopPropagation()">
+    <div class="help-head">
+      <span class="help-title">配置文件</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="icon-btn" onclick="closeCfgHelp()" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="about-box" style="padding:18px 20px 20px">
+      <div class="about-desc" style="border-top:0;padding-top:0">
+        把<strong>自定义指令</strong>、<strong>APK 管理列表</strong>、<strong>界面偏好</strong>
+        （主题 / 强调色 / 字体 / 字号 / 导航栏）打包成一个 <code>.adtprofile</code> 文件。<br>
+        换新版本或换电脑时导入即可恢复，不用重新配一遍。<br>
+        <span style="color:var(--text-faint)">导入前会自动把现有配置备份为 <code>*.bak.时间戳</code>；<br>
+        不包含 adb / scrcpy 路径、历史命令、设备别名、任何账号口令。</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" type="button" onclick="cfgHelpAction('export')">导出配置</button>
+        <button class="btn" type="button" onclick="cfgHelpAction('import')">导入配置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2026-11-22（第 8 批需求10）：关于弹层。版本水印沿用 build-stamp 那套 C# 推送。 -->
+<div class="help-mask" id="about-mask" style="display:none;" onclick="closeAbout()">
+  <div class="help-box" style="width:min(540px,92vw);" onclick="event.stopPropagation()">
+    <div class="help-head">
+      <span class="help-title">关于 Adb_Tool</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="icon-btn" onclick="closeAbout()" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="about-box" style="padding:18px 20px 20px">
+      <div class="about-row"><span class="ak">应用</span><span class="av">adb_Tool · 车机（Android IVI）测试工具</span></div>
+      <div class="about-row"><span class="ak">版本</span><span class="av mono" id="about-ver">v8.3</span></div>
+      <div class="about-row"><span class="ak">程序</span><span class="av mono" id="about-exe">—</span></div>
+      <div class="about-row"><span class="ak">界面</span><span class="av mono" id="about-ui">—</span></div>
+      <div class="about-row"><span class="ak">运行目录</span><span class="av mono" id="about-dir">—</span></div>
+      <div class="about-desc">
+        <strong>作用</strong>：把日常车机测试的重复操作（截图、导日志、切环境、投屏、
+        注入方控键、UI 比对…）收成一次点击，支持多设备并行与三套终端槽位。<br>
+        <strong>特点</strong>：单机本地运行，<strong>不上传任何数据</strong>；
+        命令全部走本机 adb，日志与截图落在桌面 logcat 日期目录。<br>
+        <strong>形态</strong>：同一个仓库产出 CLI 与 GUI 两个可执行文件，共用一套命令定义。
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn danger" type="button" onclick="closeAbout();appClose()">关闭应用</button>
+        <button class="btn" type="button" onclick="closeAbout()">返回</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="help-mask" id="help-mask" style="display:none;" onclick="closeHelp()">
   <div class="help-box" onclick="event.stopPropagation()">
     <div class="help-head">
@@ -5153,22 +5329,207 @@ function setAccent(name){
    为什么需要：同机器上可能同时开着别的目录里的旧副本（另一个 exe + 另一份 ui.html），
    用户改了却看不到变化时，第一件事应该是确认"我在看哪一份"，而不是怀疑代码。
    目录只显示最后两级，避免长路径把这一行挤爆。 */
-function applyBuildStamp(m){
-  var el = document.getElementById('build-stamp');
-  if (!el) return;
-  var parts = [];
-  if (m.exe) parts.push('程序 ' + m.exe);
-  if (m.ui) parts.push('界面 ' + m.ui);
-  var dir = m.dir || '';
-  if (dir) {
-    dir = dir.replace(/[\\/]+$/, '');
-    var seg = dir.split(/[\\/]/);
-    if (seg.length > 2) dir = '…\\' + seg[seg.length - 2] + '\\' + seg[seg.length - 1];
-    parts.push('目录 ' + dir);
+/* ============================================================================
+   2026-11-22（第 8 批需求4）：强调色滑动条
+
+   【为什么轨道是渐变、但只能停在 16 个点上】
+   轨道做成连续光谱（颜色丰富、过渡自然），但滑块**吸附到 16 个锚点**。
+   原因：保存链路是 setAccent(name) → post('accent', name) → C# 的
+   NormalizeAccent() 按 ACCENTS 白名单校验，**非法值静默回退 blue**。
+   如果允许滑块停在任意插值位置，用户选了"蓝和靛之间"，一重启就变回蓝色 ——
+   这是最恶劣的那种 bug（看起来存了、实际没存）。
+
+   所以策略是：
+     · 视觉上：36 段渐变 + 16 个锚点刻度，颜色过渡连续，观感"丰富"
+     · 行为上：滑块按 16 个锚点等距吸附，落到哪一个就调 setAccent(名字)
+   这样既满足"颜色更丰富、滑动条样式"，又不用改 C# 白名单、
+   不会引入"存不住"的风险。
+
+   若将来确实要支持任意插值色，需要同步改三处：
+     _cs/Prefix.cs 的 ACCENTS / NormalizeAccent、prefs 里存 hsl、applyAccent 支持解析。
+   ============================================================================ */
+var AS_ANCHORS = [
+  { k: 'blue',       h: 218, s: 92, l: 62 },
+  { k: 'cyan',       h: 188, s: 86, l: 55 },
+  { k: 'teal',       h: 172, s: 66, l: 50 },
+  { k: 'mint',       h: 142, s: 66, l: 56 },
+  { k: 'green',      h: 128, s: 72, l: 48 },
+  { k: 'yellow',     h: 48,  s: 94, l: 56 },
+  { k: 'orange',     h: 28,  s: 94, l: 61 },
+  { k: 'red',        h: 0,   s: 91, l: 66 },
+  { k: 'pink',       h: 330, s: 88, l: 68 },
+  { k: 'purple',     h: 271, s: 91, l: 72 },
+  { k: 'indigo',     h: 235, s: 89, l: 70 },
+  { k: 'brown',      h: 32,  s: 42, l: 60 },
+  // 中性四档放在最后，自成灰度段
+  { k: 'graphite',   h: 220, s: 6,  l: 62 },
+  { k: 'purewhite',  h: 220, s: 12, l: 96 },
+  { k: 'eyewhite',   h: 40,  s: 22, l: 94 },
+  { k: 'glasswhite', h: 210, s: 10, l: 88 }
+];
+
+function asHsl(a, alpha){
+  if (alpha === undefined) return 'hsl(' + a.h + ',' + a.s + '%,' + a.l + '%)';
+  return 'hsla(' + a.h + ',' + a.s + '%,' + a.l + '%,' + alpha + ')';
+}
+
+/* 在相邻锚点之间插值，生成 36 段连续光谱（仅用于**轨道背景**，不用于取值） */
+function asBuildGradient(){
+  var segs = [];
+  var colorCount = 12;                       // 前 12 个是彩色，后 4 个是中性
+  var stops = [];
+  var colorPct = 86;                         // 彩色段占 86%，中性段占 14%
+
+  for (var i = 0; i < colorCount; i++){
+    var a = AS_ANCHORS[i];
+    var b = AS_ANCHORS[(i + 1) % colorCount];
+    var h2 = b.h;
+    if (i === colorCount - 1) h2 = AS_ANCHORS[0].h + 360;
+
+    for (var k = 0; k < 3; k++){
+      var t = k / 3;
+      var h = (a.h + (h2 - a.h) * t) % 360;
+      var s = a.s + (b.s - a.s) * t;
+      var l = a.l + (b.l - a.l) * t;
+      var pos = ((i + t) / colorCount) * colorPct;
+      stops.push('hsl(' + h.toFixed(1) + ',' + s.toFixed(1) + '%,' + l.toFixed(1) + '%) '
+                 + pos.toFixed(2) + '%');
+    }
   }
-  el.textContent = 'v8.3 · ' + parts.join(' · ');
-  el.title = '程序：' + (m.exe || '?') + '\n界面：' + (m.ui || '?') + '\n运行目录：' + (m.dir || '?')
-           + '\n\n如果「界面」时间早于你最后一次改 ui.html，说明当前窗口跑的是旧副本，关掉重开即可。';
+  // 彩色段闭合到 86%
+  stops.push(asHsl(AS_ANCHORS[0]) + ' ' + colorPct + '%');
+  // 分隔带
+  stops.push('rgba(0,0,0,.32) ' + colorPct + '%');
+  stops.push('rgba(0,0,0,.32) ' + (colorPct + 1.5) + '%');
+  // 中性段 86% → 100%
+  for (var j = 0; j < 4; j++){
+    var idx = colorCount + j;
+    var p = (colorPct + 1.5) + (j / 3) * (100 - colorPct - 1.5);
+    stops.push(asHsl(AS_ANCHORS[idx]) + ' ' + p.toFixed(2) + '%');
+  }
+  return 'linear-gradient(90deg,' + stops.join(',') + ')';
+}
+
+/* 锚点序号 → 轨道百分比位置（与上面渐变的分段一致） */
+function asPosOfIndex(i){
+  var colorCount = 12, colorPct = 86, sep = 1.5;
+  if (i >= colorCount){
+    var j = i - colorCount;
+    return colorPct + sep + (j / 3) * (100 - colorPct - sep);
+  }
+  return (i / colorCount) * colorPct;
+}
+
+/* 百分比 → 最近的锚点序号 */
+function asIndexAtPct(pct){
+  var colorCount = 12, colorPct = 86, sep = 1.5;
+  if (pct >= colorPct + sep){
+    var j = Math.round(((pct - colorPct - sep) / (100 - colorPct - sep)) * 3);
+    return colorCount + Math.max(0, Math.min(3, j));
+  }
+  if (pct >= colorPct) return colorCount;
+  var k = Math.round((pct / colorPct) * colorCount);
+  return Math.max(0, Math.min(colorCount, k));
+}
+
+var _asIdx = 0;
+
+function asApply(i, silent){
+  if (i < 0) i = 0;
+  if (i >= AS_ANCHORS.length) i = AS_ANCHORS.length - 1;
+  _asIdx = i;
+  var a = AS_ANCHORS[i];
+
+  // 同步滑块位置
+  var thumb = document.getElementById('as-thumb');
+  var input = document.getElementById('as-input');
+  var pct = asPosOfIndex(i);
+  if (thumb) thumb.style.left = pct + '%';
+  if (input) input.value = i;
+
+  // 走既有保存链路（setAccent → post('accent') → C# 白名单校验）
+  if (!silent){
+    try { setAccent(a.k); } catch (e) {}
+  }
+}
+
+function asSyncFromAccent(){
+  var cur = document.documentElement.getAttribute('data-accent') || 'blue';
+  for (var i = 0; i < AS_ANCHORS.length; i++){
+    if (AS_ANCHORS[i].k === cur){ asApply(i, true); return; }
+  }
+  asApply(0, true);
+}
+
+function asInit(){
+  var track = document.getElementById('as-track');
+  if (!track) return;
+
+  track.style.background = asBuildGradient();
+
+  // 锚点刻度
+  var ticks = '';
+  for (var i = 0; i < AS_ANCHORS.length; i++){
+    ticks += '<i style="left:' + asPosOfIndex(i).toFixed(2) + '%"></i>';
+  }
+  var tickBox = document.getElementById('as-ticks');
+  if (tickBox) tickBox.innerHTML = ticks;
+
+  var input = document.getElementById('as-input');
+  if (input){
+    input.max = AS_ANCHORS.length - 1;
+    input.addEventListener('input', function(){
+      asApply(parseInt(input.value, 10));
+    });
+  }
+
+  // 点轨道直接跳
+  track.addEventListener('click', function(e){
+    if (e.target === input) return;
+    var r = track.getBoundingClientRect();
+    var p = ((e.clientX - r.left) / r.width) * 100;
+    asApply(asIndexAtPct(Math.max(0, Math.min(100, p))));
+  });
+
+  asSyncFromAccent();
+}
+
+function applyBuildStamp(m){
+  /* 2026-11-22（第 8 批需求10）：原来填的是设置面板里的 #build-stamp，
+     但现在「关于」改成弹层，那里没有这个元素了 —— 如果只保留老逻辑，
+     版本信息就再也不会显示。改成：优先填弹层里的三个字段，
+     找不到再回退到老的 #build-stamp（兼容还没更新的界面）。 */
+  var filled = false;
+  var map = [['about-exe', m.exe], ['about-ui', m.ui], ['about-dir', m.dir]];
+  for (var i = 0; i < map.length; i++){
+    var node = document.getElementById(map[i][0]);
+    if (node){
+      node.textContent = map[i][1] || '—';
+      filled = true;
+    }
+  }
+
+  var el = document.getElementById('build-stamp');
+  if (el){
+    var parts = [];
+    if (m.exe) parts.push('程序 ' + m.exe);
+    if (m.ui) parts.push('界面 ' + m.ui);
+    var dir = m.dir || '';
+    if (dir) {
+      dir = dir.replace(/[\\/]+$/, '');
+      var seg = dir.split(/[\\/]/);
+      if (seg.length > 2) dir = '…\\' + seg[seg.length - 2] + '\\' + seg[seg.length - 1];
+      parts.push('目录 ' + dir);
+    }
+    el.textContent = 'v8.3 · ' + parts.join(' · ');
+    el.title = '程序：' + (m.exe || '?') + '\n界面：' + (m.ui || '?') + '\n运行目录：' + (m.dir || '?')
+             + '\n\n如果「界面」时间早于你最后一次改 ui.html，说明当前窗口跑的是旧副本，关掉重开即可。';
+    filled = true;
+  }
+
+  if (!filled && m.exe){
+    try { App && App.trace && App.trace('buildstamp: 找不到显示位置'); } catch (e) {}
+  }
 }
 function accentPopClick(ev){
   ev.stopPropagation();
@@ -10496,6 +10857,36 @@ function closeHelp(){
   if (s) s.value = '';
   helpSearch('');
 }
+
+/* 2026-11-22（第 8 批需求5）：配置文件按钮 → 点开说明作用 + 操作入口。
+   原来设置里堆了两段说明文字，用户要求"去文案，只在点击时显示"。 */
+function openCfgHelp(){
+  closeSettings();
+  var m = $v12('cfg-help-mask');
+  if (m) m.style.display = 'flex';
+}
+function closeCfgHelp(){
+  var m = $v12('cfg-help-mask');
+  if (m) m.style.display = 'none';
+}
+function cfgHelpAction(which){
+  closeCfgHelp();
+  try {
+    if (which === 'export') cfgExport();
+    else cfgImport();
+  } catch (e) {}
+}
+
+/* 2026-11-22（第 8 批需求10）：关于按钮 → 点开显示版本信息与应用介绍。 */
+function openAbout(){
+  closeSettings();
+  var m = $v12('about-mask');
+  if (m) m.style.display = 'flex';
+}
+function closeAbout(){
+  var m = $v12('about-mask');
+  if (m) m.style.display = 'none';
+}
 /* 搜索：命中标题或正文就保留该节，并把第一节滚到视野里 */
 function helpSearch(q){
   q = String(q || '').trim().toLowerCase();
@@ -11300,12 +11691,16 @@ document.addEventListener('DOMContentLoaded', function (){
      不用逐条改 CSS 字号：那样要么漏组件，要么被迫把所有 px 换成 em。
      好处：窗口热区、tooltip 定位这类靠 getBoundingClientRect 的计算
      仍然自洽（devicePixelRatio 在 Chromium 里已含页面缩放）。 */
+  /* 2026-11-22（第 8 批需求7）：改成五档，比例按用户指定：
+     超小 50% / 小 80% / 中 100% / 大 120% / 超大 150%。
+     键名 xs/s/m/l 沿用旧值（prefs 里存的是字母，改名会丢老用户偏好），
+     只新增 xl。 */
   var SIZES = {
-    // 2026-11-20 反馈9：新增超小，给笔记本上嫌「小」还大的场景
-    xs: { z: 0.85, name: '超小' },
-    s: { z: 0.90, name: '小' },
-    m: { z: 1.00, name: '中' },
-    l: { z: 1.15, name: '大' }
+    xs: { z: 0.50, name: '超小' },
+    s:  { z: 0.80, name: '小' },
+    m:  { z: 1.00, name: '中' },
+    l:  { z: 1.20, name: '大' },
+    xl: { z: 1.50, name: '超大' }
   };
 
   function curSize(){
@@ -11325,7 +11720,7 @@ document.addEventListener('DOMContentLoaded', function (){
   function buildSizeSeg(){
     var box = document.getElementById('set-fsize');
     if (!box || box.children.length) return;
-    var order = ['xs', 's', 'm', 'l'];
+    var order = ['xs', 's', 'm', 'l', 'xl'];
     var html = '';
     for (var i = 0; i < order.length; i++){
       var k = order[i];
@@ -13429,69 +13824,13 @@ document.addEventListener('DOMContentLoaded', function (){
      关键点：位置用 offsetLeft/offsetWidth 算，不用 getBoundingClientRect ——
      后者是相对视口的，而胶囊是相对 .tabs 定位的，混用会在滚动时错位。
      ====================================================================== */
-  var _glider = null;
-  var _gliderTimer = 0;
-
-  function ensureGlider(){
-    if (_glider && _glider.parentNode) return _glider;
-    var tabs = document.querySelector('.tabs');
-    if (!tabs) return null;
-    _glider = document.createElement('div');
-    _glider.className = 'tab-glider';
-    tabs.insertBefore(_glider, tabs.firstChild);
-    return _glider;
-  }
-
-  function moveGlider(animate){
-    var tabs = document.querySelector('.tabs');
-    var g = ensureGlider();
-    if (!tabs || !g) return;
-    var act = tabs.querySelector('.tab.active');
-    if (!act){
-      g.classList.remove('on');
-      return;
-    }
-
-    var left = act.offsetLeft;
-    var w = act.offsetWidth;
-    var h = act.offsetHeight || 36;
-
-    // 首次定位：不要动画，否则会从左上角"飞"过来
-    if (!animate){
-      g.style.transition = 'none';
-    }
-
-    g.style.height = h + 'px';
-    g.style.marginTop = (-h / 2) + 'px';
-    g.style.width = w + 'px';
-    g.style.transform = 'translateX(' + left + 'px)';
-    g.classList.add('on');
-
-    if (!animate){
-      // 强制回流后再恢复过渡
-      void g.offsetWidth;
-      g.style.transition = '';
-      return;
-    }
-
-    // 移动中的一瞬流光：加 .moving，结束后移除
-    g.classList.add('moving');
-    clearTimeout(_gliderTimer);
-    _gliderTimer = setTimeout(function(){ g.classList.remove('moving'); }, 340);
-  }
-
-  // 包装 switchTab（保持原函数完全不变，只在之后补动效）
-  if (typeof window.switchTab === 'function' && !window.__a32TabWrapped){
-    var _origSwitchTab = window.switchTab;
-    window.switchTab = function(){
-      var r = _origSwitchTab.apply(this, arguments);
-      try { moveGlider(true); } catch(e){}
-      return r;
-    };
-    window.__a32TabWrapped = true;
-  }
-
-  window.a32Glider = moveGlider;
+  /* 2026-11-22（第 8 批需求1）：用户要求「指令 tab 页签标签底部的滑动条去除」。
+     所以 A32 的玻璃胶囊滑块层整个下线 —— 不再创建 .tab-glider，
+     页签恢复为「激活项自己带底色」的原生样式（见 CSS 里 .tab.active）。
+     保留 window.a32Glider 这个空函数：其它地方（applyTabOrder / a32Init /
+     navOrder 恢复）还在调它，做成空操作比逐个删调用点更安全、
+     也不会让那些 try/catch 白白吞掉真异常。 */
+  function moveGlider(){ /* 已下线：页签滑块按要求移除，保留空实现供调用点兼容 */ }
 
   /* ======================================================================
      需求2：点击卡片 → 原位放大为详情视图（关闭原路收回）
@@ -13683,14 +14022,16 @@ document.addEventListener('DOMContentLoaded', function (){
      初始化
      ====================================================================== */
   function a32Init(){
-    // 1) 胶囊：等字体加载完再定位（否则宽度不准）
+    // 1) 页签滑块已按要求下线（moveGlider 是空实现，调用无害，保留兼容）
     try { moveGlider(false); } catch(e){}
-    setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 60);
-    setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 260);
 
-    // 2) 窗口尺寸变化：胶囊位置需要重算
+    // 2) 2026-11-22（第 8 批需求4）：强调色滑动条
+    try { asInit(); } catch(e){}
+    setTimeout(function(){ try { asSyncFromAccent(); } catch(e){} }, 120);
+
+    // 3) 窗口尺寸变化：滑动条位置用百分比定位，无需重算；这里留空以免以后加东西忘了
     window.addEventListener('resize', function(){
-      try { moveGlider(false); } catch(e){}
+      try { asSyncFromAccent(); } catch(e){}
     });
   }
 

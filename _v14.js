@@ -204,10 +204,16 @@
      不用逐条改 CSS 字号：那样要么漏组件，要么被迫把所有 px 换成 em。
      好处：窗口热区、tooltip 定位这类靠 getBoundingClientRect 的计算
      仍然自洽（devicePixelRatio 在 Chromium 里已含页面缩放）。 */
+  /* 2026-11-22（第 8 批需求7）：三档 → 五档。
+     用户指定比例：超小 50% / 小 80% / 中 100% / 大 120% / 超大 150%。
+     新增键 xs / xl，旧的 s/m/l 保留原键名（prefs 里存的就是这三个字母，
+     改名会让老用户的字号偏好丢失）。 */
   var SIZES = {
-    s: { z: 0.90, name: '小' },
-    m: { z: 1.00, name: '中' },
-    l: { z: 1.15, name: '大' }
+    xs: { z: 0.50, name: '超小' },
+    s:  { z: 0.80, name: '小' },
+    m:  { z: 1.00, name: '中' },
+    l:  { z: 1.20, name: '大' },
+    xl: { z: 1.50, name: '超大' }
   };
 
   function curSize(){
@@ -227,7 +233,7 @@
   function buildSizeSeg(){
     var box = document.getElementById('set-fsize');
     if (!box || box.children.length) return;
-    var order = ['s', 'm', 'l'];
+    var order = ['xs', 's', 'm', 'l', 'xl'];
     var html = '';
     for (var i = 0; i < order.length; i++){
       var k = order[i];
