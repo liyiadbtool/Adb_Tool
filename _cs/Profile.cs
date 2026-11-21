@@ -26,9 +26,23 @@ namespace AdbLogExport
         internal const int SCHEMA = 1;
         private const long BLOB_MAX = 5 * 1024 * 1024;   // custom_cmds.b64 上限 5MB
 
+        // ini 的位置有两套布局（2026-11-19 起发布包改成 exe + internal\）：
+        //   发布包：<exe目录>\internal\adb_log_export.ini
+        //   源码/便携：<exe目录>\adb_log_export.ini
+        //
+        // 2026-11-21 修复：原来只拼 BaseDirectory，发布包里 ini 在 internal 下，
+        // 于是 WriteIniKey 找不到文件、静默返回 false —— 表现为"导入显示 3 项、
+        // 实际 prefs 没写进去"（界面偏好导入无效，且不报错）。
+        // 现在与 CmdRegistry / Ffmpeg 保持同一套"先 internal 再根目录"的顺序。
         private static string IniPath
         {
-            get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini"); }
+            get
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string p = Path.Combine(baseDir, "internal", "adb_log_export.ini");
+                if (File.Exists(p)) return p;
+                return Path.Combine(baseDir, "adb_log_export.ini");
+            }
         }
 
         private static string DataDir
@@ -166,6 +180,7 @@ namespace AdbLogExport
 
                 string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 int restored = 0;
+                bool prefsSkipped = false;   // prefs 损坏时置位，用于给出准确提示
 
                 using (FileStream fs = File.OpenRead(path))
                 using (ZipArchive zip = new ZipArchive(fs, ZipArchiveMode.Read))
@@ -202,16 +217,37 @@ namespace AdbLogExport
                         string pv = ReadEntry(prefs).Trim();
                         if (pv.Length > 0)
                         {
-                            App.PREFS = pv;
-                            if (WriteIniKey("prefs", pv)) restored++;
+                            // 2026-11-21 修复：原来不校验就写 ini。
+                            // prefs 是前端 JSON 的 base64，导入一个损坏/伪造的文件
+                            // （如 "eyJ0ZXN0IjoidHJ1ZSJ9" = {"test":"true"}）会把
+                            // 用户真实的界面偏好**永久覆盖**成垃圾值。前端 parsePrefs
+                            // 虽有 try/catch 不会崩，但偏好已丢 —— 静默数据损坏，必须拦。
+                            // 校验：能 base64 解出、且解出的是 {...} 对象才算合法。
+                            if (!IsValidPrefs(pv))
+                            {
+                                prefsSkipped = true;
+                            }
+                            else
+                            {
+                                App.PREFS = pv;
+                                if (WriteIniKey("prefs", pv)) restored++;
+                            }
                         }
                     }
                 }
 
-                if (restored == 0) { msg = "文件里没有可导入的内容（格式不对？）"; return false; }
+                if (restored == 0)
+                {
+                    msg = prefsSkipped
+                        ? "文件里的界面偏好数据已损坏（不是合法的 base64 JSON），已跳过，其它项也没有可导入内容"
+                        : "文件里没有可导入的内容（格式不对？）";
+                    return false;
+                }
 
                 msg = "已导入 " + restored + " 项配置（旧配置备份为 *.bak." + stamp
                     + "），重启应用后生效";
+                if (prefsSkipped)
+                    msg += "；界面偏好数据损坏已跳过（原偏好保持不变）";
                 return true;
             }
             catch (Exception ex)
@@ -230,6 +266,63 @@ namespace AdbLogExport
                     return r.ReadToEnd();
             }
             catch { return ""; }
+        }
+
+        // ==================== prefs 合法性校验（2026-11-21）====================
+        //
+        // prefs.txt 里存的是前端 `btoa(unescape(encodeURIComponent(JSON.stringify(o))))`
+        // 得到的串，解码后必须是一个 JSON **对象**（以 { 开头、以 } 结尾）。
+        //
+        // 为什么必须校验：导入是"覆盖"语义。一个损坏的 .adtprofile（手工改过、
+        // 或别的程序生成）如果带着垃圾 prefs，会把用户真实的界面偏好永久写坏。
+        // 前端 parsePrefs 的 try/catch 只能保证"不崩"，保证不了"偏好不丢"。
+        //
+        // 只做形状判断，不解析具体字段 —— C# 5.0 不引 JSON 库，
+        // 而"是不是一个对象 + 有没有认识的字段"这两条就足以挡住垃圾数据。
+        //
+        // 2026-11-21 补充：光判"是不是对象"挡不住 {"test":"true"} 这种
+        // 结构合法但字段全不认识的垃圾。所以再加一条：**必须至少包含一个
+        // 已知的偏好键**（与前端 applyAllPrefs 认识的字段保持一致）。
+        // 这样"别人的配置"或"乱改的文件"都被拦下，不会覆盖真实偏好。
+        private static readonly string[] KNOWN_PREF_KEYS = new string[]
+        {
+            "font", "custom", "size", "accent", "accentByDevice",
+            "logshow", "logShow", "oled", "eye", "auto",
+            "uiSplit", "navOrder", "tabOrder"
+        };
+
+        private static bool IsValidPrefs(string b64)
+        {
+            if (string.IsNullOrEmpty(b64)) return false;
+            try
+            {
+                // 长度粗判：合法 prefs 至少十几个字符；过长直接拒（防误把大文件塞进来）
+                if (b64.Length < 8 || b64.Length > 64 * 1024) return false;
+
+                byte[] raw = Convert.FromBase64String(b64);   // 不是合法 base64 会抛异常
+                if (raw.Length == 0) return false;
+
+                string js = Encoding.UTF8.GetString(raw).Trim();
+                if (js.Length < 2) return false;
+
+                // 必须是一个 JSON 对象：首尾是花括号。
+                // 数组 / 裸字符串 / HTML 之类一律拒绝。
+                if (js[0] != '{' || js[js.Length - 1] != '}') return false;
+
+                // 必须含至少一个已知偏好键，否则视为"不是本工具的偏好"
+                for (int i = 0; i < KNOWN_PREF_KEYS.Length; i++)
+                {
+                    // 按 "key": 的形式找，避免子串误命中（如 size 命中 resize）
+                    if (js.IndexOf("\"" + KNOWN_PREF_KEYS[i] + "\"", StringComparison.Ordinal) >= 0)
+                        return true;
+                }
+                return false;
+            }
+            catch
+            {
+                // Base64 解码失败 / UTF8 非法 → 视为损坏
+                return false;
+            }
         }
 
         private static bool WriteEntry(ZipArchiveEntry e, string dest)

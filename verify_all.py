@@ -124,6 +124,13 @@ def main():
         print("== [fast] 功能不变量 ==")
         run([PY, os.path.join(ROOT, "_gate_invariants.py")], ROOT, 120,
             "功能不变量对照", r"合计 \d+ 项，失败 \d+ 项")
+        # 2026-11-21：配置文件导出/导入（Profile.cs）。
+        # 新增理由：这个功能此前**零自动化覆盖**，靠手工造数据实测才发现两个
+        # 真实缺陷（ini 路径没跟随 internal 布局 / prefs 导入不校验）。
+        # 它不依赖浏览器、约 15 秒，所以放进日常档，防止再次静默回归。
+        print("== [fast] 配置文件导入导出 ==")
+        run([PY, os.path.join(ROOT, "377", "_test_profile.py")], ROOT, 180,
+            "配置文件导入导出", r"通过 \d+ / \d+")
         print("== [fast] CLI 自检 ==")
         _exe = os.path.join(ROOT, "adb_log_export.exe")
         if not os.path.exists(_exe):
@@ -205,6 +212,10 @@ def main():
         "A17 落点机检", r"通过 \d+ / \d+")
     run([PY, os.path.join(ROOT, "_gate_invariants.py")], ROOT, 120,
         "功能不变量对照", r"合计 \d+ 项，失败 \d+ 项")
+
+    # 2026-11-21：配置文件导入导出（见 fast 档同名段落的说明）
+    run([PY, os.path.join(ROOT, "377", "_test_profile.py")], ROOT, 180,
+        "配置文件导入导出", r"通过 \d+ / \d+")
 
     print("== 6/7 CLI 自检 ==")
     exe = os.path.join(ROOT, "adb_log_export.exe")
