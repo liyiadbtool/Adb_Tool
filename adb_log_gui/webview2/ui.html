@@ -274,8 +274,11 @@ body{
    这正是用户反馈的"按钮点击之后就消失了"。
    现在把进度条改成专属类名 `.runbar`，与卡片的 `.qcard.running` 彻底分开。
    （HTML 里对应的元素也一并改了 class） */
-.runbar{flex:0 0 auto;height:2px;background:var(--surface-2);display:none;}
-.runbar.on{display:block;}
+/* 2026-11-21：进度条改成"始终占位、只切换可见性"。
+   原来是 display:none → block，2px 的进入/退出会让下面整块内容位移两次 ——
+   短命令（0~50ms）看起来就是"执行完闪一下"，用户反馈的闪大概率就是它。 */
+.runbar{flex:0 0 auto;height:2px;background:transparent;display:block;visibility:hidden;}
+.runbar.on{visibility:visible;background:var(--surface-2);}
 .runbar i{display:block;height:100%;width:30%;background:var(--accent);animation:run 1.2s ease-in-out infinite;}
 @keyframes run{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
 
@@ -314,7 +317,7 @@ body{
 
 /* 指令页：侧边导航式 */
 .quick-wrap{flex:1;min-height:0;display:flex;overflow:hidden;}
-.quick-nav{flex:0 0 auto;width:176px;background:var(--surface);border-right:1px solid var(--border);padding:14px 6px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-gutter:stable;}   /* 2026-11-21：右侧留白 20px→12px */
+.quick-nav{flex:0 0 auto;width:var(--nav-w,148px);background:var(--surface);border-right:1px solid var(--border);padding:14px 6px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-gutter:stable;}   /* 2026-11-21：右侧留白 20px→12px */
 .quick-nav::-webkit-scrollbar{width:6px;}
 .quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
 .quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
@@ -354,7 +357,7 @@ body{
    2026-11-11 调整：降级阈值从 900px 收紧到 660px —— 900px 太容易触发
    （默认窗口 1100px，减掉左导航 176px 后内容区只剩 ~920px，稍微拖窄就
    掉到两列，用户以为"一行三个"功能丢了）。660px 以下才降两列。 */
-.quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start;
+.quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));   /* P5 要求一行三个，别改成 auto-fill */gap:10px;align-content:start;
   /* 2026-11-20 治「黑卡闪」：整块重渲染（grid.innerHTML=）时会有一帧空档，
      网格区域若透明就露出窗口黑底。给容器一个固定底色 + 独立绘制层，
      空档期也只是同色底，不会黑一下。 */
@@ -2733,6 +2736,14 @@ body.v16-tabdrag .page{
   padding:8px;
   gap:8px;
 }
+/* 可拖分隔条：只改 --nav-w 一个变量，不动布局树 */
+:root{ --nav-w:148px; }
+.qsplit{
+  flex:0 0 4px;cursor:col-resize;background:transparent;position:relative;z-index:4;
+  transition:background .12s;
+}
+.qsplit:hover, .qsplit.dragging{ background:color-mix(in srgb, var(--accent) 45%, transparent); }
+
 #page-quick .quick-nav{
   border:1px solid var(--border);
   border-right:1px solid var(--border);   /* 覆盖 A15 的 border-right:1px（会画出断角） */
@@ -3385,6 +3396,8 @@ body::after{
     <div class="page active" id="page-quick">
       <div class="quick-wrap">
         <div class="quick-nav" id="quick-nav"></div>
+        <!-- 2026-11-21：可拖分隔条（调导航宽度）。双击恢复默认 148px -->
+        <div class="qsplit" id="qsplit" title="拖动调整宽度 · 双击恢复默认"></div>
         <div class="quick-body">
           <div class="quick-head">
             <span class="qgname" id="quick-group-name">日志抓取</span>
@@ -5891,6 +5904,60 @@ function navDragEnd(ev){
   renderQuickNav();
   renderQuickItems();
   try { toast('分组顺序已保存', 'ok'); } catch (e) {}
+}
+
+/* 2026-11-21：导航宽度可拖（分隔条）。
+   只写 CSS 变量 --nav-w，不碰任何布局属性 —— 拖动时只有一列宽度在变，
+   卡片区固定 3 列（P5 要求），不会因为"自由缩放"变成 2 列/4 列。
+   上下限 120~300px：太小文字挤成竖排，太大把卡片区吃光。
+   存 _prefs.uiSplit.nav，启动恢复。 */
+var _navSplit = null;
+
+function applyNavWidth(w){
+  if (!w) return;
+  if (w < 120) w = 120;
+  if (w > 300) w = 300;
+  document.documentElement.style.setProperty('--nav-w', w + 'px');
+}
+
+function initNavSplit(){
+  var bar = document.getElementById('qsplit');
+  if (!bar || bar.__bound) return;
+  bar.__bound = 1;
+
+  bar.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== 0) return;
+    var nav = document.getElementById('quick-nav');
+    _navSplit = { x0: ev.clientX, w0: nav ? nav.getBoundingClientRect().width : 148, pid: ev.pointerId };
+    bar.classList.add('dragging');
+    try { bar.setPointerCapture(ev.pointerId); } catch (e) {}
+    ev.preventDefault();
+  });
+  bar.addEventListener('pointermove', function (ev) {
+    if (!_navSplit) return;
+    applyNavWidth(_navSplit.w0 + (ev.clientX - _navSplit.x0));
+  });
+  function stop() {
+    if (!_navSplit) return;
+    try { bar.releasePointerCapture(_navSplit.pid); } catch (e) {}
+    _navSplit = null;
+    bar.classList.remove('dragging');
+    var nav = document.getElementById('quick-nav');
+    var w = nav ? Math.round(nav.getBoundingClientRect().width) : 148;
+    if (!_prefs.uiSplit) _prefs.uiSplit = {};
+    _prefs.uiSplit.nav = w;
+    try { prefsSave(); } catch (e) {}
+  }
+  bar.addEventListener('pointerup', stop);
+  bar.addEventListener('pointercancel', stop);
+  // 双击恢复默认
+  bar.addEventListener('dblclick', function () {
+    applyNavWidth(148);
+    if (!_prefs.uiSplit) _prefs.uiSplit = {};
+    _prefs.uiSplit.nav = 148;
+    try { prefsSave(); } catch (e) {}
+    try { toast('已恢复默认宽度', 'ok'); } catch (e) {}
+  });
 }
 
 function renderQuickNav(){
@@ -11529,6 +11596,9 @@ document.addEventListener('DOMContentLoaded', function (){
         window.v15Restore({ logShow: o.logshow, oled: o.oled, eye: o.eye, auto: o.auto });
       } catch (e) {}
     }
+    if (o.uiSplit && o.uiSplit.nav) {
+      try { applyNavWidth(o.uiSplit.nav); } catch (e) {}   // 2026-11-21：导航宽度记忆
+    }
     if (Array.isArray(o.navOrder) && o.navOrder.length) {
       try { applyNavOrder(o.navOrder); } catch (e) {}   // 2026-11-21：分组拖拽顺序
     }
@@ -11857,6 +11927,7 @@ document.addEventListener('DOMContentLoaded', function (){
 
   function boot() {
     try { initTabDrag(); } catch (e) {}
+    try { initNavSplit(); } catch (e) {}   // 2026-11-21：导航分隔条
   }
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', boot);

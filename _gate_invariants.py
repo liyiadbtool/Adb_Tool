@@ -108,6 +108,7 @@ A9_ADDS = {
         # 自定义 ADB 指令
         "custom-panel", "custom-mgr", "cm-grid", "cm-list", "cm-name",
         "cm-desc", "cm-steps", "cm-err",
+        "qsplit",                      # 2026-11-21：导航分隔条
     ]),
 }
 # A12 追加轮（2026-11-15 第二轮）：自绘标题栏 / 设置抽屉 / 文本页 / 帮助 / 文件页增强。

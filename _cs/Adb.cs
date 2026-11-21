@@ -1668,20 +1668,23 @@ namespace AdbLogExport
             }
 
             AutoRoot();
-            CUR = ROOT;
+            // 2026-11-21：刷新**不再重置当前目录**。
+            // 原来这里写死 CUR = ROOT + 末尾 LsAfterCd()，用户只是想重连，结果目录被
+            // 拽回根目录、还多打印一屏 ls —— 用户原话"仅显示要输出的信号，不要再执行 cd"。
+            // 只在当前目录确实失效（设备重启/目录被删）时才回退。
+            if (!DirStillValid()) CUR = ROOT;
             OLDPWD = "";
             Probe();
             CMD_OK = true;
             OFFLINE = false;
-            Ok("已刷新，当前目录 " + CUR);
+            Ok("已刷新" + (CUR == ROOT ? "，当前目录 " + CUR : ""));
 
             // 【需求3】刷新要把车机信息重新取一遍并输出。
             // 用户原话："r 指令刷新的时候要把打开应用要获取的数据和执行的执行都操作下输出显示"
             // —— 也就是刷新的语义不只是"重连 adb"，还要把打开工具时自动采集的
             // 那批数据（9 项车机信息）重新查一次，并把查询过程显示出来。
             RenderCarInfoOnRefresh();
-
-            LsAfterCd();
+            // 2026-11-21：不再 LsAfterCd() —— 没 cd 就不该 ls
         }
 
         // 【需求6】自动重连专用：与 RetrySoft 同一条路径，但**失败完全静默**。
@@ -1695,21 +1698,28 @@ namespace AdbLogExport
         //   每次都甩一屏红字，用户会以为工具坏了。
         //
         // 成功路径保持完整输出（含九项车机信息），因为那是用户想看到的结果。
+        /// <summary>当前目录是否还能用（刷新时决定要不要回退到 ROOT）。
+        /// 故意不查设备：多一次 shell 往返既慢又可能失败，失败会把用户目录误重置。
+        /// 只做本地合法性判断 —— 路径真失效时后续命令自己会报错，用户 cd 一下即可。</summary>
+        private static bool DirStillValid()
+        {
+            return !string.IsNullOrEmpty(CUR) && CUR.StartsWith("/", StringComparison.Ordinal);
+        }
+
         internal static void RetrySoftForWatch()
         {
             bool ok = Rec.WaitDevice(15000, true, true);
             if (!ok || DEVN == 0) return;      // 静默失败
 
             AutoRoot();
-            CUR = ROOT;
+            if (!DirStillValid()) CUR = ROOT;   // 2026-11-21：同上，别重置目录
             OLDPWD = "";
             Probe();
             CMD_OK = true;
             OFFLINE = false;
 
-            Ok("已自动重连，当前目录 " + CUR);
+            Ok("已自动重连");
             RenderCarInfoOnRefresh();
-            LsAfterCd();
         }
 
         // 刷新/重连后统一输出车机信息（需求3）。

@@ -329,6 +329,13 @@ namespace AdbLogExport.Gui
         private const int DWMWCP_ROUNDSMALL = 3; // 小圆角
 
         private const int WM_GETMINMAXINFO = 0x0024;
+        // 2026-11-21：无边框窗口的缩放热区（FormBorderStyle.None 没有系统热区）
+        private const int WM_NCHITTEST = 0x0084;
+        private const int WM_ENTERSIZEMOVE = 0x0231;
+        private const int WM_EXITSIZEMOVE = 0x0232;
+        private const int HTCLIENT = 1, HTLEFT = 10, HTRIGHT = 11, HTTOP = 12,
+                          HTTOPLEFT = 13, HTTOPRIGHT = 14, HTBOTTOM = 15,
+                          HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
         private const int WM_DPICHANGED = 0x02E0;
 
         private bool _dwmCorner = false;   // DWM 圆角是否接管（true 时不再设 region）
@@ -578,12 +585,19 @@ namespace AdbLogExport.Gui
         /// 尺寸兜底：窗口一旦被缩到比 MinimumSize 还小（历史遗留动画、外部
         /// SetWindowPos、Aero Snap 异常），立刻拉回 _sane，绝不留"小到不能用"的窗口。
         /// </summary>
+        // 拖动缩放期间不许做"尺寸兜底"，否则会把正在拖的窗口拉回旧尺寸（回弹根因）
+        private bool _inSizeMove;
+        private int _hitBorder = 6;          // 缩放热区像素（按 DPI 换算）
+        private int _lastCornerTick;
+        private int _lastPushW = -1, _lastPushH = -1;
+
         private void EnsureSaneBounds()
         {
             try
             {
                 if (IsDisposed || !IsHandleCreated) return;
                 if (WindowState != FormWindowState.Normal) return;
+                if (_inSizeMove) return;      // 正在拖缩放：别抢方向盘
                 Rectangle b = Bounds;
                 int minW = MinimumSize.Width, minH = MinimumSize.Height;
                 if (b.Width >= minW && b.Height >= minH) { _sane = b; return; }
@@ -670,6 +684,42 @@ namespace AdbLogExport.Gui
                         catch { }
                     }
                 }
+                if (m.Msg == WM_ENTERSIZEMOVE)
+                {
+                    _inSizeMove = true;
+                }
+                if (m.Msg == WM_EXITSIZEMOVE)
+                {
+                    _inSizeMove = false;
+                    // 拖完再统一收尾：重设圆角 + 同步最大化状态（拖动中不做，省得卡）
+                    ApplyWindowCorner();
+                    PushWinState();
+                    _lastPushW = Width; _lastPushH = Height;
+                }
+                if (m.Msg == WM_NCHITTEST)
+                {
+                    // 边角命中：返回 HT* 让系统接管缩放（左键拖动即可拉伸）
+                    Point pt = PointToClient(new Point(
+                        (short)(m.LParam.ToInt64() & 0xFFFF),
+                        (short)((m.LParam.ToInt64() >> 16) & 0xFFFF)));
+                    int W = ClientSize.Width, H = ClientSize.Height, b = _hitBorder;
+                    bool left = pt.X <= b, right = pt.X >= W - b;
+                    bool top = pt.Y <= b, bottom = pt.Y >= H - b;
+                    int hit = 0;
+                    if (top && left) hit = HTTOPLEFT;
+                    else if (top && right) hit = HTTOPRIGHT;
+                    else if (bottom && left) hit = HTBOTTOMLEFT;
+                    else if (bottom && right) hit = HTBOTTOMRIGHT;
+                    else if (left) hit = HTLEFT;
+                    else if (right) hit = HTRIGHT;
+                    else if (top) hit = HTTOP;
+                    else if (bottom) hit = HTBOTTOM;
+                    if (hit != 0 && WindowState == FormWindowState.Normal)
+                    {
+                        m.Result = (IntPtr)hit;
+                        return;
+                    }
+                }
                 if (m.Msg == WM_DPICHANGED)
                 {
                     // 拖到另一块 DPI 不同的屏：圆角像素半径要按新 DPI 重算
@@ -698,12 +748,21 @@ namespace AdbLogExport.Gui
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            PushWinState();
 
-            // region 是按像素矩形生成的，窗口一变就必须重设，否则四角会残留旧曲线。
-            // 最大化时这里会走「取消圆角」分支，正好避免全屏出现圆角。
+            // 2026-11-21：拖动缩放时 OnResize 一秒几十次，原来每次都发 IPC + 重建 region，
+            // 拖起来一顿一顿。现在：
+            //   · 状态推送：尺寸变化 ≥8px 才发
+            //   · region 重设：最快 80ms 一次；松手时（WM_EXITSIZEMOVE）再补一次精确的
+            if (_lastPushW < 0 || Math.Abs(Width - _lastPushW) >= 8 || Math.Abs(Height - _lastPushH) >= 8)
+            {
+                PushWinState();
+                _lastPushW = Width; _lastPushH = Height;
+            }
+
+            int now = Environment.TickCount;
+            if (_inSizeMove && now - _lastCornerTick < 80) return;
+            _lastCornerTick = now;
             ApplyWindowCorner();
-
         }
 
         // 最大化 / 还原后要告诉页面：最大化按钮图标要换成"还原"，边缘热区要藏起来。

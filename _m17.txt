@@ -1,0 +1,27 @@
+fix: 窗口缩放/回弹、刷新输出、导航分隔条、执行后位移闪动
+
+【窗口（GuiWeb.cs）】
+- 加 WM_NCHITTEST：四边四角 6px 热区，FormBorderStyle.None 也能拉伸
+- WM_ENTERSIZEMOVE/EXITSIZEMOVE + _inSizeMove：拖动期间跳过 EnsureSaneBounds，
+  修"拖到一半自己弹回原尺寸"
+- OnResize 节流：状态推送 ≥8px 才发、window region 最快 80ms 重建一次；
+  松手时精确收尾 —— 修"拖起来一顿一顿"
+
+【刷新（Adb.cs）】
+- RetrySoft / RetrySoftForWatch 不再无条件 CUR = ROOT，改 DirStillValid() 判断
+- 去掉 LsAfterCd()：没 cd 就不该 ls
+- 用户原话"r 刷新仅显示要输出的信号，不要再执行 cd"
+
+【导航（ui.html）】
+- 新增 #qsplit 可拖分隔条：只改 --nav-w 变量，卡片仍固定 3 列（P5）
+- 上下限 120~300px，双击复位 148，存 _prefs.uiSplit.nav
+- 默认宽度 176 → 148，修"名称与计数之间空隙过大"
+
+【闪动（ui.html）】
+- .runbar 从 display:none/block 改成 visibility 切换：
+  原来每条命令开始/结束各造成一次 2px 布局位移，短命令看着就是"闪一下"
+
+【门禁】
+- 登记新 DOM id qsplit
+
+验证：--fast 5/5；窗口与记录 277/277；功能不变量 44/44
