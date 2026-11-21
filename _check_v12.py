@@ -101,11 +101,17 @@ JS = r"""
       /* ---- 4. 页签 ---- */
       var tabs=document.querySelectorAll('.tabs .tab');
       // 2026-11-19（A31）：投屏页删除，页签 6 → 5
-      ok('页签 5 个（含文本）', tabs.length===5, String(tabs.length));
-      ok('文本页签在最右', tabs[tabs.length-1].getAttribute('data-tab')==='text');
-      ok('每个页签都有图标', document.querySelectorAll('.tabs .tab svg').length===5);
+      // 2026-11-21（第 7 批需求3）：UI / 文本并入文件页，页签 5 → 3。
+      //   需求变更，断言跟着改（不是缺陷）。文本页不再是独立页签，
+      //   改为文件页内的 fileview-text 子视图，所以这里验证子视图可达。
+      ok('页签 3 个（指令/终端/文件）', tabs.length===3, String(tabs.length));
+      ok('文件页签在最右', tabs[tabs.length-1].getAttribute('data-tab')==='file');
+      ok('每个页签都有图标', document.querySelectorAll('.tabs .tab svg').length===3);
       switchTab('text');
-      ok('切到文本页后 page-text 激活', document.getElementById('page-text').classList.contains('active'));
+      ok('切到文本后 fileview-text 激活',
+         document.getElementById('fileview-text')
+         && document.getElementById('fileview-text').classList.contains('active'));
+      ok('文件页容器激活', document.getElementById('page-file').classList.contains('active'));
 
       /* ---- 5. 设置抽屉 ---- */
       openSettings();

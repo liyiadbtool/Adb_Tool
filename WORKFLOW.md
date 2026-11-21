@@ -24,26 +24,17 @@
 ### 2.1 步骤（拉取 → 测试 → 分流）
 
 ```bash
-cd <仓库根目录>
-
 # ---------- ① 拉取 ----------
-git status -s                       # 先看本地状态
-git log --oneline -3
-
-git fetch origin                    # 拉取远程引用（不合并，安全）
-
+git status -s                       # 先看本地状态（有改动先问，别 reset --hard）
+git fetch origin
 git rev-list --left-right --count origin/main...HEAD
-#   输出 "0 0"        = 已完全一致
-#   输出 "N 0"        = 远程领先 N 条，需要快进
-#   输出 "0 M"        = 本地有 M 条远程没有的提交（有分叉，停下问人）
-#   输出 "N M"        = 双方都有新提交（有分叉，停下问人）
-
-git pull --ff-only origin main      # 无本地改动时快进
+#   "0 0" = 一致 | "N 0" = 只需快进 | 任一侧非 0 且有分叉 → 停下问人
+git pull --ff-only origin main
 
 # ---------- ② 跑测试体检 ----------
 # Windows 自动化编译必须加 NO_PAUSE=1，否则卡在 pause 上
 #   set NO_PAUSE=1 && adb_log_gui\build_gui.bat
-python verify_all.py --fast         # 5 项核心门禁，约 2 分钟
+python verify_all.py --fast         # ~5 秒，5 项静态 + CLI 自检
 
 # ---------- ③ 按结果分流 ----------
 # 全绿  → 保持原样，只汇报"版本 + 测试结果"
@@ -56,7 +47,7 @@ python verify_all.py --fast         # 5 项核心门禁，约 2 分钟
 
 | 情况 | 处理 |
 |---|---|
-| 是程序跑出来的运行态（`adb_log_gui/adb_log_export.ini` 的 theme/accent/prefs） | `git checkout -- <文件>` 丢弃，再拉取 |
+| 是程序跑出来的运行态（`adb_log_export.ini` 的 theme/accent/prefs） | `git checkout -- <文件>` 丢弃，再拉取 |
 | 是上一轮忘了提交的成果 | **停下来问用户**：要保留就先 commit（或 stash），不要覆盖 |
 | 是构建产物（`dist*/`、`*.exe`） | 本就不该进 Git，确认 `.gitignore` 已覆盖 |
 
@@ -121,39 +112,33 @@ python verify_all.py --fast         # 5 项核心门禁，约 2 分钟
 # 编译（自动化环境必须加 NO_PAUSE，否则卡在 pause 上）
 # Windows: set NO_PAUSE=1 && adb_log_gui\build_gui.bat
 
-# 门禁
-python verify_all.py --fast
+# 门禁：三档按需选（详见 AGENTS.md §0「门禁三档」）
+python verify_all.py --fast    # ~5 秒   日常自检
+python verify_all.py           # ~85 秒  功能改完必跑 ← 收工用这一档
+python verify_all.py --full    # ~4 分钟 发包前
 ```
 
-两者都绿才能收工。门禁红灯不许提交。
+开工/日常用 `--fast` 就够；**收工提交前必须至少跑过一次无参数档**（它会验证
+真实浏览器/真实 exe 的行为，`--fast` 不覆盖这部分）。
+门禁红灯不许提交。
 
 ### 3.2 提交前清理无用数据（关键，不许跳过）
 
-```bash
-git status -s          # 先看全部改动
-git status --ignored -s | head -30    # 顺便看有哪些被忽略的产物（确认它们在忽略范围）
-```
-
-**必须逐项清理的六类无用数据**：
-
-| # | 类别 | 具体文件 | 处理方式 |
-|---|---|---|---|
-| 1 | **运行态污染** | `adb_log_gui/adb_log_export.ini`（程序运行改写 theme / accent / prefs / 设备信息） | `git checkout -- adb_log_gui/adb_log_export.ini` |
-| 2 | **构建产物** | `adb_log_gui/dist/`、`dist_min/`、`dist_single/`、`webview2_tmp/`、`release/` | 已在 `.gitignore`；若出现在 status 说明误 add，`git reset HEAD <路径>` |
-| 3 | **编译中间件** | `*.exe`、`*.pdb`、`*.obj`、`*.zip`、`*.7z`、`ffmpeg.exe` | 同上，不入库 |
-| 4 | **临时调试文件** | 自己写的 `_tmp*.py`、`_dbg*.py`、`_probe*.py`、临时 `*.txt` | 确认无用后删除；有留存价值的改名归位并登记 |
-| 5 | **日志与截图** | `*.log`、`logs/`、`gui_error.log`、`_shot*/`、调试 `*.png` | 已在 `.gitignore`；自建的额外日志目录手动删 |
-| 6 | **测试生成物 / 交付副本** | `377/test_*.html`、`377/_test_*.html`、`377/_dbg*.html`、`_feishu/` | 已在 `.gitignore`，确认即可 |
-
-清理后再验收一次：
+> 六类无用数据的完整清单见 `AGENTS.md` §0「收工」。这里只补两条实操要点。
 
 ```bash
-git status -s
-# 期望：只剩本轮真正要提交的源码/文档改动，逐条都能说清"这条属于哪个需求"
+git status -s                        # 先看全部改动
+git status --ignored -s | head -30   # 顺便确认被忽略的产物确实在忽略范围内
 ```
 
 **判定口径**：问自己"这条改动是不是我自己写的、别人拉下来会不会因此受影响"。
-是运行态/本机偏好/临时产物 → 一律不提交。
+是运行态 / 本机偏好 / 临时产物 → 一律不提交。
+
+**最容易漏的两个**：
+
+- `adb_log_gui/adb_log_export.ini` —— **跑一次门禁就会被程序改写**（theme / prefs）。
+  每一轮收工前都要 `git checkout --` 它，不要只查一次。
+- `377/test_*.html`、`377/_*_probe.html` —— 测试运行时生成，已被忽略，但占空间，定期删。
 
 ### 3.3 提交与推送
 

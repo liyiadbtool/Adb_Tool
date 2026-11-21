@@ -64,7 +64,7 @@ def _kill_leftover():
         pass
 
 
-def dump(html_path, wait_ms=3000, timeout=180):
+def dump(html_path, wait_ms=3000, timeout=45):
     """跑页面，返回 `<pre id="RESULT">` 里的文本；拿不到返回 NO_RESULT。"""
     exe = find_exe()
     if not exe:
@@ -102,7 +102,7 @@ def dump(html_path, wait_ms=3000, timeout=180):
     return text if text else NO_RESULT
 
 
-def dump_dom(html_path, wait_ms=3000, timeout=180):
+def dump_dom(html_path, wait_ms=3000, timeout=45):
     """兼容旧解析：包成 `<pre id="RESULT">…</pre>`，现有正则一行都不用改。"""
     text = dump(html_path, wait_ms=wait_ms, timeout=timeout)
     return '<pre id="RESULT">' + text + "</pre>"
