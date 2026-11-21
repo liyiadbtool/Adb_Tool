@@ -2,7 +2,7 @@
  "project": "adb_Tool / 网联服务_Adb_Tool",
  "note": "源码与文档清单（不含 exe/dll/zip/图片等产物）。改了源码请重新运行本脚本。",
  "count": 130,
- "totalBytes": 3380964,
+ "totalBytes": 3382558,
  "files": [
   {
    "path": "377/_a14_probe.js",
@@ -516,8 +516,8 @@
   },
   {
    "path": "adb_log_gui/webview2/ui.html",
-   "size": 857462,
-   "sha256": "3cac32adf590aaf0be380350b75f99d8a4032bb076876e8bf7bb60073af20f8a"
+   "size": 859056,
+   "sha256": "86906d4bbdd3be34426da1dccd338b981413f53c6dbbfe01cdca279e7385ce8c"
   },
   {
    "path": "cmds.ini",

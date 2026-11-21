@@ -743,9 +743,15 @@ body{
 .fs-ico{width:26px;height:26px;border:1px solid var(--border);border-radius:var(--r-2);background:var(--bg);color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;flex:0 0 auto;padding:0;}
 .fs-ico:hover{color:var(--text);border-color:var(--border-strong);}
 .fs-crumb{flex:1;min-width:0;font-size:12px;color:var(--text-dim);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
-.fs-cols{display:grid;grid-template-columns:1fr 74px 112px;gap:8px;padding:4px 10px;font-size:11px;color:var(--text-faint);border-bottom:1px solid var(--border);flex:0 0 auto;}
-.fs-cols span:nth-child(2),.fs-cols span:nth-child(3){text-align:right;}
-.fs-list{flex:1;min-height:0;overflow:auto;padding:4px;}
+/* 2026-11-21：表头必须和数据行同构，否则"名称/大小/时间"和文件对不齐。
+   数据行是 [14px 箭头 | 名称 | 大小 | 时间]，gap 6、padding 左右 8；
+   表头没有箭头列，所以用 padding-left 补 14+6+8=28px 顶上那一段，
+   列宽直接复用行同一套变量（--w-name/--w-size/--w-time），拖动列宽也不会错位。 */
+.fs-cols{display:grid;grid-template-columns:var(--w-name,1fr) var(--w-size,74px) var(--w-time,1fr);
+  gap:6px;padding:6px 8px 6px 28px;font-size:11px;color:var(--text-faint);
+  border-bottom:1px solid var(--border-strong);flex:0 0 auto;}
+.fs-cols span.ct.c2,.fs-cols span.ct.c3{text-align:right;}
+.fs-list{flex:1;min-height:0;overflow:auto;padding:4px;scrollbar-gutter:stable;}
 .fs-row{display:grid;grid-template-columns:14px 1fr 74px 112px;gap:6px;align-items:center;height:30px;padding:0 8px;border-radius:var(--r-2);font-size:12.5px;color:var(--text-dim);cursor:default;user-select:none;-webkit-user-select:none;}
 /* 树形：箭头列固定 14px，缩进由行内 padding-left 控制 */
 .fs-row .fs-arw{font-size:10px;color:var(--text-faint);text-align:center;min-width:10px;}
@@ -2084,14 +2090,26 @@ html[data-winmax="1"] .rz{display:none;}
 .fs-panes.flip .fs-swap{transform:rotate(180deg);}
 .fs-mid{width:34px;}
 .fs-cols{
-  position:relative;
-  grid-template-columns:14px var(--w-name,1fr) var(--w-size,74px) var(--w-time,1fr);
-  gap:6px;padding:5px 8px;
+  /* 2026-11-21：右侧补 13px = 列表内边距 4 + 滚动条 9。
+     表头在滚动容器外面，数据行在里面，不补这一段"时间"就会比日期偏右。 */
+  position:relative;display:flex;align-items:center;gap:6px;padding:6px 13px 6px 8px;
+  font-size:11px;color:var(--text-faint);
+  border-bottom:1px solid var(--border-strong);
+  background:color-mix(in srgb, var(--surface-2) 60%, transparent);
 }
-.fs-row{
-  grid-template-columns:14px var(--w-name,1fr) var(--w-size,74px) var(--w-time,1fr);
-}
+/* 表头第一格是为了对齐数据行的「展开箭头」列，隐藏它用 padding 顶出来 */
+.fs-cols > span:first-child{display:none;}
+.fs-cols span.ct.c1{flex:1 1 0;min-width:0;padding-left:20px;text-align:left !important;}
+/* 2026-11-21：第一条 span 被 display:none 之后，nth-child 序号不变，
+   于是 `.fs-cols span:nth-child(2)`（名称）仍被套上 text-align:right ——
+   这是"名称和文件对不齐"的真正原因。这里用更高优先级把名称强制左对齐。 */
+.fs-cols .ct.c2{flex:0 0 var(--w-size,74px);text-align:right;
+  box-shadow:inset 1px 0 0 var(--border);padding-left:8px;}
+.fs-cols .ct.c3{box-shadow:inset 1px 0 0 var(--border);padding-left:8px;}
+.fs-cols .ct.c3{flex:1 1 0;min-width:0;text-align:right;}
 .fs-cols .ct{position:relative;white-space:nowrap;}
+/* 2026-11-21：列宽变量必须还在数据行上，否则表头拖动后行不跟随 */
+.fs-row{grid-template-columns:14px var(--w-name,1fr) var(--w-size,74px) var(--w-time,1fr);}
 .fs-cols .ct.c2,.fs-cols .ct.c3{text-align:right;}
 .fs-grip{
   position:absolute;left:calc(-1 * var(--grip-w) / 2);top:-5px;bottom:-5px;

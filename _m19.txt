@@ -1,0 +1,18 @@
+fix(文件页): 表头与数据行列对齐 + 列间竖分割线
+
+三轮才对，记录清楚根因，避免以后重复踩：
+
+1) 名称偏右：历史规则 `.fs-cols span:nth-child(2)` 给它套了 text-align:right。
+   第一条 span 被 display:none 后 nth-child 序号不变，仍命中"名称"。
+   → 改成按类名 (.ct.c2/.c3) 右对齐，名称列显式 text-align:left。
+
+2) 时间偏右 13px：表头在滚动容器外、数据行在里面，
+   行侧多出「列表内边距 4 + 滚动条 9」的缩进。
+   → .fs-list 加 scrollbar-gutter:stable（两侧槽位恒定），
+     表头 padding-right 补 13px，一次算准。
+
+3) 没有列分割线：用 inset box-shadow 画竖线，不用 border-left
+   —— border 会占 1px 布局宽度，又把列推歪（前两轮的死循环）。
+
+验证：文件管理 61/61；--fast 5/5。
+包：release\adb_Tool_scrcpy_20261121_2024.zip（与源码 MD5 一致）
