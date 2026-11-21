@@ -358,10 +358,11 @@ body{
    （默认窗口 1100px，减掉左导航 176px 后内容区只剩 ~920px，稍微拖窄就
    掉到两列，用户以为"一行三个"功能丢了）。660px 以下才降两列。 */
 .quick-grid{flex:none;min-height:0;padding:0 20px 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));   /* P5 要求一行三个，别改成 auto-fill */gap:10px;align-content:start;
-  /* 2026-11-20 治「黑卡闪」：整块重渲染（grid.innerHTML=）时会有一帧空档，
-     网格区域若透明就露出窗口黑底。给容器一个固定底色 + 独立绘制层，
-     空档期也只是同色底，不会黑一下。 */
-  background:var(--bg);contain:paint;}
+  /* 2026-11-21 撤掉底色+contain:paint：
+     换卡闪已由 swapGrid 的 replaceChildren 原子替换根治（不会出现空帧），
+     这层 hack 反而画出一块比面板更黑的矩形，边缘一道硬线，黑夜下很难看。
+     contain:paint 还会裁掉卡片阴影/悬停溢出。 */
+}
 @media (max-width:660px){
   .quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
@@ -2687,6 +2688,7 @@ body.v16-tabdrag *{
              color var(--dur-fast) var(--ease);
 }
 
+.tabs .tab.v16-dragging{ color:var(--text) !important; }
 .tabs .tab.v16-dragging{
   position:relative;
   z-index:5;
@@ -11674,6 +11676,18 @@ document.addEventListener('DOMContentLoaded', function (){
   var suppressClickUntil = 0;
 
   function initTabDrag() {
+    // 兜底清扫：万一历史上留过 v16-dragging（旧版本在栏外松手会残留），
+    // 每次初始化先把脏类去掉，避免"一进来就是黑字"。
+    try {
+      var dirty = document.querySelectorAll('.tab.v16-dragging');
+      for (var di = 0; di < dirty.length; di++) {
+        dirty[di].classList.remove('v16-dragging');
+        dirty[di].style.transform = '';
+        dirty[di].style.transition = '';
+      }
+      document.body.classList.remove('v16-tabdrag');
+    } catch (e) {}
+
     var bar = document.querySelector('.tabs');
     if (!bar || bar.getAttribute('data-v16drag')) return;
     bar.setAttribute('data-v16drag', '1');
@@ -11767,8 +11781,13 @@ document.addEventListener('DOMContentLoaded', function (){
       if (typeof window.v15SyncTabOrder === 'function') window.v15SyncTabOrder();
       else { try { renderQuickNav && renderQuickNav(); } catch (e) {} }
     }
-    bar.addEventListener('pointerup', end);
-    bar.addEventListener('pointercancel', end);
+    // 2026-11-21：pointerup 必须挂到 document。
+    // 只在 bar 上监听时，如果松手瞬间指针已经移出 tab 栏（拖到内容区再松手），
+    // end() 不会触发 → .v16-dragging 永久残留（抬起的阴影+浅底+浅色文字），
+    // 黑夜下就出现"文字和背景一样黑"的怪样子。
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+    window.addEventListener('blur', end);
     bar.addEventListener('click', function (ev) {
       if (Date.now() < suppressClickUntil) {
         ev.stopPropagation();
