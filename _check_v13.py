@@ -264,6 +264,9 @@ def main():
     io.open(OUT, "w", encoding="utf-8").write(src)
 
     cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,940",
+               "--no-first-run", "--no-default-browser-check",
+               "--disable-background-networking", "--disable-sync",
+               "--disable-extensions", "--disable-component-update",
            "--virtual-time-budget=15000", "--dump-dom",
            "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_v13_%d" % os.getpid()),
            "file:///" + OUT.replace("\\", "/")]

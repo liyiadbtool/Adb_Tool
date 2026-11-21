@@ -395,7 +395,7 @@ def main():
     url = "file:///" + TEST.replace("\\", "/")
     cmd = [
         EDGE, "--headless=new", "--disable-gpu",
-        "--window-size=" + win,
+        "--window-size=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + win,
         "--virtual-time-budget=6000",
         "--dump-dom",
         "--user-data-dir=" + PROF,

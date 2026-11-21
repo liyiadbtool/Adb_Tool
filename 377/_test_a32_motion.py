@@ -189,7 +189,7 @@ def main():
 
     args = [
         EDGE, "--headless=new", "--disable-gpu", "--no-sandbox",
-        "--user-data-dir=" + PROF,
+        "--user-data-dir=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + PROF,
         "--virtual-time-budget=12000",
         "--dump-dom",
         "file:///" + out_html.replace("\\", "/"),

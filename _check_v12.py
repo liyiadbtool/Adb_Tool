@@ -263,13 +263,18 @@ def main():
     for attempt in (1, 2, 3):
         prof = os.path.join(tempfile.gettempdir(),
                             "edgeprof_v12_%d_%d" % (os.getpid(), attempt))
+        # 2026-11-22：补启动优化参数（与其它套件统一），减少冷启动抖动；
+        # 超时 120 → 45 秒：卡住就快速换 profile 重试，不再干等 2 分钟 ×2。
         cmd = [find_edge(), "--headless=new", "--disable-gpu", "--window-size=1280,940",
+               "--no-first-run", "--no-default-browser-check",
+               "--disable-background-networking", "--disable-sync",
+               "--disable-extensions", "--disable-component-update",
                "--virtual-time-budget=12000", "--dump-dom",
                "--user-data-dir=" + prof,
                "file:///" + OUT.replace("\\", "/")]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=120)
+                               errors="replace", timeout=45)
         except subprocess.TimeoutExpired:
             print("  （第 %d 次超时，重试）" % attempt)
             continue

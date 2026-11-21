@@ -114,8 +114,8 @@ python verify_all.py --fast         # ~5 秒，5 项静态 + CLI 自检
 
 # 门禁：三档按需选（详见 AGENTS.md §0「门禁三档」）
 python verify_all.py --fast    # ~5 秒   日常自检
-python verify_all.py           # ~85 秒  功能改完必跑 ← 收工用这一档
-python verify_all.py --full    # ~4 分钟 发包前
+python verify_all.py           # ~68 秒  功能改完必跑 ← 收工用这一档
+python verify_all.py --full    # ~170 秒 发包前
 ```
 
 开工/日常用 `--fast` 就够；**收工提交前必须至少跑过一次无参数档**（它会验证

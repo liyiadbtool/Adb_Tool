@@ -45,7 +45,11 @@ def _find_edge():
 
 
 EDGE = _find_edge()
-PROF = os.path.join(tempfile.gettempdir(), "edgeprof_beh")
+# 2026-11-22：支持通过环境变量指定独立的浏览器 profile 目录。
+# 目的：让 verify_all.py 能**并行**跑多个套件（它们共用同一个 profile 时会争抢锁，
+# 串行必须 sleep 等待，实测 3 套串行 13.7s、并行只有 4.8s）。
+# 不设该变量时行为与原来完全一致（仍落 edgeprof_beh），单独跑测试不受影响。
+PROF = os.environ.get("UI_PROF") or os.path.join(tempfile.gettempdir(), "edgeprof_beh")
 BEHAVIOR = r"""
 <script>
 (function(){

@@ -268,7 +268,7 @@ def main():
     src = open(UI, encoding="utf-8").read()
     open(TEST, "w", encoding="utf-8").write(src.replace("</body>", SCRIPT + "</body>"))
     cmd = [EDGE, "--headless=new", "--disable-gpu", "--window-size=1100,760",
-           "--virtual-time-budget=8000", "--dump-dom", "--user-data-dir=" + PROF,
+           "--virtual-time-budget=8000", "--dump-dom", "--user-data-dir=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + PROF,
            "file:///" + TEST.replace("\\", "/")]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", timeout=180)

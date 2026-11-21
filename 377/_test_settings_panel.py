@@ -203,7 +203,7 @@ def main():
     try:
         p = subprocess.run(
             [EDGE, "--headless=new", "--disable-gpu", "--no-sandbox",
-             "--user-data-dir=" + os.path.join(tempfile.gettempdir(), "edgeprof_setpanel"),
+             "--user-data-dir=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + os.path.join(tempfile.gettempdir(), "edgeprof_setpanel"),
              "--window-size=1280,900", "--virtual-time-budget=9000", "--dump-dom",
              "file:///" + tmp.replace("\\", "/")],
             capture_output=True, timeout=150)

@@ -196,7 +196,11 @@ def main():
     tmp = os.path.join(ROOT, '377', '_uitest.html')
     open(tmp, 'w', encoding='utf-8', newline='').write(src.replace('</body>', probe + '</body>'))
 
+    # 2026-11-22：补上启动优化参数（其它套件已统一），减少 Edge 冷启动抖动
     args = [EDGE, '--headless=new', '--disable-gpu', '--no-sandbox',
+            '--no-first-run', '--no-default-browser-check',
+            '--disable-background-networking', '--disable-sync',
+            '--disable-extensions', '--disable-component-update',
             '--user-data-dir=' + os.path.join(tempfile.gettempdir(), 'edgeprof_uitest'),
             '--virtual-time-budget=20000', '--dump-dom',
             'file:///' + tmp.replace('\\', '/')]

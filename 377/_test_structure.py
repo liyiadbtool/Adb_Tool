@@ -211,7 +211,7 @@ def main():
         "--window-size=1100,760",
         "--virtual-time-budget=6000",
         "--dump-dom",
-        "--user-data-dir=" + prof,
+        "--user-data-dir=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + prof,
         "file:///" + TEST.replace("\\", "/"),
     ]
     r = subprocess.run(cmd, capture_output=True, text=True,

@@ -198,10 +198,9 @@ def main():
     # ======================================================================
     print("== 2/4 页面结构与功能套件 ==")
     for script, label in EDGE_TESTS:
-        # 这些套件全是 headless Edge，共用同一个 user-data-dir。
-        # 连着起会撞锁（实测：单独跑 5 秒过，串行跑却超时 240 秒再重试，
-        # 直接把整轮拖到 8 分钟）。所以每套之间留 1.2 秒让上一个浏览器退干净。
-        time.sleep(1.2)
+        # 2026-11-22：去掉原来套件间的 sleep(1.2)。
+        # 当时加它是因为多套共用 edgeprof_beh 会撞锁；现在各套件已用独立 profile
+        # （见各 _test_*.py 的 PROF 定义），串行跑不再争抢，13 套共省约 16 秒。
         ok, _ = run([PY, os.path.join(ROOT, "377", script)], os.path.join(ROOT, "377"), 120,
                     label, r"通过 \d+ / \d+")
         if not ok:

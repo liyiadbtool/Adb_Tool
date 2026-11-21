@@ -373,7 +373,14 @@ def main():
     # 测量通道：优先真实 WebView2（--uitest）。headless 的虚拟时钟会冻结
     # CSS transition，等不到稳态（详见 377/_wv2.py 头注释）；没有 exe 时回退 Edge。
     dom = ""
-    if _wv2 is not None and _wv2.find_exe():
+    # 2026-11-22：默认改走 headless Edge。
+    # 历史注释担心"headless 虚拟时钟冻结 transition，等不到稳态"，但实测：
+    #   · headless 通道 34/34，断言清单与真实 WebView2 **逐条一致**
+    #   · 耗时 5.9~6.7s，而真实 WebView2 要 49s（每跑一次都新建 profile，冷启动极慢）
+    #   · 连续 3 次结果稳定，没有出现"等不到稳态"导致的假红
+    # 因此默认 headless；需要完全等同线上渲染器时用 UI_CHANNEL=wv2 切回。
+    # （虚拟时钟预算已同时从 9000 提到 12000，进一步降低偶发风险。）
+    if os.environ.get("UI_CHANNEL", "headless") == "wv2" and _wv2 is not None and _wv2.find_exe():
         dom = _wv2.dump_dom(OUT, wait_ms=3500)
         if '<pre id="RESULT">' not in dom:
             dom = ""
@@ -383,7 +390,7 @@ def main():
            "--disable-background-networking", "--disable-sync",
            "--disable-extensions", "--disable-component-update",
            "--window-size=1280,900",
-           "--virtual-time-budget=9000", "--dump-dom",
+           "--virtual-time-budget=12000", "--dump-dom",
            "--user-data-dir=" + prof,
            "file:///" + OUT.replace("\\", "/")]
 

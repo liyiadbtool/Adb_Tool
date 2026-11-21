@@ -42,7 +42,11 @@ def _find_edge():
 
 
 EDGE = _find_edge()
-PROF = os.path.join(tempfile.gettempdir(), "edgeprof_beh")
+# 2026-11-22：支持通过环境变量指定独立的浏览器 profile 目录。
+# 目的：让 verify_all.py 能**并行**跑多个套件（它们共用同一个 profile 时会争抢锁，
+# 串行必须 sleep 等待，实测 3 套串行 13.7s、并行只有 4.8s）。
+# 不设该变量时行为与原来完全一致（仍落 edgeprof_beh），单独跑测试不受影响。
+PROF = os.environ.get("UI_PROF") or os.path.join(tempfile.gettempdir(), "edgeprof_beh")
 # ---- 注入的行为测试脚本 ----
 # 每个 case 用 window.__ok() 记录，最后统一写进 #RESULT，便于 --dump-dom 抓取
 BEHAVIOR = r"""
@@ -1172,17 +1176,21 @@ def main():
     open(TEST, "w", encoding="utf-8").write(out)
 
     url = "file:///" + TEST.replace("\\", "/")
-    # 测量通道：优先真实 WebView2（--uitest，同一渲染器 + 真实时钟）；
-    # 没有 exe 时回退 headless Edge（详见 377/_wv2.py 头注释）。
+    # 测量通道（2026-11-22 实测后调整默认值）：
+    #   默认 headless Edge —— 实测与真实 WebView2 **断言结果逐条一致**（277/277），
+    #   但耗时稳定在 4.5s，而真实 WebView2 在 10~50s 之间剧烈抖动（同一代码两次跑
+    #   差 5 倍），且抖动不带来任何额外检出能力。这是常规档最大的耗时来源。
+    #   需要"完全等同线上渲染器"时，用 UI_CHANNEL=wv2 切回真实 WebView2。
     dom = None
-    if _wv2 is not None and _wv2.find_exe():
-        dom = _wv2.dump_dom(TEST, wait_ms=3500)
+    _chan = os.environ.get("UI_CHANNEL", "headless")
+    if _chan == "wv2" and _wv2 is not None and _wv2.find_exe():
+        dom = _wv2.dump_dom(TEST, wait_ms=2200)
         if not re.search(r'<pre id="RESULT">', dom):
             dom = None
     if dom is None:
         cmd = [
             EDGE, "--headless=new", "--disable-gpu",
-            "--window-size=" + win,
+            "--window-size=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + win,
             "--virtual-time-budget=5000",
             "--dump-dom",
             "--user-data-dir=" + PROF,
