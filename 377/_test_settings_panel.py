@@ -75,25 +75,35 @@ setTimeout(function(){
     if (track){
       var bg = getComputedStyle(track).backgroundImage || '';
       ok('需求4 滑动条是连续渐变', /gradient/.test(bg), bg.slice(0, 50));
-      ok('需求4 有 16 个锚点刻度',
-         document.querySelectorAll('#as-ticks i').length === 16,
-         document.querySelectorAll('#as-ticks i').length);
+      /* 2026-11-23（第 24 批）：锚点从 16 色扩到 **192 色**（配色表），
+     192 条刻度线会糊成一片，Apple 的连续色域也不画刻度 —— 已移除。
+     改验证"锚点数量"这个本质。 */
+  ok('需求4 锚点扩到 192 色',
+     typeof AS_ANCHORS !== 'undefined' && AS_ANCHORS.length === 192,
+     typeof AS_ANCHORS !== 'undefined' ? AS_ANCHORS.length : 'undefined');
+  ok('需求4 不再画刻度（192 太密）',
+     document.querySelectorAll('#as-ticks i').length === 0,
+     document.querySelectorAll('#as-ticks i').length);
     }
     ok('需求4 未显示「按钮 / 进度条 / 选中态」文案', txt.indexOf('按钮 / 进度条') < 0);
     ok('需求4 未显示「中性色 · 浅色/护眼下会压成灰」文案',
        txt.indexOf('中性色') < 0);
 
-    /* ---------- 需求4 核心：滑块必须吸附到 16 锚点 ---------- */
+    /* ---------- 需求4 核心（第 24 批改版）：滑块落点是配色表的 HEX ---------- */
     var input = document.getElementById('as-input');
-    var cases = [{i:0,k:'blue'},{i:4,k:'green'},{i:7,k:'red'},{i:12,k:'graphite'}];
+    var cases = [0, 50, 120, 191];
     var bad = [];
     for (var c = 0; c < cases.length; c++){
-      input.value = cases[c].i;
+      var idx = cases[c];
+      input.value = idx;
       input.dispatchEvent(new Event('input', {bubbles:true}));
-      var cur = document.documentElement.getAttribute('data-accent');
-      if (cur !== cases[c].k) bad.push(cases[c].i + '→' + cur + '(期望' + cases[c].k + ')');
+      var cur = (document.documentElement.style.getPropertyValue('--accent') || '').trim().toUpperCase();
+      var want = AS_ANCHORS[idx].k.toUpperCase();
+      if (cur !== want) bad.push(idx + '→' + (cur || '(空)') + '(期望' + want + ')');
     }
-    ok('需求4 滑动条吸附到 16 个锚点（可保存）', bad.length === 0, bad.join('; '));
+    /* 第 24 批：滑块落点是 HEX（配色表颜色），不再是 16 个预设名。 */
+  ok('需求4 滑动条落点是合法 HEX（可保存）',
+     bad.length === 0, bad.join('; '));
 
     var th = document.getElementById('as-thumb');
     input.value = 7; input.dispatchEvent(new Event('input', {bubbles:true}));

@@ -459,7 +459,9 @@ A36_ADDS = {
                 # 2026-11-22 第 19 批：H5 分组容器
                 "h5-body", "h5-bar-hint", "h5-new-name", "h5-new-url",
                 # 2026-11-23 第 20 批：添加分组弹窗
-                "h5g-mask", "h5g-name", "h5g-err"]),
+                "h5g-mask", "h5g-name", "h5g-err",
+                # 2026-11-23 第 24 批：强调色滑动条的当前色预览
+                "as-now-dot", "as-now-name", "as-now-hex"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
@@ -622,8 +624,11 @@ acc_feats = [
     ("48 条 主题×色 令牌规则齐备", len(acc_rules) == 48),
     ("色板 16 个可点色点",
      len(re.findall(r'class="accent-dot[^"]*" data-accent=', s)) == 16),
+    # 2026-11-23（第 24 批）：applyAccent 支持 HEX，写属性改用局部变量 el，
+    # 原字面串失效 —— 改断言本质（必须设 data-accent，且不得顺手改 data-theme）。
     ("切色只改 data-accent，不改 data-theme",
-     "document.documentElement.setAttribute('data-accent', name)" in s),
+     bool(re.search(r"setAttribute\(\s*['\"]data-accent['\"]", s))
+     and not re.search(r"setAttribute\(\s*['\"]data-theme['\"]\s*,\s*name", s)),
     ("前端回传 accent 消息", "post('accent', name)" in s and "case 'accent':" in s),
     ("后端接收并持久化 accent", 'case "accent":' in guiweb and "SaveAccentPreference" in guiweb),
     ("启动时回传 accent", "Json(App.ACCENT)" in guiweb),

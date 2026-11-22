@@ -47,7 +47,18 @@ namespace AdbLogExport
         /// <summary>把外部传入的强调色名规整成合法值（非法回退 blue，旧名 white/black 迁到 graphite）。</summary>
         internal static string NormalizeAccent(string v)
         {
-            v = (v == null ? "" : v.Trim().ToLowerInvariant());
+            /* ★ 2026-11-23（第 24 批）：支持**任意 HEX 强调色**。
+               背景：强调色滑动条接入了配色表里的 192 色，用户选的可能是
+               "枯玫瑰 #B28F98"这种不在白名单里的颜色。
+               原来这里非白名单一律回退 blue —— 表现就是"选完很好看，
+               一重启变回蓝色"。这类"看起来存了实际没存"的 bug 最恶劣。
+               现在：先认 #RRGGBB（格式合法即接受，统一转大写），再走白名单。 */
+            string raw = (v == null ? "" : v.Trim());
+            if (raw.Length == 7 && raw[0] == '#'
+                && System.Text.RegularExpressions.Regex.IsMatch(raw, "^#[0-9A-Fa-f]{6}$"))
+                return raw.ToUpperInvariant();
+
+            v = raw.ToLowerInvariant();
             if (v == "white" || v == "black") v = "graphite";
             for (int i = 0; i < ACCENTS.Length; i++)
                 if (ACCENTS[i] == v) return v;
@@ -60,7 +71,15 @@ namespace AdbLogExport
         /// </summary>
         internal static int AccentArgb()
         {
-            switch (NormalizeAccent(ACCENT))
+            /* 2026-11-23（第 24 批）：HEX 强调色直接解析成 ARGB，
+               否则自定义色（从 192 色调色板选的）在启动层/标题栏会是默认蓝。 */
+            string n0 = NormalizeAccent(ACCENT);
+            if (n0.Length == 7 && n0[0] == '#')
+            {
+                try { return Convert.ToInt32(n0.Substring(1), 16); }
+                catch { }
+            }
+            switch (n0)
             {
                 case "cyan": return 0x64D2FF;
                 case "teal": return 0x40C8E0;

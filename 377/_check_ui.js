@@ -477,8 +477,12 @@ ck('Accent 16 色顺序冻结（色相环 + 三白）',
 ck('Accent 48 条 主题×色 令牌规则齐备（16 色 × 3 套）', accRules === 48, '实际 ' + accRules);
 ck('顶栏色板 16 个可点色点',
    (src.match(/class="accent-dot[^"]*" data-accent=/g) || []).length === 16);
+/* 2026-11-23（第 24 批）：applyAccent 改成支持 HEX，
+   写属性时用局部变量 el 而不是 document.documentElement 全称，
+   原来的字面串断言失效。改断言**本质**：必须设 data-accent，且不得顺手改 data-theme。 */
 ck('切色只改 data-accent，不改 data-theme',
-   src.indexOf("document.documentElement.setAttribute('data-accent', name)") >= 0);
+   /setAttribute\(\s*['"]data-accent['"]/.test(src) &&
+   !/setAttribute\(\s*['"]data-theme['"]\s*,\s*name/.test(src));
 ck('accent 消息双向链路（post + onMessage）',
    src.indexOf("post('accent', name)") >= 0 && src.indexOf("case 'accent': applyAccent") >= 0);
 ck('主按钮 / 选中页签填充引用 --accent',

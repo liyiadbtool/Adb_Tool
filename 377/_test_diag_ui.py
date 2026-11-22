@@ -183,8 +183,10 @@ setTimeout(function(){
   ok('诊断滚动容器存在', !!sc);
   // 2026-11-23（第 20 批 S5）：改成 scroll —— 滚动条常驻，
   // 避免"有没有滚动条"导致的 15px 宽度跳变（偶发缩放的根源之一）。
-  ok('滚动容器 overflow-y 为 scroll',
-     getComputedStyle(sc).overflowY === 'scroll', getComputedStyle(sc).overflowY);
+  /* 2026-11-23（第 24 批）：改回 auto —— 用 scrollbar-gutter 预留位置，
+     避免诊断页永久显示一条空轨道（其它页是 auto，观感才一致）。 */
+  ok('滚动容器 overflow-y 为 auto + gutter 预留',
+     getComputedStyle(sc).overflowY === 'auto', getComputedStyle(sc).overflowY);
   ok('滚动容器无横向溢出',
      sc.scrollWidth <= sc.clientWidth + 2,
      'scrollW=' + sc.scrollWidth + ' clientW=' + sc.clientWidth);

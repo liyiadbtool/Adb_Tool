@@ -164,8 +164,11 @@ function runAll(){
   /* ============ S5 固定两列 + scroll ============ */
   ok('★ grid 固定两列（不用 auto-fit）',
      /\.diag-scroll\{[^}]*grid-template-columns:repeat\(2, minmax\(0,1fr\)\)/.test(css));
-  ok('★ overflow-y:scroll（滚动条常驻）',
-     /\.diag-scroll\{[^}]*overflow-y:scroll/.test(css));
+  /* 2026-11-23（第 24 批）：改回 auto，由 scrollbar-gutter:stable 预留位置
+     （避免了"诊断页永远显示一条空轨道"的观感问题）。 */
+  ok('★ 诊断页用 auto + gutter 预留',
+     /\.diag-scroll\{[^}]*overflow-y:auto/.test(css) &&
+     /\.diag-scroll\{[^}]*scrollbar-gutter:stable/.test(css), 'overflow-y auto + gutter');
   ok('窄屏有单列降级', /@media \(max-width: 900px\)\{\s*\.diag-scroll\{ grid-template-columns:1fr/.test(cssAll)
      || /max-width: 900px/.test(cssAll));
 
@@ -242,6 +245,61 @@ function runAll(){
   // 主题变量（三主题适配的关键）
   ok('★ 遮罩用主题变量 --scrim', /\.h5g-mask\{[^}]*background:var\(--scrim\)/.test(css));
   ok('★ 弹窗体用 --surface', /\.h5g-box\{[^}]*background:var\(--surface\)/.test(css));
+
+  /* ============ 第 24 批：强调色 192 色滑块 ============ */
+  ok('★ 192 色数据已嵌入', ACCENT_192.length === 192, ACCENT_192.length);
+  ok('★ 滑块锚点 = 192 色', AS_ANCHORS.length === 192, AS_ANCHORS.length);
+  ok('锚点格式是 HEX',
+     /^#[0-9A-F]{6}$/.test(AS_ANCHORS[0].k), AS_ANCHORS[0].k);
+  ok('★ 锚点按色相排序（首色与末色色相不冲突）',
+     typeof AS_ANCHORS[0].h === 'number' && AS_ANCHORS[0].h <= AS_ANCHORS[1].h,
+     AS_ANCHORS[0].h + ' vs ' + AS_ANCHORS[1].h);
+
+  // HEX 强调色：设 CSS 变量 + 清 data-accent 预设
+  applyAccent('#B28F98');
+  var de = document.documentElement;
+  ok('★ HEX 强调色写入 --accent',
+     de.style.getPropertyValue('--accent').trim().toUpperCase() === '#B28F98',
+     de.style.getPropertyValue('--accent'));
+  ok('★ HEX 时 data-accent 标记为 custom',
+     de.getAttribute('data-accent') === 'custom', de.getAttribute('data-accent'));
+  ok('★ 同时算出 --accent-soft', de.style.getPropertyValue('--accent-soft').indexOf('rgba') === 0,
+     de.style.getPropertyValue('--accent-soft'));
+  ok('★ 同时算出 --on-accent', /^#/.test(de.style.getPropertyValue('--on-accent').trim()),
+     de.style.getPropertyValue('--on-accent'));
+
+  // 切回预设色要清掉行内变量
+  applyAccent('blue');
+  ok('★ 切回预设色会清掉行内 --accent',
+     de.style.getPropertyValue('--accent') === '',
+     JSON.stringify(de.style.getPropertyValue('--accent')));
+
+  // 滑块渲染（asInit 平时在打开设置面板时调，这里主动跑一次）
+  try { asInit(); } catch(e){}
+  var track = document.getElementById('as-track');
+  /* 浏览器会把 HEX 规范化成 rgb()，所以不能数 "#XXXXXX"。
+     改数色标数量：每个 stop 形如 "rgb(...) 12.34%"，数百分号。 */
+  var bg = track ? (track.style.background || '') : '';
+  var stops = (bg.match(/[\d.]+%/g) || []).length;
+  ok('★ 轨道渐变含 192 个色标', stops === 192, stops + ' | ' + bg.slice(0, 90));
+  ok('' + '滑块 max = 191',
+     document.getElementById('as-input').max === '191',
+     document.getElementById('as-input').max);
+
+  // 当前色预览
+  ok('有当前色色点', !!document.getElementById('as-now-dot'));
+  ok('有当前色名称', !!document.getElementById('as-now-name'));
+  ok('有当前色 HEX', !!document.getElementById('as-now-hex'));
+
+  asApply(10, true);
+  ok('★ 拖到第 10 色，预览名称跟着变',
+     document.getElementById('as-now-name').textContent === AS_ANCHORS[10].n,
+     document.getElementById('as-now-name').textContent);
+  ok('★ 预览 HEX 跟第 10 色一致',
+     document.getElementById('as-now-hex').textContent === AS_ANCHORS[10].k,
+     document.getElementById('as-now-hex').textContent);
+
+  applyAccent('blue');
 
   ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));
   finish();
