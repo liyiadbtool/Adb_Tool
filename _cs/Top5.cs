@@ -135,6 +135,27 @@ namespace AdbLogExport
                 StringBuilder sb = new StringBuilder();
                 sb.Append("{\"ok\":true");
                 sb.Append(",\"cores\":").Append(cores);
+
+                /* ★ 2026-11-23（第 22 批）：顺带返回**本应用自身**的 CPU/内存。
+                   以前这部分只走 :diagsample（采样中才发），不点采样就永远显示 --。
+                   用户问"为什么不显示当前应用占比的数据"——就是这个原因。
+                   这里用"进程启动至今的平均占用"单次即可算出：
+                     平均CPU% = 累计CPU时间 / (运行时长 × 核数) × 100
+                   采样进行时页面会再用 diagsample 的瞬时值覆盖它，两者不冲突。 */
+                try
+                {
+                    var self = System.Diagnostics.Process.GetCurrentProcess();
+                    double cpuMs = self.TotalProcessorTime.TotalMilliseconds;
+                    double lifeMs = (DateTime.Now - self.StartTime).TotalMilliseconds;
+                    if (lifeMs < 1) lifeMs = 1;
+                    double avgPct = cpuMs / (lifeMs * cores) * 100.0;
+                    if (avgPct < 0) avgPct = 0;
+                    if (avgPct > 100) avgPct = 100;
+                    sb.Append(",\"selfCpu\":").Append(F1(avgPct));
+                    sb.Append(",\"selfMem\":").Append(F1(self.WorkingSet64 / 1048576.0));
+                    try { self.Dispose(); } catch { }
+                }
+                catch { }
                 sb.Append(",\"totalCpu\":").Append(totalCpu < 0 ? "null" : F1(totalCpu));
                 sb.Append(",\"freeCpu\":").Append(totalCpu < 0 ? "null" : F1(100.0 - totalCpu));
                 sb.Append(",\"freeMem\":").Append(freeGB < 0 ? "null" : F1(freeGB));

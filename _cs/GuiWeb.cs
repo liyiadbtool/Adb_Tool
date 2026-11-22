@@ -1264,6 +1264,30 @@ namespace AdbLogExport.Gui
             return gp;
         }
 
+        // 从 ini 的 prefs（base64 JSON）里解析字号并换算成 ZoomFactor。
+        // 映射必须与页面 ui.html 里的 SIZES 一致，否则启动帧和页面自报值会打架。
+        private static double PrefsZoom(string b64)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(b64)) return 1.00;
+                string json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(b64));
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    json, "\"size\"\\s*:\\s*\"([a-z]+)\"");
+                if (!m.Success) return 1.00;
+                switch (m.Groups[1].Value)
+                {
+                    case "xs": return 0.50;
+                    case "s":  return 0.80;
+                    case "m":  return 1.00;
+                    case "l":  return 1.20;
+                    case "xl": return 1.50;
+                    default:   return 1.00;
+                }
+            }
+            catch { return 1.00; }
+        }
+
         private void OnCoreReady(object sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             if (e.IsSuccess)
@@ -1271,6 +1295,21 @@ namespace AdbLogExport.Gui
                 try
                 {
                     _web.CoreWebView2.Settings.IsZoomControlEnabled = false;
+
+                    /* ★ 2026-11-23（第 22 批）：**修 Dock 点击唤起闪烁**。
+                       现象：从任务栏/ Dock 唤起窗口时，界面先按 100% 画一帧，
+                             紧接着跳到用户设的字号（如 120%），看起来"闪一下"。
+                       根因：ZoomFactor 从来没在启动时设过 —— 一直是 WebView2 默认 1.0，
+                             等页面加载完发出 uizoom 消息才改，此时首帧已经画完。
+                             （和上面"蓝图标"是同一类问题：用户偏好在页面自报之前没生效。）
+                       修法：在 Navigate 之前就从 ini 的 prefs 解析出字号并把 ZoomFactor 定好，
+                             页面第一帧就是正确尺寸，不存在后续跳变。 */
+                    try
+                    {
+                        double z0 = PrefsZoom(App.PREFS);
+                        if (z0 > 0) _web.ZoomFactor = z0;
+                    }
+                    catch { }
 
                     // A18/A21：启动"最后一帧蓝色 icon"的根因与彻底修复。
                     //

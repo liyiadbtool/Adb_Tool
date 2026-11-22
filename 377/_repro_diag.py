@@ -59,9 +59,11 @@ function run(){
   switchTab('diag');
 
   // 本机：13 项（真实条数）
+  // ★ 用截图里的**真实值**（超长 CPU 串 / 真实键名）复现，
+  //   假数据太短，掩盖了布局问题。
   var pcRows = [
-    {k:'CPU', v:'13th Gen Intel i7-1360P'},
-    {k:'内存', v:'32.0 GB'},
+    {k:'CPU', v:'Intel(R) Xeon(R) CPU E5-2666 v3 @ 2.98GHz 10 核 / 20 线程 @2.98GHz'},
+    {k:'内存', v:'16 GB DDR3-1867MHz'},
     {k:'存储', v:'C: 512 GB / 可用 120 GB'},
     {k:'系统', v:'Windows 11 专业版 23H2'},
     {k:'设备名', v:'LIYI-PC'},
@@ -83,7 +85,7 @@ function run(){
     {k:'MCU 版本', v:'MCU-8838-1.0.7'},
     {k:'Android 版本', v:'14'},
     {k:'VIN 码', v:'LGWEF6A55NH123456'},
-    {k:'UUID', v:'a1b2c3d4-e5f6-7890-abcd-ef1234567890'},
+    {k:'UUID', v:'a1b2c3d4-e5f6-7890-abcd-ef1234567890-very-long-uuid-value'},
     {k:'DID', v:'DID-20261101-0001'},
     {k:'OPENID', v:'openid-9f8e7d6c5b4a3210'},
     {k:'芯片', v:'qcm8838'},
@@ -185,6 +187,36 @@ function run(){
 
   // 列数
   OUT.columnCount = (cs.gridTemplateColumns || '').trim().split(/\s+/).length;
+
+  /* ---------- 复制按钮实测（竖排 / 溢出 的量化证据）---------- */
+  (function(){
+    var card = document.getElementById('diag-card-pc');
+    if (!card) return;
+    var cps = card.querySelectorAll('.diag-cp');
+    var cardRect = card.getBoundingClientRect();
+    var sample = [];
+    var narrow = 0, overRight = 0, tall = 0;
+    var lh = 16;
+    var probe = cps[0];
+    if (probe) lh = parseFloat(getComputedStyle(probe).lineHeight) || 16;
+    for (var i = 0; i < cps.length; i++){
+      var r = cps[i].getBoundingClientRect();
+      var st = getComputedStyle(cps[i]);
+      if (r.width < 24) narrow++;                 // 两个汉字都放不下 → 竖排
+      if (r.right > cardRect.right + 1) overRight++;  // 溢出卡片右边
+      if (r.height > 34) tall++;                  // 固定 20px 高，>34 才算竖排
+      if (i < 3) sample.push({w:r2(r.width), h:r2(r.height), x:r2(r.x),
+                              ws:st.whiteSpace, flex:st.flex, minW:st.minWidth});
+    }
+    OUT.copyProbe = {
+      count: cps.length,
+      tooNarrow: narrow,
+      overflowRight: overRight,
+      tooTall: tall,
+      cardW: r2(cardRect.width),
+      sample: sample
+    };
+  })();
 
   /* ---------- 关键：模拟不同 ZoomFactor（WebView2 的缩放等价于 CSS zoom）----------
      用户的字号设置不是「中」时，整页按 0.9 / 1.15 / 1.25 缩放。
@@ -316,6 +348,13 @@ def main():
         st = " ⚠ " + ",".join(flags) if flags else " ok"
         print(f"    {k:8s} 列={v.get('cols')} clientW={v.get('clientW')} "
               f"scrollW={v.get('scrollW')} pc: {v.get('pcClientH')}/{v.get('pcScrollH')}{st}")
+
+    cp = data.get("copyProbe", {})
+    if cp:
+        print(f"  复制按钮实测: 共 {cp.get('count')} 个, 过窄(竖排) {cp.get('tooNarrow')} 个, "
+              f"溢出右边 {cp.get('overflowRight')} 个, 异常高 {cp.get('tooTall')} 个, 卡宽 {cp.get('cardW')}")
+        for smp in (cp.get("sample") or []):
+            print(f"      w={smp['w']} h={smp['h']} ws={smp['ws']} flex={smp['flex']} minW={smp['minW']}")
 
     rw = data.get("resNameWrap", {})
     print(f"  资源占用进程名换行: {rw.get('wrappedCount')} 处")

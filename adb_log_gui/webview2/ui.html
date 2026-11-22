@@ -4702,9 +4702,15 @@ body[data-navlabels="0"] .filenav-item.active::after{
      而 15px 的滚动条宽度刚好能把宽度推过阈值 —— 这就是"偶发"的来源。
      固定两列后，只有 900px 这个明确的点会变单列，中间任何宽度都不跳。 */
   grid-template-columns:repeat(2, minmax(0,1fr));
+  /* ★ 2026-11-23（第 22 批）：行高锁死为内容高度。
+     真机（WebView2）上出现过"卡片只有 3 行高、内容被裁"，
+     而在同内核的 Edge 里复现不出来 —— 说明是行高计算受环境影响。
+     grid-auto-rows:min-content 让每行高度**只由内容决定**，
+     不允许任何拉伸/压缩，从机制上排除这个变量。 */
+  grid-auto-rows:min-content;
   gap:12px;
   align-content:start;
-  align-items:start;   /* 卡片按自身内容高度，不被行高拉伸/压扁 */
+  align-items:start;
 }
 /* 窄窗口才降单列（只有一个明确断点，远离常见窗口宽度） */
 @media (max-width: 900px){
@@ -4716,6 +4722,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
   /* 第 19 批：宽度交给 Grid 分配（原来 calc(50% - 6px) + 断点是跳变根源） */
   min-width:0;
   box-sizing:border-box;
+  /* 第 22 批：高度只由内容决定，禁止被 grid 拉伸/压缩 */
+  height:auto; align-self:start;
   border:1px solid var(--border); border-radius:var(--r-5);
   background:var(--surface);
   overflow:hidden;
@@ -4806,16 +4814,32 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 2026-11-22（需求）：复制按钮常驻可见。
    上一版是 opacity:0 + hover 才出现 —— 用户明确说要改。 */
+/* ★ 2026-11-23（第 22 批）：复制按钮**宽度写死**。
+   真机截图里它被压成一字宽 → "复""制"两字竖排堆叠、还溢出卡片右边。
+   原因应该是 flex 收缩在某些环境下没被 flex:0 0 auto 拦住。
+   这里三重保险：flex-basis 定死 / min-width 定死 / width 定死，
+   再加 writing-mode 明确横向，任何覆盖都压不住。 */
 .diag-row .diag-cp{
-  flex:0 0 auto;
+  flex:0 0 36px;
+  width:36px;
+  min-width:36px;
+  max-width:36px;
+  height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  overflow:hidden;
+  writing-mode:horizontal-tb;
   border:1px solid transparent; background:transparent;
   color:var(--text-faint);
   font-size:11px; cursor:pointer;
-  padding:0 5px; border-radius:var(--r-1);
+  padding:0;
+  border-radius:var(--r-1);
   opacity:.55;
   transition:opacity 120ms linear, background 120ms linear, color 120ms linear;
   font-family:var(--font-ui);
-  white-space:nowrap;
+  line-height:1;
 }
 .diag-row:hover .diag-cp{ opacity:1; }
 .diag-row .diag-cp:hover{
@@ -10938,18 +10962,20 @@ function renderRes(){
         本应用占用  ← 这次恢复（本工具自身的 CPU / 内存）
         本机剩余    ← 第 20 批加的
         TOP5        ← 第 20 批加的 */
+  /* 2026-11-23（第 22 批）：
+     · 标签按用户要求改成"应用占比 CPU / 应用占比 内存"
+     · 数据来源优先用 diagtop5 带回的 selfCpu/selfMem（**不点采样也有值**），
+       采样进行时再用 diagsample 的瞬时值覆盖 —— 两条通道都有值，
+       不会出现"永远是 --"的情况。 */
   html += '<div class="diag-group">本应用</div>';
-  if (_diag.sampling && _diag.lastCpu >= 0){
-    html += resRow('CPU', _diag.lastCpu, ' %');
-    html += resRow('内存', _diag.lastMem, ' MB');
-  } else if (_diag.sampling){
-    html += '<div class="diag-row"><span class="diag-k">CPU</span>'
-          + '<span class="diag-v" style="color:var(--text-faint)">测量中…</span></div>';
-    html += resRow('内存', _diag.lastMem > 0 ? _diag.lastMem : null, ' MB');
-  } else {
-    html += resRow('CPU', null);
-    html += resRow('内存', null);
-  }
+  var selfCpu = null, selfMem = null;
+  if (_diag.sampling && _diag.lastCpu >= 0) selfCpu = _diag.lastCpu;
+  else if (host && host.selfCpu != null) selfCpu = host.selfCpu;
+  if (_diag.sampling && _diag.lastMem > 0) selfMem = _diag.lastMem;
+  else if (host && host.selfMem != null) selfMem = host.selfMem;
+
+  html += resRow('应用占比 CPU', selfCpu, ' %');
+  html += resRow('应用占比 内存', selfMem, ' MB');
 
   html += '<div class="diag-group">本机</div>';
   if (host && host.ok){
