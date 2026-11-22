@@ -85,13 +85,16 @@ setTimeout(function(){
     ok('停止按钮初始禁用',
        (document.getElementById('mk-stop')||{}).disabled===true);
 
-    /* ---- 4. 命令拼接 ---- */
+    /* ---- 4. 命令拼接 ----
+       2026-11-22：单包模式已删除，只剩白名单/黑名单。
+       要验证 -p 必须切到黑名单模式（它仍需要一个目标包）。 */
+    mkSetScope('black');
     document.getElementById('mk-pkg').value='com.test.demo';
     document.getElementById('mk-minutes').value='5';
     document.getElementById('mk-throttle').value='200';
     document.getElementById('mk-count').value='0';
-    var cmd=mkBuildCmd();
-    ok('命令含包名', /-p com\.test\.demo/.test(cmd||''), cmd);
+    var cmd=mkBuildCmd('com.test.demo');
+    ok('黑名单命令含包名', /-p com\.test\.demo/.test(cmd||''), cmd);
     ok('命令含 throttle', /--throttle 200/.test(cmd||''), cmd);
     ok('命令含 --ignore-crashes', /--ignore-crashes/.test(cmd||''), cmd);
     ok('命令含 --ignore-timeouts', /--ignore-timeouts/.test(cmd||''), cmd);

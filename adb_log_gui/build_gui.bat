@@ -192,10 +192,19 @@ copy /y "%~dp0webview2\ui.html"                     "%DIST%\internal\" >nul
 rem [2026-11-15] Window icon: TrySetCatIcon reads adb_Tool.ico next to the exe.
 rem The /win32icon embedded resource only covers taskbar / Alt+Tab. Ship both.
 copy /y "%~dp0adb_Tool.ico"                         "%DIST%\internal\" >nul
-rem ffmpeg.exe: needed by the frame-grab screen recorder (screenrecord is blocked
-rem by FLAG_SECURE on these IVI screens). It is large (~105 MB), so it is copied
-rem best-effort; the recorder errors clearly at runtime if it is missing.
-copy /y "%~dp0ffmpeg.exe"                           "%DIST%\" >nul 2>&1
+rem [2026-11-22] ffmpeg.exe and scrcpy are NOT bundled anymore.
+rem
+rem   Why: both are optional external tools that the app already locates at
+rem   runtime through a 4-level fallback (ini value -> exe folder -> PATH ->
+rem   well-known install dirs). See _cs/Ffmpeg.cs and _cs/Scrcpy.cs.
+rem
+rem   ffmpeg alone was 101 MB -- 89% of the whole package. Shipping it made
+rem   every hand-off a 113 MB zip for a feature most users never touch.
+rem   Users who want frame-grab recording point ini `ffmpeg=` at their own
+rem   copy (or just install ffmpeg), and scrcpy is normally already installed
+rem   on a tester machine anyway.
+rem
+rem   Result: dist drops from ~113 MB to ~12 MB.
 
 rem [2026-11-22] Fastbot runtime bundle: 3 jars + native .so per ABI.
 rem C# looks for it at <exe dir>\fastbot\ (GuiWeb.cs case "fbdeploy").
@@ -215,31 +224,34 @@ rem Guard: if any required file is missing, say so loudly. Shipping a package
 rem that "looks built" but will not start is worse than failing visibly here.
 set "MISSING="
 for %%F in ("%DIST%\adb_Tool.exe" "%DIST%\internal\Microsoft.Web.WebView2.Core.dll" "%DIST%\internal\Microsoft.Web.WebView2.WinForms.dll" "%DIST%\internal\WebView2Loader.dll" "%DIST%\internal\adb_log_export.ini" "%DIST%\internal\cmds.ini" "%DIST%\internal\ui.html" "%DIST%\internal\adb_Tool.ico") do (
-    if not exist %%F set "MISSING=!MISSING! %%~nxF"
+    if not exist %%F set "MISSING=!MISSING! %%~nxf"
 )
 if defined MISSING (
     echo.
     echo [WARN] dist is missing:%MISSING%
     echo        check the webview2 subfolder and the ini files
 )
-if not exist "%DIST%\ffmpeg.exe" (
-    echo.
-    echo [WARN] ffmpeg.exe not bundled: screen recording ^(frame-grab^) will fail.
-    echo        put ffmpeg.exe next to adb_Tool.exe, or set ffmpeg= in the ini.
-)
 
-rem Size guard: a healthy dist is ~106 MB (ffmpeg.exe alone is ~105 MB; the app
-rem itself is 1~3 MB). Warn past 200 MB -- that means cache or logs leaked in.
+rem Optional-tools hint (not a failure -- both are found at runtime or optional).
+echo.
+echo Optional tools (not bundled, located at runtime):
+echo   ffmpeg  - only needed by the frame-grab recorder; set ini ffmpeg= if it is
+echo             not on PATH. Without it, recording falls back with a clear error.
+echo   scrcpy  - the external mirror window; if missing, the built-in frame-grab
+echo             channel is used instead.
+
+rem Size guard: a healthy dist is ~12 MB now (app ~3 MB + fastbot ~8.6 MB).
+rem Warn past 30 MB -- that means ffmpeg slipped back in, or cache/logs leaked.
 rem Accumulate byte sizes with plain cmd (no external tools, no quoting traps).
 set /a "DTOTAL=0"
 for /r "%DIST%" %%F in (*) do set /a "DTOTAL+=%%~zF"
 if %DTOTAL% LEQ 0 set "DTOTAL=1"
 set /a "DMB=DTOTAL/1048576"
 set /a "DKb=(DTOTAL%%1048576)*100/1048576"
-if %DMB% GEQ 200 (
+if %DMB% GEQ 30 (
     echo.
-    echo [WARN] dist size looks wrong: %DMB% MB ^(expected ~106 MB incl. ffmpeg^)
-    echo        runtime cache or logs probably leaked into the package
+    echo [WARN] dist size looks wrong: %DMB% MB ^(expected ~12 MB^)
+    echo        ffmpeg.exe or runtime cache/logs probably leaked into the package
 )
 
 echo.

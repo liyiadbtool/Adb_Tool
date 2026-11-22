@@ -366,7 +366,9 @@ A36_ADDS = {
                      "mkScanApps", "mkImportFromApk", "mkAddPkgFromInput",
                      # 2026-11-22 Fastbot 子页：二级页签/部署/配置/运行
                      "mkSubTab", "fbSetAgent", "fbCheck", "fbDeploy",
-                     "fbStart", "fbStop", "fbClear", "fbExport", "fbListPkgs"]),
+                     "fbStart", "fbStop", "fbClear", "fbExport", "fbListPkgs",
+                     # 2026-11-22 Fastbot 白/黑名单
+                     "fbSetScope", "fbScanApps", "fbAddPkg"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -388,7 +390,11 @@ A36_ADDS = {
                 "fb-bugreport", "fb-keep-model", "fb-outdir",
                 "fb-start", "fb-stop", "fb-est", "fb-state",
                 "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
-                "fastbot-out"]),
+                "fastbot-out",
+                # 2026-11-22 Fastbot 白/黑名单：范围切换 + 包清单 + Activity 名单
+                "fb-scope", "fb-row-single", "fb-row-white", "fb-row-black",
+                "fb-row-hint", "fb-hint-text", "fb-list", "fb-listcnt",
+                "fb-add-pkg", "fb-actlist"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

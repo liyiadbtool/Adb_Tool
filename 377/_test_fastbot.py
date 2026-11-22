@@ -39,6 +39,13 @@ EDGE = _find_edge()
 PROBE = r"""
 <script>
 window.__E=[];window.addEventListener('error',e=>window.__E.push(String(e.message)));
+// 测试辅助：复用页面的添加逻辑（输入框 + 按钮）
+function fbAddPkg_with(v){
+  var el=document.getElementById('fb-add-pkg');
+  if(!el) return;
+  el.value=v;
+  fbAddPkg();
+}
 setTimeout(function(){
   var R=[];
   function ok(n,c,e){R.push((c?'PASS':'FAIL')+' | '+n+(c?'':' -> '+(e===undefined?'':e)));}
@@ -223,6 +230,59 @@ setTimeout(function(){
   _fb.deployed=false; _fb.running=false;
   fbStart();
   ok('未部署时未进入运行态', _fb.running===false);
+
+  /* ---- 11b. 测试范围：白名单 / Activity 黑名单（2026-11-22）----
+     实测确认的机制差异（不能照抄原生 monkey）：
+       白名单 → 重复给 -p（日志打多行 AllowPackage）
+       黑名单 → Fastbot 没有包级黑名单，只有 --act-blacklist-file（页面级） */
+  ok('范围切换函数存在', typeof fbSetScope === 'function');
+
+  // 单包模式：一个 -p
+  fbSetScope('single');
+  document.getElementById('fb-pkg').value = 'com.test.one';
+  var c1 = fbBuildCmd();
+  ok('单包只给一个 -p', (c1.match(/-p /g)||[]).length===1, c1);
+
+  // 白名单：多个 -p
+  _fbApps = [];
+  fbAddPkg_with('com.test.a, com.test.b');
+  fbSetScope('white');
+  var c2 = fbBuildCmd();
+  ok('白名单用重复 -p', (c2.match(/-p /g)||[]).length===2, c2);
+  ok('白名单含两个包名',
+     c2.indexOf('com.test.a')>=0 && c2.indexOf('com.test.b')>=0, c2);
+  ok('白名单不含 --pkg-whitelist-file（Fastbot 没这个参数）',
+     c2.indexOf('pkg-whitelist')<0, c2);
+
+  // 白名单为空 → 返回 null
+  _fbApps = [];
+  ok('白名单为空时命令为 null', fbBuildCmd()===null);
+
+  // Activity 黑名单：有内容才加参数
+  fbSetScope('black');
+  document.getElementById('fb-pkg').value = 'com.test.blk';
+  document.getElementById('fb-actlist').value = '';
+  var c3 = fbBuildCmd();
+  ok('Activity 黑名单为空时不加参数',
+     c3.indexOf('--act-blacklist-file')<0, c3);
+
+  document.getElementById('fb-actlist').value =
+    'com.test.blk.AboutActivity\ncom.test.blk.ResetActivity';
+  var c4 = fbBuildCmd();
+  ok('Activity 黑名单有内容时加参数',
+     c4.indexOf('--act-blacklist-file')>=0, c4);
+  ok('黑名单路径在 /sdcard',
+     c4.indexOf('/sdcard/.fb_act_black.txt')>=0, c4);
+
+  // 名单内容格式
+  var abl = fbBuildActBlacklist();
+  ok('Activity 名单每行一个', abl.split('\n').length===2, abl);
+  ok('Activity 名单已去空行',
+     abl.indexOf('\n\n')<0, JSON.stringify(abl));
+
+  // 恢复 single 供后续用例
+  fbSetScope('single');
+  document.getElementById('fb-pkg').value = 'com.test.fb';
 
   /* ---- 12. 清空 ---- */
   fbClear();

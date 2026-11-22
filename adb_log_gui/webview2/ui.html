@@ -4100,6 +4100,20 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-color:var(--accent);
 }
 
+/* Fastbot Activity 黑名单输入框 */
+.fb-actlist{
+  width:100%;
+  min-height:88px; max-height:160px;
+  padding:8px 10px;
+  border:1px solid var(--border); border-radius:var(--r-3);
+  background:var(--well);
+  color:var(--text);
+  font-family:var(--font-mono); font-size:11.5px; line-height:1.6;
+  resize:vertical;
+  outline:none;
+}
+.fb-actlist:focus{ border-color:var(--accent); }
+
 /* 崩溃详情弹层（需求 B-1） */
 .mk-crash-mask{
   position:fixed; inset:0; z-index:96;
@@ -4844,8 +4858,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <div class="mk-row">
             <span class="mk-lbl">测试范围</span>
             <div class="mk-seg" id="mk-scope">
-              <button type="button" data-scope="single" class="on" onclick="mkSetScope('single')">单包</button>
-              <button type="button" data-scope="white" onclick="mkSetScope('white')">白名单</button>
+              <!-- 2026-11-22（需求）：删除「单包」——只测一个包用白名单勾一个就是同样效果，
+                   多一个模式反而让用户以为两者有别的区别。白名单定为默认。 -->
+              <button type="button" data-scope="white" class="on" onclick="mkSetScope('white')">白名单</button>
               <button type="button" data-scope="black" onclick="mkSetScope('black')">黑名单</button>
             </div>
             <span class="mk-lbl">执行方式</span>
@@ -4975,11 +4990,61 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
         <!-- 配置区 -->
         <div class="mk-panel" id="fb-cfg">
+          <!-- 2026-11-22：Fastbot 的包过滤机制与原生 monkey **完全不同**，已实测确认：
+                 · 白名单 → 重复给 -p（多个包都允许）。实测输出 // AllowPackage: xxx 两行
+                 · 黑名单 → Fastbot **没有包级黑名单**，只有 Activity 级
+                            --act-blacklist-file <file>（每行一个 Activity 全名）
+                 所以这里的黑名单语义是「排除这些 Activity」，不是排除包。 -->
           <div class="mk-row">
+            <span class="mk-lbl">测试范围</span>
+            <div class="mk-seg" id="fb-scope">
+              <button type="button" data-fscope="single" class="on" onclick="fbSetScope('single')">单包</button>
+              <button type="button" data-fscope="white" onclick="fbSetScope('white')">白名单</button>
+              <button type="button" data-fscope="black" onclick="fbSetScope('black')">Activity 黑名单</button>
+            </div>
+          </div>
+
+          <div class="mk-row" id="fb-row-single">
             <span class="mk-lbl">包名</span>
             <input class="mk-inp" id="fb-pkg" placeholder="例：com.gxatek.ivi" spellcheck="false">
             <button class="btn ghost sm" onclick="fbListPkgs()">列出应用</button>
           </div>
+
+          <!-- 白名单：多个包 -->
+          <div class="mk-row" id="fb-row-white" style="display:none;">
+            <span class="mk-lbl" style="align-self:flex-start;padding-top:6px;">包清单</span>
+            <div class="mk-listwrap">
+              <div class="mk-listbar">
+                <button class="btn ghost sm" onclick="fbScanApps()">从设备刷新</button>
+                <span class="spacer"></span>
+                <span class="mk-listcnt" id="fb-listcnt">0 个</span>
+              </div>
+              <div class="mk-list" id="fb-list">
+                <div class="mk-list-empty">还没有应用。点「从设备刷新」导入。</div>
+              </div>
+              <div class="mk-listadd">
+                <input class="mk-inp" id="fb-add-pkg" placeholder="手动添加包名，回车确认（可逗号分隔）" spellcheck="false">
+                <button class="btn ghost sm" onclick="fbAddPkg()">添加</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity 黑名单 -->
+          <div class="mk-row" id="fb-row-black" style="display:none;">
+            <span class="mk-lbl" style="align-self:flex-start;padding-top:6px;">排除 Activity</span>
+            <div class="mk-listwrap">
+              <div class="mk-listbar">
+                <span class="mk-hint">每行一个 Activity 全名，被排除的页面 Fastbot 不会进入。</span>
+              </div>
+              <textarea class="fb-actlist" id="fb-actlist" spellcheck="false"
+                        placeholder="例：&#10;com.gxatek.ivi.settings.AboutActivity&#10;com.gxatek.ivi.settings.FactoryResetActivity"></textarea>
+            </div>
+          </div>
+
+          <div class="mk-row" id="fb-row-hint" style="display:none;">
+            <span class="mk-hint" id="fb-hint-text"></span>
+          </div>
+
           <div class="mk-row">
             <span class="mk-lbl">时长(分)</span>
             <input class="mk-inp mk-num" id="fb-minutes" type="number" min="1" max="720" value="30">
@@ -5339,7 +5404,7 @@ var _mk = {
   logOffset: 0,      // 已读到的 crash log 行数（增量拉取，防重复）
 
   /* ---- 2026-11-22（多包/白名单/黑名单）---- */
-  scope: 'single',   // single | white | black
+  scope: 'white',    // white | black（单包模式 2026-11-22 已删除）
   exec: 'seq',       // seq（顺序）| rotate（轮转）
   apps: [],          // [{pkg, name, sel}] 应用清单（持久化到 ini）
   queue: [],         // 顺序模式下待跑的包名队列
@@ -5387,12 +5452,13 @@ function mkSetScope(v){
     var bs = box.querySelectorAll('button');
     for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-scope')===v);
   }
-  // 单包模式显示包名输入；多包模式显示清单
+  // 2026-11-22（需求）：单包模式已删除，现在只有 白名单 / 黑名单 两种，
+  // 所以清单区恒可见，包名输入行恒隐藏（保留 DOM 供黑名单模式的 -p 使用）。
   var rowSingle = document.getElementById('mk-row-single');
   var rowList = document.getElementById('mk-row-list');
   var rowHint = document.getElementById('mk-row-blackhint');
-  if(rowSingle) rowSingle.style.display = (v==='single') ? '' : 'none';
-  if(rowList) rowList.style.display = (v==='single') ? 'none' : '';
+  if(rowSingle) rowSingle.style.display = 'none';
+  if(rowList) rowList.style.display = '';
   if(rowHint) rowHint.style.display = (v==='black') ? '' : 'none';
 
   // 黑名单模式：轮转没有意义（本来就是一个进程跑全部），强制顺序并禁用轮转
@@ -5578,9 +5644,7 @@ function mkUpdateEstimate(){
   if(!el) return;
   var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
   var n = 0;
-  if(_mk.scope === 'single'){
-    n = (((document.getElementById('mk-pkg')||{}).value || '').trim()) ? 1 : 0;
-  } else if(_mk.scope === 'white'){
+  if(_mk.scope === 'white'){
     n = _mk.apps.filter(function(a){ return a.sel; }).length;
   } else {
     // 黑名单：跑全设备，数量未知，按清单外估算
@@ -5861,12 +5925,10 @@ function mkStart(){
   }
 
   /* ---- 1. 按范围模式确定要跑哪些包 ---- */
+  // 2026-11-22：单包模式已删除（只测一个包 = 白名单勾一个），
+  // 所以这里只剩 white / black 两个分支。
   var pkgs = [];
-  if(_mk.scope === 'single'){
-    var one = ((document.getElementById('mk-pkg')||{}).value || '').trim();
-    if(!one){ toast('请先填包名（可点「列出应用」从设备拉取）', 'err'); return; }
-    pkgs = [one];
-  } else if(_mk.scope === 'white'){
+  if(_mk.scope === 'white'){
     pkgs = _mk.apps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
     if(!pkgs.length){ toast('白名单为空，请先勾选要测的应用', 'err'); return; }
   } else {
@@ -6537,6 +6599,140 @@ function mkSubTab(name){
   if(name==='fastbot' && !_fb.checked) fbCheck();
 }
 
+/* ============================================================================
+   Fastbot 的测试范围（2026-11-22）
+   ----------------------------------------------------------------------------
+   实测确认的机制差异（不要照抄原生 monkey 的实现）：
+
+   ① 白名单 = 重复给 -p
+      实测：monkey -p com.android.settings -p com.android.launcher3
+      日志输出两行 // AllowPackage: xxx —— 两个包都生效。
+      Fastbot **没有** --pkg-whitelist-file 这种参数。
+
+   ② 黑名单只有 Activity 级，没有包级
+      参数 --act-blacklist-file <file>，文件每行一个 Activity 全名。
+      所以本页的黑名单语义是「排除这些页面」，不是「排除包」。
+      白名单和黑名单不能同时用（Fastbot 按"非白即黑"原则）。
+
+   ③ Activity 名单文件必须放 /sdcard（Fastbot 硬编码读这个目录）
+   ============================================================================ */
+var _fbScope = 'single';
+var _fbApps = [];        // [{pkg, name, sel}]
+
+function fbSetScope(v){
+  _fbScope = v;
+  var box = document.getElementById('fb-scope');
+  if(box){
+    var bs = box.querySelectorAll('button');
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-fscope')===v);
+  }
+  var r1 = document.getElementById('fb-row-single');
+  var r2 = document.getElementById('fb-row-white');
+  var r3 = document.getElementById('fb-row-black');
+  var r4 = document.getElementById('fb-row-hint');
+  if(r1) r1.style.display = (v==='single') ? '' : 'none';
+  if(r2) r2.style.display = (v==='white') ? '' : 'none';
+  if(r3) r3.style.display = (v==='black') ? '' : 'none';
+  if(r4) r4.style.display = '';
+
+  var hint = document.getElementById('fb-hint-text');
+  if(hint){
+    if(v==='single'){
+      hint.textContent = '只测一个包。';
+    } else if(v==='white'){
+      var n = _fbApps.filter(function(a){ return a.sel; }).length;
+      hint.textContent = n
+        ? ('勾选 ' + n + ' 个包，Fastbot 会在这些包之间自由探索（多包传多个 -p）。')
+        : '勾选要测的包（Fastbot 用多个 -p 实现，实测支持）。';
+    } else {
+      hint.textContent = '排除指定 Activity：这些页面 Fastbot 不会进入。'
+        + '注意这是**页面级**排除，不是包级——Fastbot 没有包级黑名单。';
+    }
+  }
+  fbRenderList();
+}
+
+function fbRenderList(){
+  var box = document.getElementById('fb-list');
+  if(!box) return;
+  var cnt = document.getElementById('fb-listcnt');
+  if(!_fbApps.length){
+    box.innerHTML = '<div class="mk-list-empty">还没有应用。点「从设备刷新」导入。</div>';
+    if(cnt) cnt.textContent = '0 个';
+    return;
+  }
+  var sel = 0, html = '';
+  for(var i=0;i<_fbApps.length;i++){
+    var a = _fbApps[i];
+    if(a.sel) sel++;
+    var nm = a.name || a.pkg;
+    html += '<label class="mk-app">'
+         +  '<input type="checkbox" data-pkg="' + mkEsc(a.pkg) + '"' + (a.sel?' checked':'')
+         +  ' onchange="fbToggleApp(this)">'
+         +  '<span class="mk-app-name" title="' + mkEsc(nm) + '">' + mkEsc(nm) + '</span>'
+         +  '<span class="mk-app-pkg" title="' + mkEsc(a.pkg) + '">' + mkEsc(a.pkg) + '</span>'
+         +  '</label>';
+  }
+  box.innerHTML = html;
+  if(cnt) cnt.textContent = sel + ' / ' + _fbApps.length + ' 个';
+}
+
+function fbToggleApp(cb){
+  var pkg = cb.getAttribute('data-pkg');
+  for(var i=0;i<_fbApps.length;i++){
+    if(_fbApps[i].pkg === pkg){ _fbApps[i].sel = cb.checked; break; }
+  }
+  fbRenderList();
+  fbSetScope(_fbScope);
+}
+
+function fbAddPkg(){
+  var el = document.getElementById('fb-add-pkg');
+  if(!el) return;
+  var raw = (el.value || '').trim();
+  if(!raw) return;
+  var parts = raw.split(/[\s,;，；]+/).filter(function(x){ return x; });
+  for(var i=0;i<parts.length;i++){
+    var exists = false;
+    for(var j=0;j<_fbApps.length;j++) if(_fbApps[j].pkg === parts[i]){ exists = true; break; }
+    if(!exists) _fbApps.push({ pkg: parts[i], name: '', sel: true });
+  }
+  el.value = '';
+  fbRenderList();
+  fbSetScope(_fbScope);
+}
+
+function fbScanApps(){
+  fbLog('$ pm list packages -3', 'cmd');
+  try { post('run', 'shell pm list packages -3', 15); } catch(e) {}
+}
+
+function fbOnPkgScan(text){
+  var lines = String(text||'').split(/[\r\n]+/);
+  var added = 0;
+  for(var i=0;i<lines.length;i++){
+    var m = lines[i].match(/^package:(.+)$/);
+    if(!m) continue;
+    var pkg = m[1].trim();
+    var exists = false;
+    for(var j=0;j<_fbApps.length;j++) if(_fbApps[j].pkg === pkg){ exists = true; break; }
+    if(!exists){ _fbApps.push({ pkg: pkg, name: '', sel: true }); added++; }
+  }
+  fbRenderList();
+  fbSetScope(_fbScope);
+  if(added) toast('扫描到 ' + added + ' 个应用', 'ok');
+}
+
+/* Activity 黑名单文件内容（每行一个） */
+function fbBuildActBlacklist(){
+  var el = document.getElementById('fb-actlist');
+  if(!el) return '';
+  return (el.value || '').split(/\r?\n/)
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return s; })
+    .join('\n');
+}
+
 function fbSetAgent(v){
   _fb.agent = v;
   var box = document.getElementById('fb-agent');
@@ -6676,9 +6872,20 @@ function fbListPkgs(){
 }
 
 /* ---------- 命令构建 ---------- */
+/* 取本次要测的包名列表。
+   单包 → 一个；白名单 → 勾选的多个；Activity 黑名单 → 仍需目标包（单包）。 */
+function fbGetPkgs(){
+  if(_fbScope === 'white'){
+    return _fbApps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
+  }
+  var one = ((document.getElementById('fb-pkg')||{}).value || '').trim();
+  return one ? [one] : [];
+}
+
 function fbBuildCmd(){
-  var pkg = ((document.getElementById('fb-pkg')||{}).value || '').trim();
-  if(!pkg) return null;
+  var pkgs = fbGetPkgs();
+  if(!pkgs.length) return null;
+
   var min = parseInt((document.getElementById('fb-minutes')||{}).value, 10) || 30;
   var thr = parseInt((document.getElementById('fb-throttle')||{}).value, 10) || 300;
   var outdir = ((document.getElementById('fb-outdir')||{}).value || '').trim();
@@ -6687,12 +6894,21 @@ function fbBuildCmd(){
   var parts = [
     'CLASSPATH=' + cp,
     'exec', 'app_process', '/system/bin',
-    'com.android.commands.monkey.Monkey',
-    '-p', pkg,
-    '--agent', _fb.agent,
-    '--running-minutes', String(min),
-    '--throttle', String(thr)
+    'com.android.commands.monkey.Monkey'
   ];
+
+  // 多个包就重复给 -p（实测支持，日志会打多行 AllowPackage）
+  for(var i=0;i<pkgs.length;i++) parts.push('-p', pkgs[i]);
+
+  // Activity 黑名单（仅 black 模式且有内容时）
+  if(_fbScope === 'black' && fbBuildActBlacklist()){
+    parts.push('--act-blacklist-file', '/sdcard/.fb_act_black.txt');
+  }
+
+  parts.push('--agent', _fb.agent);
+  parts.push('--running-minutes', String(min));
+  parts.push('--throttle', String(thr));
+
   if((document.getElementById('fb-bugreport')||{}).checked) parts.push('--bugreport');
   if(outdir) parts.push('--output-directory', outdir);
   parts.push('-v', '-v');
@@ -6706,8 +6922,28 @@ function fbStart(){
     toast('Fastbot 还没部署，请先点「一键部署」', 'err');
     return;
   }
-  var pkg = ((document.getElementById('fb-pkg')||{}).value || '').trim();
-  if(!pkg){ toast('请先填包名', 'err'); return; }
+  var pkgs = fbGetPkgs();
+  if(!pkgs.length){
+    toast(_fbScope==='white' ? '白名单为空，请先勾选要测的应用' : '请先填包名', 'err');
+    return;
+  }
+  var pkg = pkgs[0];
+
+  // Activity 黑名单要先推到设备（Fastbot 读 /sdcard 下的文件）
+  if(_fbScope === 'black'){
+    var abl = fbBuildActBlacklist();
+    if(abl){
+      var local = 'C:\\Windows\\Temp\\fb_act_black.txt';
+      try {
+        post('mkfile', abl, 0, 0, { local: local });
+        post('run', 'push "' + local + '" "/sdcard/.fb_act_black.txt"', 16);
+      } catch(e){}
+      fbLog('  已写入 Activity 黑名单（' + abl.split('\n').length + ' 条）', '');
+    } else {
+      fbLog('  ⚠ Activity 黑名单为空，本次不排除任何页面', 'anr');
+    }
+  }
+
   var cmd = fbBuildCmd();
   if(!cmd) return;
 
@@ -6728,7 +6964,8 @@ function fbStart(){
   document.getElementById('fb-stop').disabled = false;
   fbSetState('遍历中…', true);
 
-  fbLog('▶ 开始 Fastbot 遍历：' + pkg, 'ok');
+  fbLog('▶ 开始 Fastbot 遍历：' + (pkgs.length > 1 ? (pkgs.length + ' 个包') : pkg), 'ok');
+  if(pkgs.length > 1) fbLog('  包列表：' + pkgs.join(', '), '');
   fbLog('  Agent：' + _fb.agent + '，时长 ' + min + ' 分钟，间隔 ' + _fb.throttle, '');
   fbLog('  命令：' + cmd, 'cmd');
 
@@ -6987,6 +7224,13 @@ function onMessage(ev){
           if(db.length) fbOnCrashDump(db.join('\n'));
         } catch(e){}
       }
+      // src=15：Fastbot 白名单扫描结果
+      if(msg.src === 15 && typeof fbOnPkgScan === 'function'){
+        try {
+          var fb2 = _fb._scanBuf || []; _fb._scanBuf = [];
+          if(fb2.length) fbOnPkgScan(fb2.join('\n'));
+        } catch(e){}
+      }
       break;
     case 'clear': clearLog(); break;
     case 'filePath': onFilePath(msg.data); break;
@@ -7103,6 +7347,10 @@ function appendLine(msg){
   if(msg.src === 13){ try { fbOnOut(msg.text || ''); } catch(e){} return; }
   // src=14：设备 crash-dump.log 内容
   if(msg.src === 14){ try { (_fb._dumpBuf = _fb._dumpBuf || []).push(msg.text || ''); } catch(e){} return; }
+  // src=15：Fastbot 白名单的应用扫描（package:xxx）
+  if(msg.src === 15){ try { (_fb._scanBuf = _fb._scanBuf || []).push(msg.text || ''); } catch(e){} return; }
+  // src=16：Activity 黑名单文件 push 输出
+  if(msg.src === 16){ try { fbLog('  ' + (msg.text||''), ''); } catch(e){} return; }
   appendLog(msg);
 }
 
