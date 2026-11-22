@@ -153,6 +153,85 @@ setTimeout(function(){
     ok('能力解析 UA=1 正确', _mkEnv.uiautomator === true);
     ok('能力解析 IN=1 正确', _mkEnv.input === true);
 
+    /* ---- 5c. 崩溃堆栈抓取（需求 B-1）----
+       实测格式（Android 14 emulator）：
+         E AndroidRuntime: FATAL EXCEPTION: main
+         E AndroidRuntime: Process: com.android.settings, PID: 2586
+         E AndroidRuntime: java.lang.NullPointerException: msg
+         E AndroidRuntime: \tat android.app.ActivityThread.xxx(ActivityThread.java:2124) */
+    _mk.crashes=[]; _mk.crash=0; _mk.seenCrashSig={};
+    _mk.pkg='com.test.demo'; _mk.mode='monkey';
+    mkOnCrashLogChunk([
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: FATAL EXCEPTION: main',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: Process: com.test.demo, PID: 2586',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: java.lang.NullPointerException: boom',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: \tat android.app.ActivityThread.main(AT.java:1)',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: \tat com.demo.Main.run(Main.java:9)'
+    ]);
+    ok('崩溃被记录到 crashes', _mk.crashes.length===1, _mk.crashes.length);
+    if(_mk.crashes.length){
+      var c0=_mk.crashes[0];
+      ok('异常类型提取正确', c0.type==='java.lang.NullPointerException', c0.type);
+      ok('异常消息提取正确', c0.msg==='boom', c0.msg);
+      ok('进程名提取正确', /com\.test\.demo/.test(c0.proc||''), c0.proc);
+      ok('堆栈帧已采集', c0.stack.length===2, c0.stack.length);
+      ok('崩溃计数已更新',
+         document.getElementById('mk-st-crash').textContent==='1',
+         document.getElementById('mk-st-crash').textContent);
+    }
+
+    // 去重：同样的内容再来一遍不应重复计数
+    var before=_mk.crashes.length;
+    mkOnCrashLogChunk([
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: FATAL EXCEPTION: main',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: Process: com.test.demo, PID: 2586',
+      '11-22 14:25:20.361  2586  2586 E AndroidRuntime: java.lang.NullPointerException: boom'
+    ]);
+    ok('重复崩溃不重复计数', _mk.crashes.length===before, before+' -> '+_mk.crashes.length);
+
+    // 非被测包的崩溃不应计入
+    mkOnCrashLogChunk([
+      '11-22 14:26:00.000  9999  9999 E AndroidRuntime: FATAL EXCEPTION: main',
+      '11-22 14:26:00.000  9999  9999 E AndroidRuntime: Process: com.other.app, PID: 9999',
+      '11-22 14:26:00.000  9999  9999 E AndroidRuntime: java.lang.IllegalStateException: x'
+    ]);
+    ok('非被测包崩溃被过滤', _mk.crashes.length===before, before+' -> '+_mk.crashes.length);
+
+    /* ---- 5d. 崩溃详情弹层 ---- */
+    ok('崩溃弹层存在', !!document.getElementById('mk-crash-mask'));
+    mkOpenCrash(0);
+    ok('点开崩溃后弹层可见',
+       document.getElementById('mk-crash-mask').style.display==='flex');
+    ok('弹层显示异常类型',
+       document.getElementById('mk-crash-title').textContent.indexOf('NullPointer')>=0,
+       document.getElementById('mk-crash-title').textContent);
+    ok('弹层显示堆栈内容',
+       document.getElementById('mk-crash-body').textContent.indexOf('ActivityThread')>=0);
+    mkCloseCrash();
+    ok('关闭后弹层隐藏',
+       document.getElementById('mk-crash-mask').style.display==='none');
+
+    /* ---- 5e. 自动重启开关 ---- */
+    var rst=document.getElementById('mk-restart-on-crash');
+    ok('自动重启开关存在且默认勾选', !!rst && rst.checked===true);
+
+    /* ---- 5f. 报告导出 ---- */
+    ok('导出按钮存在', !!document.getElementById('mk-export'));
+    // 拦截 post 验证导出内容
+    var sent=null; var _origPost2=window.post;
+    try { window.post=function(k,d,s,sl,ex){ if(k==='mkreport') sent={csv:d,full:ex&&ex.full,pkg:ex&&ex.pkg}; return _origPost2?_origPost2(k,d,s,sl,ex):null; }; } catch(e){}
+    _mk.t0=Date.now()-5000; _mk.events=120; _mk.mode='monkey';
+    mkExportReport();
+    try { window.post=_origPost2; } catch(e){}
+    ok('导出调用了 mkreport', !!sent);
+    if(sent){
+      ok('CSV 含 BOM（Excel 不乱码）', (sent.csv||'').charCodeAt(0)===0xFEFF);
+      ok('CSV 含包名', (sent.csv||'').indexOf('com.test.demo')>=0);
+      ok('CSV 含崩溃明细', (sent.csv||'').indexOf('NullPointerException')>=0);
+      ok('完整堆栈已附带', (sent.full||'').indexOf('ActivityThread')>=0);
+      ok('CSV 含自动重启次数', (sent.csv||'').indexOf('自动重启次数')>=0);
+    }
+
     /* ---- 6. 清空 ---- */
     mkClear();
     ok('清空后回到空态', !!box.querySelector('.mk-empty'));

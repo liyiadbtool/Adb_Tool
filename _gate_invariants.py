@@ -358,14 +358,19 @@ A35_ADDS = {
 A36_ADDS = {
     "kinds": set(),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
-                     "mkClear", "mkListPkgs", "mkOpenLogDir"]),
+                     "mkClear", "mkListPkgs", "mkOpenLogDir",
+                     # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
+                     "mkCloseCrash", "mkCopyCrash", "mkExportReport"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
                 "mk-ignore-crash", "mk-ignore-timeout", "mk-ignore-security",
                 "mk-start", "mk-stop", "mk-state",
                 "mk-st-crash", "mk-st-anr", "mk-st-events", "mk-st-elapsed",
-                "mk-out"]),
+                "mk-out",
+                # 2026-11-22 需求 B：崩溃弹层 / 自动重启开关 / 导出 / 重启计数
+                "mk-crash-mask", "mk-crash-title", "mk-crash-body",
+                "mk-restart-on-crash", "mk-export", "mk-st-restart"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

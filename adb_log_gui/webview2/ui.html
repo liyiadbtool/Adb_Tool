@@ -3971,6 +3971,46 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-out .mk-l-cmd{ color:var(--accent); }
 
 
+/* 崩溃详情弹层（需求 B-1） */
+.mk-crash-mask{
+  position:fixed; inset:0; z-index:96;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--scrim);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+}
+.mk-crash-box{
+  width:min(820px, calc(100vw - 80px));
+  max-height:calc(100vh - 120px);
+  display:flex; flex-direction:column;
+  border:1px solid var(--edge); border-radius:var(--r-5);
+  background:var(--chrome-solid);
+  box-shadow:var(--shadow-modal);
+  overflow:hidden;
+}
+.mk-crash-head{
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.mk-crash-body{
+  flex:1 1 auto; min-height:0; overflow:auto;
+  margin:0; padding:12px 14px;
+  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  color:var(--text-dim);
+  white-space:pre-wrap; word-break:break-all;
+}
+
+/* 可点击的崩溃条目 */
+.mk-out .mk-crash-item{
+  cursor:pointer;
+  border-radius:var(--r-2);
+}
+.mk-out .mk-crash-item:hover{
+  background:var(--surface-hover);
+}
+
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce){
   /* 详情弹窗已删除（.qz-panel 不存在了）。
@@ -4678,6 +4718,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <label class="mk-chk"><input type="checkbox" id="mk-ignore-crash" checked> 崩溃后继续跑</label>
             <label class="mk-chk"><input type="checkbox" id="mk-ignore-timeout" checked> 超时无响应继续跑</label>
             <label class="mk-chk"><input type="checkbox" id="mk-ignore-security" checked> 忽略权限异常</label>
+            <label class="mk-chk" title="崩溃后自动拉起被测应用。不勾的话，崩溃后事件全打在桌面上，测试等于提前中断但统计还显示在跑。">
+              <input type="checkbox" id="mk-restart-on-crash" checked> 崩溃后自动重启</label>
             <span class="mk-lbl">随机种子</span>
             <input class="mk-inp mk-num" id="mk-seed" type="number" min="0" value="0"
                    title="填同一个种子可以复现同一次遍历；0 = 每次随机">
@@ -4696,13 +4738,30 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <div class="mk-stat"><span class="mk-stat-v" id="mk-st-anr">0</span><span class="mk-stat-k">ANR</span></div>
           <div class="mk-stat"><span class="mk-stat-v" id="mk-st-events">0</span><span class="mk-stat-k">事件数</span></div>
           <div class="mk-stat"><span class="mk-stat-v" id="mk-st-elapsed">00:00</span><span class="mk-stat-k">已用时</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="mk-st-restart">0</span><span class="mk-stat-k">自动重启</span></div>
           <div class="spacer"></div>
+          <!-- 2026-11-22（需求 B-3）：导出报告 -->
+          <button class="btn ghost sm" id="mk-export" onclick="mkExportReport()"
+                  title="导出本次遍历结果（含每条崩溃的异常类型与堆栈）">导出报告</button>
           <button class="btn ghost sm" onclick="mkOpenLogDir()" title="打开桌面 logcat 日期目录">打开日志目录</button>
           <button class="btn ghost sm" onclick="mkClear()">清空</button>
         </div>
 
         <!-- 输出区 -->
         <div class="mk-out" id="mk-out"><div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div></div>
+      </div>
+    </div>
+
+    <!-- 崩溃详情弹层：点开某条崩溃看完整堆栈 -->
+    <div class="mk-crash-mask" id="mk-crash-mask" style="display:none;" onclick="mkCloseCrash()">
+      <div class="mk-crash-box" onclick="event.stopPropagation()">
+        <div class="mk-crash-head">
+          <span id="mk-crash-title">崩溃详情</span>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" onclick="mkCopyCrash()">复制堆栈</button>
+          <button class="btn ghost sm" onclick="mkCloseCrash()">关闭</button>
+        </div>
+        <pre class="mk-crash-body" id="mk-crash-body"></pre>
       </div>
     </div>
 
@@ -4993,7 +5052,14 @@ var _mk = {
   timer: 0,
   crash: 0,
   anr: 0,
-  events: 0
+  events: 0,
+  mode: '',          // monkey / uiautomator / input
+  pkg: '',           // 当前被测包名（崩溃自动重启要用）
+  crashes: [],       // [{t, type, msg, stack:[...]}] 每条崩溃的完整信息
+  logcatTimer: 0,    // 定时拉取 crash log 的句柄
+  seenCrashSig: {}, // 已上报过的崩溃签名（时间+PID+类型），防重复计数
+  restartCount: 0,   // 自动重启次数
+  logOffset: 0       // 已读到的 crash log 行数（增量拉取，防重复）
 };
 
 function mkSetType(v){
@@ -5215,6 +5281,12 @@ function mkStart(){
   _mk.t0 = Date.now();
   _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
   _mk.mode = modeName;
+  _mk.pkg = pkg;
+  _mk.crashes = [];
+  _mk.seenCrashSig = {};
+  _mk.restartCount = 0;
+  _mk._crashBuf = [];
+  mkSetStat('mk-st-restart', 0, false);
   mkSetStat('mk-st-crash', 0, false);
   mkSetStat('mk-st-anr', 0, false);
   mkSetStat('mk-st-events', 0, false);
@@ -5239,6 +5311,11 @@ function mkStart(){
   // 每秒刷新用时
   _mk.timer = setInterval(mkTickStats, 1000);
 
+  // 2026-11-22（需求 B-1）：启动崩溃堆栈采集。
+  // monkey 的 stdout 只有 "CRASH: com.xxx" 一行，没有堆栈，
+  // 所以必须额外挂一条 logcat -b crash 的轮询通道。
+  mkStartCrashWatch();
+
   // 到点自动停（monkey 本身不知道"时长"）
   _mk.autoStop = setTimeout(function(){
     if(_mk.running) mkStop(true);
@@ -5256,6 +5333,10 @@ function mkEnd(userStopped){
   _mk.running = false;
   if(_mk.timer){ clearInterval(_mk.timer); _mk.timer = 0; }
   if(_mk.autoStop){ clearTimeout(_mk.autoStop); _mk.autoStop = 0; }
+  // 2026-11-22（需求 B-1）：停掉崩溃采集轮询
+  try { mkStopCrashWatch(); } catch(e) {}
+  // 最后一次拉取：把结束前最后一刻的崩溃也收进来
+  try { post('run', 'logcat -b crash -d -t 200', 6); } catch(e) {}
 
   var sBtn = document.getElementById('mk-start');
   var tBtn = document.getElementById('mk-stop');
@@ -5345,13 +5426,274 @@ function mkBuildInputCmd(cnt, thr){
   return "shell '" + script + "'";
 }
 
+/* ============================================================================
+   崩溃堆栈抓取（2026-11-22，需求 B-1）
+   ----------------------------------------------------------------------------
+   为什么必须做这个：
+     monkey 的 stdout 只会打一行 "CRASH: com.xxx"，**没有堆栈**。
+     测出崩溃却看不到堆栈 = 无法定位 = 白测。
+     所以遍历期间要额外挂一条 logcat -b crash 的采集通道。
+
+   实测格式（Android 14，已在本机 emulator 验证）：
+     E AndroidRuntime: FATAL EXCEPTION: main
+     E AndroidRuntime: Process: com.android.settings, PID: 2586
+     E AndroidRuntime: android.app.RemoteServiceException$CrashedByAdbException: xxx
+     E AndroidRuntime: 	at android.app.ActivityThread.xxx(ActivityThread.java:2124)
+     ...
+
+   采集策略：增量拉取
+     每 2 秒拉一次 `logcat -b crash -d`，用「已出现过的崩溃签名」去重。
+     不用 logcat 长连接是因为 C# 侧的 --exec 是一次性命令，
+     长驻进程要额外改协议；2 秒轮询足够（崩溃不是高频事件）。
+   ============================================================================ */
+var _MK_CRASH_RE = /^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(\d+)\s+(\d+)\s+E\s+AndroidRuntime:\s*(.*)$/;
+
+function mkStartCrashWatch(){
+  if(_mk.logcatTimer) return;
+  _mk.logcatTimer = setInterval(mkPollCrashLog, 2000);
+  mkPollCrashLog();   // 立刻拉一次，清掉开跑前的历史
+}
+
+function mkStopCrashWatch(){
+  if(_mk.logcatTimer){ clearInterval(_mk.logcatTimer); _mk.logcatTimer = 0; }
+}
+
+/* 拉一次 crash log，解析出新增的崩溃 */
+function mkPollCrashLog(){
+  if(!_mk.running) return;
+  try { post('run', 'logcat -b crash -d -t 200', 6); } catch(e) {}
+}
+
+/* src=6 的整段输出：由 appendLines/appendLine 汇总后调用 */
+function mkOnCrashLogChunk(lines){
+  var cur = null;
+  var list = [];
+
+  for(var i=0; i<lines.length; i++){
+    var t = lines[i];
+    var m = t.match(_MK_CRASH_RE);
+    if(!m) continue;
+    var ts = m[1], pid = m[2], body = m[4];
+
+    if(/FATAL EXCEPTION/.test(body)){
+      // 新崩溃开始，先把上一条收起来
+      if(cur) list.push(cur);
+      cur = { t: ts, pid: pid, head: body, type: '', msg: '', proc: '', stack: [] };
+      continue;
+    }
+    if(!cur) continue;
+
+    if(/^Process:\s*/.test(body)){
+      cur.proc = body.replace(/^Process:\s*/, '').trim();
+      continue;
+    }
+    if(/^\s*at\s+/.test(body)){
+      cur.stack.push(body.trim());
+      continue;
+    }
+    // 异常类型行：首次出现的非缩进行
+    if(!cur.type && body){
+      var tm = body.match(/^([\w.$]+(?:Exception|Error)[\w$]*)(?::\s*(.*))?$/);
+      if(tm){ cur.type = tm[1]; cur.msg = tm[2] || ''; }
+    }
+  }
+  if(cur) list.push(cur);
+
+  if(!list.length) return;
+
+  // 去重：签名 = 时间 + PID + 类型
+  var added = 0;
+  for(var k=0; k<list.length; k++){
+    var c = list[k];
+    var sig = c.t + '|' + c.pid + '|' + (c.type || c.head);
+    if(_mk.seenCrashSig[sig]) continue;
+    _mk.seenCrashSig[sig] = 1;
+
+    // 只统计被测包（avoid 把别的应用的崩溃算进来）
+    if(_mk.pkg && c.proc && c.proc.indexOf(_mk.pkg) < 0) continue;
+
+    _mk.crashes.push({
+      t: c.t, type: c.type || '未知异常', msg: c.msg,
+      proc: c.proc, stack: c.stack.slice(0, 40), engine: _mk.mode
+    });
+    _mk.crash++;
+    added++;
+
+    mkLog('✗ 崩溃 #' + _mk.crash + '  ' + (c.type || '未知异常'), 'crash');
+    if(c.msg) mkLog('    ' + c.msg, 'crash');
+    for(var s=0; s<Math.min(6, c.stack.length); s++){
+      mkLog('    ' + c.stack[s], 'crash');
+    }
+    if(c.stack.length > 6) mkLog('    …（共 ' + c.stack.length + ' 帧，完整堆栈已记录）', 'crash');
+  }
+
+  if(added > 0){
+    mkSetStat('mk-st-crash', _mk.crash, true);
+    // 崩溃后自动重启被测应用（需求 B-2）
+    if((document.getElementById('mk-restart-on-crash')||{}).checked){
+      mkRestartApp();
+    }
+  }
+}
+
+/* ============================================================================
+   崩溃后自动重启（需求 B-2）
+   ----------------------------------------------------------------------------
+   不重启会怎样：App 崩溃后进程消失，后续所有 monkey 事件（点击/滑动）
+   全打在桌面上 —— 测试等于提前结束，但统计上还显示"在跑"。
+   Fastbot 和 SVmonkey 都有这个机制。
+   ============================================================================ */
+function mkRestartApp(){
+  if(!_mk.pkg) return;
+  _mk.restartCount++;
+  mkLog('↻ 检测到崩溃，自动重启 ' + _mk.pkg + '（第 ' + _mk.restartCount + ' 次）', 'anr');
+
+  // monotonic 方式启动：不等待、失败也不阻塞
+  var cmd = 'shell monkey -p ' + _mk.pkg
+          + ' -c android.intent.category.LAUNCHER 1 2>/dev/null '
+          + '|| shell am start -n $(cmd package resolve-activity --brief ' + _mk.pkg + ' | tail -1)';
+  // 降级设备没有 monkey，直接用 am start
+  if(!_mkEnv.monkey){
+    cmd = 'shell am start -n $(cmd package resolve-activity --brief ' + _mk.pkg + ' | tail -1)';
+  }
+  try { post('run', cmd, 7); } catch(e) {}
+}
+
+/* ---------- 崩溃详情弹层 ---------- */
+var _mkCrashIdx = -1;
+
+function mkOpenCrash(idx){
+  var c = _mk.crashes[idx];
+  if(!c) return;
+  _mkCrashIdx = idx;
+  var title = document.getElementById('mk-crash-title');
+  if(title) title.textContent = '崩溃 #' + (idx+1) + ' · ' + c.type + (c.msg ? ' · ' + c.msg : '');
+  var body = document.getElementById('mk-crash-body');
+  if(body){
+    body.textContent = (c.t ? '时间: ' + c.t + '\n' : '')
+      + (c.proc ? '进程: ' + c.proc + '\n' : '')
+      + (c.engine ? '引擎: ' + c.engine + '\n' : '')
+      + '\n异常: ' + c.type + (c.msg ? '\n消息: ' + c.msg : '')
+      + '\n\n' + (c.stack.length ? c.stack.join('\n') : '（未采集到堆栈）');
+  }
+  var mask = document.getElementById('mk-crash-mask');
+  if(mask) mask.style.display = 'flex';
+}
+
+function mkCloseCrash(){
+  var mask = document.getElementById('mk-crash-mask');
+  if(mask) mask.style.display = 'none';
+  _mkCrashIdx = -1;
+}
+
+function mkCopyCrash(){
+  var body = document.getElementById('mk-crash-body');
+  if(!body) return;
+  var txt = body.textContent || '';
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ toast('堆栈已复制', 'ok'); },
+        function(){ mkFallbackCopy(txt); });
+    } else {
+      mkFallbackCopy(txt);
+    }
+  } catch(e){ mkFallbackCopy(txt); }
+}
+
+function mkFallbackCopy(txt){
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('堆栈已复制', 'ok');
+  } catch(e){ toast('复制失败，请手动选择', 'err'); }
+}
+
+/* ============================================================================
+   报告导出（需求 B-3）
+   ----------------------------------------------------------------------------
+   导出 CSV 而不是 Excel：
+     · 不引入第三方库（xlsx 要几百 KB）
+     · Excel / WPS / Numbers 都能直接打开
+     · 带 BOM，中文不乱码（这是 Windows Excel 的老坑）
+   列：序号/时间/异常类型/消息/进程/引擎/堆栈首 3 帧
+   另附一份完整堆栈的 txt，放在同目录。
+   ============================================================================ */
+function mkCsvCell(v){
+  var s = (v === undefined || v === null) ? '' : String(v);
+  // CSV 转义：内含引号/逗号/换行时必须整体加引号，且内部引号翻倍
+  if(/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function mkExportReport(){
+  if(!_mk.crashes.length && !_mk.events && !_mk.t0){
+    toast('还没有可导出的数据，先跑一轮', 'err');
+    return;
+  }
+
+  var pkg = _mk.pkg || ((document.getElementById('mk-pkg')||{}).value || '').trim();
+  var dur = _mk.t0 ? Math.floor((Date.now() - _mk.t0)/1000) : 0;
+
+  var lines = [];
+  // 概要段
+  lines.push('# Monkey 稳定性测试报告');
+  lines.push('# 生成时间,' + mkCsvCell(new Date().toLocaleString('zh-CN')));
+  lines.push('# 包名,' + mkCsvCell(pkg));
+  lines.push('# 引擎,' + mkCsvCell(_mk.mode || '未知'));
+  lines.push('# 时长(秒),' + dur);
+  lines.push('# 事件数,' + _mk.events);
+  lines.push('# 崩溃数,' + _mk.crash);
+  lines.push('# ANR数,' + _mk.anr);
+  lines.push('# 自动重启次数,' + _mk.restartCount);
+  lines.push('');
+  // 明细表
+  lines.push('序号,时间,异常类型,消息,进程,引擎,堆栈前三帧');
+  for(var i=0; i<_mk.crashes.length; i++){
+    var c = _mk.crashes[i];
+    var top3 = (c.stack || []).slice(0,3).join(' | ');
+    lines.push([
+      i+1, c.t || '', c.type || '', c.msg || '', c.proc || '', c.engine || '', top3
+    ].map(mkCsvCell).join(','));
+  }
+
+  var csv = '\ufeff' + lines.join('\r\n');   // BOM：Excel 打开不乱码
+
+  // 完整堆栈另存
+  var full = [];
+  for(var j=0; j<_mk.crashes.length; j++){
+    var cc = _mk.crashes[j];
+    full.push('===== 崩溃 #' + (j+1) + ' =====');
+    full.push('时间: ' + (cc.t||''));
+    full.push('进程: ' + (cc.proc||''));
+    full.push('异常: ' + (cc.type||'') + (cc.msg ? ' · ' + cc.msg : ''));
+    full.push((cc.stack||[]).join('\n'));
+    full.push('');
+  }
+
+  try {
+    post('mkreport', csv, 0, 0, { full: full.join('\n'), pkg: pkg });
+    toast('报告已导出到桌面 logcat 日期目录', 'ok');
+  } catch(e){
+    toast('导出失败：' + e, 'err');
+  }
+}
+
 function mkClear(){
   var box = document.getElementById('mk-out');
   if(box) box.innerHTML = '<div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div>';
   _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
+  // 2026-11-22：崩溃明细与重启计数一起清（否则上次的堆栈会混进这次报告）
+  _mk.crashes = [];
+  _mk.seenCrashSig = {};
+  _mk.restartCount = 0;
+  _mk._crashBuf = [];
+  _mk.t0 = 0;
   mkSetStat('mk-st-crash', 0, false);
   mkSetStat('mk-st-anr', 0, false);
   mkSetStat('mk-st-events', 0, false);
+  mkSetStat('mk-st-restart', 0, false);
   document.getElementById('mk-st-elapsed').textContent = '00:00';
   mkSetState('未开始', false);
 }
@@ -5393,6 +5735,14 @@ function onMessage(ev){
       if(msg.src === 4 && typeof _mk !== 'undefined' && _mk.running){ try { mkEnd(true); } catch(e){} }
       // src=5：能力探测结束 → 汇总结果并放行后续启动
       if(msg.src === 5 && typeof mkOnEnvDone === 'function'){ try { mkOnEnvDone(); } catch(e){} }
+      // src=6：这一批 crash log 收完 → 解析有无新崩溃
+      if(msg.src === 6 && typeof mkOnCrashLogChunk === 'function'){
+        try {
+          var buf = _mk._crashBuf || [];
+          _mk._crashBuf = [];
+          if(buf.length) mkOnCrashLogChunk(buf);
+        } catch(e){}
+      }
       break;
     case 'clear': clearLog(); break;
     case 'filePath': onFilePath(msg.data); break;
@@ -5470,6 +5820,16 @@ function appendLine(msg){
   if(msg.src === 4){ try { mkOnOut(msg); } catch(e){} return; }
   // src=5：Monkey 页的设备能力探测输出（MK=0/1 UA=0/1 IN=0/1），只解析不显示
   if(msg.src === 5){ try { mkOnEnvLine(msg.text || ''); } catch(e){} return; }
+  // src=6：crash log 采集。先攒着，整批到达后统一解析（避免跨行截断）
+  if(msg.src === 6){
+    try {
+      if(msg.kind === 'line'){ (_mk._crashBuf = _mk._crashBuf || []).push(msg.text || ''); }
+      else if(msg.kind === 'lines'){ _mk._crashBuf = (_mk._crashBuf || []).concat((msg.items||[]).map(function(x){return x.text||x;})); }
+    } catch(e){}
+    return;
+  }
+  // src=7：崩溃后自动重启的命令输出，不占界面
+  if(msg.src === 7){ try { mkLog('  ' + (msg.text||''), ''); } catch(e){} return; }
   appendLog(msg);
 }
 

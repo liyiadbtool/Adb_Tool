@@ -1775,6 +1775,60 @@ namespace AdbLogExport.Gui
                     if (ProbeJs == null) SaveIniKey("prefs", App.PREFS == null ? "" : App.PREFS);
                     break;
 
+                // 2026-11-22（需求 B-3）：Monkey 稳定性测试报告导出。
+                // 页面侧算好 CSV 与完整堆栈，这里只负责落盘 ——
+                // 保持"业务逻辑在页面、文件 IO 在 C#"的既有分工。
+                // 两个文件：Monkey_<包名>_<时间>.csv（概要+明细）与同名 .txt（完整堆栈）。
+                case "mkreport":
+                    {
+                        try
+                        {
+                            string csv = GetField(json, "data");
+                            string full = GetField(json, "full");
+                            string pkg = GetField(json, "pkg");
+                            if (string.IsNullOrEmpty(pkg)) pkg = "unknown";
+
+                            string dir = GuiEntry.LogDir();
+                            if (string.IsNullOrEmpty(dir))
+                            {
+                                PostToast(false, "找不到日志目录");
+                                break;
+                            }
+                            Directory.CreateDirectory(dir);
+
+                            // 文件名里的包名可能有 / 等非法字符，统一清洗
+                            string safe = pkg;
+                            foreach (char ch in System.IO.Path.GetInvalidFileNameChars())
+                                safe = safe.Replace(ch, '_');
+                            safe = safe.Replace('/', '_').Replace('\\', '_');
+
+                            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                            string baseName = "Monkey_" + safe + "_" + stamp;
+
+                            string csvPath = Path.Combine(dir, baseName + ".csv");
+                            // UTF-8 无 BOM：页面侧已在字符串开头放了 \ufeff，
+                            // 这里再用 UTF8Encoding(false) 写，避免出现两个 BOM
+                            File.WriteAllText(csvPath, csv ?? "",
+                                new System.Text.UTF8Encoding(false));
+
+                            int txtLen = 0;
+                            if (!string.IsNullOrEmpty(full))
+                            {
+                                string txtPath = Path.Combine(dir, baseName + ".txt");
+                                File.WriteAllText(txtPath, full,
+                                    new System.Text.UTF8Encoding(false));
+                                txtLen = full.Length;
+                            }
+
+                            PostToast(true, "报告已导出：" + baseName + ".csv");
+                        }
+                        catch (Exception ex)
+                        {
+                            PostToast(false, "报告导出失败：" + ex.Message);
+                        }
+                    }
+                    break;
+
                 // A14：字体大小（小 0.9 / 中 1.0 / 大 1.15）。
                 // 用 WebView2 的 ZoomFactor 而不是逐条改 CSS 字号：
                 // 整页等比放大并重新排版，标题栏/卡片/输出区一起跟随，
