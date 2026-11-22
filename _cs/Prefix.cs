@@ -347,6 +347,9 @@ namespace AdbLogExport
             if (n == "clogout" || n == "clusterlogout") { ClusterLogout(); return; }
             if (n == "cdetect" || n == "chipdetect") { DoChipDetect(); return; }
             if (n == "ccast" || n == "clustercast") { DoClusterCastCli(arg); return; }
+            if (n == "ccastrec" || n == "clusterrec") { DoClusterRecCli(arg); return; }
+            // 2026-11-22（第 18 批 D3/D4）：TOP5 进程速查
+            if (n == "top5") { DoTop5(); return; }
             // 2026-11-22（第 17 批）：动态列屏幕（scrcpy --list-displays）
             if (n == "displays" || n == "screens" || n == "列屏") { DoListDisplays(); return; }
 
@@ -597,7 +600,7 @@ namespace AdbLogExport
 
             if (!onlyMissing)
             {
-                Ok("车机信息查询完成（" + CAR_KEYS.Length + " 项属性 + 分辨率）");
+                Ok("车机信息查询完成（" + CAR_TOTAL + " 项 + 分辨率）");
                 Hint("只想看没取到的项：:car miss    想看取值命令：:car cmd");
             }
         }

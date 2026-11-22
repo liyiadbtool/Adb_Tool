@@ -51,21 +51,65 @@ namespace AdbLogExport
             "VIN 码",
             "UUID",
             "DID",
-            "OPENID"
+            "OPENID",
+            // ---- 2026-11-22（第 18 批 D2）：新增四项 ----
+            // ★ 必须追加在末尾：Adb.cs 里有 DEV_PLAT = CAR_VALS[0] /
+            //   DEV_SOC = CAR_VALS[1] 这种按索引取的代码，插中间会错位。
+            "芯片",
+            "内存",
+            "DDR 类型",
+            "存储"
+        };
+
+        // 扩展项的取值命令（与 CAR_LABELS 末尾四项一一对应）。
+        //
+        // 为什么不用 getprop 逐一取：这四项都不是单一属性 ——
+        //   芯片要 fallback（ro.soc.model 常常为空）、
+        //   内存要算 /proc/meminfo、DDR 要 grep、存储要 df。
+        // 所以单独给一段 shell 片段，结果同样用 ##N 标记分隔。
+        internal static readonly string[] CAR_EXTRA_CMDS = new string[]
+        {
+            // 芯片：三个属性依次兜底
+            "a=$(getprop ro.soc.model); b=$(getprop ro.board.platform); " +
+            "c=$(getprop ro.hardware); " +
+            "if [ -n \"$a\" ]; then echo \"$a\"; " +
+            "elif [ -n \"$b\" ]; then echo \"$b\"; else echo \"$c\"; fi",
+
+            // 内存：MemTotal（kB）→ GB，保留 1 位
+            "awk '/^MemTotal:/{printf \"%.1f GB\", $2/1048576}' /proc/meminfo",
+
+            // DDR 类型：各平台写法不统一，尽力 grep 一把。
+            // 取不到就返回空串 —— 页面会**整行隐藏**（用户明确要求）。
+            // 用 cut + tr 取值，不用 sed 的 \[ \] —— 那两个方括号在 C# 字符串里
+            // 是非法转义（CS1009），要写成 \\[ 才行，可读性太差。
+            "getprop 2>/dev/null | grep -iE 'ddr|dram|lpddr' | head -1 " +
+            "| cut -d: -f2 | tr -d ' []'",
+
+            // 存储：/data 的总量与可用量。
+            // df 默认输出 1K-blocks，除以 1048576 换成 GB，直接可读。
+            "df /data 2>/dev/null | tail -1 " +
+            "| awk '{printf \"%.1f GB / 可用 %.1f GB\", $2/1048576, $4/1048576}'"
         };
 
         // 第 9 项单独处理（不是 getprop，是 wm size）
         internal const string CAR_RES_LABEL = "屏幕分辨率";
 
-        // 最近一次取到的值，供界面/后续命令复用。索引与 CAR_KEYS 对齐。
+        // 最近一次取到的值。前 CAR_KEYS.Length 项与 CAR_KEYS 对齐，
+        // 后面追加 CAR_EXTRA_CMDS.Length 项（芯片/内存/DDR/存储）。
         internal static string[] CAR_VALS = NewEmptyVals();
 
         // 分辨率缓存（与 DEV_RES 同步，保留 DEV_RES 是为了不破坏既有引用）
         internal static string CAR_RES = "";
 
+        // 总项数：getprop 项 + 扩展项
+        internal static int CAR_TOTAL
+        {
+            get { return CAR_KEYS.Length + CAR_EXTRA_CMDS.Length; }
+        }
+
         private static string[] NewEmptyVals()
         {
-            string[] a = new string[CAR_KEYS.Length];
+            string[] a = new string[CAR_TOTAL];
             for (int i = 0; i < a.Length; i++) a[i] = "";
             return a;
         }
@@ -96,7 +140,23 @@ namespace AdbLogExport
             }
             // 分辨率：wm size 可能有多行（Physical + Override），
             // 用 tr 压成 ';' 分隔，否则只取到第一行，Override 生效值会被丢。
-            sb.Append("echo '##").Append(CAR_KEYS.Length).Append("'; ");
+            // ---- 2026-11-22（第 18 批 D2）：扩展项（芯片/内存/DDR/存储）----
+            //
+            // ★ 每条命令后面必须补一个 `echo` 强制换行。
+            //   原因：这几条命令有的**不带末尾换行**
+            //   （awk 的 printf、df | awk、tr 这些输出完就停），
+            //   下一条 `echo '##N'` 的标记会直接粘在值末尾，比如
+            //     "5.8 GB##10"
+            //   然后 ParseMarkedTextN 按标记切分就整体错位 ——
+            //   表现为"内存显示成 5.8 GB##10、DDR 显示成 df 的输出"。
+            for (int k = 0; k < CAR_EXTRA_CMDS.Length; k++)
+            {
+                sb.Append("echo '##").Append(CAR_KEYS.Length + k).Append("'; ");
+                sb.Append(CAR_EXTRA_CMDS[k]).Append("; echo; ");
+            }
+
+            // 分辨率放在最后（原索引 = CAR_KEYS.Length，现在要顺延）
+            sb.Append("echo '##").Append(CAR_TOTAL).Append("'; ");
             sb.Append("wm size 2>/dev/null | tr '\\n' ';'; ");
 
             string o = "";
@@ -107,9 +167,9 @@ namespace AdbLogExport
             // 全部为空说明命令压根没跑通（断链/无权限），如实返回失败
             if (rc != 0 && all.Trim().Length == 0) return false;
 
-            string[] parts = ParseMarkedTextN(all, CAR_KEYS.Length + 1);
-            for (int i = 0; i < CAR_KEYS.Length; i++) CAR_VALS[i] = parts[i];
-            CAR_RES = ParseWmSize(parts[CAR_KEYS.Length]);
+            string[] parts = ParseMarkedTextN(all, CAR_TOTAL + 1);
+            for (int i = 0; i < CAR_TOTAL; i++) CAR_VALS[i] = parts[i];
+            CAR_RES = ParseWmSize(parts[CAR_TOTAL]);
 
             // 至少取到一个值才算成功（避免断链时"假成功"）
             bool any = CAR_RES.Length > 0;
@@ -146,17 +206,28 @@ namespace AdbLogExport
 
             bool printed = false;
 
-            for (int i = 0; i < CAR_KEYS.Length; i++)
+            // ★ 2026-11-22（第 18 批 D2）：循环上界从 CAR_KEYS.Length 改成 CAR_TOTAL。
+            //   原来只渲染 getprop 那 8 项，新增的 芯片/内存/DDR/存储 永远显示不出来。
+            //   withCmd 时扩展项不是 getprop，标注成对应的小片段而不是拼个假属性名。
+            for (int i = 0; i < CAR_TOTAL; i++)
             {
                 string v = CAR_VALS[i];
                 bool empty = (v == null || v.Length == 0);
                 if (onlyMissing && !empty) continue;
 
+                // DDR 类型取不到时**整行不出**（用户明确要求，不是显示 "-"）
+                if (i >= CAR_KEYS.Length
+                    && CAR_LABELS[i] == "DDR 类型" && empty) continue;
+
                 PrintCarLine(CAR_LABELS[i], empty ? "-" : v, maxW, empty);
                 if (withCmd)
                 {
                     UseDim();
-                    Console.Write("      $ adb shell getprop " + CAR_KEYS[i]);
+                    int extraIdx = i - CAR_KEYS.Length;
+                    if (extraIdx >= 0)
+                        Console.Write("      $ adb shell <" + CAR_LABELS[i] + " 探测片段>");
+                    else
+                        Console.Write("      $ adb shell getprop " + CAR_KEYS[i]);
                     Console.WriteLine();
                     UseDefault();
                 }

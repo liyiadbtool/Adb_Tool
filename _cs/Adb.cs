@@ -1767,7 +1767,7 @@ namespace AdbLogExport
 
             // 再输出 9 项取值（对齐成列）
             RenderCarInfo(false, false);
-            Ok("车机信息已刷新");
+            Ok("车机信息已刷新（" + CAR_TOTAL + " 项）");
         }
 
         private static void RetryHard()

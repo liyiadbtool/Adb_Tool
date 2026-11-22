@@ -408,6 +408,10 @@ namespace AdbLogExport
             return n;
         }
 
+        // 2026-11-22（第 18 批）：HostTop5 已抽到独立文件 Top5.cs
+        //   —— 本文件依赖 System.Windows.Forms + AdbLogExport.Gui，
+        //   而 CLI 版（build.bat）不链接 WinForms，所以 TOP5 不能放这里。
+
         // 异常摘要：只留消息首句，避免 WMI 的长篇堆栈塞满界面
         private static string Brief(Exception ex)
         {

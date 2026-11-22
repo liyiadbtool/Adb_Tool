@@ -2471,6 +2471,30 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-22（第 18 批 D3/D4）：TOP5 进程
+                // 放后台线程：WMI 200~500ms，车机 top 1~2s，都会卡界面。
+                case "diagtop5":
+                    {
+                        Thread thT = new Thread(delegate()
+                        {
+                            string host = "{\"ok\":false}";
+                            string car = "{\"ok\":false}";
+                            try { host = Top5.HostTop5(); } catch (Exception ex) { host = "{\"ok\":false,\"err\":" + Json(BriefMsg(ex)) + "}"; }
+                            try { car = App.CarTop5(); } catch (Exception ex) { car = "{\"ok\":false,\"err\":" + Json(BriefMsg(ex)) + "}"; }
+                            PushOnUi("{\"kind\":\"diagtop5\",\"host\":" + host + ",\"car\":" + car + "}");
+                        });
+                        thT.IsBackground = true;
+                        thT.Start();
+                    }
+                    break;
+
+                // 2026-11-22（第 18 批 A9）：APK 管理手动刷新。
+                // 其它页面都有刷新入口，只有 APK 管理原来要靠"切走再切回"。
+                case "apkrefresh":
+                    try { PushApkApps(); } catch { }
+                    PushOnUi("{\"kind\":\"toast\",\"ok\":true,\"text\":" + Json("应用列表已刷新") + "}");
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -3383,6 +3407,16 @@ namespace AdbLogExport.Gui
         // 2026-11-22（第 16 批）：把仪表通道状态推给页面。
         // text/lv 可选：用来在页面日志区追一行说明。
         // detected 可选：自动识别出的芯片 key。
+        // 异常摘要：只留首句
+        private static string BriefMsg(Exception ex)
+        {
+            string m = (ex == null || ex.Message == null) ? "未知" : ex.Message;
+            int i = m.IndexOf('\n');
+            if (i > 0) m = m.Substring(0, i);
+            if (m.Length > 80) m = m.Substring(0, 80) + "…";
+            return m;
+        }
+
         private void PushClusterState(string text, string lv, string detected)
         {
             try

@@ -394,7 +394,9 @@ A36_ADDS = {
                      # 2026-11-22 第 17 批：投屏面板 + H5 管理
                      "castGo", "castGoRec", "castStopAll", "castLoadDisplays",
                      "h5OpenAdd", "h5Edit", "h5Save", "h5Del", "h5CloseForm",
-                     "h5Open", "h5Copy", "h5Pick", "h5Export", "h5Import", "h5Presets"]),
+                     "h5Open", "h5Copy", "h5Pick", "h5Export", "h5Import", "h5Presets",
+                     # 2026-11-22 第 18 批：录屏 + H5 简化 + APK 刷新
+                     "castRec", "cluCastRec", "h5Add", "apkReload"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -447,7 +449,9 @@ A36_ADDS = {
                 "cast-panel", "cast-grid", "cast-refresh",
                 "fileview-h5", "h5-search", "h5-form", "h5-f-name", "h5-f-url",
                 "h5-f-cat", "h5-cat-list", "h5-f-err", "h5-f-save",
-                "h5-cats", "h5-list", "h5-foot"]),
+                "h5-cats", "h5-list", "h5-foot",
+                # 2026-11-22 第 18 批
+                "clu-rec-btn", "h5-f-add"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

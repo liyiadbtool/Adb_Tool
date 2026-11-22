@@ -336,6 +336,58 @@ namespace AdbLogExport
                  + u.Substring(u.Length - 1, 1);
         }
 
+        // ==================== 仪表录屏（B3）====================
+        //
+        // 与普通屏录制（:castrec）**完全独立**：
+        //   · 普通录屏走 :castrec <屏号>，不需要芯片/登录
+        //   · 仪表录屏走 :ccastrec，**必须登录**，屏号取芯片档案默认值
+        //
+        // 互不影响的技术保证：
+        //   每次录制都是独立的 scrcpy --record 进程，各写各的 mp4；
+        //   LaunchRecord 启动后立即返回，不阻塞。
+        //   两个录制同时跑 = 两个进程并行。
+        //
+        // ⚠ 唯一约束：同一个 display 不能同时投/录两次
+        //   （Scrcpy.Active 按 displayId 去重）。若仪表屏号 = 4，
+        //   而用户又在录「副驾屏 4」，第二个会被拒 —— 这是物理限制，不是 bug。
+        internal static void ClusterCastRec(int sec)
+        {
+            if (!CLU_LOGGED || CLU_CHIP.Length == 0)
+            {
+                Fail("请先选择芯片并登录，再录制仪表");
+                Hint("流程：① 选芯片 → ② 点「登录设备」→ ③ 录 60s");
+                return;
+            }
+            ChipProfile p = FindChip(CLU_CHIP);
+            if (p == null)
+            {
+                Fail("登录状态异常，请重新登录");
+                CLU_LOGGED = false;
+                return;
+            }
+
+            int displayId = p.DefaultDisplay;
+            if (sec <= 0) sec = 60;
+            if (sec > 1800) sec = 1800;
+
+            // 复用与 :castrec 完全相同的一套：OutDir + LaunchRecord
+            string dir = OutDir("screenrecord");
+            string file = Path.Combine(dir, "cluster" + displayId + "_"
+                          + DateTime.Now.ToString("HHmmss") + ".mp4");
+
+            Info("录制仪表（" + p.Label + "）屏号 " + displayId + "，" + sec + " 秒");
+            string err = "";
+            if (!Scrcpy.LaunchRecord(displayId, "仪表-" + p.Key, file, sec, out err))
+            {
+                Fail("scrcpy 启动失败：" + (err == null ? "未知" : err));
+                Hint("如果提示该屏已被占用，先用 :caststop " + displayId + " 关掉");
+                return;
+            }
+            Ok("✓ 已开始录制仪表（" + sec + " 秒后自动停止）");
+            Hint("文件：" + file);
+            Hint("普通屏录制不受影响，可同时进行");
+        }
+
         // ==================== 退出登录 ====================
         internal static void ClusterLogout()
         {
@@ -480,6 +532,347 @@ namespace AdbLogExport
             }
             Blank();
             Hint("投屏：:cast <屏号>    仪表：:clogin <芯片> 后再 :ccast <屏号>");
+        }
+
+        // :ccastrec [秒]  —— 录制仪表（默认 60 秒）
+        internal static void DoClusterRecCli(string argRaw)
+        {
+            string a = (argRaw == null ? "" : argRaw).Trim();
+            int sec = 60;
+            if (a.Length > 0) int.TryParse(a, out sec);
+            ClusterCastRec(sec);
+        }
+
+        // ====================================================================
+        //  2026-11-22（第 18 批 D4）：车机 TOP5 进程 + 剩余 CPU/内存
+        // --------------------------------------------------------------------
+        //  一条 shell 拿齐：
+        //    · top 头部 cpu 行  → 全机占用（idle 反推剩余）
+        //    · /proc/meminfo    → MemTotal / MemAvailable
+        //    · top 进程区       → 按 CPU% 排序取 5
+        //
+        //  ★ Android 的 top 有几套实现（toybox / busybox / procps），
+        //    列格式和参数都不一样。这里**不依赖 -m/-o 参数**，
+        //    而是自己解析表头定位列号 —— 换平台不会错位。
+        // ====================================================================
+        internal static string CarTop5()
+        {
+            if (DEVN == 0) return "{\"ok\":false,\"err\":\"没有连接设备\"}";
+
+            // 统一输出成 "标记|内容" 形式，C# 侧好切分
+            string cmd =
+                // ★ Android(toybox) 的 CPU 行是 "600%cpu  8%user ... 588%idle ..."
+                //   行首是数字不是 "cpu"，所以不能按 ^cpu 去 grep，改成抓含 idle 的行。
+                //   顺带能从 "600%cpu" 推出核数（600/100 = 6）。
+                "echo '##CPU'; top -n 1 -b 2>/dev/null | grep -m1 -i 'idle' ; " +
+                "echo '##MEM'; grep -E '^MemTotal:|^MemAvailable:' /proc/meminfo; " +
+                "echo '##PROC'; top -n 1 -b 2>/dev/null | head -40; " +
+                "echo '##END'";
+
+            string o = "", e = "";
+            try { ShellCall(CUR, cmd, out o, out e); } catch { }
+            string all = (o ?? "") + "\n" + (e ?? "");
+
+            // ---- 切段 ----
+            string cpuLine = Between(all, "##CPU", "##MEM");
+            string memBlk = Between(all, "##MEM", "##PROC");
+            string procBlk = Between(all, "##PROC", "##END");
+
+            // ---- 内存 ----
+            long memTotal = 0, memAvail = 0;
+            foreach (string ln in (memBlk ?? "").Split('\n'))
+            {
+                string t = ln.Trim();
+                if (t.StartsWith("MemTotal:")) memTotal = FirstNumber(t);
+                else if (t.StartsWith("MemAvailable:")) memAvail = FirstNumber(t);
+            }
+
+            // ---- CPU（从 cpu 行里找 idle，剩余 = 100 - (100 - idle) = idle）----
+            // top 的 cpu 行形如：cpu  12% user 3% sys 0% nic 84% idle ...
+            // 注意不同版本可能是 "84%idle"（无空格），用正则兼容两种写法
+            double freeCpu = -1;
+            int carCores = 1;
+            if (!string.IsNullOrEmpty(cpuLine))
+            {
+                // idle 值（形如 "588%idle" 或 "84% idle"）
+                System.Text.RegularExpressions.Match mi =
+                    System.Text.RegularExpressions.Regex.Match(cpuLine, @"([\d.]+)\s*%?\s*idle");
+                if (mi.Success)
+                {
+                    double idle;
+                    if (double.TryParse(mi.Groups[1].Value,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out idle))
+                    {
+                        // ★ 这里的 idle 是"占所有核累加"的百分比（6 核 → 满载 600%）。
+                        //   换算成"占全机"才是人话：idle / 总百分比 × 100。
+                        //   总百分比形如 "600%cpu"，从同一条行里取。
+                        System.Text.RegularExpressions.Match mt =
+                            System.Text.RegularExpressions.Regex.Match(cpuLine, @"([\d.]+)\s*%?\s*cpu");
+                        double totalPct = 100;
+                        if (mt.Success)
+                        {
+                            double tv;
+                            if (double.TryParse(mt.Groups[1].Value,
+                                System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out tv)
+                                && tv > 0)
+                            {
+                                totalPct = tv;
+                                carCores = (int)Math.Round(tv / 100.0);
+                                if (carCores < 1) carCores = 1;
+                            }
+                        }
+                        freeCpu = idle / totalPct * 100.0;
+                        if (freeCpu < 0) freeCpu = 0;
+                        if (freeCpu > 100) freeCpu = 100;
+                    }
+                }
+            }
+
+            // ---- 进程 top5：按表头定位列 ----
+            // 表头形如：  PID USER  PR NI  VIRT  RES  SHR S[%CPU] %CPU %MEM  TIME+  ARGS
+            // 不同版本列数和顺序都不同，所以先找表头，记下 PID/%CPU/%MEM/ARGS 的下标
+            var rows = new List<string[]>();
+            string[] lines = (procBlk ?? "").Split('\n');
+            int hPID = -1, hCPU = -1, hMEM = -1, hName = -1;
+            int hResIdx = -1, hNameIdx = -1;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string t = lines[i];
+                if (t == null) continue;
+                string tr = t.Trim();
+                if (tr.Length == 0) continue;
+
+                // 表头：同时含 PID 和 %CPU
+                if (hPID < 0 && tr.IndexOf("PID", StringComparison.Ordinal) >= 0
+                    && tr.IndexOf("CPU", StringComparison.Ordinal) >= 0)
+                {
+                    // ★ Android(toybox) 的表头把状态和 CPU% 挤在一个 token 里：
+                    //     PID USER PR NI VIRT RES SHR S[%CPU] %MEM TIME+ ARGS
+                    //   但**数据行是分开的两列**（R  8.0  0.0 ...）。
+                    //   所以这里要先把 "S[%CPU]" 拆成 "S" 和 "%CPU" 两列，
+                    //   否则后面的列索引全部左移一位 —— 表现为"CPU% 显示成 0、内存显示成 CPU%"。
+                    var hs = new List<string>();
+                    string[] raw = tr.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    for (int h = 0; h < raw.Length; h++)
+                    {
+                        string x = raw[h];
+                        int br = x.IndexOf('[');
+                        if (br > 0 && x.EndsWith("]"))
+                        {
+                            hs.Add(x.Substring(0, br));                      // "S"
+                            hs.Add(x.Substring(br + 1, x.Length - br - 2));  // "%CPU"
+                        }
+                        else hs.Add(x);
+                    }
+                    for (int h = 0; h < hs.Count; h++)
+                    {
+                        string x = hs[h].ToUpperInvariant();
+                        if (x == "PID") hPID = h;
+                        else if (x.IndexOf("%CPU", StringComparison.Ordinal) >= 0 || x == "CPU%") hCPU = h;
+                        else if (x.IndexOf("%MEM", StringComparison.Ordinal) >= 0 || x == "MEM%") hMEM = h;
+                        else if (x == "ARGS" || x == "NAME" || x == "CMD" || x == "COMMAND") hName = h;
+                    }
+                    hResIdx = -1;
+                    for (int h2 = 0; h2 < hs.Count; h2++)
+                        if (hs[h2].ToUpperInvariant() == "RES") hResIdx = h2;
+                    hNameIdx = hName;
+                    continue;
+                }
+
+                // 数据行：按列数大致对得上才收
+                if (hPID >= 0 && hCPU >= 0)
+                {
+                    string[] cs = tr.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (cs.Length <= hCPU || cs.Length <= hPID) continue;
+                    int pid;
+                    if (!int.TryParse(cs[hPID], out pid)) continue;   // PID 列不是数字 → 跳过
+                    rows.Add(cs);
+                }
+            }
+
+            // 按 CPU% 排序
+            rows.Sort(delegate(string[] a, string[] b)
+            {
+                return ParseD(b[hCPU]).CompareTo(ParseD(a[hCPU]));
+            });
+
+            StringBuilder sb = new StringBuilder();
+            sb.Append("{\"ok\":true");
+            sb.Append(",\"memTotal\":").Append(memTotal > 0 ? (memTotal / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "null");
+            sb.Append(",\"memFree\":").Append(memAvail > 0 ? (memAvail / 1048576.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "null");
+            sb.Append(",\"freeCpu\":").Append(freeCpu < 0 ? "null" : freeCpu.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture));
+
+            // CPU 榜
+            sb.Append(",\"cpu\":[");
+            int n = 0;
+            for (int i = 0; i < rows.Count && n < 5; i++)
+            {
+                string[] r = rows[i];
+                // toybox 的 %CPU 是"占单核"，除核数换成"占全机"，与本机口径一致
+                double pct = ParseD(r[hCPU]) / carCores;
+                if (pct <= 0.1) continue;
+                string pname = (hName >= 0 && hName < r.Length) ? r[hName]
+                             : (r.Length > 0 ? r[r.Length - 1] : "?");
+                if (n > 0) sb.Append(',');
+                sb.Append("{\"n\":").Append(JsonStr(ShortName(pname)))
+                  .Append(",\"v\":").Append(pct.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
+                  .Append('}');
+                n++;
+            }
+            sb.Append("],\"mem\":[");
+
+            // 内存榜：按 RES 排（表头里有 RES 列的话）
+            int hRes = hResIdx;
+            var mrows = new List<string[]>(rows);
+            if (hRes >= 0)
+            {
+                mrows.Sort(delegate(string[] a, string[] b)
+                {
+                    double va = (hRes < a.Length) ? ParseMem(a[hRes]) : 0;
+                    double vb = (hRes < b.Length) ? ParseMem(b[hRes]) : 0;
+                    return vb.CompareTo(va);
+                });
+            }
+            int nm = 0;
+            for (int i = 0; i < mrows.Count && nm < 5; i++)
+            {
+                string[] r = mrows[i];
+                string nmn = (hName >= 0 && hName < r.Length) ? r[hName]
+                           : (r.Length > 0 ? r[r.Length - 1] : "?");
+                string memTxt = (hRes >= 0 && hRes < r.Length) ? r[hRes] : "";
+                if (nm > 0) sb.Append(',');
+                sb.Append("{\"n\":").Append(JsonStr(ShortName(nmn)))
+                  .Append(",\"v\":").Append(JsonStr(memTxt)).Append('}');
+                nm++;
+            }
+            sb.Append("]}");
+            return sb.ToString();
+        }
+
+        // ---- 小工具 ----
+
+        // 极简 JSON 字符串转义（Cluster.cs 不是 GuiWeb，拿不到那边的 Json()）
+        private static string JsonStr(string v)
+        {
+            if (v == null) return "\"\"";
+            StringBuilder b = new StringBuilder("\"");
+            for (int i = 0; i < v.Length; i++)
+            {
+                char c = v[i];
+                if (c == '"') b.Append("\\\"");
+                else if (c == '\\') b.Append("\\\\");
+                else if (c == '\n') b.Append("\\n");
+                else if (c == '\r') b.Append("\\r");
+                else if (c == '\t') b.Append("\\t");
+                else if (c < ' ') b.Append(' ');
+                else b.Append(c);
+            }
+            b.Append('"');
+            return b.ToString();
+        }
+
+        private static string Between(string all, string a, string b)
+        {
+            if (string.IsNullOrEmpty(all)) return "";
+            int i = all.IndexOf(a, StringComparison.Ordinal);
+            if (i < 0) return "";
+            i += a.Length;
+            int j = all.IndexOf(b, i, StringComparison.Ordinal);
+            if (j < 0) j = all.Length;
+            return all.Substring(i, j - i);
+        }
+
+        private static long FirstNumber(string s)
+        {
+            System.Text.RegularExpressions.Match m =
+                System.Text.RegularExpressions.Regex.Match(s ?? "", @"(\d+)");
+            long v;
+            return (m.Success && long.TryParse(m.Groups[1].Value, out v)) ? v : 0;
+        }
+
+        private static double ParseD(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return 0;
+            double v;
+            return double.TryParse(s.Trim().TrimEnd('%'),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out v) ? v : 0;
+        }
+
+        // RES 列可能是 "123M" / "4560K" / "12G"，换算成 KB 便于排序
+        private static double ParseMem(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return 0;
+            string t = s.Trim().ToUpperInvariant();
+            double mul = 1;
+            if (t.EndsWith("G")) { mul = 1048576; t = t.Substring(0, t.Length - 1); }
+            else if (t.EndsWith("M")) { mul = 1024; t = t.Substring(0, t.Length - 1); }
+            else if (t.EndsWith("K")) { mul = 1; t = t.Substring(0, t.Length - 1); }
+            double v;
+            return double.TryParse(t, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out v) ? v * mul : 0;
+        }
+
+        // 进程名可能很长（com.xxx.yyy），截到 22 字符避免撑破 UI
+        private static string ShortName(string s)
+        {
+            string t = (s ?? "").Trim();
+            return t.Length <= 22 ? t : t.Substring(0, 21) + "…";
+        }
+
+        // :top5 —— 本机 + 车机 TOP5 速查（GUI 诊断页同源）
+        internal static void DoTop5()
+        {
+            Info("本机 TOP5…");
+            try
+            {
+                string h = Top5.HostTop5();
+                ShowTop5("本机", h);
+            }
+            catch (Exception ex) { Fail("本机采集失败：" + ex.Message); }
+
+            Blank();
+            Info("车机 TOP5…");
+            try
+            {
+                string c = CarTop5();
+                ShowTop5("车机", c);
+            }
+            catch (Exception ex) { Fail("车机采集失败：" + ex.Message); }
+        }
+
+        private static void ShowTop5(string who, string json)
+        {
+            if (string.IsNullOrEmpty(json) || json.IndexOf("\"ok\":true", StringComparison.Ordinal) < 0)
+            {
+                Warn("  " + who + "：采集失败或设备未连接");
+                return;
+            }
+            // 用正则把 {"n":"x","v":1.2} 抠出来，避免为 CLI 再写一套 JSON 解析
+            System.Text.RegularExpressions.MatchCollection cpus =
+                System.Text.RegularExpressions.Regex.Matches(json,
+                    "\\{\"n\":\"([^\"]*)\",\"v\":([0-9.]+)\\}");
+            var all = new List<string>();
+            for (int i = 0; i < cpus.Count; i++)
+                all.Add(cpus[i].Groups[1].Value + "  " + cpus[i].Groups[2].Value);
+
+            System.Text.RegularExpressions.Match fc =
+                System.Text.RegularExpressions.Regex.Match(json, "\"freeCpu\":([0-9.]+)");
+            System.Text.RegularExpressions.Match fm =
+                System.Text.RegularExpressions.Regex.Match(json, "\"freeMem\":([0-9.]+)");
+
+            if (fc.Success) Hint("  剩余 CPU：" + fc.Groups[1].Value + "%");
+            if (fm.Success) Hint("  剩余内存：" + fm.Groups[1].Value + " GB");
+
+            if (all.Count == 0) Warn("  没有拿到进程数据");
+            else
+            {
+                Hint("  占用 TOP（CPU / 内存合并展示）：");
+                for (int i = 0; i < all.Count && i < 10; i++)
+                    Hint("    " + all[i]);
+            }
         }
 
         // ==================== ini 存取（凭据只落本机）====================

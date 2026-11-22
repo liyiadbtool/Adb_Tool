@@ -1285,8 +1285,15 @@ namespace AdbLogExport
             Console.WriteLine();
             Console.WriteLine("== 自检：车机信息九项（:car）==");
             STCheck("属性项 8 个", CAR_KEYS.Length == 8, "" + CAR_KEYS.Length);
-            STCheck("标签数与属性数一致", CAR_LABELS.Length == CAR_KEYS.Length,
-                    CAR_LABELS.Length + "/" + CAR_KEYS.Length);
+            // 2026-11-22（第 18 批 D2）：车机信息从 8 项扩到 12 项
+            //   （新增 芯片 / 内存 / DDR 类型 / 存储 —— 这四项不是 getprop，
+            //     走 CAR_EXTRA_CMDS 的特殊 shell 片段）。
+            //   所以标签数应该等于 CAR_TOTAL（getprop 项 + 扩展项），
+            //   不再等于 CAR_KEYS.Length。
+            STCheck("标签数与总项数一致", CAR_LABELS.Length == CAR_TOTAL,
+                    CAR_LABELS.Length + "/" + CAR_TOTAL);
+            STCheck("扩展项 4 个", CAR_EXTRA_CMDS.Length == 4,
+                    "" + CAR_EXTRA_CMDS.Length);
             STCheck("车型属性名正确",
                     CAR_KEYS[0] == "sys.product.gacvehicleplatform", CAR_KEYS[0]);
             STCheck("SOC 属性名正确",

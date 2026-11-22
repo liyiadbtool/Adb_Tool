@@ -132,8 +132,8 @@ function runAll(){
     {id:0, w:1600, h:900}, {id:4, w:1920, h:720}
   ]});
   var grid = document.getElementById('cast-grid');
-  var btns = grid.querySelectorAll('.cbtn');
-  ok('按真实列表重建了按钮', btns.length === 2, btns.length);
+  var btns = grid.querySelectorAll('.crow');   // 第 18 批 B2：改成行式（含投/录两个按钮）
+  ok('按真实列表重建了行', btns.length === 2, btns.length);
   ok('按钮显示分辨率', grid.textContent.indexOf('1600×900') >= 0, grid.textContent.slice(0,80));
 
   // 拉不到时给提示，不崩
@@ -201,149 +201,23 @@ function runAll(){
      html.getAttribute('data-fsize'));
 
   /* ============ 8. H5 管理 ============ */
+  /* 2026-11-22（第 18 批 C1~C6）：H5 已按截图大幅简化
+     （删搜索/预设/导入导出/分类侧栏/卡片网格），
+     详细的增删改查/持久化断言见 _test_b18.py，这里只验证结构在位。 */
   switchTab('file');
   fileNavSwitch('h5');
   ok('H5 视图已激活',
      document.getElementById('fileview-h5').classList.contains('active'));
-
-  // H5 页签按钮
   ok('有 H5 二级导航',
      !!document.querySelector('.filenav-item[data-fn="h5"]'));
 
-  // 初始化
   h5EnsureInit();
-  ok('H5 主体已渲染', !!document.getElementById('h5-list'));
-  ok('有搜索框', !!document.getElementById('h5-search'));
-  ok('有添加按钮入口', typeof h5OpenAdd === 'function');
-  ok('有分类区', !!document.getElementById('h5-cats'));
-
-  // 清空后测增删
-  _h5.items = []; _h5.cat = ''; h5Save(); h5Render();
-
-  /* 8.1 + 8.3 添加 */
-  h5OpenAdd();
-  document.getElementById('h5-f-name').value = '测试看板';
-  document.getElementById('h5-f-url').value = 'board.example.com';   // 故意不写协议
-  document.getElementById('h5-f-cat').value = '监控';
-  h5Save();
-  ok('★ 添加成功（1 条）', _h5.items.length === 1, _h5.items.length);
-  ok('★ URL 自动补 https', _h5.items[0].url === 'https://board.example.com',
-     _h5.items[0].url);
-  ok('分类已记录', _h5.items[0].cat === '监控', _h5.items[0].cat);
-
-  /* 查重 */
-  h5OpenAdd();
-  document.getElementById('h5-f-name').value = '重复的';
-  document.getElementById('h5-f-url').value = 'https://board.example.com';
-  h5Save();
-  ok('★ 同一 URL 不重复添加', _h5.items.length === 1, _h5.items.length);
-
-  /* 非法 URL */
-  h5OpenAdd();
-  document.getElementById('h5-f-name').value = 'x';
-  document.getElementById('h5-f-url').value = 'ftp://a.b';
-  h5Save();
-  ok('非 http/https 被拒', _h5.items.length === 1, _h5.items.length);
-  h5CloseForm();
-
-  /* 8.3 分类过滤 */
-  h5OpenAdd();
-  document.getElementById('h5-f-name').value = '文档站';
-  document.getElementById('h5-f-url').value = 'https://docs.example.com';
-  document.getElementById('h5-f-cat').value = '文档';
-  h5Save();
-  ok('现在 2 条', _h5.items.length === 2, _h5.items.length);
-
-  h5Pick('监控');
-  var cards1 = document.querySelectorAll('#h5-list .h5-card').length;
-  ok('★ 按分类过滤（监控 1 条）', cards1 === 1, cards1);
-  h5Pick('');
-  ok('切回全部显示 2 条',
-     document.querySelectorAll('#h5-list .h5-card').length === 2);
-
-  /* 8 搜索 */
-  document.getElementById('h5-search').value = 'docs';
-  h5Render();
-  ok('搜索过滤生效', document.querySelectorAll('#h5-list .h5-card').length === 1,
-     document.querySelectorAll('#h5-list .h5-card').length);
-  document.getElementById('h5-search').value = '';
-  h5Render();
-
-  /* 8.2 打开（走 C# openurl 而不是 window.open） */
-  sent.length = 0;
-  var firstId = _h5.items[0].id;
-  h5Open(firstId);
-  var openMsg = null;
-  for (var m = 0; m < sent.length; m++) if (sent[m].kind === 'openurl') openMsg = sent[m];
-  ok('★ 打开走系统浏览器（openurl 消息）', !!openMsg, JSON.stringify(sent).slice(0,100));
-  if (openMsg) ok('openurl 带正确 URL', openMsg.url.indexOf('http') === 0, openMsg.url);
-  ok('打开后记录最近使用时间', !!_h5.items[0].last);
-
-  /* 复制 */
-  copied = null;
-  h5Copy(firstId);
-  ok('复制得到 URL', copied && copied.indexOf('http') === 0, copied);
-
-  /* 8.5 增强：导出 */
-  copied = null;
-  h5Export();
-  var jok = false;
-  try { var jo = JSON.parse(copied); jok = jo.items && jo.items.length === 2; } catch(e){}
-  ok('★ 导出 JSON 可解析且有 2 条', jok, copied ? copied.slice(0,60) : 'null');
-
-  /* 8.5 增强：导入去重 */
-  var beforeImp = _h5.items.length;
-  window.prompt = function(){
-    return JSON.stringify({ v:1, items: [
-      { name:'新站', url:'https://new.example.com', cat:'新' },
-      { name:'已有的', url:'https://board.example.com' }
-    ]});
-  };
-  h5Import();
-  ok('★ 导入只加新条目（已有的跳过）', _h5.items.length === beforeImp + 1,
-     beforeImp + ' -> ' + _h5.items.length);
-
-  /* 8.3 删除 */
-  var delId = _h5.items[0].id;
-  var cntBefore = _h5.items.length;
-  h5Del(delId);
-  ok('★ 删除生效', _h5.items.length === cntBefore - 1,
-     cntBefore + ' -> ' + _h5.items.length);
-
-  /* 持久化（localStorage） */
-  // headless + file:// 下 localStorage 有时被禁用，这里区分"不可用"和"没写进去"
-  // 显式再存一次，排除"前面几次操作把数组清空了"的干扰
-  h5Persist();
-  var raw = null, lsOk = true;
-  try {
-    localStorage.setItem('__probe__', '1');
-    localStorage.removeItem('__probe__');
-    raw = localStorage.getItem(H5_KEY);
-  } catch(e){ lsOk = false; }
-  // 诊断三连：数据在不在内存 / setItem 能不能往返 / 真实 key 有没有写进去
-  ok('内存里还有数据', _h5.items.length > 0, _h5.items.length);
-  var roundTrip = false;
-  if (lsOk){
-    try {
-      localStorage.setItem('__rt__', 'abc');
-      roundTrip = (localStorage.getItem('__rt__') === 'abc');
-      localStorage.removeItem('__rt__');
-    } catch(e){ roundTrip = false; }
-  }
-  if (!lsOk || !roundTrip){
-    ok('localStorage 在本环境不可用（跳过持久化断言）', true);
-  } else {
-    ok('★ 数据已写入 localStorage（持久化）', !!raw && raw.length > 10,
-       'raw=' + (raw === null ? 'null' : raw.length + '字符')
-       + ' items=' + _h5.items.length + ' key=' + H5_KEY
-       + ' json=' + JSON.stringify(_h5.items).length);
-  }
-
-  /* 8.5 增强：域名首字母 */
-  ok('首字母提取正确', h5Initial('https://www.baidu.com/x') === 'B',
-     h5Initial('https://www.baidu.com/x'));
-  ok('域名提取去掉 www', h5Host('https://www.baidu.com/x') === 'baidu.com',
-     h5Host('https://www.baidu.com/x'));
+  ok('H5 表单在（分组/名称/链接）',
+     !!document.getElementById('h5-f-cat')
+     && !!document.getElementById('h5-f-name')
+     && !!document.getElementById('h5-f-url'));
+  ok('有添加按钮', typeof h5Add === 'function');
+  ok('列表容器在', !!document.getElementById('h5-list'));
 
   ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));
   finish();
