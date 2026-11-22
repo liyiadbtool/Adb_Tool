@@ -5189,6 +5189,89 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .h5-name{ cursor:pointer; }
 .h5-name:hover{ color:var(--accent); }
 
+/* ============================================================================
+   2026-11-23（第 20 批 W2/W3/W5/W6/W7）：五个指定区域的控件规范化
+   ----------------------------------------------------------------------------
+   做法：**只覆盖 CSS，不改任何区域的 DOM 结构**，把散落的手写规格收敛到
+   与全站一致的三档（输入框 / 小按钮 / 主次按钮），并补齐状态反馈。
+   作用域全部限定在点名区域的前缀内，其它页面一行不受影响。
+   参考 Apple HIG：控件高度一致、间距落在 4/8 栅格、hover/active/disabled 三态齐备。
+   ============================================================================ */
+
+/* ---- W2 Monkey（原生 + Fastbot）：参数行输入框 ----
+   注：Fastbot 子页复用同一套 .mk-row，没有独立的 .fb-row，所以只覆盖 .mk-row 即可。 */
+.mk-row input[type="text"],
+.mk-row input[type="number"],
+.mk-row input:not([type]),
+.mk-row select{
+  padding:6px 9px;
+  min-height:30px;
+  box-sizing:border-box;
+  border:1px solid var(--border);
+  border-radius:var(--r-2);
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;
+  transition:border-color 120ms linear;
+}
+.mk-row input:focus,
+.mk-row select:focus{
+  outline:none; border-color:var(--accent);
+}
+
+/* ---- W3 文件四子页：工具栏按钮高度与主次一致 ---- */
+.fs-head .btn,
+.fs-toolbar .btn,
+.tx-toolbar .btn{
+  height:30px;
+}
+/* 文件列表行：悬停/选中态统一（原来只有选中没悬停） */
+.fs-row:hover{ background:var(--surface-hover); }
+.fs-row.sel:hover{ background:var(--accent-soft); }
+
+/* ---- W5 设备条：可点项统一 hover + 选中态 ---- */
+.device{
+  transition:border-color 120ms linear, background 120ms linear;
+}
+.device:hover{
+  border-color:var(--accent);
+  background:var(--surface-hover);
+}
+
+/* ---- W6 定时导出 / 定时监听 ----
+   2026-11-23 核查结论：这两个面板的按钮**已经是标准三档** ——
+     .btn.primary.sm（开始）/ .btn.ghost.sm（暂停）/ .btn.danger.sm（停止）
+   层级表达清楚，不需要额外覆盖。这里只补一点：状态文案与按钮的呼吸节奏，
+   让"未启动 / 运行中 / 已暂停"三种状态下按钮组的视觉重量更明确。 */
+.tt-box .btn.sm{ min-width:64px; }          /* 三个按钮等宽，切换时不跳 */
+.tt-state{ font-variant-numeric:tabular-nums; }
+
+/* ---- W7 智驾出行：带输入框的卡片（地图激活 / 设置时间）---- */
+.qcard .qinp{
+  height:30px;
+  padding:0 9px;
+  border:1px solid var(--border);
+  border-radius:var(--r-2);
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-mono);
+  font-size:12px;
+  box-sizing:border-box;
+}
+.qcard .qinp:focus{ outline:none; border-color:var(--accent); }
+/* 输入框卡片的"执行"提示：让用户知道回车/点卡片都能跑 */
+.qcard.hasinp .qcmd::after{
+  content:" · 回车执行";
+  color:var(--accent);
+  opacity:.75;
+}
+
+/* ---- 统一：上面这些区域里 disabled 一律降透明度 + 禁手型 ---- */
+.mk-row button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
 /* ---- 2026-11-23（第 20 批 S2）：资源占用左右分栏 ---- */
 .res-cols{
   display:grid;
