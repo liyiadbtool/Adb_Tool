@@ -2295,6 +2295,86 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // ====================================================================
+                // 2026-11-22（第 16 批）：仪表（Cluster）通道与投屏
+                // --------------------------------------------------------------------
+                // 四个入口都放后台线程：登录要跑 adb root + lxc-attach 或 telnet 探测，
+                // 单次可能 1~3 秒，放 UI 线程会卡界面。
+                // 结果统一用 PushOnUi 回推 clustate —— 第 15 批的教训：
+                // 后台线程直接调 PostWebMessageAsJson 会被静默吞掉。
+                // ====================================================================
+                case "cluget":
+                    PushClusterState(null, null, null);
+                    break;
+
+                case "clulogin":
+                    {
+                        string cchip = GetField(json, "chip");
+                        string chost = GetField(json, "host");
+                        string cuser = GetField(json, "user");
+                        string cpass = GetField(json, "pass");
+                        string csu = GetField(json, "su");
+
+                        // 凭据落 ini（只在本机；密码不回显、不进日志）
+                        if (cchip != null && cchip.Length > 0) App.SaveClusterIni("clu_chip", cchip);
+                        if (chost != null && chost.Length > 0) App.SaveClusterIni("clu_host", chost);
+                        if (cuser != null && cuser.Length > 0) App.SaveClusterIni("clu_user", cuser);
+                        if (cpass != null && cpass.Length > 0) App.SaveClusterIni("clu_pass", cpass);
+                        if (csu != null && csu.Length > 0) App.SaveClusterIni("clu_su", csu);
+
+                        Thread thC = new Thread(delegate()
+                        {
+                            try { App.ClusterLogin(cchip, chost, cuser, cpass, csu); }
+                            catch (Exception ex) { App.CLU_ERR = ex.Message; }
+                            PushClusterState(null, null, null);
+                        });
+                        thC.IsBackground = true;
+                        thC.Start();
+                    }
+                    break;
+
+                case "clulogout":
+                    try { App.ClusterLogout(); } catch { }
+                    PushClusterState(null, null, null);
+                    break;
+
+                case "cludetect":
+                    {
+                        Thread thD = new Thread(delegate()
+                        {
+                            string got = "";
+                            try { got = App.DetectChip(); } catch { }
+                            PushClusterState(null, null, got);
+                        });
+                        thD.IsBackground = true;
+                        thD.Start();
+                    }
+                    break;
+
+                case "clucast":
+                    {
+                        int cdisp = GetInt(json, "display");
+                        bool cview = GetField(json, "view") == "1";
+                        Thread thK = new Thread(delegate()
+                        {
+                            try { App.ClusterCast(cdisp, cview); }
+                            catch (Exception ex) { App.CLU_ERR = ex.Message; }
+                            PushClusterState(null, null, null);
+                        });
+                        thK.IsBackground = true;
+                        thK.Start();
+                    }
+                    break;
+
+                case "clustop":
+                    {
+                        int n = 0;
+                        try { n = Scrcpy.StopAllCasts(); } catch { }
+                        PushClusterState(n > 0 ? ("已关闭 " + n + " 个投屏窗口") : "没有正在运行的投屏窗口",
+                                        n > 0 ? "ok" : "warn", null);
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -3199,6 +3279,33 @@ namespace AdbLogExport.Gui
                 if (err != null && err.Length > 0) sb.Append(",\"err\":").Append(Json(err));
                 sb.Append('}');
 
+                PushOnUi(sb.ToString());
+            }
+            catch { }
+        }
+
+        // 2026-11-22（第 16 批）：把仪表通道状态推给页面。
+        // text/lv 可选：用来在页面日志区追一行说明。
+        // detected 可选：自动识别出的芯片 key。
+        private void PushClusterState(string text, string lv, string detected)
+        {
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{\"kind\":\"clustate\"")
+                  .Append(",\"logged\":").Append(App.CLU_LOGGED ? "true" : "false")
+                  .Append(",\"chip\":").Append(Json(App.CLU_CHIP == null ? "" : App.CLU_CHIP))
+                  .Append(",\"err\":").Append(Json(App.CLU_ERR == null ? "" : App.CLU_ERR))
+                  .Append(",\"host\":").Append(Json(App.ReadClusterIni("clu_host", "")))
+                  .Append(",\"user\":").Append(Json(App.ReadClusterIni("clu_user", "")));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    sb.Append(",\"text\":").Append(Json(text));
+                    sb.Append(",\"lv\":").Append(Json(lv == null ? "" : lv));
+                }
+                if (!string.IsNullOrEmpty(detected))
+                    sb.Append(",\"detected\":").Append(Json(detected));
+                sb.Append('}');
                 PushOnUi(sb.ToString());
             }
             catch { }

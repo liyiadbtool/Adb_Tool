@@ -185,8 +185,10 @@ A31_PAGE_REMOVED = ["page-cast"]
 # 页签 / 页面允许"追加"（顺序不能变，新页签必须在这里登记）
 # 2026-11-22（第 10 批需求）：新增「Monkey」稳定性测试页签。
 # 它是纯新增页（插在"文件"之后），不影响既有页签顺序。
-A12_TAB_ADD = ["text", "monkey", "diag"]   # 2026-11-22 加 diag（诊断页）
-A12_PAGE_ADD = ["page-text", "page-monkey", "page-diag"]
+# 2026-11-22（第 16 批）：新增「仪表」页签（Cluster 投屏）。
+# 纯新增页，插在"诊断"之后，不动既有顺序。
+A12_TAB_ADD = ["text", "monkey", "diag", "cluster"]
+A12_PAGE_ADD = ["page-text", "page-monkey", "page-diag", "page-cluster"]
 
 # A13 轮新增（自绘标题栏四点 / 输出区点空白收起），逐项登记而不是放宽断言：
 #   tb-status    四圆点容器（原 .topbar 里的 root/无线/日志/设备 徽章搬进标题栏）
@@ -357,7 +359,7 @@ A35_ADDS = {
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
     "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused",
-                      "autolog", "autostate", "heaplist"]),
+                      "autolog", "autostate", "heaplist", "clustate"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
@@ -386,7 +388,9 @@ A36_ADDS = {
                      "heapPick", "heapGo", "heapFilter",
                      # 2026-11-22 第 15 批：问诊增强 + 输入框点击兜底
                      "diagJumpTo", "diagDiffHist",
-                     "qcardClick", "qcardClickAt"]),
+                     "qcardClick", "qcardClickAt",
+                     # 2026-11-22 第 16 批：仪表投屏
+                     "cluLogin", "cluLogout", "cluDetect", "cluCast", "cluStop"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -430,7 +434,11 @@ A36_ADDS = {
                 "heap-mask", "heap-sub", "heap-search", "heap-all", "heap-list",
                 "heap-sel", "heap-go",
                 # 2026-11-22 第 15 批：状态汇总条 + 复制格式 + 合并卡备注
-                "diag-sum", "diag-fmt", "diag-link-note"]),
+                "diag-sum", "diag-fmt", "diag-link-note",
+                # 2026-11-22 第 16 批：仪表页
+                "page-cluster", "clu-chip", "clu-state", "clu-login", "clu-logout",
+                "clu-cred", "clu-host", "clu-user", "clu-pass", "clu-su",
+                "clu-display", "clu-viewonly", "clu-cast-btn", "clu-hint", "clu-log"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

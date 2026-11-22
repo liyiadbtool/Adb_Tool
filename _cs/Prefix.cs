@@ -338,6 +338,16 @@ namespace AdbLogExport
             if (n == "mapactive" || n == "mapact") { DoMapActivate(arg); return; }
             if (n == "heapdump" || n == "hdump") { DoHeapDump(arg); return; }
 
+            // ---- 2026-11-22 第 16 批：仪表（Cluster）通道与投屏 ----
+            // :clogin [chip] [host] [user] [pass] [su]   登录（chip=8838|8295）
+            // :clogout                                    退出登录
+            // :cdetect                                    自动识别芯片
+            // :ccast [屏号] [view]                        开启仪表实时显示（需先登录）
+            if (n == "clogin" || n == "clusterlogin") { DoClusterLoginCli(arg); return; }
+            if (n == "clogout" || n == "clusterlogout") { ClusterLogout(); return; }
+            if (n == "cdetect" || n == "chipdetect") { DoChipDetect(); return; }
+            if (n == "ccast" || n == "clustercast") { DoClusterCastCli(arg); return; }
+
             // :pki [del|pre|prod]   PKI 证书：删除 / 切预发布 / 切正式（root + 多步）
             if (n == "pki" || n == "pkicert") { DoPkiCmd(arg); return; }
 

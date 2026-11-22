@@ -4278,6 +4278,89 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 滚动容器：flex 网格 */
 /* ============================================================================
+   2026-11-22（第 16 批）：仪表（Cluster）页
+   ----------------------------------------------------------------------------
+   布局参考 ClusterDebugTool：一行放芯片/状态/登录按钮，一行放凭据（仅 8295），
+   一行放投屏参数，下面是说明和日志。
+   ============================================================================ */
+#page-cluster{
+  gap:0;
+  padding:14px 18px;
+  overflow-y:auto;
+}
+.clu-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.clu-row--top{
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.clu-lbl{
+  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+}
+.clu-sel{
+  padding:4px 8px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface); color:var(--text);
+  font-size:12px; outline:none;
+}
+.clu-sel:focus{ border-color:var(--accent); }
+.clu-inp{
+  padding:4px 8px; min-width:0;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface); color:var(--text);
+  font-family:var(--font-mono); font-size:12px;
+  outline:none;
+}
+.clu-inp:focus{ border-color:var(--accent); }
+.clu-inp--num{ width:64px; }
+.clu-chk{
+  display:flex; align-items:center; gap:4px;
+  font-size:11.5px; color:var(--text-dim); cursor:pointer;
+  white-space:nowrap;
+}
+.clu-state{
+  font-size:11.5px; font-family:var(--font-mono);
+  color:var(--text-faint);
+  padding:2px 8px;
+  border-radius:var(--r-pill);
+  border:1px solid var(--border);
+}
+.clu-state.ok{ color:var(--ok); border-color:var(--ok); background:var(--ok-soft); }
+.clu-state.bad{ color:var(--err); border-color:var(--err); background:var(--err-soft); }
+.clu-state.wait{ color:var(--accent); border-color:var(--accent); }
+
+.clu-cred{
+  padding:10px 12px;
+  margin-bottom:10px;
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--well);
+}
+.clu-cred .clu-row{ margin-bottom:6px; }
+.clu-note{
+  font-size:10.5px; line-height:1.6; color:var(--text-faint);
+}
+
+.clu-hint{
+  font-size:11px; line-height:1.7; color:var(--text-faint);
+  padding:8px 0 10px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:10px;
+}
+.clu-hint b{ color:var(--accent); font-weight:600; }
+
+.clu-log{
+  flex:1 1 auto; min-height:120px;
+  overflow-y:auto;
+  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  color:var(--text-dim);
+}
+.clu-log > div{ white-space:pre-wrap; word-break:break-all; padding:1px 0; }
+.clu-empty{ color:var(--text-faint); padding:8px 0; }
+
+/* ============================================================================
    2026-11-22（第 15 批）：状态汇总条
    ----------------------------------------------------------------------------
    目的：打开诊断页不用滚一遍就知道有没有问题（3 秒规则）。
@@ -4780,6 +4863,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
          车机信息、连通性、资源占用。用户要求"一键单独复制某一项"。 -->
     <button class="tab" data-tab="diag" onclick="switchTab('diag')">
       <svg viewBox="0 0 24 24"><path d="M3 12h3.6l2.2-5.4 3.6 11 2.4-6.6 1.8 3.2H21"/></svg><span>诊断</span></button>
+    <!-- 2026-11-22（第 16 批）：仪表投屏。
+         参考 ClusterDebugTool 的交互：选芯片 → 登录 → 开启实时显示。
+         门禁：必须选芯片且登录成功，才能投屏。 -->
+    <button class="tab" data-tab="cluster" onclick="switchTab('cluster')">
+      <svg viewBox="0 0 24 24"><rect x="2.6" y="5.2" width="18.8" height="11.4" rx="2.4"/><path d="M7 20.2h10"/><path d="M9.4 16.6v3.6M14.6 16.6v3.6"/><path d="M6.4 11.2l1.8-1.6 1.6 2.6 1.9-3.4 1.6 2.4h3.2"/></svg><span>仪表</span></button>
   </div>
 
   <div class="main">
@@ -5633,6 +5721,76 @@ body[data-navlabels="0"] .filenav-item.active::after{
          所以每一行右侧都有独立的复制按钮，另外每块有「复制本块」，
          顶部有「复制全部」和「保存快照」。
          ====================================================================== -->
+    <!-- ==================================================================
+         2026-11-22（第 16 批）：仪表（Cluster）投屏
+         ------------------------------------------------------------------
+         交互参考 ClusterDebugTool：选芯片 → 登录 → 开启实时显示。
+         ★ 硬门禁：必须选芯片 + 登录成功，才能投屏（按钮置灰 + C# 侧再校验）。
+         芯片差异（逆向确认）：
+           8838(T75)  lxc-attach -n linux-8838，免密
+           8295(AHT)  busybox telnet → 账号密码 → su 密码
+         ================================================================== -->
+    <div class="page" id="page-cluster">
+
+      <!-- ① 芯片 + 登录 -->
+      <div class="clu-row clu-row--top">
+        <span class="clu-lbl">芯片</span>
+        <select class="clu-sel" id="clu-chip" onchange="cluChipChanged()">
+          <option value="8838">8838 (T75)</option>
+          <option value="8295">8295 (AHT)</option>
+        </select>
+        <button class="btn ghost sm" onclick="cluDetect()" title="按设备属性自动识别（qcm8838 / sa8295）">自动识别</button>
+        <span class="clu-state" id="clu-state">未登录</span>
+        <div class="spacer"></div>
+        <button class="btn primary sm" id="clu-login" onclick="cluLogin()">登录设备</button>
+        <button class="btn ghost sm" id="clu-logout" onclick="cluLogout()" disabled>退出登录</button>
+      </div>
+
+      <!-- ② 凭据（仅 8295 需要）-->
+      <div class="clu-cred" id="clu-cred" style="display:none;">
+        <div class="clu-row">
+          <span class="clu-lbl">telnet</span>
+          <input class="clu-inp" id="clu-host" placeholder="192.168.8.1" spellcheck="false">
+          <span class="clu-lbl">账号</span>
+          <input class="clu-inp" id="clu-user" placeholder="登录账号" spellcheck="false">
+          <span class="clu-lbl">密码</span>
+          <input class="clu-inp" id="clu-pass" type="password" placeholder="登录密码">
+          <span class="clu-lbl">su</span>
+          <input class="clu-inp" id="clu-su" type="password" placeholder="su 密码（可空）">
+        </div>
+        <div class="clu-note">
+          凭据只保存在本机 ini（clu_* 键），不上传、不写日志。
+          8838 免密（走 lxc-attach），切换到 8838 时这一行会自动隐藏。
+        </div>
+      </div>
+
+      <!-- ③ 投屏 -->
+      <div class="clu-row">
+        <span class="clu-lbl">屏号</span>
+        <input class="clu-inp clu-inp--num" id="clu-display" type="number" min="0" max="20" value="4"
+               title="仪表所在 display id。8838 默认 4；8295 若不同请改">
+        <label class="clu-chk">
+          <input type="checkbox" id="clu-viewonly">
+          <span>只读（不接管输入，防误触）</span>
+        </label>
+        <div class="spacer"></div>
+        <button class="btn primary sm" id="clu-cast-btn" onclick="cluCast()" disabled
+                title="需先选择芯片并登录成功">开启仪表实时显示</button>
+        <button class="btn ghost sm" onclick="cluStop()">关闭显示窗口</button>
+      </div>
+
+      <!-- ④ 说明 -->
+      <div class="clu-hint" id="clu-hint">
+        流程：① 选芯片 → ② 登录设备 → ③ 开启仪表实时显示。
+        投屏走 <b>scrcpy --display-id=N</b>，和工具既有的 <b>:scrcpy</b> 是同一条通道。
+      </div>
+
+      <!-- ⑤ 日志 -->
+      <div class="clu-log" id="clu-log">
+        <div class="clu-empty">登录后这里显示通道信息与投屏结果</div>
+      </div>
+    </div>
+
     <div class="page" id="page-diag">
       <div class="diag-wrap">
 
@@ -9918,6 +10076,10 @@ function switchTab(name){
   var pd = document.getElementById('page-diag');
   if(pd) pd.classList.toggle('active', name === 'diag');
   if(name === 'diag'){ try { diagOnEnter(); } catch(e){} }
+  // 2026-11-22（第 16 批）：仪表页
+  var pc2 = document.getElementById('page-cluster');
+  if(pc2) pc2.classList.toggle('active', name === 'cluster');
+  if(name === 'cluster' && typeof cluOnEnter === 'function'){ try { cluOnEnter(); } catch(e){} }
   // 旧的两个一级页容器已不存在（内容搬进 #fileview-ui / #fileview-text），
   // 保留这两行只为兼容可能存在的极早期代码路径；元素不存在时静默跳过。
   var pu = document.getElementById('page-ui');
@@ -10956,13 +11118,6 @@ var quickGroups = [
     {name:'清理地图数据',
      desc:'pm clear（⚠ 清全部私有数据：登录态/收藏/离线地图，不是只清缓存）',
      cmd:':mapclear', progress:true, cat:'地图操作'},
-    // 2026-11-22（第 15 批）：「地图激活 / 修改系统时间 / 设置时间」
-    // 都是"必须填值才能执行"的卡，单独归类到「参数输入」——
-    // 和只读查询、一键执行的动作分开，找起来更快，也提醒"这里有输入框"。
-    {name:'地图激活',
-     desc:'填激活码（数字+字母）→ setprop → 重启地图进程',
-     cmd:':mapactive $INPUT', input:'激活码（数字 + 26 字母）',
-     cat:'参数输入'},
     // ==================== 日志导出 ====================
     {name:'导出全日志',
      desc:'anr/tombstones/dropbox/slog2(QNX)/androidlog/高德bllog/misc-bllog → 桌面logcat\\日期\\log_时间戳',
@@ -10991,11 +11146,20 @@ var quickGroups = [
     {name:'关闭坐标', desc:'pointer_location = 0',
      cmd:'stxyoff', cat:'显示调试'},
     // ==================== 系统与环境 ====================
-    {name:'切换繁体',
-     desc:'setprop persist.sys.locale zh-HK; stop; start（⚠ 重启框架，约 10~30 秒）',
-     cmd:':maptrad', progress:true, cat:'系统与环境'},
-    // 时间三件套里，「修改系统时间」和「设置时间」都要你填/点参数，
-    // 归到「参数输入」；「恢复系统时间」是纯一键动作，留在「系统与环境」。
+    // ========================================================================
+    // 2026-11-22（第 16 批）：「参数输入」组 —— 三张必须**连续排列**的卡。
+    //
+    // ★ 为什么强调连续：分组渲染器是"遇到新 cat 就插标题"，
+    //   同一个 cat 被别的分类打断就会**插入两个同名标题**。
+    //   第 15 批就是把「地图激活」放在地图操作组、时间两张放最后，
+    //   结果界面上出现了两个「参数输入」。
+    //   规则：以后新增卡片，先看它的 cat 是否已存在 —— 存在就必须插到
+    //   那一组里面去，不能另起一段。
+    // ========================================================================
+    {name:'地图激活',
+     desc:'填激活码（数字+字母）→ setprop → 重启地图进程',
+     cmd:':mapactive $INPUT', input:'激活码（数字 + 26 字母）',
+     cat:'参数输入'},
     {name:'修改系统时间',
      desc:'root/remount → 禁用工程模式与时间同步 → 关自动校时（先点这个）',
      cmd:':timeprep', progress:true, cat:'参数输入'},
@@ -11003,9 +11167,13 @@ var quickGroups = [
      desc:'填 2026-11-22 18:00:00 → date + hwclock -w（需先点「修改系统时间」）',
      cmd:':settime $INPUT', input:'时间，如 2026-11-22 18:00:00',
      cat:'参数输入'},
+    // ---- 系统与环境（两张也要紧挨着）----
+    {name:'切换繁体',
+     desc:'setprop persist.sys.locale zh-HK; stop; start（⚠ 重启框架，约 10~30 秒）',
+     cmd:':maptrad', progress:true, cat:'系统与环境'},
     {name:'恢复系统时间',
      desc:'重新启用工程模式 / 时间同步，并开自动校时（用完记得点）',
-     cmd:':timerestore', progress:true, cat:'系统与环境'}
+     cmd:':timerestore', progress:true, cat:'系统与环境'},
   ]},
 
   // 6. 方控按键
@@ -11641,6 +11809,194 @@ function renderSearchResults(){
   }
   swapGrid(grid, html);
 }
+
+/* ============================================================================
+   仪表（Cluster）页（2026-11-22 第 16 批）
+   ----------------------------------------------------------------------------
+   严格按 ClusterDebugTool 的交互与芯片差异实现：
+     8838(T75)  lxc-attach -n linux-8838   免密
+     8295(AHT)  busybox telnet → 账号密码 → su 密码
+
+   ★ 门禁：必须"选芯片 + 登录成功"才允许投屏。
+     前端把按钮置灰只是体验，C# 侧 ClusterCast 里还有第二道校验
+     （脚本/快捷键绕过前端时也不会漏）。
+   ============================================================================ */
+var _clu = {
+  chip: '8838',
+  logged: false,
+  chipLogged: '',
+  busy: false
+};
+
+function cluEl(id){ return document.getElementById(id); }
+
+/* 芯片切换：8295 才显示凭据区；切换就退出登录（换芯片必须重新登录）*/
+function cluChipChanged(){
+  var sel = cluEl('clu-chip');
+  var chip = sel ? sel.value : '8838';
+  _clu.chip = chip;
+
+  var cred = cluEl('clu-cred');
+  if(cred) cred.style.display = (chip === '8295') ? '' : 'none';
+
+  // 屏号默认值跟着芯片走（8838 默认 4）
+  var disp = cluEl('clu-display');
+  if(disp && !disp.dataset.touched) disp.value = '4';
+
+  // 换芯片 = 之前的登录作废（不同芯片通道完全不同，混用会出错）
+  if(_clu.logged && _clu.chipLogged !== chip){
+    cluLogout(true);
+    cluLog('切换芯片 → ' + chip + '，已退出之前的登录');
+  }
+  cluUpdateGate();
+}
+
+/* 刷新门禁：登录成功才启用投屏按钮 */
+function cluUpdateGate(){
+  var btn = cluEl('clu-cast-btn');
+  if(!btn) return;
+  var ok = _clu.logged && _clu.chipLogged === _clu.chip && !_clu.busy;
+  btn.disabled = !ok;
+  btn.title = ok ? '开启仪表实时显示' : '需先选择芯片并登录成功';
+}
+
+function cluSetState(text, cls){
+  var st = cluEl('clu-state');
+  if(!st) return;
+  st.textContent = text;
+  st.className = 'clu-state' + (cls ? ' ' + cls : '');
+}
+
+function cluLog(text, lv){
+  var box = cluEl('clu-log');
+  if(!box) return;
+  var empty = box.querySelector('.clu-empty');
+  if(empty) box.removeChild(empty);
+  var d = document.createElement('div');
+  if(lv === 'ok') d.style.color = 'var(--ok)';
+  else if(lv === 'bad') d.style.color = 'var(--err)';
+  else if(lv === 'warn') d.style.color = 'var(--accent)';
+  d.textContent = text;
+  box.appendChild(d);
+  while(box.children.length > 200) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* 进入页面：把上次的选择/凭据带出来 */
+function cluOnEnter(){
+  try { postObj({ kind: 'cluget' }); } catch(e){}
+}
+
+function cluOnState(msg){
+  if(!msg) return;
+  _clu.busy = false;
+  _clu.logged = !!msg.logged;
+  _clu.chipLogged = msg.chip || '';
+  if(msg.chip) _clu.chip = msg.chip;
+
+  var sel = cluEl('clu-chip');
+  if(sel && msg.chip) sel.value = msg.chip;
+  var cred = cluEl('clu-cred');
+  if(cred) cred.style.display = (msg.chip === '8295') ? '' : 'none';
+
+  // 凭据带出（只回填非空值，避免把用户正在输的内容冲掉）
+  if(msg.host && cluEl('clu-host') && !cluEl('clu-host').value) cluEl('clu-host').value = msg.host;
+  if(msg.user && cluEl('clu-user') && !cluEl('clu-user').value) cluEl('clu-user').value = msg.user;
+
+  var lg = cluEl('clu-login'), lo = cluEl('clu-logout');
+  if(_clu.logged){
+    cluSetState('已登录（' + _clu.chipLogged + '）', 'ok');
+    if(lg) lg.disabled = true;
+    if(lo) lo.disabled = false;
+  } else {
+    cluSetState(msg.err ? ('失败：' + msg.err) : '未登录', msg.err ? 'bad' : '');
+    if(lg) lg.disabled = false;
+    if(lo) lo.disabled = true;
+  }
+  cluUpdateGate();
+
+  if(msg.text) cluLog(msg.text, msg.lv || '');
+  if(msg.detected && msg.detected.length){
+    cluLog('自动识别：' + msg.detected, 'ok');
+    var dsel = cluEl('clu-chip');
+    if(dsel) { dsel.value = msg.detected; cluChipChanged(); }
+  }
+}
+
+/* 登录 */
+function cluLogin(){
+  if(_clu.busy) return;
+  var chip = (cluEl('clu-chip') || {}).value || '8838';
+  var host = (cluEl('clu-host') || {}).value || '';
+  var user = (cluEl('clu-user') || {}).value || '';
+  var pass = (cluEl('clu-pass') || {}).value || '';
+  var su   = (cluEl('clu-su') || {}).value || '';
+
+  // 前端先拦一道：8295 缺凭据直接提示（省一次往返）
+  if(chip === '8295' && (!user || !pass)){
+    cluLog('8295 需要填 telnet 账号和密码', 'bad');
+    toast('请先填 8295 的账号和密码', 'err');
+    return;
+  }
+
+  _clu.busy = true;
+  cluSetState('登录中…', 'wait');
+  cluLog('—— 登录 ' + chip + ' ——');
+  cluUpdateGate();
+
+  try {
+    postObj({ kind: 'clulogin', chip: chip, host: host, user: user, pass: pass, su: su });
+  } catch(e){
+    _clu.busy = false;
+    cluLog('登录请求发送失败：' + e, 'bad');
+    cluSetState('未登录', 'bad');
+    cluUpdateGate();
+  }
+}
+
+function cluLogout(silent){
+  _clu.logged = false;
+  _clu.chipLogged = '';
+  try { postObj({ kind: 'clulogout' }); } catch(e){}
+  cluSetState('未登录', '');
+  var lg = cluEl('clu-login'), lo = cluEl('clu-logout');
+  if(lg) lg.disabled = false;
+  if(lo) lo.disabled = true;
+  cluUpdateGate();
+  if(!silent) cluLog('已退出登录');
+}
+
+/* 自动识别芯片 */
+function cluDetect(){
+  cluLog('正在按设备属性识别芯片…');
+  try { postObj({ kind: 'cludetect' }); } catch(e){}
+}
+
+/* 开启仪表实时显示 */
+function cluCast(){
+  if(!(_clu.logged && _clu.chipLogged === _clu.chip)){
+    toast('请先选择芯片并登录', 'err');
+    return;
+  }
+  var disp = parseInt((cluEl('clu-display') || {}).value, 10);
+  if(isNaN(disp) || disp < 0) disp = 4;
+  var view = !!(cluEl('clu-viewonly') || {}).checked;
+
+  cluLog('开启仪表实时显示（' + _clu.chip + '）屏号 ' + disp + (view ? '，只读' : '，可点击'));
+  try {
+    postObj({ kind: 'clucast', display: disp, view: view ? 1 : 0 });
+  } catch(e){ cluLog('投屏请求失败：' + e, 'bad'); }
+}
+
+function cluStop(){
+  cluLog('关闭仪表显示窗口…');
+  try { postObj({ kind: 'clustop' }); } catch(e){}
+}
+
+/* 屏号手动改过就不再被芯片切换覆盖 */
+document.addEventListener('input', function(e){
+  if(e && e.target && e.target.id === 'clu-display') e.target.dataset.touched = '1';
+});
 
 /* ============================================================================
    HeapDump 浮层（2026-11-22 第 14 批需求 1.11）
@@ -15999,6 +16355,10 @@ function v12OnMessage(msg){
     // 2026-11-22：HeapDump 进程列表
     case 'heaplist':
       try { if(typeof heapOnList === 'function') heapOnList(msg); } catch(e){}
+      return true;
+    // 2026-11-22（第 16 批）：仪表通道状态
+    case 'clustate':
+      try { if(typeof cluOnState === 'function') cluOnState(msg); } catch(e){}
       return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }
