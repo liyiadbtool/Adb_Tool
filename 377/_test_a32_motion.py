@@ -132,24 +132,32 @@ JS = r"""
       ok('A32-3 无残留 .qdock-item', !document.querySelector('.qdock-item'));
       ok('A32-3 无残留 .qdock-tip', !document.querySelector('.qdock-tip'));
 
-      // 特征迁移：导航项必须带图标 + 名称气泡
+      // 特征迁移：导航项必须带图标 + 名称
+      // 2026-11-22（变更）：名称气泡 .qnav-tip 已删除。
+      //   原因：它 position:absolute 定位在导航项右侧外面，把 .quick-nav 的
+      //   scrollWidth 撑大，产生了用户反馈的底部横向滚动条；
+      //   而且加了 overflow-x:hidden 之后气泡本身会被裁，两条路都走不通。
+      //   改为原生 title 属性提示（零副作用），图标态照样能知道是什么。
       var navItems = document.querySelectorAll('.qnav-item');
       ok('A32-3 导航项存在', navItems.length > 0, navItems.length);
-      var allIco = true, allTip = true, allName = true;
+      var allIco = true, allName = true, allTitle = true;
       for (var i = 0; i < navItems.length; i++){
         if (!navItems[i].querySelector('.qico2 svg')) allIco = false;
-        if (!navItems[i].querySelector('.qnav-tip')) allTip = false;
         if (!navItems[i].querySelector('.qname2')) allName = false;
+        if (!navItems[i].getAttribute('title')) allTitle = false;
       }
       ok('A32-3 每个导航项都有图标', allIco);
-      ok('A32-3 每个导航项都有名称气泡', allTip);
       ok('A32-3 每个导航项都有名称节点', allName);
+      ok('A32-3 每个导航项都有 title 提示（替代气泡）', allTitle);
 
-      // 名称气泡内容 = 分组名
-      var tip0 = navItems[0] ? navItems[0].querySelector('.qnav-tip') : null;
-      ok('A32-3 气泡文字是分组名',
-         tip0 && tip0.textContent.trim() === quickGroups[0].name,
-         tip0 ? tip0.textContent : 'none');
+      // 导航项不应再残留 qnav-tip（它是滚动条的元凶）
+      ok('A32-3 导航项无 qnav-tip 残留',
+         !document.querySelector('.qnav-item .qnav-tip'));
+
+      // title 内容 = 分组名
+      ok('A32-3 title 内容是分组名',
+         navItems[0] && navItems[0].getAttribute('title') === quickGroups[0].name,
+         navItems[0] ? navItems[0].getAttribute('title') : 'none');
 
       // 收集 CSS 规则，验证图标态的悬停放大与气泡显示
       var cssTxt = '';
@@ -163,8 +171,10 @@ JS = r"""
       }
       ok('A32-3 有图标态悬停放大规则',
          /data-navlabels="0"\] \.qnav-item:hover/.test(cssTxt), '见 CSS');
-      ok('A32-3 有图标态气泡显示规则',
-         /data-navlabels="0"\] \.qnav-item:hover \.qnav-tip/.test(cssTxt), '见 CSS');
+      // 2026-11-22：气泡的 hover 显示规则已删除（改用 title），
+      // 反向断言它确实不在了，防止有人又加回来把滚动条带回来。
+      ok('A32-3 无气泡 hover 规则（防回归）',
+         !/data-navlabels="0"\] \.qnav-item:hover \.qnav-tip/.test(cssTxt), '见 CSS');
 
       finish();
     }

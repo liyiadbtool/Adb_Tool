@@ -74,10 +74,12 @@ setTimeout(function(){
      document.getElementById('mk-sub-native').style.display==='flex');
 
   /* ---- 2. Fastbot 配置控件齐全 ---- */
-  var need=['fb-pkg','fb-minutes','fb-throttle','fb-agent','fb-bugreport',
+  // 2026-11-22：单包输入框 fb-pkg 已删除，改为必检清单区元素
+  var need=['fb-minutes','fb-throttle','fb-agent','fb-bugreport',
             'fb-keep-model','fb-outdir','fb-start','fb-stop','fastbot-out','fb-status',
             'fb-st-crash','fb-st-anr','fb-st-cov','fb-st-act','fb-st-elapsed',
-            'fb-deploy-btn','fb-hint'];
+            'fb-deploy-btn','fb-hint','fb-list','fb-listcnt','fb-add-pkg',
+            'fb-hint-text'];
   var miss=[];
   for(var k=0;k<need.length;k++) if(!document.getElementById(need[k])) miss.push(need[k]);
   ok('Fastbot 控件齐全', miss.length===0, miss.join(','));
@@ -87,7 +89,8 @@ setTimeout(function(){
   ok('停止按钮初始禁用', (document.getElementById('fb-stop')||{}).disabled===true);
 
   /* ---- 3. 命令构建 ---- */
-  document.getElementById('fb-pkg').value='com.test.fb';
+  // 单包模式已删除：必须先在清单里放一个包
+  _fbApps=[{pkg:'com.test.fb', name:'', sel:true}];
   _fb.agent='reuseq';
   var cmd=fbBuildCmd();
   ok('命令含 CLASSPATH', /CLASSPATH=\/sdcard\/monkeyq\.jar/.test(cmd||''), cmd);
@@ -117,9 +120,9 @@ setTimeout(function(){
   document.getElementById('fb-outdir').value='';
 
   // 无包名返回 null
-  document.getElementById('fb-pkg').value='';
-  ok('无包名时命令为 null', fbBuildCmd()===null);
-  document.getElementById('fb-pkg').value='com.test.fb';
+  _fbApps=[];
+  ok('清单为空时命令为 null', fbBuildCmd()===null);
+  _fbApps=[{pkg:'com.test.fb', name:'', sel:true}];
 
   /* ---- 4. 部署状态解析 ---- */
   _fb._okFiles=[]; _fb._missFiles=[];
@@ -231,58 +234,40 @@ setTimeout(function(){
   fbStart();
   ok('未部署时未进入运行态', _fb.running===false);
 
-  /* ---- 11b. 测试范围：白名单 / Activity 黑名单（2026-11-22）----
-     实测确认的机制差异（不能照抄原生 monkey）：
-       白名单 → 重复给 -p（日志打多行 AllowPackage）
-       黑名单 → Fastbot 没有包级黑名单，只有 --act-blacklist-file（页面级） */
-  ok('范围切换函数存在', typeof fbSetScope === 'function');
+  /* ---- 11b. 白名单（2026-11-22 单包/Activity黑名单已删除）----
+     实测确认：白名单 = 重复给 -p（Fastbot 没有 --pkg-whitelist-file） */
+  ok('范围切换函数仍在（兼容旧调用）', typeof fbSetScope === 'function');
+  ok('从APK管理导入函数存在', typeof fbImportFromApk === 'function');
 
-  // 单包模式：一个 -p
-  fbSetScope('single');
-  document.getElementById('fb-pkg').value = 'com.test.one';
+  // 一个包 → 一个 -p
+  _fbApps=[{pkg:'com.test.one', name:'', sel:true}];
   var c1 = fbBuildCmd();
-  ok('单包只给一个 -p', (c1.match(/-p /g)||[]).length===1, c1);
+  ok('单包清单给一个 -p', (c1.match(/-p /g)||[]).length===1, c1);
 
-  // 白名单：多个 -p
-  _fbApps = [];
-  fbAddPkg_with('com.test.a, com.test.b');
-  fbSetScope('white');
+  // 两个包 → 两个 -p
+  _fbApps=[
+    {pkg:'com.test.a', name:'', sel:true},
+    {pkg:'com.test.b', name:'', sel:true}
+  ];
   var c2 = fbBuildCmd();
   ok('白名单用重复 -p', (c2.match(/-p /g)||[]).length===2, c2);
   ok('白名单含两个包名',
      c2.indexOf('com.test.a')>=0 && c2.indexOf('com.test.b')>=0, c2);
   ok('白名单不含 --pkg-whitelist-file（Fastbot 没这个参数）',
      c2.indexOf('pkg-whitelist')<0, c2);
+  ok('不再有 Activity 黑名单参数',
+     c2.indexOf('act-blacklist')<0, c2);
 
-  // 白名单为空 → 返回 null
-  _fbApps = [];
-  ok('白名单为空时命令为 null', fbBuildCmd()===null);
-
-  // Activity 黑名单：有内容才加参数
-  fbSetScope('black');
-  document.getElementById('fb-pkg').value = 'com.test.blk';
-  document.getElementById('fb-actlist').value = '';
+  // 未勾选的不算
+  _fbApps=[
+    {pkg:'com.test.a', name:'', sel:true},
+    {pkg:'com.test.b', name:'', sel:false}
+  ];
   var c3 = fbBuildCmd();
-  ok('Activity 黑名单为空时不加参数',
-     c3.indexOf('--act-blacklist-file')<0, c3);
+  ok('未勾选的包不进入命令', (c3.match(/-p /g)||[]).length===1, c3);
 
-  document.getElementById('fb-actlist').value =
-    'com.test.blk.AboutActivity\ncom.test.blk.ResetActivity';
-  var c4 = fbBuildCmd();
-  ok('Activity 黑名单有内容时加参数',
-     c4.indexOf('--act-blacklist-file')>=0, c4);
-  ok('黑名单路径在 /sdcard',
-     c4.indexOf('/sdcard/.fb_act_black.txt')>=0, c4);
-
-  // 名单内容格式
-  var abl = fbBuildActBlacklist();
-  ok('Activity 名单每行一个', abl.split('\n').length===2, abl);
-  ok('Activity 名单已去空行',
-     abl.indexOf('\n\n')<0, JSON.stringify(abl));
-
-  // 恢复 single 供后续用例
-  fbSetScope('single');
-  document.getElementById('fb-pkg').value = 'com.test.fb';
+  // 恢复
+  _fbApps=[{pkg:'com.test.fb', name:'', sel:true}];
 
   /* ---- 12. 清空 ---- */
   fbClear();
