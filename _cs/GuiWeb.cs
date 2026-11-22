@@ -39,6 +39,12 @@ namespace AdbLogExport.Gui
         private string[] _lastCmd = new string[MAX_SLOT];
         private string _uiPath;
 
+        /* 2026-11-23（第 23 批）：记住页面最后要求的缩放值。
+           用途：从任务栏 / Dock 恢复窗口时，WebView2 有时会把 ZoomFactor
+           退回默认 1.0，导致"从 dock 打开再操作，界面缩一下"。
+           记下来就能在窗口激活时立刻纠正，用户看不到中间那一帧。 */
+        private double _wantZoom = -1;
+
         // 原生加载遮罩（WebView2 就绪前的过渡，避免白屏）
         private Panel _splashPanel;
         private System.Windows.Forms.Timer _splashTimer;
@@ -362,9 +368,14 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                if (App.THEME == "light") BackColor = Color.FromArgb(254, 254, 255);
-                else if (App.THEME == "eye") BackColor = Color.FromArgb(255, 251, 240);
-                else BackColor = Color.FromArgb(13, 17, 23);
+                Color bg;
+                if (App.THEME == "light") bg = Color.FromArgb(254, 254, 255);
+                else if (App.THEME == "eye") bg = Color.FromArgb(255, 251, 240);
+                else bg = Color.FromArgb(13, 17, 23);
+                BackColor = bg;
+                /* 2026-11-23（第 23 批）：WebView2 的底色也要跟着主题走。
+                   否则切换主题后从任务栏恢复，还会闪一次旧主题的白/深底。 */
+                if (_web != null) _web.DefaultBackgroundColor = bg;
             }
             catch { }
         }
@@ -765,6 +776,33 @@ namespace AdbLogExport.Gui
             ApplyWindowCorner();
         }
 
+        /* ★ 2026-11-23（第 23 批）：窗口激活（从任务栏 / Dock 唤起）时校正缩放。
+           现象：从 dock 打开应用再操作，界面会"缩一下"。
+           原因是 WebView2 在窗口重新激活/还原时，会把 ZoomFactor 退回默认 1.0
+           一帧，然后页面或我们自己的 uizoom 再改回来 —— 这一来一回就是用户看到的闪缩。
+           对策：记住页面最后要求的 _wantZoom，激活时如果发现被改掉了，
+                立刻改回去。即使 WebView2 又重置一次，我们也在同一帧纠正，
+                中间不会有可见的过渡。 */
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            RestoreZoom();
+        }
+
+        private void RestoreZoom()
+        {
+            try
+            {
+                if (_web == null || _web.CoreWebView2 == null) return;
+                double want = _wantZoom;
+                if (want <= 0) want = PrefsZoom(App.PREFS);   // 页面还没报过，用 ini 的
+                if (want <= 0) return;
+                if (Math.Abs(_web.ZoomFactor - want) > 0.0001)
+                    _web.ZoomFactor = want;
+            }
+            catch { }
+        }
+
         // 最大化 / 还原后要告诉页面：最大化按钮图标要换成"还原"，边缘热区要藏起来。
         private void PushWinState()
         {
@@ -940,6 +978,24 @@ namespace AdbLogExport.Gui
         {
             _web = new WebView2();
             _web.Dock = DockStyle.Fill;
+
+            /* ★ 2026-11-23（第 23 批）：修"黑夜模式下 Dock 唤起闪白"。
+               WebView2 控件的 DefaultBackgroundColor 默认是**白色**。
+               页面内容渲染出来之前（尤其从任务栏恢复、窗口重绘的瞬间），
+               这块白底会露出来 → 深色主题下就是"闪一下白"。
+               Form 的 BackColor 早就按主题设了，但 WebView2 是独立子窗口，
+               它自己的底色不受 Form 影响，必须单独设。 */
+            try
+            {
+                if (App.THEME == "light")
+                    _web.DefaultBackgroundColor = Color.FromArgb(254, 254, 255);
+                else if (App.THEME == "eye")
+                    _web.DefaultBackgroundColor = Color.FromArgb(255, 251, 240);
+                else
+                    _web.DefaultBackgroundColor = Color.FromArgb(13, 17, 23);
+            }
+            catch { }
+
             Controls.Add(_web);
 
             // 原生加载遮罩：WebView2 环境初始化 + 页面加载这段"白屏期"，
@@ -2609,7 +2665,16 @@ namespace AdbLogExport.Gui
                         // 夹在 0.75~1.6：防手改 ini / 异常值把界面缩没
                         if (z < 0.75) z = 0.75;
                         if (z > 1.6) z = 1.6;
-                        try { _web.ZoomFactor = z; } catch { }
+                        /* 幂等：值没变就不要重复赋值。
+                           WebView2 即使赋相同值也会触发一次整页重排 ——
+                           反复触发在视觉上就是"缩一下"。 */
+                        _wantZoom = z;
+                        try
+                        {
+                            if (Math.Abs(_web.ZoomFactor - z) > 0.0001)
+                                _web.ZoomFactor = z;
+                        }
+                        catch { }
                     }
                     break;
 
