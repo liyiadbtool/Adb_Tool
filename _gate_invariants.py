@@ -356,14 +356,17 @@ A35_ADDS = {
 #               mkListPkgs / mkOpenLogDir
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
-    "kinds": set(["monkeycfg"]),
+    "kinds": set(["monkeycfg", "fbdeploydone"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
                      "mkCloseCrash", "mkCopyCrash", "mkExportReport",
                      # 2026-11-22 多包：范围/执行方式/清单增删/扫描/导入
                      "mkSetScope", "mkSetExec", "mkRemoveApp",
-                     "mkScanApps", "mkImportFromApk", "mkAddPkgFromInput"]),
+                     "mkScanApps", "mkImportFromApk", "mkAddPkgFromInput",
+                     # 2026-11-22 Fastbot 子页：二级页签/部署/配置/运行
+                     "mkSubTab", "fbSetAgent", "fbCheck", "fbDeploy",
+                     "fbStart", "fbStop", "fbClear", "fbExport", "fbListPkgs"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -377,7 +380,15 @@ A36_ADDS = {
                 # 2026-11-22 多包：范围切换 / 执行方式 / 应用清单
                 "mk-scope", "mk-exec", "mk-row-single", "mk-row-list",
                 "mk-row-blackhint", "mk-black-hint",
-                "mk-list", "mk-listcnt", "mk-add-pkg", "mk-est"]),
+                "mk-list", "mk-listcnt", "mk-add-pkg", "mk-est",
+                # 2026-11-22 Fastbot 子页：二级页签 + 部署 + 配置 + 统计
+                "mk-subtabs", "mk-sub-native", "mk-sub-fastbot",
+                "fb-status", "fb-hint", "fb-deploy-btn", "fb-cfg",
+                "fb-pkg", "fb-minutes", "fb-throttle", "fb-agent",
+                "fb-bugreport", "fb-keep-model", "fb-outdir",
+                "fb-start", "fb-stop", "fb-est", "fb-state",
+                "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
+                "fastbot-out"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

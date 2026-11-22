@@ -4039,6 +4039,67 @@ body[data-navlabels="0"] .filenav-item.active::after{
   font-size:11.5px; color:var(--text-faint); line-height:1.6;
 }
 
+/* ============================================================================
+   2026-11-22：Monkey 页的二级页签（原生 Monkey / Fastbot）
+   ============================================================================ */
+.mk-subtabs{
+  flex:0 0 auto;
+  display:flex; gap:4px;
+  padding:8px 14px 0;
+}
+.mk-subtabs button{
+  display:inline-flex; align-items:center; gap:6px;
+  height:32px; padding:0 14px;
+  border:1px solid transparent; border-bottom:0;
+  border-radius:var(--r-4) var(--r-4) 0 0;
+  background:transparent;
+  color:var(--text-faint);
+  font-family:var(--font-ui); font-size:12.5px; font-weight:600;
+  cursor:pointer;
+  transition:background 140ms linear, color 140ms linear, border-color 140ms linear;
+}
+.mk-subtabs button svg{
+  width:14px; height:14px;
+  stroke:currentColor; fill:none;
+  stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round;
+}
+.mk-subtabs button:hover{ color:var(--text); background:var(--surface-hover); }
+.mk-subtabs button.on{
+  color:var(--accent);
+  background:var(--surface);
+  border-color:var(--border);
+}
+/* 子页容器：撑满剩余高度 */
+.mk-sub{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column;
+}
+
+/* Fastbot 部署状态徽标 */
+.fb-status{
+  font-size:12px; font-weight:600;
+  padding:2px 9px;
+  border-radius:var(--r-pill);
+  background:var(--well);
+  color:var(--text-faint);
+  border:1px solid var(--border);
+  white-space:nowrap;
+}
+.fb-status.ok{
+  color:var(--ok);
+  border-color:var(--ok);
+  background:var(--ok-soft);
+}
+.fb-status.bad{
+  color:var(--err);
+  border-color:var(--err);
+  background:var(--err-soft);
+}
+.fb-status.warn{
+  color:var(--accent);
+  border-color:var(--accent);
+}
+
 /* 崩溃详情弹层（需求 B-1） */
 .mk-crash-mask{
   position:fixed; inset:0; z-index:96;
@@ -4752,6 +4813,27 @@ body[data-navlabels="0"] .filenav-item.active::after{
            · 输出落到本页自己的日志区，不干扰终端页
          ====================================================================== -->
     <div class="page" id="page-monkey">
+      <!-- ============================================================
+           二级页签：原生 Monkey / Fastbot（2026-11-22）
+           ------------------------------------------------------------
+           两种引擎能力差异很大，配置项也不通用，所以分成两个独立子页：
+             · 原生 Monkey —— 系统自带，零依赖，随机遍历
+             · Fastbot     —— 模型驱动 + 强化学习，覆盖率高，需部署 jar
+           两边配置完全独立，不共用白/黑名单（参数格式不同）。
+           ============================================================ -->
+      <div class="mk-subtabs" id="mk-subtabs">
+        <button type="button" data-sub="native" class="on" onclick="mkSubTab('native')">
+          <svg viewBox="0 0 24 24"><path d="M7.6 8.4a4.4 4.4 0 018.8 0"/><circle cx="12" cy="14.2" r="5.6"/><circle cx="9.9" cy="13.2" r=".9" fill="currentColor" stroke="none"/><circle cx="14.1" cy="13.2" r=".9" fill="currentColor" stroke="none"/><path d="M10 16.2c1.2.9 2.8.9 4 0"/></svg>
+          <span>原生 Monkey</span>
+        </button>
+        <button type="button" data-sub="fastbot" onclick="mkSubTab('fastbot')">
+          <svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>
+          <span>Fastbot</span>
+        </button>
+      </div>
+
+      <!-- ==================== 子页 1：原生 Monkey ==================== -->
+      <div class="mk-sub" id="mk-sub-native">
       <div class="mk-wrap">
         <!-- ============================================================
              配置区
@@ -4870,6 +4952,81 @@ body[data-navlabels="0"] .filenav-item.active::after{
         <!-- 输出区 -->
         <div class="mk-out" id="mk-out"><div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div></div>
       </div>
+      </div><!-- /mk-sub-native -->
+
+      <!-- ==================== 子页 2：Fastbot ==================== -->
+      <div class="mk-sub" id="mk-sub-fastbot" style="display:none;">
+      <div class="mk-wrap">
+        <!-- 部署状态卡 -->
+        <div class="mk-panel">
+          <div class="mk-row">
+            <span class="mk-lbl">部署状态</span>
+            <span class="fb-status" id="fb-status">未检测</span>
+            <span class="spacer"></span>
+            <button class="btn ghost sm" onclick="fbCheck()" title="检查设备上是否已有所需文件">重新检测</button>
+            <button class="btn primary sm" id="fb-deploy-btn" onclick="fbDeploy()">一键部署</button>
+          </div>
+          <div class="mk-row">
+            <span class="mk-hint" id="fb-hint">
+              Fastbot 需要往设备推送 3 个 jar 和 1 个 native 库。工具已内置这些文件，点「一键部署」即可。
+            </span>
+          </div>
+        </div>
+
+        <!-- 配置区 -->
+        <div class="mk-panel" id="fb-cfg">
+          <div class="mk-row">
+            <span class="mk-lbl">包名</span>
+            <input class="mk-inp" id="fb-pkg" placeholder="例：com.gxatek.ivi" spellcheck="false">
+            <button class="btn ghost sm" onclick="fbListPkgs()">列出应用</button>
+          </div>
+          <div class="mk-row">
+            <span class="mk-lbl">时长(分)</span>
+            <input class="mk-inp mk-num" id="fb-minutes" type="number" min="1" max="720" value="30">
+            <span class="mk-lbl">事件间隔(ms)</span>
+            <input class="mk-inp mk-num" id="fb-throttle" type="number" min="50" max="5000" step="50" value="300">
+            <span class="mk-lbl">Agent</span>
+            <div class="mk-seg" id="fb-agent">
+              <button type="button" data-agent="reuseq" class="on" onclick="fbSetAgent('reuseq')"
+                      title="复用上次的模型，越跑越快 —— 推荐">复用模型</button>
+              <button type="button" data-agent="robot" onclick="fbSetAgent('robot')"
+                      title="每次都从头遍历，适合首次测新应用">从头遍历</button>
+            </div>
+          </div>
+          <div class="mk-row">
+            <label class="mk-chk" title="崩溃时打印详细日志到设备">
+              <input type="checkbox" id="fb-bugreport" checked> 崩溃时打详细日志（--bugreport）</label>
+            <label class="mk-chk" title="保留 /sdcard/fastbot_[包名].fbm，下次跑得更快">
+              <input type="checkbox" id="fb-keep-model" checked> 保留遍历模型</label>
+            <span class="mk-lbl">输出目录</span>
+            <input class="mk-inp" id="fb-outdir" placeholder="留空则用默认 /sdcard/" spellcheck="false">
+          </div>
+          <div class="mk-row mk-actions">
+            <button class="btn primary" id="fb-start" onclick="fbStart()">开始遍历</button>
+            <button class="btn danger" id="fb-stop" onclick="fbStop()" disabled>停止</button>
+            <span class="spacer"></span>
+            <span class="mk-est" id="fb-est"></span>
+            <span class="mk-state" id="fb-state">未开始</span>
+          </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div class="mk-stats">
+          <div class="mk-stat"><span class="mk-stat-v" id="fb-st-crash">0</span><span class="mk-stat-k">崩溃</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="fb-st-anr">0</span><span class="mk-stat-k">ANR</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="fb-st-cov">—</span><span class="mk-stat-k">覆盖率</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="fb-st-act">0</span><span class="mk-stat-k">已探页面</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="fb-st-elapsed">00:00</span><span class="mk-stat-k">已用时</span></div>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" onclick="fbExport()" title="导出本次结果（含覆盖率与崩溃堆栈）">导出报告</button>
+          <button class="btn ghost sm" onclick="fbClear()">清空</button>
+        </div>
+
+        <!-- 输出区 -->
+        <div class="mk-out" id="fastbot-out"><div class="mk-empty">还没有开始。先在原生 Monkey 页确认设备可用，再到本页填包名开始遍历。</div></div>
+      </div>
+      </div><!-- /mk-sub-fastbot -->
+
     </div>
 
     <!-- 崩溃详情弹层：点开某条崩溃看完整堆栈 -->
@@ -6332,6 +6489,424 @@ function mkListPkgs(){
   try { post('run', 'shell pm list packages -3', 4); } catch(e) {}
 }
 
+/* ============================================================================
+   Fastbot 子页（2026-11-22）
+   ----------------------------------------------------------------------------
+   与原生 Monkey 的差别（实现时已实测确认）：
+     · 需要往设备推 3 个 jar + 1 个 native so，**so 必须放在 /data/local/tmp/<abi>/**
+       （一开始推到 /data/local/tmp/ 下直接 dlopen failed，这是官方 adb push libs/*
+        会自然形成 /data/local/tmp/<abi>/ 结构，别改成平的）
+     · 原生有 --running-minutes，时长是引擎自己控制的，不需要我们算事件数
+     · 崩溃除了 stdout 的 CRASH 行，还会写 /sdcard/crash-dump.log（带完整堆栈）
+     · 结束时打印 Activity 覆盖率，这是原生 monkey 没有的能力
+
+   实测到的无害报错（Android 14 反射差异，不影响运行）：
+     findMethod() error ... setActivityController
+     findMethod() error ... getTasks
+   解析时不要把这些当失败。
+   ============================================================================ */
+var _fb = {
+  checked: false,
+  deployed: false,
+  running: false,
+  agent: 'reuseq',
+  t0: 0,
+  timer: 0,
+  crash: 0,
+  anr: 0,
+  coverage: '',
+  acts: 0,
+  mode: '',
+  pkg: '',
+  crashes: [],
+  seenSig: {}
+};
+
+/* 二级页签切换 */
+function mkSubTab(name){
+  var box = document.getElementById('mk-subtabs');
+  if(box){
+    var bs = box.querySelectorAll('button');
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-sub')===name);
+  }
+  var n = document.getElementById('mk-sub-native');
+  var f = document.getElementById('mk-sub-fastbot');
+  if(n) n.style.display = (name==='native') ? 'flex' : 'none';
+  if(f) f.style.display = (name==='fastbot') ? 'flex' : 'none';
+  // 第一次进 Fastbot 页时自动检测部署状态
+  if(name==='fastbot' && !_fb.checked) fbCheck();
+}
+
+function fbSetAgent(v){
+  _fb.agent = v;
+  var box = document.getElementById('fb-agent');
+  if(!box) return;
+  var bs = box.querySelectorAll('button');
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-agent')===v);
+}
+
+function fbLog(text, cls){
+  var box = document.getElementById('fastbot-out');
+  if(!box) return;
+  var empty = box.querySelector('.mk-empty');
+  if(empty) empty.remove();
+  var d = document.createElement('div');
+  if(cls) d.className = 'mk-l-' + cls;
+  d.textContent = text;
+  var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.appendChild(d);
+  if(atBottom) box.scrollTop = box.scrollHeight;
+}
+
+function fbSetState(text, running){
+  var el = document.getElementById('fb-state');
+  if(!el) return;
+  el.textContent = text;
+  el.classList.toggle('running', !!running);
+}
+
+function fbSetStatus(text, kind){
+  var el = document.getElementById('fb-status');
+  if(!el) return;
+  el.textContent = text;
+  el.className = 'fb-status' + (kind ? ' ' + kind : '');
+}
+
+function fbSetStat(id, val){
+  var el = document.getElementById(id);
+  if(el) el.textContent = val;
+}
+
+/* ---------- 部署检测 ---------- */
+function fbCheck(){
+  fbSetStatus('检测中…', '');
+  // 一次 shell 把 4 个文件都查一遍，少来回
+  var probe = 'for f in /sdcard/monkeyq.jar /sdcard/framework.jar '
+            + '/sdcard/fastbot-thirdpart.jar; do '
+            +   'if [ -f $f ]; then echo "OK:$f"; else echo "NO:$f"; fi; done; '
+            + 'ABI=$(getprop ro.product.cpu.abi); '
+            + 'if [ -f /data/local/tmp/$ABI/libfastbot_native.so ]; then '
+            +   'echo "OK:/data/local/tmp/$ABI/libfastbot_native.so"; '
+            + 'else echo "NO:/data/local/tmp/$ABI/libfastbot_native.so"; fi; '
+            + 'echo "ABI=$ABI"';
+  try { post('run', 'shell "' + probe + '"', 10); } catch(e){
+    fbSetStatus('检测失败', 'bad');
+  }
+}
+
+function fbOnCheckLine(text){
+  if(/^ABI=/.test(text)){ _fb.abi = text.slice(4).trim(); return; }
+  if(/^OK:/.test(text)){ (_fb._okFiles = _fb._okFiles || []).push(text.slice(3)); return; }
+  if(/^NO:/.test(text)){ (_fb._missFiles = _fb._missFiles || []).push(text.slice(3)); return; }
+}
+
+function fbOnCheckDone(){
+  _fb.checked = true;
+  var ok = _fb._okFiles || [];
+  var miss = _fb._missFiles || [];
+  _fb._okFiles = []; _fb._missFiles = [];
+
+  if(!miss.length){
+    _fb.deployed = true;
+    fbSetStatus('✓ 已部署', 'ok');
+    var hint = document.getElementById('fb-hint');
+    if(hint) hint.textContent = '设备就绪（' + (_fb.abi || '?') + '）。可以直接开始遍历。';
+  } else {
+    _fb.deployed = false;
+    fbSetStatus('未部署（缺 ' + miss.length + ' 个文件）', 'bad');
+    var h = document.getElementById('fb-hint');
+    if(h) h.textContent = '缺少：' + miss.join('、') + '。点「一键部署」自动推送。';
+  }
+}
+
+/* ---------- 一键部署 ---------- */
+function fbDeploy(){
+  var btn = document.getElementById('fb-deploy-btn');
+  if(btn) btn.disabled = true;
+  fbSetStatus('部署中…', 'warn');
+  fbLog('▶ 开始部署 Fastbot…', 'ok');
+
+  // 先查 ABI，再按架构决定推哪个 so
+  try { post('run', 'shell getprop ro.product.cpu.abi', 11); } catch(e){
+    fbSetStatus('部署失败', 'bad');
+    if(btn) btn.disabled = false;
+  }
+}
+
+function fbOnAbiGot(abi){
+  abi = String(abi || '').trim();
+  if(!abi || abi.indexOf('arm') < 0 && abi.indexOf('x86') < 0){
+    fbLog('✗ 获取设备架构失败：' + abi, 'crash');
+    fbSetStatus('部署失败', 'bad');
+    var btn = document.getElementById('fb-deploy-btn');
+    if(btn) btn.disabled = false;
+    return;
+  }
+  _fb.abi = abi;
+  fbLog('  设备架构：' + abi, '');
+
+  // 让 C# 把内置的 fastbot/ 目录内容推上去（数据在程序目录，页面无法直接读磁盘）
+  try {
+    post('fbdeploy', abi, 0, 0, { abi: abi });
+  } catch(e){
+    fbLog('✗ 下发部署失败：' + e, 'crash');
+    fbSetStatus('部署失败', 'bad');
+    var b2 = document.getElementById('fb-deploy-btn');
+    if(b2) b2.disabled = false;
+  }
+}
+
+function fbOnDeployResult(msg){
+  var btn = document.getElementById('fb-deploy-btn');
+  if(btn) btn.disabled = false;
+  if(msg && msg.ok){
+    fbLog('✓ ' + (msg.text || '部署完成'), 'ok');
+    fbSetStatus('✓ 已部署', 'ok');
+    _fb.deployed = true;
+  } else {
+    fbLog('✗ 部署失败：' + ((msg && msg.text) || '未知原因'), 'crash');
+    fbSetStatus('部署失败', 'bad');
+    _fb.deployed = false;
+  }
+}
+
+function fbListPkgs(){
+  fbLog('$ pm list packages -3', 'cmd');
+  try { post('run', 'shell pm list packages -3', 12); } catch(e) {}
+}
+
+/* ---------- 命令构建 ---------- */
+function fbBuildCmd(){
+  var pkg = ((document.getElementById('fb-pkg')||{}).value || '').trim();
+  if(!pkg) return null;
+  var min = parseInt((document.getElementById('fb-minutes')||{}).value, 10) || 30;
+  var thr = parseInt((document.getElementById('fb-throttle')||{}).value, 10) || 300;
+  var outdir = ((document.getElementById('fb-outdir')||{}).value || '').trim();
+
+  var cp = '/sdcard/monkeyq.jar:/sdcard/framework.jar:/sdcard/fastbot-thirdpart.jar';
+  var parts = [
+    'CLASSPATH=' + cp,
+    'exec', 'app_process', '/system/bin',
+    'com.android.commands.monkey.Monkey',
+    '-p', pkg,
+    '--agent', _fb.agent,
+    '--running-minutes', String(min),
+    '--throttle', String(thr)
+  ];
+  if((document.getElementById('fb-bugreport')||{}).checked) parts.push('--bugreport');
+  if(outdir) parts.push('--output-directory', outdir);
+  parts.push('-v', '-v');
+  return parts.join(' ');
+}
+
+/* ---------- 开始 / 停止 ---------- */
+function fbStart(){
+  if(_fb.running) return;
+  if(!_fb.deployed){
+    toast('Fastbot 还没部署，请先点「一键部署」', 'err');
+    return;
+  }
+  var pkg = ((document.getElementById('fb-pkg')||{}).value || '').trim();
+  if(!pkg){ toast('请先填包名', 'err'); return; }
+  var cmd = fbBuildCmd();
+  if(!cmd) return;
+
+  var min = parseInt((document.getElementById('fb-minutes')||{}).value, 10) || 30;
+
+  _fb.running = true;
+  _fb.t0 = Date.now();
+  _fb.crash = 0; _fb.anr = 0; _fb.acts = 0; _fb.coverage = '';
+  _fb.crashes = []; _fb.seenSig = {};
+  _fb.pkg = pkg;
+  fbSetStat('fb-st-crash', 0);
+  fbSetStat('fb-st-anr', 0);
+  fbSetStat('fb-st-cov', '—');
+  fbSetStat('fb-st-act', 0);
+  fbSetStat('fb-st-elapsed', '00:00');
+
+  document.getElementById('fb-start').disabled = true;
+  document.getElementById('fb-stop').disabled = false;
+  fbSetState('遍历中…', true);
+
+  fbLog('▶ 开始 Fastbot 遍历：' + pkg, 'ok');
+  fbLog('  Agent：' + _fb.agent + '，时长 ' + min + ' 分钟，间隔 ' + _fb.throttle, '');
+  fbLog('  命令：' + cmd, 'cmd');
+
+  try { post('run', cmd, 13); } catch(e){
+    fbLog('✗ 下发失败：' + e, 'crash');
+    fbEnd();
+    return;
+  }
+
+  _fb.timer = setInterval(fbTick, 1000);
+  // Fastbot 自己有 --running-minutes，这里多留 90 秒容错，防它卡住不退出
+  _fb.guard = setTimeout(function(){
+    if(_fb.running){ fbLog('⏱ 超过设定时长，强制停止', 'anr'); fbStop(); }
+  }, (min * 60 + 90) * 1000);
+}
+
+function fbTick(){
+  var el = document.getElementById('fb-st-elapsed');
+  if(!el || !_fb.t0) return;
+  var s = Math.floor((Date.now() - _fb.t0) / 1000);
+  el.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function fbStop(){
+  if(!_fb.running) return;
+  try { post('stop'); } catch(e) {}
+  fbLog('⏸ 已请求停止', 'anr');
+  fbEnd();
+}
+
+function fbEnd(){
+  _fb.running = false;
+  if(_fb.timer){ clearInterval(_fb.timer); _fb.timer = 0; }
+  if(_fb.guard){ clearTimeout(_fb.guard); _fb.guard = 0; }
+
+  var s = document.getElementById('fb-start');
+  var t = document.getElementById('fb-stop');
+  if(s) s.disabled = false;
+  if(t) t.disabled = true;
+
+  var dur = _fb.t0 ? Math.floor((Date.now() - _fb.t0)/1000) : 0;
+  fbSetState('已结束（' + Math.floor(dur/60) + ' 分 ' + (dur%60) + ' 秒）', false);
+  fbLog('■ 遍历结束', 'ok');
+  if(_fb.coverage) fbLog('  Activity 覆盖率：' + _fb.coverage + '（已探 ' + _fb.acts + ' 个页面）', 'ok');
+  fbLog('  崩溃 ' + _fb.crash + '，ANR ' + _fb.anr, _fb.crash ? 'crash' : 'ok');
+
+  // 拉取 Fastbot 自己的崩溃日志（比 stdout 更完整）
+  try { post('run', 'shell cat /sdcard/crash-dump.log', 14); } catch(e) {}
+}
+
+/* ---------- 输出解析（src=13）---------- */
+function fbOnOut(text){
+  var t = String(text || '');
+
+  // 覆盖率：Activity of Coverage: 12.34%
+  var mc = t.match(/Activity of Coverage:\s*([\d.]+)\s*%/i);
+  if(mc){
+    _fb.coverage = mc[1] + '%';
+    fbSetStat('fb-st-cov', _fb.coverage);
+  }
+  // 已探页面数：Explored app activities 后面逐行列出，真实格式是
+  //   [Fastbot][2026-11-22 15:19:37.807] Explored app activities:
+  //   [Fastbot][2026-11-22 15:19:37.807]    1 com.android.settings.SubSettings
+  // 时间戳前缀必须允许，否则一条都匹配不上（实测踩过）。
+  if(/Explored app activities:/i.test(t)){ _fb._inActs = true; return; }
+  if(_fb._inActs){
+    var ma = t.match(/\s(\d+)\s+([\w.$]+\w)\s*$/);
+    if(ma){ _fb.acts = parseInt(ma[1],10); fbSetStat('fb-st-act', _fb.acts); return; }
+    if(/Activity of Coverage/i.test(t)){ _fb._inActs = false; }
+  }
+
+  // 崩溃：// CRASH: com.xxx (pid 123)
+  var mr = t.match(/\/\/\s*CRASH:\s*([\w.]+)\s*\(pid\s*(\d+)\)/i);
+  if(mr){
+    var sig = mr[1] + '|' + mr[2];
+    if(!_fb.seenSig[sig]){
+      _fb.seenSig[sig] = 1;
+      _fb.crash++;
+      fbSetStat('fb-st-crash', _fb.crash);
+      fbLog('✗ 崩溃：' + mr[1] + ' (pid ' + mr[2] + ')', 'crash');
+      _fb.crashes.push({ pkg: mr[1], pid: mr[2], stack: [] });
+    }
+  }
+  // 崩溃消息行
+  var ml = t.match(/\/\/\s*Long Msg:\s*(.+)$/i) || t.match(/\/\/\s*Short Msg:\s*(.+)$/i);
+  if(ml){
+    fbLog('    ' + ml[1], 'crash');
+    if(_fb.crashes.length) _fb.crashes[_fb.crashes.length-1].msg = ml[1];
+  }
+  // 堆栈帧
+  var ms = t.match(/\/\/\s+at\s+(.+)$/);
+  if(ms){
+    if(_fb.crashes.length){
+      _fb.crashes[_fb.crashes.length-1].stack.push('at ' + ms[1]);
+    }
+    return;   // 堆栈行不逐条刷屏
+  }
+  // ANR
+  if(/NOT RESPONDING|ANR in/i.test(t)){
+    _fb.anr++;
+    fbSetStat('fb-st-anr', _fb.anr);
+    fbLog(t, 'anr');
+    return;
+  }
+  // 结束标志
+  if(/Monkey finished/i.test(t)){
+    fbLog('  ' + t, 'ok');
+    return;
+  }
+  // 已知无害的反射报错：不刷红，避免误判为失败
+  if(/findMethod\(\) error/i.test(t)){
+    return;
+  }
+  fbLog(t, '');
+}
+
+/* ---------- 拉取 crash-dump.log（src=14）---------- */
+function fbOnCrashDump(text){
+  var t = String(text || '');
+  if(!t.trim() || /No such file/i.test(t)) return;
+  fbLog('', '');
+  fbLog('═══ 设备 crash-dump.log ═══', 'cmd');
+  var lines = t.split(/\r?\n/);
+  for(var i=0;i<Math.min(lines.length, 60);i++){
+    var l = lines[i];
+    if(!l.trim()) continue;
+    fbLog('  ' + l, /CRASH|Exception|Error/i.test(l) ? 'crash' : '');
+  }
+  if(lines.length > 60) fbLog('  …（共 ' + lines.length + ' 行）', '');
+}
+
+function fbClear(){
+  var box = document.getElementById('fastbot-out');
+  if(box) box.innerHTML = '<div class="mk-empty">还没有开始。先在原生 Monkey 页确认设备可用，再到本页填包名开始遍历。</div>';
+  _fb.crash = 0; _fb.anr = 0; _fb.acts = 0; _fb.coverage = '';
+  _fb.crashes = []; _fb.seenSig = {};
+  fbSetStat('fb-st-crash', 0);
+  fbSetStat('fb-st-anr', 0);
+  fbSetStat('fb-st-cov', '—');
+  fbSetStat('fb-st-act', 0);
+  fbSetStat('fb-st-elapsed', '00:00');
+  fbSetState('未开始', false);
+}
+
+/* ---------- 导出报告 ---------- */
+function fbExport(){
+  var pkg = _fb.pkg || ((document.getElementById('fb-pkg')||{}).value || '').trim();
+  if(!_fb.t0 && !_fb.crashes.length){
+    toast('还没有可导出的数据，先跑一轮', 'err');
+    return;
+  }
+  var dur = _fb.t0 ? Math.floor((Date.now() - _fb.t0)/1000) : 0;
+  var rows = [];
+  rows.push('# Fastbot 稳定性测试报告');
+  rows.push('# 生成时间,' + mkCsvCell(new Date().toLocaleString('zh-CN')));
+  rows.push('# 包名,' + mkCsvCell(pkg));
+  rows.push('# Agent,' + _fb.agent);
+  rows.push('# 时长(秒),' + dur);
+  rows.push('# Activity覆盖率,' + mkCsvCell(_fb.coverage || '未采集'));
+  rows.push('# 已探页面数,' + _fb.acts);
+  rows.push('# 崩溃数,' + _fb.crash);
+  rows.push('# ANR数,' + _fb.anr);
+  rows.push('');
+  rows.push('序号,包名,消息,堆栈前三帧');
+  for(var i=0;i<_fb.crashes.length;i++){
+    var c = _fb.crashes[i];
+    rows.push([i+1, c.pkg||'', c.msg||'', (c.stack||[]).slice(0,3).join(' | ')].map(mkCsvCell).join(','));
+  }
+  var full = _fb.crashes.map(function(c, i){
+    return '===== 崩溃 #' + (i+1) + ' =====\n' + (c.pkg||'') + '\n' + (c.msg||'') + '\n' + (c.stack||[]).join('\n');
+  }).join('\n\n');
+
+  try {
+    post('mkreport', '\ufeff' + rows.join('\r\n'), 0, 0, { full: full, pkg: pkg });
+    toast('报告已导出', 'ok');
+  } catch(e){ toast('导出失败：' + e, 'err'); }
+}
+
 function mkOpenLogDir(){
   try { post('openlogdir'); } catch(e) {}
 }
@@ -6386,6 +6961,30 @@ function onMessage(ev){
           }
           if(all.length) _mk.allThirdParty = all;
           if(sbuf.length) mkOnPkgScan(text);
+        } catch(e){}
+      }
+      // ---- Fastbot 子页各通道的 end 处理（2026-11-22）----
+      if(msg.src === 10 && typeof fbOnCheckDone === 'function'){
+        try {
+          var cb = _fb._chkBuf || []; _fb._chkBuf = [];
+          for(var ci=0; ci<cb.length; ci++) fbOnCheckLine(cb[ci]);
+          fbOnCheckDone();
+        } catch(e){}
+      }
+      if(msg.src === 11 && typeof fbOnAbiGot === 'function'){
+        try {
+          var ab = _fb._abiBuf || []; _fb._abiBuf = [];
+          fbOnAbiGot(ab.join('\n').trim());
+        } catch(e){}
+      }
+      if(msg.src === 13 && typeof fbEnd === 'function'){
+        // Fastbot 自己结束后（正常或异常），同步收尾界面状态
+        try { if(_fb.running) fbEnd(); } catch(e){}
+      }
+      if(msg.src === 14 && typeof fbOnCrashDump === 'function'){
+        try {
+          var db = _fb._dumpBuf || []; _fb._dumpBuf = [];
+          if(db.length) fbOnCrashDump(db.join('\n'));
         } catch(e){}
       }
       break;
@@ -6484,6 +7083,26 @@ function appendLine(msg){
   }
   // src=9：名单文件 push 的输出，只记日志不刷屏
   if(msg.src === 9){ try { mkLog('  ' + (msg.text||''), ''); } catch(e){} return; }
+  // ---- Fastbot 子页的通道（2026-11-22）----
+  // src=10：部署检测（OK:/NO:/ABI= 三行结果）
+  if(msg.src === 10){
+    try { (_fb._chkBuf = _fb._chkBuf || []).push(msg.text || ''); } catch(e){}
+    return;
+  }
+  // src=11：查设备 ABI（部署第一步）
+  if(msg.src === 11){
+    try { (_fb._abiBuf = _fb._abiBuf || []).push(msg.text || ''); } catch(e){}
+    return;
+  }
+  // src=12：Fastbot 页列应用
+  if(msg.src === 12){
+    try { fbLog('  ' + (msg.text||''), ''); } catch(e){}
+    return;
+  }
+  // src=13：Fastbot 运行输出（核心）
+  if(msg.src === 13){ try { fbOnOut(msg.text || ''); } catch(e){} return; }
+  // src=14：设备 crash-dump.log 内容
+  if(msg.src === 14){ try { (_fb._dumpBuf = _fb._dumpBuf || []).push(msg.text || ''); } catch(e){} return; }
   appendLog(msg);
 }
 
@@ -13026,6 +13645,10 @@ function v12OnMessage(msg){
         var mc = JSON.parse(msg.data || '{}');
         if(typeof mkRestore === 'function') mkRestore(mc);
       } catch(e){}
+      return true;
+    // 2026-11-22：Fastbot 部署结果（C# 推完文件后回传）
+    case 'fbdeploydone':
+      try { if(typeof fbOnDeployResult === 'function') fbOnDeployResult(msg); } catch(e){}
       return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }

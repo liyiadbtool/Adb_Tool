@@ -1799,6 +1799,70 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-22：Fastbot 一键部署。
+                // 页面侧没法读程序目录，也跑不了循环 push，所以部署动作放 C#：
+                //   1. 把 <程序目录>/fastbot/ 下的 3 个 jar 推到 /sdcard/
+                //   2. 把 fastbot/libs/<abi>/libfastbot_native.so 推到 /data/local/tmp/<abi>/
+                // 实测要点：so **必须带 ABI 子目录**，推到 /data/local/tmp/ 平铺会
+                //          dlopen failed（Fastbot 内部按 <ABI>/ 拼路径）。
+                case "fbdeploy":
+                    {
+                        try
+                        {
+                            string abi = GetField(json, "abi");
+                            if (string.IsNullOrEmpty(abi)) abi = "arm64-v8a";
+
+                            string exeDir = AppDomain.CurrentDomain.BaseDirectory;
+                            string fbDir = Path.Combine(exeDir, "fastbot");
+
+                            if (!Directory.Exists(fbDir))
+                            {
+                                PostToast(false, "找不到 fastbot 目录：" + fbDir);
+                                break;
+                            }
+
+                            var sb = new StringBuilder();
+                            int done = 0, fail = 0;
+
+                            // ---- 1. 三个 jar ----
+                            string[] jars = { "monkeyq.jar", "framework.jar", "fastbot-thirdpart.jar" };
+                            foreach (string j in jars)
+                            {
+                                string local = Path.Combine(fbDir, j);
+                                if (!File.Exists(local)) { sb.Append("缺文件 " + j + "; "); fail++; continue; }
+                                if (RunAdbRaw("push \"" + local + "\" \"/sdcard/" + j + "\""))
+                                    done++;
+                                else { fail++; sb.Append("推送失败 " + j + "; "); }
+                            }
+
+                            // ---- 2. native so（按 ABI 子目录）----
+                            string soLocal = Path.Combine(fbDir, Path.Combine("libs", Path.Combine(abi, "libfastbot_native.so")));
+                            if (!File.Exists(soLocal))
+                            {
+                                sb.Append("缺少 " + abi + " 架构的 native 库; ");
+                                fail++;
+                            }
+                            else
+                            {
+                                // 先建目录，再 push（PushFile 不会自动建父目录）
+                                RunAdbRaw("shell mkdir -p /data/local/tmp/" + abi);
+                                if (RunAdbRaw("push \"" + soLocal + "\" \"/data/local/tmp/" + abi + "/libfastbot_native.so\""))
+                                    done++;
+                                else { fail++; sb.Append("native 库推送失败; "); }
+                            }
+
+                            string text = fail == 0
+                                ? ("部署完成（" + done + " 个文件，架构 " + abi + "）")
+                                : ("部分失败：" + sb.ToString());
+                            PostDeployResult(fail == 0, text);
+                        }
+                        catch (Exception ex)
+                        {
+                            PostDeployResult(false, "部署异常：" + ex.Message);
+                        }
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -2667,6 +2731,56 @@ namespace AdbLogExport.Gui
                         .Replace("\r", "").Replace("\n", " ") + "\"}");
             }
             catch { }
+        }
+
+        // 2026-11-22：Fastbot 部署结果回传。
+        // 单独一条 kind=fbdeploydone，而不是复用 toast —— 页面要根据 ok 更新
+        // 部署状态徽标和按钮，需要结构化字段，不只是提示文案。
+        private void PostDeployResult(bool ok, string text)
+        {
+            try
+            {
+                _web.CoreWebView2.PostWebMessageAsJson(
+                    "{\"kind\":\"fbdeploydone\",\"ok\":" + (ok ? "true" : "false")
+                    + ",\"text\":\"" + (text ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
+                        .Replace("\r", "").Replace("\n", " ") + "\"}");
+            }
+            catch { }
+        }
+
+        // 2026-11-22：执行一条 adb 子命令并返回是否成功。
+        // 只给 Fastbot 部署用（push / mkdir），不走上层的输出路由 ——
+        // 部署是两个大文件传输，把过程打到终端页反而干扰用户。
+        private static bool RunAdbRaw(string adbArgs)
+        {
+            try
+            {
+                string adb = App.ADB;
+                if (string.IsNullOrEmpty(adb)) adb = "adb";
+
+                string serial = App.SERIAL;
+                string full = "\"" + adb + "\"";
+                if (!string.IsNullOrEmpty(serial))
+                    full += " -s " + serial;
+                full += " " + adbArgs;
+
+                var psi = new ProcessStartInfo();
+                psi.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                psi.Arguments = "/s /c \"" + full + "\"";
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+
+                using (var p = Process.Start(psi))
+                {
+                    string err = p.StandardError.ReadToEnd();
+                    p.StandardOutput.ReadToEnd();
+                    if (!p.WaitForExit(60000)) { try { p.Kill(); } catch { } return false; }
+                    return p.ExitCode == 0;
+                }
+            }
+            catch { return false; }
         }
 
         // 2026-11-22：读 ini 的单键值（SaveIniKey 只写不读，这里补读）。

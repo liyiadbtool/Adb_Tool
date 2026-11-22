@@ -197,6 +197,20 @@ rem by FLAG_SECURE on these IVI screens). It is large (~105 MB), so it is copied
 rem best-effort; the recorder errors clearly at runtime if it is missing.
 copy /y "%~dp0ffmpeg.exe"                           "%DIST%\" >nul 2>&1
 
+rem [2026-11-22] Fastbot runtime bundle: 3 jars + native .so per ABI.
+rem C# looks for it at <exe dir>\fastbot\ (GuiWeb.cs case "fbdeploy").
+rem ~8.6 MB total. Shipped inside the package so users need no setup:
+rem they just click "one-click deploy" and the files get pushed to the device.
+if exist "%~dp0..\fastbot" (
+    xcopy /e /i /y /q "%~dp0..\fastbot" "%DIST%\fastbot" >nul 2>&1
+    echo Fastbot bundle: copied to dist\fastbot
+) else (
+    echo.
+    echo [WARN] fastbot\ folder not found - the Fastbot tab will report
+    echo        "not deployed" and one-click deploy will fail.
+    echo        expected at: %~dp0..\fastbot
+)
+
 rem Guard: if any required file is missing, say so loudly. Shipping a package
 rem that "looks built" but will not start is worse than failing visibly here.
 set "MISSING="

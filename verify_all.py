@@ -59,6 +59,7 @@ EDGE_TESTS = [
     ("_test_settings_panel.py", "设置面板（滑动条/五档字号/问号按钮）"),
     ("_test_settings_layout.py", "设置面板布局（自适应/并排/导航宽度）"),
     ("_test_monkey.py", "Monkey 稳定性测试页"),
+    ("_test_fastbot.py", "Fastbot 子页（部署/配置/解析）"),
 ]
 
 # ---- 全量档专属：重型套件（--full 才跑）----
