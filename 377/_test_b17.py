@@ -106,7 +106,7 @@ function runAll(){
   for (var s2 = 0; s2 < secs.length; s2++) secTxt += secs[s2].textContent + '|';
   ok('有「屏幕投屏」分区', secTxt.indexOf('屏幕投屏') >= 0, secTxt);
   ok('有「仪表投屏」分区', secTxt.indexOf('仪表投屏') >= 0, secTxt);
-  ok('有「其它」分区', secTxt.indexOf('其它') >= 0, secTxt);
+  // 2026-11-22（第 19 批 A5）：「其它」分区已删（取消全部投屏移出界面）
 
   // 仪表控件在面板里（不是独立页）
   ok('芯片下拉在面板内',
@@ -132,14 +132,16 @@ function runAll(){
     {id:0, w:1600, h:900}, {id:4, w:1920, h:720}
   ]});
   var grid = document.getElementById('cast-grid');
-  var btns = grid.querySelectorAll('.crow');   // 第 18 批 B2：改成行式（含投/录两个按钮）
-  ok('按真实列表重建了行', btns.length === 2, btns.length);
+  // 2026-11-22（第 19 批 A1）：扫到几块屏，**6 个默认行都还在**（不再覆盖）
+  var btns = grid.querySelectorAll('.crow[data-cast]');
+  ok('扫到 1 块屏后仍是 6 个默认行', btns.length === 6, btns.length);
   ok('按钮显示分辨率', grid.textContent.indexOf('1600×900') >= 0, grid.textContent.slice(0,80));
 
-  // 拉不到时给提示，不崩
+  // 拉不到时不崩，且默认行保留（标未检测到）
   castOnDisplays({kind:'displays', ok:false, err:'找不到 scrcpy'});
-  ok('列屏失败时给提示', grid.textContent.indexOf('没扫到屏幕') >= 0,
-     grid.textContent.slice(0,80));
+  ok('列屏失败时默认行仍在',
+     grid.querySelectorAll('.crow[data-cast]').length === 6,
+     grid.querySelectorAll('.crow[data-cast]').length);
 
   /* ============ 4. 终端回显不泄漏 ============ */
   // appendEcho 对 src=20 应直接 return（不往终端写）
@@ -212,12 +214,10 @@ function runAll(){
      !!document.querySelector('.filenav-item[data-fn="h5"]'));
 
   h5EnsureInit();
-  ok('H5 表单在（分组/名称/链接）',
-     !!document.getElementById('h5-f-cat')
-     && !!document.getElementById('h5-f-name')
-     && !!document.getElementById('h5-f-url'));
-  ok('有添加按钮', typeof h5Add === 'function');
-  ok('列表容器在', !!document.getElementById('h5-list'));
+  // 2026-11-22（第 19 批 C1）：改成"初始只有 + 添加分组"的分组容器式
+  ok('有「+ 添加分组」入口', typeof h5AddGroup === 'function');
+  ok('分组列表容器在', !!document.getElementById('h5-body'));
+  ok('旧的一体式表单已删', !document.getElementById('h5-f-name'));
 
   ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));
   finish();

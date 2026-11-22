@@ -83,10 +83,15 @@ setTimeout(function(){
                serial:'ABC123', rows:FAKE_CAR, res:'1920x720'});
   }catch(e){ R.push('FAIL | 喂数据失败 -> '+e); }
 
-  /* ---- 1. 卡片不被 flex 压扁（上一版 bug 的根因）---- */
+  /* ---- 1. 卡片不被压扁（上一版 bug 的根因）----
+     2026-11-22（第 19 批）：布局从 flex 改成 CSS Grid，
+     "flex-shrink:0" 这个判据失效了。改成更本质的验证：
+     卡片可见高度要能容纳内容（scrollHeight <= clientHeight + 容差），
+     这才是"不被压扁"的真正含义。 */
   var card = document.getElementById('diag-card-pc');
-  var cs = getComputedStyle(card);
-  ok('卡片 flex-shrink 为 0（不被压扁）', cs.flexShrink === '0', cs.flexShrink);
+  ok('卡片不被压扁（内容高度不超出可视高度）',
+     card.scrollHeight <= card.clientHeight + 2,
+     'scrollH=' + card.scrollHeight + ' clientH=' + card.clientHeight);
 
   /* ---- 2. 本机 13 行全部真实渲染 ---- */
   var rows = card.querySelectorAll('.diag-row');
@@ -158,12 +163,19 @@ setTimeout(function(){
   /* ---- 7. 采样进度条 ---- */
   _diag.totalMemGB = 16;
   diagStartSample();
-  diagOnSample({cpu:12.5, mem:180});
+  /* 2026-11-22（第 19 批 B2）：资源占用改成"本机 + 车机 剩余量 + TOP5"，
+     不再用进度条展示本工具自身的 CPU/内存。断言改成新口径。 */
+  top5OnData({
+    host:{ok:true, cores:8, freeCpu:64.8, freeMem:5.2,
+          cpu:[{n:'chrome', v:12.5}], mem:[{n:'chrome', v:1024.0}]},
+    car:{ok:false, err:'没有连接设备'}
+  });
   var resBox = document.getElementById('diag-rows-res');
-  var resMeters = resBox.querySelectorAll('.diag-meter');
-  ok('采样渲染两个进度条（CPU+内存）', resMeters.length === 2, resMeters.length);
-  ok('内存显示占整机百分比',
-     /占整机/.test(resBox.textContent), resBox.textContent.slice(0,80));
+  ok('采样显示本机剩余 CPU', /剩余 CPU/.test(resBox.textContent),
+     resBox.textContent.slice(0,80));
+  ok('采样显示本机剩余内存', /剩余内存/.test(resBox.textContent));
+  ok('车机未检测时显示 --（不隐藏）',
+     resBox.textContent.indexOf('--') >= 0, resBox.textContent.slice(-80));
   diagStopSample();
 
   /* ---- 8. 页面整体可滚动（内容多于视口时不能没有滚动条）---- */

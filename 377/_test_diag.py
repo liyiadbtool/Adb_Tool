@@ -191,10 +191,18 @@ setTimeout(function(){
   ok('采样按钮文案变为停止',
      document.getElementById('diag-sample-btn').textContent==='停止采样');
 
-  diagOnSample({cpu:12.5, mem:180});
+  /* 2026-11-22（第 19 批 B2）：资源占用改成显示"本机 + 车机的剩余量与 TOP5"，
+     本工具自身开销不再展示（原来那两条断言已过时）。
+     这里改成验证新口径。 */
+  top5OnData({
+    host:{ok:true, cores:8, freeCpu:64.8, freeMem:5.2,
+          cpu:[{n:'chrome', v:12.5}], mem:[{n:'chrome', v:1024.0}]},
+    car:{ok:false, err:'没有连接设备'}
+  });
   var resText=document.getElementById('diag-rows-res').textContent;
-  ok('采样显示 CPU 占比', /12\.5/.test(resText), resText.slice(0,60));
-  ok('采样显示内存', /180/.test(resText));
+  ok('采样显示本机剩余 CPU', /剩余 CPU/.test(resText), resText.slice(0,60));
+  ok('采样显示本机剩余内存', /剩余内存/.test(resText));
+  ok('车机未检测显示 --', resText.indexOf('--')>=0, resText.slice(-80));
 
   var resAll=resText;
   ok('不显示 GPU（用户已去掉）', resAll.indexOf('GPU')<0, resAll.slice(0,80));

@@ -145,8 +145,9 @@ function runAll(){
     document.body.removeChild(b);
     return v;
   }
-  var gA = ['fbtn', 'h5-act', 'cmini'].map(miniSpec);
-  var gB = ['diag-copy-card', 'csec-refresh'].map(miniSpec);
+  // 2026-11-22（第 19 批）：.cmini 与 .csec-refresh 已随 UI 简化删除
+  var gA = ['fbtn', 'h5-act'].map(miniSpec);
+  var gB = ['diag-copy-card'].map(miniSpec);
   ok('★ 组 A 行内按钮规格统一（32px）',
      gA.filter(function(v,i){ return gA.indexOf(v) === i; }).length === 1,
      gA.join(' | '));
@@ -189,8 +190,9 @@ function runAll(){
   // 改成正则匹配函数体：castGo 应该调用 castRun，而不是直接 post。
   ok('★ castGo 走 castRun（不再裸调 post）',
      /function castGo\([^)]*\)\{[^}]*castRun\(/.test(scriptTxt));
-  ok('★ castRec 存在（每屏可录）', typeof castRec === 'function');
-  ok('★ 仪表录屏 cluCastRec 存在', typeof cluCastRec === 'function');
+  // 2026-11-22（第 19 批 A3/A6）：录屏 UI 入口已按用户要求移除
+  ok('★ castRec 已移除（界面不放录屏入口）', typeof castRec === 'undefined');
+  ok('★ cluCastRec 已移除', typeof cluCastRec === 'undefined');
 
   var castIdx = -1;
   for (var ci = 0; ci < quickGroups.length; ci++)
@@ -201,101 +203,43 @@ function runAll(){
   switchTab('quick');
   _quickIdx = castIdx; _quickFilter = ''; renderQuickItems();
 
-  var recBtns = document.querySelectorAll('[data-rec]');
-  ok('★ 每个屏都有「录」按钮', recBtns.length >= 6, recBtns.length);
+  // 第 19 批：不再有 [录] 按钮，改为整行可点
+  ok('★ 无 [录] 按钮', document.querySelectorAll('[data-rec]').length === 0);
+  ok('★ 6 个可投屏的行都在',
+     document.querySelectorAll('#cast-grid .crow[data-cast]').length === 6,
+     document.querySelectorAll('#cast-grid .crow[data-cast]').length);
 
-  // B1：点录制应该产生占位行（addPendingRow 的效果）
+  // B1（第 19 批改口径）：点整行投屏也要走 castRun 链路（占位行/互斥）
   _online = true; _busy[0] = false;
   sent.length = 0;
-  castRec(0);
-  var recMsg = null;
+  castGo(0);
+  var castMsg = null;
   for (var m2 = 0; m2 < sent.length; m2++)
-    if (sent[m2].kind === 'quick') recMsg = sent[m2];
-  ok('★ 点录会真的下发命令', !!recMsg, JSON.stringify(sent).slice(0,120));
-  if (recMsg) ok('命令是 :castrec 0 60', String(recMsg.data).indexOf(':castrec 0 60') >= 0,
-                 recMsg.data);
+    if (sent[m2].kind === 'quick') castMsg = sent[m2];
+  ok('★ 点整行真的下发 :cast', !!castMsg, JSON.stringify(sent).slice(0,120));
+  if (castMsg) ok('命令是 :cast 0', String(castMsg.data).indexOf(':cast 0') >= 0,
+                 castMsg.data);
 
   // B4：同屏按钮短暂置灰
   var b0 = document.querySelector('[data-cast="0"]');
-  ok('★ 同屏按钮点后置灰（防重复拉流）', b0 && b0.disabled === true,
+  ok('★ 同屏按钮点后短暂禁用（防重复拉流）', b0 && b0.disabled === true,
      b0 ? b0.disabled : 'null');
+  b0.disabled = false;   // 复位，避免影响后续断言
 
-  /* ============ B3 仪表录屏门禁 ============ */
-  sent.length = 0;
-  cluCastRec();
-  var blocked = true;
-  for (var m3 = 0; m3 < sent.length; m3++)
-    if (sent[m3].kind === 'quick' && String(sent[m3].data).indexOf('ccastrec') >= 0)
-      blocked = false;
-  ok('★ 未登录时仪表录屏被拦（不发请求）', blocked);
+  /* ============ B3（第 19 批改）：仪表录屏入口已移除 ============ */
+  ok('★ 仪表区无「录 60s」', !document.getElementById('clu-rec-btn'));
 
-  // 登录后可以
-  cluOnState({kind:'clustate', logged:true, chip:'8838', err:''});
-  _busy[0] = false;
-  sent.length = 0;
-  cluCastRec();
-  var ccastMsg = null;
-  for (var m4 = 0; m4 < sent.length; m4++)
-    if (sent[m4].kind === 'quick') ccastMsg = sent[m4];
-  ok('★ 登录后仪表录屏可下发', !!ccastMsg, JSON.stringify(sent).slice(0,120));
-  if (ccastMsg) ok('命令是 :ccastrec 60', String(ccastMsg.data).indexOf(':ccastrec') >= 0,
-                   ccastMsg.data);
-
-  /* ============ C1~C6 H5 简化 ============ */
+  /* ============ C1~C6 H5（第 19 批已再次改版） ============
+     第 18 批是"一个表单 + 扁平列表"，第 19 批改成了"分组容器式"：
+     初始只有「+ 添加分组」，点开才出现分组，条目在组内行内添加。
+     详细断言在 _test_b19.py，这里只确认结构已切换。 */
   switchTab('file');
   fileNavSwitch('h5');
   h5EnsureInit();
 
-  ok('★ 搜索框已删除', !document.getElementById('h5-search'));
-  ok('★ 分类侧栏已删除', !document.getElementById('h5-cats'));
-  ok('★ 预设/导入/导出按钮已删除',
-     typeof h5Presets === 'undefined' && typeof h5Export === 'undefined'
-     && typeof h5Import === 'undefined');
-  ok('★ 删除/编辑旧函数已清', typeof h5Edit === 'undefined' && typeof h5Pick === 'undefined');
-  ok('表单有分组字段', !!document.getElementById('h5-f-cat'));
-  ok('表单有名称字段', !!document.getElementById('h5-f-name'));
-  ok('表单有链接字段', !!document.getElementById('h5-f-url'));
-  ok('有添加入口', typeof h5Add === 'function');
-
-  // 增
-  try { localStorage.removeItem(H5_KEY); } catch(e){}
-  _h5.items = [];
-  document.getElementById('h5-f-cat').value = '监控';
-  document.getElementById('h5-f-name').value = '测试看板';
-  document.getElementById('h5-f-url').value = 'board.example.com';
-  h5Add();
-  ok('★ 添加成功', _h5.items.length === 1, _h5.items.length);
-  ok('★ 自动补 https', _h5.items[0].url === 'https://board.example.com', _h5.items[0].url);
-  ok('分组已记录', _h5.items[0].cat === '监控', _h5.items[0].cat);
-
-  // 分组自由填 + 候选
-  ok('★ 分组字段带候选 datalist',
-     !!document.getElementById('h5-cat-list'));
-
-  // 列表按分组分节
-  document.getElementById('h5-f-cat').value = '文档';
-  document.getElementById('h5-f-name').value = 'ADB 文档';
-  document.getElementById('h5-f-url').value = 'https://developer.android.com';
-  h5Add();
-  var secs = document.querySelectorAll('#h5-list .h5-sec');
-  ok('★ 列表按分组分节（2 个分组）', secs.length === 2, secs.length);
-  ok('分节标题含分组名', document.getElementById('h5-list').textContent.indexOf('监控') >= 0);
-
-  // 复制保留
-  copied = null;
-  h5Copy(_h5.items[0].id);
-  ok('★ 复制链接保留', copied && copied.indexOf('http') === 0, copied);
-
-  // 删
-  var beforeDel = _h5.items.length;
-  h5Del(_h5.items[0].id);
-  ok('★ 删除生效', _h5.items.length === beforeDel - 1, beforeDel + '->' + _h5.items.length);
-
-  // 持久化
-  h5Persist();
-  var raw = null;
-  try { raw = localStorage.getItem(H5_KEY); } catch(e){}
-  ok('★ 持久化生效', !!raw && raw.length > 10, raw ? raw.length : 'null');
+  ok('★ 旧的一体式表单已删', !document.getElementById('h5-f-cat'));
+  ok('★ 有「+ 添加分组」入口', typeof h5AddGroup === 'function');
+  ok('★ 分组列表容器在', !!document.getElementById('h5-body'));
 
   /* ============ D1 诊断缩放 ============ */
   ok('★ .diag-scroll 有 scrollbar-gutter',
@@ -329,38 +273,31 @@ function runAll(){
   ok('DDR 有值时正常显示',
      document.getElementById('diag-rows-car').textContent.indexOf('LPDDR4X') >= 0);
 
-  /* ============ D3/D4 top5 ============ */
+  /* ============ D3/D4 top5（第 19 批：已挪到「资源占用」卡） ============
+     第 18 批是把 top5 塞进「本机信息」「车机信息」两卡底部；
+     第 19 批按用户要求全部挪到独立的「资源占用」卡，并加 3 秒采样。
+     详细断言在 _test_b19.py，这里确认口径切换。 */
   ok('top5 渲染函数存在', typeof top5OnData === 'function');
 
   top5OnData({
-    kind:'diagtop5',
     host:{ok:true, cores:8, totalCpu:35.2, freeCpu:64.8, freeMem:5.2,
-          cpu:[{n:'chrome', v:12.5}, {n:'code', v:8.1}],
-          mem:[{n:'chrome', v:1024.0}]},
+          cpu:[{n:'chrome', v:12.5}], mem:[{n:'chrome', v:1024.0}]},
     car:{ok:true, memTotal:8.0, memFree:3.1, freeCpu:72.5,
          cpu:[{n:'com.android.systemui', v:9.4}],
          mem:[{n:'com.android.systemui', v:'180M'}]}
   });
 
-  var pcTxt = document.getElementById('diag-rows-pc').textContent;
-  var carTxt2 = document.getElementById('diag-rows-car').textContent;
-  ok('★ 本机卡出现「剩余 CPU」', pcTxt.indexOf('剩余 CPU') >= 0, pcTxt.slice(-200));
-  ok('★ 本机卡显示剩余值 64.8%', pcTxt.indexOf('64.8') >= 0);
-  ok('★ 本机卡出现进程名 chrome', pcTxt.indexOf('chrome') >= 0);
-  ok('★ 车机卡出现「剩余 CPU」', carTxt2.indexOf('剩余 CPU') >= 0, carTxt2.slice(-200));
-  ok('★ 车机卡显示剩余内存', carTxt2.indexOf('3.1') >= 0);
-  ok('★ 车机卡出现进程名', carTxt2.indexOf('systemui') >= 0);
+  var resTxt18 = document.getElementById('diag-rows-res').textContent;
+  ok('★ 资源占用卡出现本机剩余 CPU', resTxt18.indexOf('剩余 CPU') >= 0,
+     resTxt18.slice(0,120));
+  ok('★ 资源占用卡出现车机剩余内存', resTxt18.indexOf('3.1') >= 0);
+  ok('★ 出现进程名', resTxt18.indexOf('chrome') >= 0 || resTxt18.indexOf('systemui') >= 0);
 
-  // top5 不重复叠加
-  top5OnData({
-    kind:'diagtop5',
-    host:{ok:true, cores:8, freeCpu:70.0, freeMem:5.0, cpu:[{n:'x',v:1}], mem:[{n:'y',v:1}]},
-    car:{ok:false, err:'没有连接设备'}
-  });
-  var top5Secs = document.getElementById('diag-rows-pc').querySelectorAll('.top5-sec');
-  ok('★ top5 区块不重复叠加', top5Secs.length === 1, top5Secs.length);
-  ok('车机 top5 失败时显示错误',
-     document.getElementById('diag-rows-car').textContent.indexOf('没有连接设备') >= 0);
+  // 两张信息卡里不应再有 top5
+  ok('★ 本机信息卡里没有剩余 CPU',
+     document.getElementById('diag-rows-pc').textContent.indexOf('剩余 CPU') < 0);
+  ok('★ 车机信息卡里没有剩余 CPU',
+     document.getElementById('diag-rows-car').textContent.indexOf('剩余 CPU') < 0);
 
   ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));
   finish();

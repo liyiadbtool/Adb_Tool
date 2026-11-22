@@ -1710,10 +1710,18 @@ textarea:focus,select:focus{
 }
 
 /* ---- 6. 页面切换：4px 上浮 + 淡入（只 200ms，不拖慢操作） ---- */
-.page{animation:pageIn .2s var(--ease-spring) both;}
-@keyframes pageIn{
-  from{opacity:0;transform:translateY(4px);}
-  to{opacity:1;transform:none;}
+/* ============================================================================
+   2026-11-22（第 19 批 B1）：页切换只做**淡入**，不做位移。
+   ----------------------------------------------------------------------------
+   原来是 pageIn：translateY(4px) + var(--ease-spring)（回弹曲线）。
+   诊断页内容最多最高，位移+回弹期间触发大量重排，看起来就是"缩一下/抖一下"。
+   淡化到透明再出现不会有任何几何变化，是零风险的做法。
+   注意：这条和下面 .page.active 的那条重复定义已合并到这里。
+   ============================================================================ */
+.page{animation:pageFade .16s ease both;}
+@keyframes pageFade{
+  from{opacity:0;}
+  to{opacity:1;}
 }
 
 /* ---- 7. 滚动条：细、悬浮、无轨道（macOS overlay 观感） ---- */
@@ -2129,7 +2137,7 @@ html[data-winmax="1"] .rz{display:none;}
 .help-doc .cmd-t{color:var(--text);font-weight:600;}
 .help-doc .cmd-d{color:var(--text-faint);}
 .help-doc .sec{display:none;}
-.help-doc .sec.on{display:block;animation:pageIn .18s var(--ease-spring) both;}
+.help-doc .sec.on{display:block;animation:pageFade .16s ease both;}
 
 /* ---------------- §6 文本编辑器 ---------------- */
 #page-text{display:none;}
@@ -2316,7 +2324,7 @@ body.col-resizing *{cursor:col-resize !important;}
   outline:2px solid var(--accent);outline-offset:2px;
 }
 /* 页签切换：轻微上浮淡入，别用位移过大（工具型要快） */
-.page.active{animation:pageIn .18s var(--ease-spring) both;}
+/* 入场动画统一由上面 .page 那条负责，这里不再重复定义（第 19 批） */
 
 @media (prefers-reduced-motion:reduce){
   .set-mask,.set-panel,.help-box,.page.active{animation:none !important;}
@@ -4312,13 +4320,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
    一行放投屏参数，下面是说明和日志。
    ============================================================================ */
 /* ============================================================================
-   2026-11-22（第 18 批 C1~C6）：H5 管理（简化版）
+   2026-11-22（第 19 批 C1~C3）：H5 管理 —— 分组容器式
    ----------------------------------------------------------------------------
-   第 17 批做成了"书签管理器"（搜索/预设/导入导出/分类侧栏/卡片网格/最近排序），
-   用户反馈过于复杂。按截图改成：**一个表单 + 一个按分组分节的列表**。
-
-   保留：分组自由填 / 名称 / 链接 / 添加 / 删除 / 复制 / 打开 / 持久化
-   删掉：搜索框、常用预设、导入导出、左侧分类树、卡片网格、首字母色块、最近排序
+   结构：顶栏（+ 添加分组） → 分组列表（每个分组 = 组头 + 条目 + 行内新增行）
+   视觉：分组用细边框卡片，组头有名字和计数，条目行右侧常驻三个操作。
    ============================================================================ */
 .h5-wrap{
   height:100%; display:flex; flex-direction:column;
@@ -4326,84 +4331,99 @@ body[data-navlabels="0"] .filenav-item.active::after{
   min-height:0;
 }
 
-/* ---- 添加表单 ---- */
-.h5-form{
+/* 顶栏 */
+.h5-bar{
   flex:0 0 auto;
-  padding:12px 14px;
-  border:1px solid var(--border);
-  border-radius:var(--r-4);
-  background:var(--surface);
+  display:flex; align-items:center; gap:10px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
 }
-.h5-row{
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  margin-bottom:7px;
+.h5-bar-hint{
+  font-size:11.5px; color:var(--text-faint);
 }
-.h5-row:last-child{ margin-bottom:0; }
-.h5-lbl{
-  flex:0 0 auto;
-  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
-}
-.h5-inp{
-  flex:0 1 200px; min-width:110px;
-  padding:6px 9px;
-  border:1px solid var(--border); border-radius:var(--r-2);
-  background:var(--bg); color:var(--text);
-  font-size:13px; outline:none;
-}
-.h5-inp:focus{ border-color:var(--accent); }
-.h5-inp--cat{ flex:0 1 160px; }
-.h5-inp--url{ flex:1 1 320px; font-family:var(--font-mono); font-size:12px; }
-.h5-err{ font-size:11px; color:var(--err); min-height:14px; }
 
-/* ---- 列表（按分区分节）---- */
-.h5-list{
+/* 分组列表 */
+.h5-body{
   flex:1 1 auto; min-height:0;
   overflow-y:auto;
   margin-top:12px;
   scrollbar-gutter:stable;
 }
-.h5-sec{
-  font-size:11px; font-weight:600; letter-spacing:.04em;
-  color:var(--text-faint);
-  padding:10px 2px 6px;
-}
-.h5-sec:first-child{ padding-top:0; }
 
+.h5-group{
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--surface);
+  margin-bottom:10px;
+  overflow:hidden;
+}
+
+/* 组头 */
+.h5-ghead{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 12px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+}
+.h5-gname{
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.h5-gcount{
+  font-size:10.5px; color:var(--text-faint);
+  font-family:var(--font-mono);
+  padding:0 6px; border-radius:var(--r-pill);
+  background:var(--bg);
+}
+
+/* 条目容器 */
+.h5-gitems{
+  padding:6px 8px;
+}
+.h5-gempty{
+  padding:12px 6px;
+  font-size:11.5px; color:var(--text-faint);
+}
+
+/* 条目行：名称 | 链接 | 操作 */
 .h5-item{
   display:flex; align-items:center; gap:10px;
-  padding:8px 10px;
-  border:1px solid var(--border);
+  padding:7px 8px;
   border-radius:var(--r-2);
-  background:var(--surface);
-  margin-bottom:6px;
-  transition:border-color 120ms linear;
+  transition:background 120ms linear;
 }
-.h5-item:hover{ border-color:var(--accent); }
+.h5-item:hover{ background:var(--surface-hover); }
 .h5-name{
-  flex:0 0 auto; max-width:240px;
-  font-size:13px; font-weight:600; color:var(--text);
+  flex:0 0 180px; min-width:0;
+  font-size:12.5px; font-weight:600; color:var(--text);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  cursor:pointer;
 }
 .h5-url{
   flex:1 1 auto; min-width:0;
-  font-family:var(--font-mono); font-size:11.5px; color:var(--text-faint);
+  font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  cursor:pointer;
 }
-.h5-item:hover .h5-url{ color:var(--text-dim); }
-.h5-acts{ flex:0 0 auto; display:flex; gap:5px; }
+.h5-acts{
+  flex:0 0 auto; display:flex; gap:5px;
+}
+
+/* 行内新增行 */
+.h5-item--new{
+  background:var(--well);
+  border:1px dashed var(--accent);
+  margin:4px 0;
+}
+.h5-new-name{ flex:0 0 180px; }
+.h5-new-url{ flex:1 1 auto; }
+.h5-ok{ border-color:var(--accent); color:var(--accent); }
+
+/* 删除类按钮 hover 标红 */
+.h5-del:hover{ border-color:var(--err); color:var(--err); }
 
 .h5-empty{
   padding:40px 12px; text-align:center;
   font-size:13px; color:var(--text-faint); line-height:1.9;
 }
-.h5-foot{
-  flex:0 0 auto;
-  padding-top:8px; margin-top:8px;
-  border-top:1px solid var(--border);
-  font-size:11px; color:var(--text-faint);
-}
+
 
 
 /* 2026-11-22（第 17 批需求 3）：投屏面板（含仪表区）
@@ -4427,23 +4447,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
   padding-bottom:5px;
   border-bottom:1px solid var(--border);
 }
-.csec-refresh{
-  float:right;
-  padding:1px 7px; margin-top:-2px;
-  border:1px solid var(--border); border-radius:var(--r-pill);
-  background:var(--surface); color:var(--text-faint);
-  font-size:10.5px; cursor:pointer;
-  text-transform:none; letter-spacing:0;
-}
-.csec-refresh:hover{ border-color:var(--accent); color:var(--accent); }
-.cbtn--loading{
-  grid-column:1 / -1;
-  align-items:center; justify-content:center;
-  padding:16px 11px;
-  color:var(--text-faint); font-size:11.5px;
-  cursor:default;
-}
-.cbtn--loading:hover{ border-color:var(--border); background:var(--surface); }
 .cgrid{
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
@@ -4466,36 +4469,46 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .cbtn span{ font-size:11px; color:var(--text-faint); font-family:var(--font-mono); }
 .cbtn--warn:hover{ border-color:var(--err); background:var(--err-soft); }
 
-/* 2026-11-22（第 18 批 B2）：每屏一行 —— 名称 + 屏号 + [投][录] */
-.crow{
-  display:flex; align-items:center; gap:7px;
-  padding:7px 10px;
-  border:1px solid var(--border); border-radius:var(--r-4);
-  background:var(--surface);
+/* ============================================================================
+   2026-11-22（第 19 批 A3）：屏幕投屏的每一行 = **一个按钮**，点即投屏
+   ----------------------------------------------------------------------------
+   第 18 批是「行里塞 [投][录] 两个小按钮」，实测两个问题：
+     · 按钮太挤，名称被压成竖排（截图里"主 屏"）
+     · 双按钮语义重复（整行本来就能表达"点这里投屏"）
+   现在整行可点，hover 高亮，和文件页 / H5 列表的行交互保持一致。
+   ============================================================================ */
+.clist{
+  display:flex; flex-direction:column; gap:6px;
 }
-.crow b{ font-size:12.5px; font-weight:600; color:var(--text); }
-.crow > span{
+.crow{
+  display:flex; align-items:center; gap:10px;
+  width:100%;
+  padding:9px 12px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface);
+  color:var(--text);
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+  transition:border-color 120ms linear, background 120ms linear;
+}
+.crow:hover{ border-color:var(--accent); background:var(--surface-hover); }
+.crow:active{ transform:scale(.995); }
+.crow b{
+  flex:0 0 auto;
+  white-space:nowrap;              /* ★ 名称绝不换行（第 18 批就是这里被压成竖排） */
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.crow-sub{
   flex:1 1 auto; min-width:0;
-  font-size:10.5px; color:var(--text-faint); font-family:var(--font-mono);
+  text-align:right;
+  font-size:11px; color:var(--text-faint); font-family:var(--font-mono);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.cmini{
-  flex:0 0 auto;
-  min-width:30px; height:24px; padding:0 8px;
-  border:1px solid var(--border); border-radius:var(--r-2);
-  background:var(--surface-2); color:var(--text-dim);
-  font-size:11px; cursor:pointer;
-  transition:border-color 120ms linear, color 120ms linear, background 120ms linear;
-}
-.cmini:hover{ border-color:var(--accent); color:var(--accent); }
-.cmini:disabled, .cmini--busy{
-  opacity:.45; cursor:default;
-  border-color:var(--border); color:var(--text-faint);
-}
-.cnote{
-  margin-top:8px;
-  font-size:10.5px; line-height:1.7; color:var(--text-faint);
-}
+/* 未检测到的屏：只把副标题调淡，**按钮仍然可点**（用户明确要求不置灰） */
+.crow--miss .crow-sub{ opacity:.6; }
+/* 短暂占用态（防同一屏重复拉流） */
+.crow--busy{ opacity:.5; cursor:default; }
 .clu-row{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   margin-bottom:10px;
@@ -4637,38 +4650,40 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-scroll{
   flex:1 1 auto; min-height:0;
   overflow-y:auto; overflow-x:hidden;
-  /* ★ 2026-11-22（第 18 批 D1）：固定预留滚动条位置。
-     现象：切到诊断页会"缩一下"。
-     原因：先显示"正在采集…"（内容矮、无滚动条）→ 数据回来撑高 → 出现滚动条
-          → 吃掉 15~17px 宽度 → .diag-card 的 calc(50% - 6px) 跟着变窄；
-          如果刚好跨过 500px 断点，还会从两列变一列，变化更明显。
-     修法：scrollbar-gutter:stable 让滚动条位置**始终预留**，
-          有内容没内容都不跳。.quick-nav / .fs-list 早就这么写了，
-          只有诊断页漏了。 */
+  /* ★ 2026-11-22（第 19 批 B1）：彻底改 CSS Grid 自适应。
+     历史包袱：
+       · 第 18 批加了 scrollbar-gutter:stable（滚动条不再挤宽度）
+       · 但**还是缩** —— 因为 .diag-card 用的是 width:calc(50% - 6px)
+         + 媒体查询断点，内容一多变高/跨断点就整体重排。
+     现在交给 Grid：
+       auto-fit + minmax(340px, 1fr) —— 窗口窄了自动单列、宽了自动多列，
+       **没有断点跳变**，也不依赖任何百分比计算。
+     配合第 19 批把 .page 的位移动画改成淡入，几何变化归零。 */
   scrollbar-gutter:stable;
+  contain:layout;                  /* 内部重排不影响外部 */
   padding:14px 18px 24px;
-  display:flex;
-  flex-wrap:wrap;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));
   gap:12px;
-  align-content:flex-start;
+  align-content:start;
+  /* ★ 必须加 align-items:start：Grid 默认 stretch，会让同一行的卡片
+     被拉伸到"行高"，而行高由最高的那个决定 —— 反过来当容器高度受限时，
+     卡片会被压扁（实测 scrollH=346 / clientH=90，内容被裁掉）。
+     start 让每张卡片按自身内容高度，谁也不影响谁。 */
+  align-items:start;
 }
 
 /* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
 .diag-card{
-  flex:0 0 auto;              /* ★ 关键：不让 flex 压扁（上一版 bug 根源） */
+  /* 第 19 批：宽度交给 Grid 分配（原来 calc(50% - 6px) + 断点是跳变根源） */
   min-width:0;
   box-sizing:border-box;
-  width:calc(50% - 6px);
   border:1px solid var(--border); border-radius:var(--r-5);
   background:var(--surface);
   overflow:hidden;
 }
-.diag-card--wide{ width:100%; }
-
-/* 窄屏：全部单列 */
-@media (max-width: 900px){
-  .diag-card{ width:100%; }
-}
+/* 第 19 批：有了 Grid 的 auto-fit，"跨整行"用 grid-column 表达，不再靠 width:100% */
+.diag-card--wide{ grid-column:1 / -1; }
 
 .diag-card-head{
   display:flex; align-items:center; gap:8px;
@@ -5039,8 +5054,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
      · 组 B 标题栏轻操作（复制本块、刷新）→ 22px，不撑高标题栏
    分组统一后，组内完全一致，组间差异有明确语义。 */
 .fbtn,
-.h5-act,
-.cmini{
+.h5-act{
   height:32px;
   padding:0 9px;
   display:inline-flex; align-items:center; justify-content:center;
@@ -5052,8 +5066,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   font-size:11px;
   cursor:pointer;
 }
-.diag-copy-card,
-.csec-refresh{
+.diag-copy-card{
   height:22px;
   padding:0 8px;
   display:inline-flex; align-items:center; justify-content:center;
@@ -5071,8 +5084,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 /* ---- A3-3 分节标题：4 种 → 1 种 ---- */
 .qcat,
 .csec-t,
-.diag-group,
-.h5-sec{
+.diag-group{
   font-size:11px;
   font-weight:600;
   letter-spacing:.04em;
@@ -5396,30 +5408,33 @@ body[data-navlabels="0"] .filenav-item.active::after{
                  原来 6 个按钮是写死映射（0/1/3/4/9/10），只对某几个平台成立；
                  现在打开面板就用 scrcpy --list-displays 拉真实列表，
                  换车型/换平台不用改代码。拉不到时退回写死的那 6 个。 -->
+            <!-- ==================================================================
+                 屏幕投屏（2026-11-22 第 19 批 A1~A6 重构）
+                 ------------------------------------------------------------------
+                 改动：
+                   · 整行就是一个按钮，点一下就投屏（去掉 [投][录] 两个小按钮）
+                   · 6 个默认屏**永远都显示** —— 扫描结果只用来补分辨率和标"未检测到"
+                     （第 18 批的 bug：动态列屏直接覆盖 grid，emulator 上只剩 1 行）
+                   · "未检测到"的屏**按钮不置灰**（用户明确要求）
+                   · 去掉「刷新」按钮（打开面板时自动扫一次就够）
+                   · 去掉「取消全部投屏」（各窗口自带关闭按钮）
+                   · 去掉录屏入口（命令 :castrec 仍在，终端可敲）
+                 ================================================================== -->
             <div class="csec">
-              <div class="csec-t">
-                屏幕投屏
-                <button class="csec-refresh" id="cast-refresh" onclick="castLoadDisplays()" title="重新扫描设备上的屏幕">刷新</button>
-              </div>
-              <div class="cgrid" id="cast-grid">
-                <div class="crow"><b>主屏</b><span>display 0</span>
-                  <button class="cmini" data-cast="0" onclick="castGo(0)">投</button>
-                  <button class="cmini" data-rec="0" onclick="castRec(0)">录</button></div>
-                <div class="crow"><b>后排屏</b><span>display 1</span>
-                  <button class="cmini" data-cast="1" onclick="castGo(1)">投</button>
-                  <button class="cmini" data-rec="1" onclick="castRec(1)">录</button></div>
-                <div class="crow"><b>HUD</b><span>display 3</span>
-                  <button class="cmini" data-cast="3" onclick="castGo(3)">投</button>
-                  <button class="cmini" data-rec="3" onclick="castRec(3)">录</button></div>
-                <div class="crow"><b>副驾屏</b><span>display 4</span>
-                  <button class="cmini" data-cast="4" onclick="castGo(4)">投</button>
-                  <button class="cmini" data-rec="4" onclick="castRec(4)">录</button></div>
-                <div class="crow"><b>PHUD-B</b><span>display 9</span>
-                  <button class="cmini" data-cast="9" onclick="castGo(9)">投</button>
-                  <button class="cmini" data-rec="9" onclick="castRec(9)">录</button></div>
-                <div class="crow"><b>PHUD-C</b><span>display 10</span>
-                  <button class="cmini" data-cast="10" onclick="castGo(10)">投</button>
-                  <button class="cmini" data-rec="10" onclick="castRec(10)">录</button></div>
+              <div class="csec-t">屏幕投屏</div>
+              <div class="clist" id="cast-grid">
+                <button class="crow" data-cast="0"  onclick="castGo(0)">
+                  <b>主屏</b><span class="crow-sub">display 0</span></button>
+                <button class="crow" data-cast="1"  onclick="castGo(1)">
+                  <b>后排屏</b><span class="crow-sub">display 1</span></button>
+                <button class="crow" data-cast="3"  onclick="castGo(3)">
+                  <b>HUD</b><span class="crow-sub">display 3</span></button>
+                <button class="crow" data-cast="4"  onclick="castGo(4)">
+                  <b>副驾屏</b><span class="crow-sub">display 4</span></button>
+                <button class="crow" data-cast="9"  onclick="castGo(9)">
+                  <b>PHUD-B</b><span class="crow-sub">display 9</span></button>
+                <button class="crow" data-cast="10" onclick="castGo(10)">
+                  <b>PHUD-C</b><span class="crow-sub">display 10</span></button>
               </div>
             </div>
 
@@ -5468,8 +5483,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
                 <div class="spacer"></div>
                 <button class="btn primary sm" id="clu-cast-btn" onclick="cluCast()" disabled
                         title="需先选择芯片并登录成功">开启仪表实时显示</button>
-                <button class="btn ghost sm" id="clu-rec-btn" onclick="cluCastRec()" disabled
-                        title="需先选择芯片并登录成功">录 60s</button>
                 <button class="btn ghost sm" onclick="cluStop()">关闭显示窗口</button>
               </div>
 
@@ -5477,15 +5490,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
                 流程：① 选芯片 → ② 登录设备 → ③ 开启实时显示。
                 走 <b>scrcpy --display-id=N</b>，与上面「屏幕投屏」同一条通道。
               </div>
-            </div>
-
-            <!-- ③ 其它 -->
-            <div class="csec">
-              <div class="csec-t">其它</div>
-              <div class="cgrid">
-                <button class="cbtn cbtn--warn" onclick="castStopAll()"><b>取消全部投屏</b><span>关闭所有 scrcpy 窗口</span></button>
-              </div>
-              <div class="cnote">录制文件：桌面 \ logcat \ 日期 \ screenrecord（固定 60 秒，要更久用 :castrec &lt;屏号&gt; &lt;秒&gt;）</div>
             </div>
 
             <div class="clu-log" id="clu-log">
@@ -5951,30 +5955,15 @@ body[data-navlabels="0"] .filenav-item.active::after{
         <div class="fileview" id="fileview-h5">
           <div class="h5-wrap">
 
-            <!-- ① 添加表单：分组单独一行，名称 + 链接并排（按截图） -->
-            <div class="h5-form">
-              <div class="h5-row">
-                <span class="h5-lbl">分组</span>
-                <input class="h5-inp h5-inp--cat" id="h5-f-cat" list="h5-cat-list"
-                       placeholder="如：监控 / 文档（可留空）" spellcheck="false">
-                <datalist id="h5-cat-list"></datalist>
-              </div>
-              <div class="h5-row">
-                <span class="h5-lbl">名称</span>
-                <input class="h5-inp" id="h5-f-name" placeholder="如：测试看板" spellcheck="false">
-                <span class="h5-lbl">H5链接</span>
-                <input class="h5-inp h5-inp--url" id="h5-f-url"
-                       placeholder="https://…（不写协议自动补）" spellcheck="false"
-                       onkeydown="h5FormKey(event)">
-                <button class="btn primary sm" id="h5-f-add" onclick="h5Add()">添加</button>
-              </div>
-              <div class="h5-err" id="h5-f-err"></div>
+            <!-- 顶栏：只有「+ 添加分组」（2026-11-22 第 19 批 C1） -->
+            <div class="h5-bar">
+              <button class="btn primary sm" onclick="h5AddGroup()">+ 添加分组</button>
+              <span class="h5-bar-hint" id="h5-bar-hint"></span>
             </div>
 
-            <!-- ② 列表：按分组分节 -->
-            <div class="h5-list" id="h5-list"></div>
+            <!-- 分组列表容器 -->
+            <div class="h5-body" id="h5-body"></div>
 
-            <div class="h5-foot" id="h5-foot"></div>
           </div>
         </div>
       </div>
@@ -6345,12 +6334,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
             </div>
           </section>
 
-          <!-- ⑤ 资源占用（只在采样时测） -->
-          <section class="diag-card" id="diag-card-res">
+          <!-- ⑤ 资源占用（2026-11-22 第 19 批 B2）：整行宽，含本机 + 车机两块 -->
+          <section class="diag-card diag-card--wide" id="diag-card-res">
             <header class="diag-card-head">
               <span class="diag-dot"></span>
               <span class="diag-card-title">资源占用</span>
-              <span class="diag-card-note">只在本工具上</span>
+              <span class="diag-card-note">本机 + 车机 · 3 秒刷新</span>
               <div class="spacer"></div>
               <button class="btn ghost sm" id="diag-sample-btn"
                       onclick="event.stopPropagation();diagToggleSample()">开始采样</button>
@@ -8750,8 +8739,7 @@ function diagOnLocal(msg){
     diagSetHealth('pc', miss > 0 ? 'warn' : 'ok', pcNote);
   }
 
-  // 采样在跑的话，用新拿到的总内存刷新一下占比
-  if(_diag.sampling && _diag.lastMem > 0) diagRenderSample(_diag.lastCpu, _diag.lastMem);
+  // 第 19 批：采样渲染已统一到 renderRes（本工具开销不再单独展示）
 
   var sub = document.getElementById('diag-sub');
   if(sub){
@@ -9314,18 +9302,38 @@ function diagToggleSample(){
   if(_diag.sampling) diagStopSample(); else diagStartSample();
 }
 
+/* 2026-11-22（第 19 批 B3）：采样统一入口。
+   一次 tick 做两件事：
+     ① diagsample  → 本工具自身的 CPU/内存（SampleSelf）
+     ② diagtop5    → 本机全机 + 车机的剩余量与 TOP5
+   间隔 **3 秒**（用户指定）：本机 WMI 约 0.3~0.5s、车机 top 约 1~2s，
+   2 秒会和上一次采集中间重叠，3 秒安全。 */
+var DIAG_SAMPLE_MS = 3000;
+
 function diagStartSample(){
   _diag.sampling = true;
   _diag.lastCpu = -1;
   var btn = document.getElementById('diag-sample-btn');
   if(btn){ btn.textContent = '停止采样'; btn.classList.add('primary'); }
+
+  _top5.host = null;
+  _top5.car = null;
   var box = document.getElementById('diag-rows-res');
-  if(box) box.innerHTML = '<div class="diag-empty">测量中…（CPU 需要两次采样才能算出占用）</div>';
+  if(box) box.innerHTML = '<div class="diag-empty">正在采样…（首次约 1~2 秒）</div>';
+
   try { post('diagsample_reset'); } catch(e){}
-  _diag.timer = setInterval(function(){
-    try { post('diagsample'); } catch(e){}
-  }, 2000);
-  try { post('diagsample'); } catch(e){}
+
+  function tick(){
+    if(!_diag.sampling) return;
+    // ★ 第 19 批：只发 diagtop5。
+    //   原来还发 diagsample（本工具自身 CPU/内存），但那个渲染函数
+    //   diagRenderSample 和新的 renderRes 都会写 #diag-rows-res，互相覆盖。
+    //   用户要的是"剩余 CPU/内存 + TOP5"，本工具开销不是重点，去掉。
+    try { postObj({ kind: 'diagtop5' }); } catch(e){}
+  }
+
+  _diag.timer = setInterval(tick, DIAG_SAMPLE_MS);
+  tick();   // 立即来一次，不用等 3 秒
 }
 
 function diagStopSample(){
@@ -9338,10 +9346,11 @@ function diagStopSample(){
 }
 
 function diagOnSample(msg){
+  // 第 19 批：本工具自身 CPU/内存不再在「资源占用」里显示。
+  // 保留这个入口只记录数值（调试时能看），不渲染。
   if(!_diag.sampling || !msg) return;
   _diag.lastCpu = msg.cpu;
   _diag.lastMem = msg.mem;
-  diagRenderSample(msg.cpu, msg.mem);
 }
 
 /* 资源占用渲染（2026-11-22 第 2 版）：CPU / 内存都用进度条。
@@ -10554,90 +10563,86 @@ function fileNavSwitch(sub){
 }
 
 /* ============================================================================
-   2026-11-22（第 18 批 D3/D4）：TOP5 进程区块
+   2026-11-22（第 19 批 B2~B4）：资源占用（本机 + 车机）
    ----------------------------------------------------------------------------
-   需求：本机信息里加「CPU 占用最高的 5 个应用 + 剩余 CPU」、
-        「内存占用最高的 5 个应用 + 剩余内存」；
-        车机信息同理。
-   用户指定：**塞进现有的「本机信息」「车机信息」卡里**（不新开卡片）。
-
-   数据来源（C# 侧）：
-     · 本机 → Diag.HostTop5()（WMI + Process）
-     · 车机 → App.CarTop5()（top -n 1 + /proc/meminfo）
+   需求变更：
+     · 剩余 CPU / 剩余内存 / TOP5 全部从「本机信息」「车机信息」两卡**挪到**
+       这里（原来塞在两张信息卡底部，信息卡变得又长又混）
+     · 加上「开始采样」，3 秒一次实时刷新（用户指定 3 秒）
+     · 未检测到显示 `--`（不隐藏 —— 和 DDR 的"整行隐藏"规则区分开）
    ============================================================================ */
 
 var _top5 = { host: null, car: null };
 
-/* 渲染一组 top5：标题 + 剩余量 + 5 行 */
-function top5Html(title, freeText, list, unit){
-  var h = '<div class="diag-group">' + mkEsc(title) + '</div>';
-  if (freeText){
-    h += '<div class="diag-row"><span class="diag-k">' + mkEsc(title) + '</span>'
-       + '<span class="diag-v">' + mkEsc(freeText) + '</span></div>';
-  }
+/* 一行 "标签 / 值"，值取不到时给 -- */
+function resRow(label, val, unit){
+  var txt = (val == null || val === '' || isNaN(val)) ? '--' : (Number(val).toFixed(1) + (unit || ''));
+  return '<div class="diag-row"><span class="diag-k">' + mkEsc(label) + '</span>'
+       + '<span class="diag-v">' + mkEsc(txt) + '</span></div>';
+}
+
+/* 一组 TOP5 列表 */
+function resTop(label, list, unit){
+  var h = '<div class="diag-group">' + mkEsc(label) + '</div>';
   if (!list || !list.length){
-    h += '<div class="diag-row"><span class="diag-k">占用排行</span>'
-       + '<span class="diag-v" style="color:var(--text-faint);">暂无数据</span></div>';
+    h += '<div class="diag-row"><span class="diag-k">—</span>'
+       + '<span class="diag-v">--</span></div>';
     return h;
   }
   for (var i = 0; i < list.length; i++){
-    var it = list[i];
-    var v = (unit === '%') ? (it.v + '%') : it.v;
-    h += '<div class="diag-row"><span class="diag-k">' + (i + 1) + '. ' + mkEsc(it.n) + '</span>'
+    var it = list[i] || {};
+    var v = (it.v == null || it.v === '') ? '--'
+          : (unit === '%' ? (Number(it.v).toFixed(1) + '%') : String(it.v));
+    h += '<div class="diag-row"><span class="diag-k">' + (i + 1) + '. ' + mkEsc(it.n || '--') + '</span>'
        + '<span class="diag-v">' + mkEsc(v) + '</span></div>';
   }
   return h;
 }
 
-/* 把两块 top5 追加到指定容器末尾 */
-function renderTop5(sec){
-  var data = (sec === 'pc') ? _top5.host : _top5.car;
-  var box = document.getElementById(sec === 'pc' ? 'diag-rows-pc' : 'diag-rows-car');
+/* 整块重绘：本机 + 车机 */
+function renderRes(){
+  var box = document.getElementById('diag-rows-res');
   if (!box) return;
 
-  // 每次重绘前先摘掉旧的 top5 段（重新采集时不叠加）
-  var old = box.querySelectorAll('.top5-sec');
-  for (var i = 0; i < old.length; i++) box.removeChild(old[i]);
-
-  if (!data){
-    var wrap0 = document.createElement('div');
-    wrap0.className = 'top5-sec';
-    wrap0.innerHTML = '<div class="diag-group">资源占用 TOP5</div>'
-      + '<div class="diag-row"><span class="diag-v" style="color:var(--text-faint);">采集中…</span></div>';
-    box.appendChild(wrap0);
-    return;
-  }
-
-  if (!data.ok){
-    var wrap1 = document.createElement('div');
-    wrap1.className = 'top5-sec';
-    wrap1.innerHTML = '<div class="diag-group">资源占用 TOP5</div>'
-      + '<div class="diag-row"><span class="diag-v" style="color:var(--err);">'
-      + mkEsc(data.err || '采集失败') + '</span></div>';
-    box.appendChild(wrap1);
-    return;
-  }
-
+  var host = _top5.host;
+  var car = _top5.car;
   var html = '';
-  if (sec === 'pc'){
-    html += top5Html('剩余 CPU', data.freeCpu == null ? '' : (data.freeCpu.toFixed(1) + '%（' + data.cores + ' 核）'),
-                     data.cpu, '%');
-    html += top5Html('剩余内存', data.freeMem == null ? '' : (data.freeMem.toFixed(1) + ' GB'),
-                     data.mem, 'MB');
+
+  // ---- 本机 ----
+  html += '<div class="diag-group">本机</div>';
+  if (host && host.ok){
+    html += resRow('剩余 CPU', host.freeCpu, '%');
+    html += resRow('剩余内存', host.freeMem, ' GB');
+    html += resTop('CPU TOP5', host.cpu, '%');
+    html += resTop('内存 TOP5', host.mem, '');
+  } else if (host){
+    html += resRow('剩余 CPU', null);
+    html += resRow('剩余内存', null);
+    if (host.err) html += '<div class="diag-row"><span class="diag-v" style="color:var(--err);">'
+                        + mkEsc(host.err) + '</span></div>';
   } else {
-    html += top5Html('剩余 CPU', data.freeCpu == null ? '' : (data.freeCpu.toFixed(1) + '%'),
-                     data.cpu, '%');
-    var memTxt = '';
-    if (data.memTotal != null && data.memFree != null){
-      memTxt = data.memFree.toFixed(1) + ' GB 可用 / 共 ' + data.memTotal.toFixed(1) + ' GB';
-    }
-    html += top5Html('剩余内存', memTxt, data.mem, '');
+    html += resRow('剩余 CPU', null);
+    html += resRow('剩余内存', null);
   }
 
-  var wrap = document.createElement('div');
-  wrap.className = 'top5-sec';
-  wrap.innerHTML = html;
-  box.appendChild(wrap);
+  // ---- 车机 ----
+  html += '<div class="diag-group">车机</div>';
+  if (car && car.ok){
+    html += resRow('剩余 CPU', car.freeCpu, '%');
+    html += resRow('剩余内存', car.memFree, ' GB');
+    html += resTop('CPU TOP5', car.cpu, '%');
+    html += resTop('内存 TOP5', car.mem, '');
+  } else if (car){
+    html += resRow('剩余 CPU', null);
+    html += resRow('剩余内存', null);
+    if (car.err) html += '<div class="diag-row"><span class="diag-v" style="color:var(--err);">'
+                       + mkEsc(car.err) + '</span></div>';
+  } else {
+    html += resRow('剩余 CPU', null);
+    html += resRow('剩余内存', null);
+  }
+
+  box.innerHTML = html;
 }
 
 /* C# 回包 */
@@ -10645,56 +10650,66 @@ function top5OnData(msg){
   if (!msg) return;
   _top5.host = msg.host || null;
   _top5.car = msg.car || null;
-  renderTop5('pc');
-  renderTop5('car');
-
-  // 汇总条也报一下（有失败就标黄）
-  var bad = (_top5.host && !_top5.host.ok) || (_top5.car && !_top5.car.ok);
-  if (bad) diagSetHealth('pc', 'warn', '本机（TOP5 部分失败）');
+  renderRes();
 }
 
-/* 采集入口 */
+/* 采一次（供启动采样与手动刷新共用） */
 function top5Refresh(){
-  _top5.host = null;
-  _top5.car = null;
-  renderTop5('pc');
-  renderTop5('car');
   try { postObj({ kind: 'diagtop5' }); } catch(e){}
 }
 
-/* ============================================================================
-   H5 管理（2026-11-22 第 18 批 C1~C6 简化版）
-   ----------------------------------------------------------------------------
-   第 17 批做成了"书签管理器"，功能堆太多（搜索/预设/导入导出/分类侧栏/
-   卡片网格/最近排序）。用户要求按 Edge 收藏夹的交互简化：
-     · 表单：分组（单独一行）+ 名称 / 链接（并排）
-     · 列表：按分组分节，每项 [名称] [链接] [打开] [复制] [×]
-     · 输入后持久化，关掉再开还在
-     · 能加能删
 
-   保留：分组自由填（已有分组做候选）/ 名称 / 链接 / 添加 / 删除 / 复制 / 打开
-   删掉：搜索框、常用预设、导入导出 JSON、左侧分类树、卡片网格、首字母色块
+
+/* ============================================================================
+   2026-11-22（第 19 批 C1~C3）：H5 管理 —— 分组容器式
+   ----------------------------------------------------------------------------
+   交互（按用户确认的方案 B + A）：
+     · 初始只有一个「+ 添加分组」按钮
+     · 点它 → prompt 填分组名（方案 B：弹小输入框）
+     · 分组头有「+ 添加」→ 该分组内出现一行输入（名称 + 链接 + 确定）
+       （方案 A：像 Excel 新增行）
+     · 每条一行：名称 / H5链接 / [打开][复制][删除]
+
+   数据结构（相比第 18 批的扁平数组，改成两级）：
+     旧：[{id, name, url, cat}]
+     新：[{id, name, items:[{id, name, url}]}]
+   兼容：h5Load 里自动把旧格式按 cat 迁成分组（不丢已有收藏）。
    ============================================================================ */
 var H5_KEY = 'h5_links_v1';
 var _h5 = {
-  items: [],      // [{ id, name, url, cat }]
+  groups: [],      // [{id, name, items:[{id,name,url}]}]
+  adding: '',      // 正在"添加条目"的分组 id
   inited: false
 };
 
-/* ---------- 存取 ---------- */
+/* ---------- 存取 + 旧格式迁移 ---------- */
 function h5Load(){
   try {
     var raw = localStorage.getItem(H5_KEY);
     var arr = raw ? JSON.parse(raw) : [];
-    _h5.items = (arr && arr.length) ? arr : [];
-  } catch(e){ _h5.items = []; }
+    if (!arr || !arr.length){ _h5.groups = []; return; }
+
+    // 新格式：元素有 items 数组
+    if (arr[0] && arr[0].items !== undefined){
+      _h5.groups = arr;
+      return;
+    }
+
+    // 旧格式迁移：按 cat 归组
+    var order = [], map = {};
+    for (var i = 0; i < arr.length; i++){
+      var it = arr[i] || {};
+      var g = it.cat || '未分组';
+      if (!map[g]){ map[g] = { id: h5Uid(), name: g, items: [] }; order.push(g); }
+      map[g].items.push({ id: it.id || h5Uid(), name: it.name || '', url: it.url || '' });
+    }
+    _h5.groups = order.map(function(k){ return map[k]; });
+    h5Persist();   // 迁移结果立刻写回，避免下次再迁一次
+  } catch(e){ _h5.groups = []; }
 }
 
-/* 注意：叫 h5Persist 不叫 h5Save。
-   第 17 批踩过坑：两个函数都叫 h5Save（一个写盘、一个表单提交），
-   后定义的覆盖前者 → 表单能提交但从来没写进 localStorage。 */
 function h5Persist(){
-  try { localStorage.setItem(H5_KEY, JSON.stringify(_h5.items)); } catch(e){}
+  try { localStorage.setItem(H5_KEY, JSON.stringify(_h5.groups)); } catch(e){}
 }
 
 function h5Uid(){
@@ -10705,7 +10720,6 @@ function h5Uid(){
 function h5NormUrl(u){
   var t = String(u || '').trim();
   if (!t) return '';
-  // 没写协议就补 https（用户经常直接粘 www.xxx.com）
   if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)) t = 'https://' + t;
   return t;
 }
@@ -10718,139 +10732,194 @@ function h5ValidUrl(u){
 }
 
 function h5Host(u){
-  try { return new URL(u).hostname.replace(/^www\./, ''); }
-  catch(e){ return ''; }
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return ''; }
 }
 
 /* ---------- 渲染 ---------- */
 function h5Render(){
-  var list = document.getElementById('h5-list');
-  var foot = document.getElementById('h5-foot');
-  if (!list) return;
+  var body = document.getElementById('h5-body');
+  var hint = document.getElementById('h5-bar-hint');
+  if (!body) return;
 
-  // 分组候选（datalist）—— 按首次出现顺序，稳定不跳
-  var dl = document.getElementById('h5-cat-list');
-  if (dl){
-    var seen = {}, order = [];
-    for (var i = 0; i < _h5.items.length; i++){
-      var c = _h5.items[i].cat || '';
-      if (c && !seen[c]) { seen[c] = 1; order.push(c); }
-    }
-    dl.innerHTML = order.map(function(x){
-      return '<option value="' + escAttr(x) + '">';
-    }).join('');
-  }
-
-  if (!_h5.items.length){
-    list.innerHTML = '<div class="h5-empty">还没有收藏。<br>在上面填名称和链接，点「添加」即可。</div>';
-    if (foot) foot.textContent = '';
+  if (!_h5.groups.length){
+    body.innerHTML = '<div class="h5-empty">还没有分组。<br>点左上角「+ 添加分组」开始。</div>';
+    if (hint) hint.textContent = '';
     return;
   }
 
-  // 按分组归拢，保持"首次出现"的顺序（不排序，用户自己控制）
-  var groups = {}, gorder = [];
-  for (var j = 0; j < _h5.items.length; j++){
-    var it = _h5.items[j];
-    var g = it.cat || '未分组';
-    if (!groups[g]) { groups[g] = []; gorder.push(g); }
-    groups[g].push(it);
-  }
-
   var html = '';
-  for (var k = 0; k < gorder.length; k++){
-    var gname = gorder[k];
-    var arr = groups[gname];
-    html += '<div class="h5-sec">' + mkEsc(gname) + '（' + arr.length + '）</div>';
-    for (var m = 0; m < arr.length; m++){
-      var x = arr[m];
-      html += '<div class="h5-item">'
-        + '<span class="h5-name" title="' + escAttr(x.name) + '" onclick="h5Open(\'' + x.id + '\')">'
-        +   mkEsc(x.name) + '</span>'
-        + '<span class="h5-url" title="' + escAttr(x.url) + '" onclick="h5Open(\'' + x.id + '\')">'
-        +   mkEsc(x.url) + '</span>'
-        + '<div class="h5-acts">'
-        +   '<button class="mini-btn" onclick="h5Open(\'' + x.id + '\')">打开</button>'
-        +   '<button class="mini-btn" onclick="h5Copy(\'' + x.id + '\')">复制</button>'
-        +   '<button class="mini-btn h5-del" onclick="h5Del(\'' + x.id + '\')" title="删除">×</button>'
-        + '</div>'
-        + '</div>';
-    }
-  }
-  list.innerHTML = html;
+  var total = 0;
 
-  if (foot){
-    foot.textContent = '共 ' + _h5.items.length + ' 条，' + gorder.length + ' 个分组'
-      + ' · 数据存在本机，不删就一直在';
+  for (var i = 0; i < _h5.groups.length; i++){
+    var g = _h5.groups[i];
+    total += (g.items || []).length;
+    var gid = g.id;
+
+    html += '<div class="h5-group">';
+
+    // 分组头
+    html += '<div class="h5-ghead">'
+          +   '<span class="h5-gname">' + mkEsc(g.name) + '</span>'
+          +   '<span class="h5-gcount">' + (g.items || []).length + '</span>'
+          +   '<div class="spacer"></div>'
+          +   '<button class="mini-btn" onclick="h5StartAdd(\'' + gid + '\')">+ 添加</button>'
+          +   '<button class="mini-btn h5-del" onclick="h5DelGroup(\'' + gid + '\')" title="删除分组">×</button>'
+          + '</div>';
+
+    // 条目
+    html += '<div class="h5-gitems">';
+    if (!(g.items || []).length){
+      html += '<div class="h5-gempty">这个分组还没有 H5</div>';
+    }
+    for (var j = 0; j < (g.items || []).length; j++){
+      var it = g.items[j];
+      html += '<div class="h5-item">'
+            +   '<span class="h5-name" title="' + escAttr(it.name) + '">' + mkEsc(it.name) + '</span>'
+            +   '<span class="h5-url" title="' + escAttr(it.url) + '">' + mkEsc(it.url) + '</span>'
+            +   '<div class="h5-acts">'
+            +     '<button class="mini-btn" onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">打开</button>'
+            +     '<button class="mini-btn" onclick="h5Copy(\'' + gid + '\',\'' + it.id + '\')">复制</button>'
+            +     '<button class="mini-btn h5-del" onclick="h5DelItem(\'' + gid + '\',\'' + it.id + '\')">删除</button>'
+            +   '</div>'
+            + '</div>';
+    }
+
+    // 行内添加（方案 A：像 Excel 新增行）
+    if (_h5.adding === gid){
+      html += '<div class="h5-item h5-item--new">'
+            +   '<input class="inp h5-new-name" id="h5-new-name" placeholder="名称" spellcheck="false">'
+            +   '<input class="inp h5-new-url" id="h5-new-url" placeholder="H5链接（不写协议自动补）"'
+            +     ' spellcheck="false" onkeydown="h5NewKey(event,\'' + gid + '\')">'
+            +   '<div class="h5-acts">'
+            +     '<button class="mini-btn" onclick="h5CancelAdd()">取消</button>'
+            +     '<button class="mini-btn h5-ok" onclick="h5CommitAdd(\'' + gid + '\')">确定</button>'
+            +   '</div>'
+            + '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  body.innerHTML = html;
+  if (hint) hint.textContent = _h5.groups.length + ' 个分组 · ' + total + ' 条';
+
+  // 自动聚焦新行输入框
+  if (_h5.adding){
+    var inp = document.getElementById('h5-new-name');
+    if (inp) try { inp.focus(); } catch(e){}
   }
 }
 
-function h5Find(id){
-  for (var i = 0; i < _h5.items.length; i++)
-    if (_h5.items[i].id === id) return _h5.items[i];
+/* ---------- 分组操作 ---------- */
+function h5AddGroup(){
+  var name = prompt('新分组名称：', '');
+  if (name === null) return;
+  name = String(name).trim();
+  if (!name) { toast('分组名不能为空', 'err'); return; }
+
+  for (var i = 0; i < _h5.groups.length; i++){
+    if (_h5.groups[i].name === name){ toast('已有同名分组', 'err'); return; }
+  }
+  _h5.groups.push({ id: h5Uid(), name: name, items: [] });
+  h5Persist();
+  h5Render();
+  toast('已添加分组：' + name, 'ok');
+}
+
+function h5DelGroup(gid){
+  var g = h5FindGroup(gid);
+  if (!g) return;
+  var n = (g.items || []).length;
+  var msg = '删除分组「' + g.name + '」？';
+  if (n) msg += '\n\n里面的 ' + n + ' 条 H5 也会一起删掉。';
+  msg += '\n\n此操作不能撤销。';
+  if (!confirm(msg)) return;
+
+  _h5.groups = _h5.groups.filter(function(x){ return x.id !== gid; });
+  h5Persist();
+  h5Render();
+  toast('已删除分组', 'ok');
+}
+
+function h5FindGroup(gid){
+  for (var i = 0; i < _h5.groups.length; i++)
+    if (_h5.groups[i].id === gid) return _h5.groups[i];
   return null;
 }
 
-/* ---------- 添加 ---------- */
-function h5Add(){
-  var catEl  = document.getElementById('h5-f-cat');
-  var nameEl = document.getElementById('h5-f-name');
-  var urlEl  = document.getElementById('h5-f-url');
-  var errEl  = document.getElementById('h5-f-err');
+function h5FindItem(gid, iid){
+  var g = h5FindGroup(gid);
+  if (!g) return null;
+  for (var i = 0; i < (g.items || []).length; i++)
+    if (g.items[i].id === iid) return g.items[i];
+  return null;
+}
 
-  var cat  = String((catEl  || {}).value || '').trim();
+/* ---------- 条目添加（行内）---------- */
+function h5StartAdd(gid){
+  _h5.adding = gid;
+  h5Render();
+}
+
+function h5CancelAdd(){
+  _h5.adding = '';
+  h5Render();
+}
+
+function h5NewKey(e, gid){
+  if (e.key === 'Enter'){ e.preventDefault(); h5CommitAdd(gid); }
+  else if (e.key === 'Escape'){ e.preventDefault(); h5CancelAdd(); }
+}
+
+function h5CommitAdd(gid){
+  var g = h5FindGroup(gid);
+  if (!g) return;
+
+  var nameEl = document.getElementById('h5-new-name');
+  var urlEl  = document.getElementById('h5-new-url');
   var name = String((nameEl || {}).value || '').trim();
   var url  = h5NormUrl((urlEl || {}).value || '');
 
-  if (!url){ if (errEl) errEl.textContent = '链接不能为空'; return; }
-  if (!h5ValidUrl(url)){ if (errEl) errEl.textContent = '链接不合法，需要 http / https'; return; }
+  if (!url){ toast('链接不能为空', 'err'); if (urlEl) try{ urlEl.focus(); }catch(e){} return; }
+  if (!h5ValidUrl(url)){ toast('链接不合法，需要 http / https', 'err'); return; }
 
-  // 同名同链接视为重复（用户经常重复点添加）
-  for (var i = 0; i < _h5.items.length; i++){
-    if (_h5.items[i].url === url){
-      if (errEl) errEl.textContent = '这个链接已经收藏过了';
-      return;
+  // 全局查重
+  for (var i = 0; i < _h5.groups.length; i++){
+    var its = _h5.groups[i].items || [];
+    for (var j = 0; j < its.length; j++){
+      if (its[j].url === url){ toast('这个链接已经收藏过了', 'err'); return; }
     }
   }
 
-  if (!name) name = h5Host(url) || url;   // 没填名称就用域名
+  if (!name) name = h5Host(url) || url;
+  g.items.push({ id: h5Uid(), name: name, url: url });
 
-  _h5.items.push({ id: h5Uid(), name: name, url: url, cat: cat });
+  _h5.adding = '';
   h5Persist();
-
-  // 清空输入，方便连续添加；分组保留（一次通常加同一组的几条）
-  if (nameEl) nameEl.value = '';
-  if (urlEl) urlEl.value = '';
-  if (errEl) errEl.textContent = '';
-  if (nameEl) try { nameEl.focus(); } catch(e){}
-
   h5Render();
   toast('已添加', 'ok');
 }
 
-function h5FormKey(e){
-  if (e.key === 'Enter'){ e.preventDefault(); h5Add(); }
-}
-
 /* ---------- 打开 / 复制 / 删除 ---------- */
-function h5Open(id){
-  var x = h5Find(id);
-  if (!x) return;
-  if (!h5ValidUrl(x.url)){ toast('链接不合法：' + x.url, 'err'); return; }
-  // 走 C# 的 ShellExecute → 系统默认浏览器（不是 WebView2 内嵌窗口）
-  try { postObj({ kind: 'openurl', url: x.url }); } catch(e){}
+function h5Open(gid, iid){
+  var it = h5FindItem(gid, iid);
+  if (!it) return;
+  if (!h5ValidUrl(it.url)){ toast('链接不合法：' + it.url, 'err'); return; }
+  try { postObj({ kind: 'openurl', url: it.url }); } catch(e){}
 }
 
-function h5Copy(id){
-  var x = h5Find(id);
-  if (!x) return;
-  diagCopyText(x.url, '已复制链接');
+function h5Copy(gid, iid){
+  var it = h5FindItem(gid, iid);
+  if (!it) return;
+  diagCopyText(it.url, '已复制链接');
 }
 
-function h5Del(id){
-  var x = h5Find(id);
-  if (!x) return;
-  if (!confirm('删除「' + x.name + '」？\n\n此操作不能撤销。')) return;
-  _h5.items = _h5.items.filter(function(v){ return v.id !== id; });
+function h5DelItem(gid, iid){
+  var g = h5FindGroup(gid);
+  var it = h5FindItem(gid, iid);
+  if (!g || !it) return;
+  if (!confirm('删除「' + it.name + '」？\n\n此操作不能撤销。')) return;
+
+  g.items = (g.items || []).filter(function(x){ return x.id !== iid; });
   h5Persist();
   h5Render();
   toast('已删除', 'ok');
@@ -12707,12 +12776,7 @@ function cluUpdateGate(){
     btn.disabled = !ok;
     btn.title = ok ? '开启仪表实时显示' : '需先选择芯片并登录成功';
   }
-  // 2026-11-22（第 18 批 B3）：录制按钮走同一道门禁
-  var rb = cluEl('clu-rec-btn');
-  if(rb){
-    rb.disabled = !ok;
-    rb.title = ok ? '录制仪表 60 秒（不影响普通屏录制）' : '需先选择芯片并登录成功';
-  }
+
 }
 
 function cluSetState(text, cls){
@@ -12892,19 +12956,25 @@ function castRun(cmd, name){
   cluLog('▶ ' + (name || cmd));
 }
 
+/* 投屏某屏（整行点击走这里）*/
+function castGo(displayId){
+  castRun(':cast ' + displayId, '投屏 display ' + displayId);
+  castMarkBusy(displayId, 3000);
+}
+
 /* B4：同屏冲突检测 —— 一个 display 同时只能有一路 scrcpy。
    在 Scrcpy.Active 里查不到（那是 C# 内存），这里用页面侧的状态近似：
    录制/投屏按钮点下去后置灰 3 秒（启动窗口），失败回来会恢复。 */
 function castMarkBusy(id, ms){
-  var btns = document.querySelectorAll('[data-cast="' + id + '"],[data-rec="' + id + '"]');
+  var btns = document.querySelectorAll('[data-cast="' + id + '"]');
   for (var i = 0; i < btns.length; i++){
     btns[i].disabled = true;
-    btns[i].classList.add('cmini--busy');
+    btns[i].classList.add('crow--busy');
   }
   setTimeout(function(){
     for (var j = 0; j < btns.length; j++){
       btns[j].disabled = false;
-      btns[j].classList.remove('cmini--busy');
+      btns[j].classList.remove('crow--busy');
     }
   }, ms || 3000);
 }
@@ -12912,60 +12982,74 @@ function castMarkBusy(id, ms){
 var _castDispLoaded = false;
 
 function castLoadDisplays(){
-  var grid = document.getElementById('cast-grid');
-  if (grid && !_castDispLoaded){
-    grid.innerHTML = '<div class="cbtn cbtn--loading">正在扫描屏幕…</div>';
+  // ★ 2026-11-22（第 19 批）：不再用"正在扫描…"覆盖 grid ——
+  //   那样会瞬间抹掉 6 个默认行，扫完再重建，视觉上闪一下。
+  //   现在只把副标题临时改成"检测中"，行本身一直在。
+  if (!_castDispLoaded){
+    var subs = document.querySelectorAll('#cast-grid .crow-sub');
+    for (var i = 0; i < subs.length; i++) subs[i].textContent = '检测中…';
   }
   try { postObj({ kind: 'displays' }); } catch(e){}
 }
 
-/* C# 回来的真实屏幕列表 → 重建按钮 */
+/* ============================================================================
+   C# 回来的真实屏幕列表 → 更新 6 个默认行（2026-11-22 第 19 批 A1）
+   ----------------------------------------------------------------------------
+   ★ 第 18 批的 bug：这里是"清空 grid + 只渲染扫描结果"，
+     而 scrcpy --list-displays 在 emulator 上只返回 1 块屏，
+     结果 6 个默认项全被覆盖 —— 用户只看到一行「主屏」。
+   ★ 现在：6 个默认行**永远在**，扫描结果只做两件事：
+       ① 存在的屏补上真实分辨率
+       ② 不存在的屏标「未检测到」（**按钮不置灰**，仍可点）
+   ★ 扫描到的"计划外"屏（比如某平台仪表是 7）追加在最后。
+   ============================================================================ */
 function castOnDisplays(msg){
   var grid = document.getElementById('cast-grid');
   if (!grid) return;
-  if (!msg || !msg.ok || !msg.list || !msg.list.length){
-    grid.innerHTML = '<div class="cbtn cbtn--loading">没扫到屏幕'
-      + (msg && msg.err ? ('：' + mkEsc(msg.err)) : '') + '（保留默认列表请点刷新重试）</div>';
-    return;
+
+  var found = {};
+  if (msg && msg.ok && msg.list){
+    for (var i = 0; i < msg.list.length; i++) found[msg.list[i].id] = msg.list[i];
   }
   _castDispLoaded = true;
-  var html = '';
-  for (var i = 0; i < msg.list.length; i++){
-    var d = msg.list[i];
-    var tag = (d.id === 0) ? '主屏' : ('屏 ' + d.id);
-    html += '<div class="crow"><b>' + mkEsc(tag) + '</b>'
-          + '<span>display ' + d.id + ' · ' + d.w + '×' + d.h + '</span>'
-          + '<button class="cmini" data-cast="' + d.id + '" onclick="castGo(' + d.id + ')">投</button>'
-          + '<button class="cmini" data-rec="' + d.id + '" onclick="castRec(' + d.id + ')">录</button>'
-          + '</div>';
+
+  // ① 更新 6 个默认行的副标题（不动 DOM 结构，避免重建闪烁）
+  var rows = grid.querySelectorAll('.crow[data-cast]');
+  var seen = {};
+  for (var r = 0; r < rows.length; r++){
+    var id = parseInt(rows[r].getAttribute('data-cast'), 10);
+    seen[id] = 1;
+    var sub = rows[r].querySelector('.crow-sub');
+    if (!sub) continue;
+    var f = found[id];
+    if (f){
+      sub.textContent = 'display ' + id + ' · ' + f.w + '×' + f.h;
+      rows[r].classList.remove('crow--miss');
+    } else {
+      sub.textContent = 'display ' + id + ' · 未检测到';
+      rows[r].classList.add('crow--miss');
+    }
+    // 按钮始终可用（用户明确要求：未检测到也不置灰）
+    rows[r].disabled = false;
   }
-  grid.innerHTML = html;
-}
 
-/* 投屏某屏 */
-function castGo(displayId){
-  castRun(':cast ' + displayId, '投屏 display ' + displayId);
-  castMarkBusy(displayId, 3000);
-}
+  // ② 追加计划外的屏
+  var extra = grid.querySelectorAll('.crow--extra');
+  for (var e = 0; e < extra.length; e++) grid.removeChild(extra[e]);
 
-/* B2：录制某屏（固定 60 秒）*/
-function castRec(displayId){
-  castRun(':castrec ' + displayId + ' 60', '录屏 display ' + displayId + '（60 秒）');
-  // 录制只写盘、不占窗口，但同一屏正在投的话 scrcpy 会拒绝，所以也给个短暂置灰
-  castMarkBusy(displayId, 3000);
-}
-
-function castStopAll(){
-  castRun(':caststop all', '关闭全部投屏');
-}
-
-/* B3：仪表录屏（需登录，与普通录制互不影响）*/
-function cluCastRec(){
-  if (!(_clu.logged && _clu.chipLogged === _clu.chip)){
-    toast('请先选择芯片并登录', 'err');
-    return;
+  if (msg && msg.ok && msg.list){
+    for (var k = 0; k < msg.list.length; k++){
+      var d = msg.list[k];
+      if (seen[d.id]) continue;
+      var b = document.createElement('button');
+      b.className = 'crow crow--extra';
+      b.setAttribute('data-cast', String(d.id));
+      b.innerHTML = '<b>' + mkEsc('屏 ' + d.id) + '</b>'
+                  + '<span class="crow-sub">display ' + d.id + ' · ' + d.w + '×' + d.h + '</span>';
+      b.onclick = (function(did){ return function(){ castGo(did); }; })(d.id);
+      grid.appendChild(b);
+    }
   }
-  castRun(':ccastrec 60', '录制仪表（60 秒）');
 }
 
 /* 屏号手动改过就不再被芯片切换覆盖 */
