@@ -232,6 +232,85 @@ setTimeout(function(){
       ok('CSV 含自动重启次数', (sent.csv||'').indexOf('自动重启次数')>=0);
     }
 
+    /* ---- 5g. 多包 / 白名单 / 黑名单（2026-11-22）---- */
+    ok('测试范围切换存在', typeof mkSetScope === 'function');
+    ok('执行方式切换存在', typeof mkSetExec === 'function');
+    ok('应用清单渲染存在', typeof mkRenderList === 'function');
+    ok('从设备扫描存在', typeof mkScanApps === 'function');
+    ok('从APK管理导入存在', typeof mkImportFromApk === 'function');
+    ok('持久化函数存在', typeof mkPersist === 'function');
+    ok('恢复函数存在', typeof mkRestore === 'function');
+
+    // 范围切换 UI 联动
+    mkSetScope('white');
+    ok('白名单模式显示清单区',
+       document.getElementById('mk-row-list').style.display !== 'none');
+    ok('白名单模式隐藏单包输入',
+       document.getElementById('mk-row-single').style.display === 'none');
+
+    // 添加包名（支持逗号分隔）
+    _mk.apps = [];
+    document.getElementById('mk-add-pkg').value = 'com.a, com.b;com.c';
+    mkAddPkgFromInput();
+    ok('逗号分隔可一次加多个', _mk.apps.length===3, _mk.apps.length);
+
+    // 去重合并
+    mkMergeApps([{pkg:'com.a', name:'A'}, {pkg:'com.d', name:'D'}]);
+    ok('重复包不重复添加', _mk.apps.length===4, _mk.apps.length);
+    ok('已有包补上名称',
+       (_mk.apps.filter(function(x){return x.pkg==='com.a';})[0]||{}).name==='A');
+
+    // 白名单命令：只给 --pkg-whitelist-file，**不能有 -p**（否则取交集）
+    _mk.apps.forEach(function(a){ a.sel = true; });
+    mkSetExec('seq');
+    var wcmd = mkBuildCmd();
+    ok('白名单命令含 --pkg-whitelist-file',
+       /--pkg-whitelist-file/.test(wcmd||''), wcmd);
+    ok('白名单命令不含 -p（避免取交集）',
+       !/\s-p\s/.test(wcmd||''), wcmd);
+
+    // 黑名单命令：-p + --pkg-blacklist-file
+    mkSetScope('black');
+    document.getElementById('mk-pkg').value = 'com.target';
+    mkBuildCmd('com.target');
+    var bcmd = mkBuildCmd('com.target');
+    ok('黑名单命令含 -p', /-p com\.target/.test(bcmd||''), bcmd);
+    ok('黑名单命令含 --pkg-blacklist-file',
+       /--pkg-blacklist-file/.test(bcmd||''), bcmd);
+
+    // 单包命令：只有 -p
+    mkSetScope('single');
+    var scmd = mkBuildCmd('com.target');
+    ok('单包命令只有 -p', /-p com\.target/.test(scmd||'') && !/-file/.test(scmd||''), scmd);
+
+    // 名单文件内容
+    var lf = mkBuildListFile();
+    ok('名单文件每行一个包', lf.split('\n').length===4, lf);
+
+    // 持久化与恢复往返
+    var sentCfg=null; var _op3=window.post;
+    try { window.post=function(k,d,s,sl,ex){ if(k==='monkeysave') sentCfg=d; return _op3?_op3(k,d,s,sl,ex):null; }; } catch(e){}
+    mkPersist();
+    try { window.post=_op3; } catch(e){}
+    ok('保存调用了 monkeysave', !!sentCfg);
+    if(sentCfg){
+      var parsed=JSON.parse(sentCfg);
+      ok('保存内容含应用清单', (parsed.apps||'').indexOf('com.a')>=0, parsed.apps);
+      ok('保存内容含范围', parsed.scope==='single', parsed.scope);
+    }
+    // 恢复
+    _mk.apps=[];
+    mkRestore({apps:'com.x|X应用|1;com.y|Y应用|0', scope:'white', exec:'rotate'});
+    ok('恢复应用清单', _mk.apps.length===2, _mk.apps.length);
+    ok('恢复勾选状态',
+       _mk.apps[0].sel===true && _mk.apps[1].sel===false);
+    ok('恢复应用名称', _mk.apps[0].name==='X应用', _mk.apps[0].name);
+
+    // 扫描结果解析
+    _mk.apps=[];
+    mkOnPkgScan('package:com.scan.one\npackage:com.scan.two');
+    ok('扫描结果进入清单', _mk.apps.length===2, _mk.apps.length);
+
     /* ---- 6. 清空 ---- */
     mkClear();
     ok('清空后回到空态', !!box.querySelector('.mk-empty'));

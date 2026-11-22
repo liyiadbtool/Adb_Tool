@@ -356,11 +356,14 @@ A35_ADDS = {
 #               mkListPkgs / mkOpenLogDir
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
-    "kinds": set(),
+    "kinds": set(["monkeycfg"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
-                     "mkCloseCrash", "mkCopyCrash", "mkExportReport"]),
+                     "mkCloseCrash", "mkCopyCrash", "mkExportReport",
+                     # 2026-11-22 多包：范围/执行方式/清单增删/扫描/导入
+                     "mkSetScope", "mkSetExec", "mkRemoveApp",
+                     "mkScanApps", "mkImportFromApk", "mkAddPkgFromInput"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -370,7 +373,11 @@ A36_ADDS = {
                 "mk-out",
                 # 2026-11-22 需求 B：崩溃弹层 / 自动重启开关 / 导出 / 重启计数
                 "mk-crash-mask", "mk-crash-title", "mk-crash-body",
-                "mk-restart-on-crash", "mk-export", "mk-st-restart"]),
+                "mk-restart-on-crash", "mk-export", "mk-st-restart",
+                # 2026-11-22 多包：范围切换 / 执行方式 / 应用清单
+                "mk-scope", "mk-exec", "mk-row-single", "mk-row-list",
+                "mk-row-blackhint", "mk-black-hint",
+                "mk-list", "mk-listcnt", "mk-add-pkg", "mk-est"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

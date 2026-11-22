@@ -1768,6 +1768,37 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-22：Monkey 多包配置持久化（应用清单 + 范围 + 执行方式 + 参数）
+                // 存进 ini 的 monkey_cfg 键，单行 JSON —— 清单可能几十个包，
+                // 用扁平 key 存不下，整体一个 JSON 更省事。
+                case "monkeysave":
+                    try
+                    {
+                        string cfg = GetField(json, "data");
+                        if (ProbeJs == null)
+                            SaveIniKey("monkey_cfg", cfg == null ? "" : cfg);
+                    }
+                    catch { }
+                    break;
+
+                // 2026-11-22：把白名单/黑名单文件写到本地 → 由页面侧再用
+                // post('run','push ...') 推到设备。这里只负责生成本地文件，
+                // 不直接调 adb —— 保持「adb 执行统一走一条通道」的既有约束。
+                case "mkfile":
+                    {
+                        try
+                        {
+                            string content = GetField(json, "data");
+                            string localPath = GetField(json, "local");
+                            if (string.IsNullOrEmpty(localPath)) break;
+                            File.WriteAllText(localPath, content ?? "", new UTF8Encoding(false));
+                            // 不回调页面：本地文件生成后，页面侧继续用
+                            // post('run','push ...') 推到设备即可，无需额外往返。
+                        }
+                        catch (Exception ex) { PostToast(false, "名单文件生成失败：" + ex.Message); }
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -1871,6 +1902,17 @@ namespace AdbLogExport.Gui
                         if (App.PREFS != null && App.PREFS.Length > 0)
                             _web.CoreWebView2.PostWebMessageAsJson(
                                 "{\"kind\":\"prefs\",\"data\":" + Json(App.PREFS) + "}");
+                        // 2026-11-22：Monkey 多包配置（应用清单/范围/执行方式/参数）。
+                        // 单独一条而不是塞进 prefs —— prefs 里是字体/主题这类 UI 偏好，
+                        // Monkey 配置属于测试业务数据，混在一起以后不好演进。
+                        try
+                        {
+                            string mcfg = ReadIniKey("monkey_cfg");
+                            if (!string.IsNullOrEmpty(mcfg))
+                                _web.CoreWebView2.PostWebMessageAsJson(
+                                    "{\"kind\":\"monkeycfg\",\"data\":" + Json(mcfg) + "}");
+                        }
+                        catch { }
                         // 2026-11-17：版本水印。现场出现过"改了却看不到变化"，
                         // 根因是同机器上跑着别的目录里的旧副本（另一个 exe + 另一份 ui.html）。
                         // 把「程序时间 / 界面时间 / 运行目录」推到设置面板的「关于」里，
@@ -2625,6 +2667,26 @@ namespace AdbLogExport.Gui
                         .Replace("\r", "").Replace("\n", " ") + "\"}");
             }
             catch { }
+        }
+
+        // 2026-11-22：读 ini 的单键值（SaveIniKey 只写不读，这里补读）。
+        // 找不到文件/找不到键都返回空串，调用方按"没有配置"处理。
+        private static string ReadIniKey(string key)
+        {
+            try
+            {
+                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+                if (!File.Exists(p)) return "";
+                foreach (string line in File.ReadAllLines(p))
+                {
+                    string t = line.TrimStart();
+                    if (t.StartsWith("#") || t.StartsWith(";")) continue;
+                    if (t.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase))
+                        return t.Substring(key.Length + 1);
+                }
+            }
+            catch { }
+            return "";
         }
 
         private static void SaveIniKey(string key, string val)

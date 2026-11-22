@@ -3933,6 +3933,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-state{
   font-size:12px; color:var(--text-faint); white-space:nowrap;
 }
+.mk-est{
+  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+}
 .mk-state.running{ color:var(--accent); font-weight:600; }
 
 /* 统计卡 */
@@ -3970,6 +3973,71 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-out .mk-l-ok{ color:var(--ok); }
 .mk-out .mk-l-cmd{ color:var(--accent); }
 
+
+/* 多包清单（2026-11-22） */
+.mk-listwrap{
+  flex:1 1 100%;
+  display:flex; flex-direction:column; gap:6px;
+  min-width:0;
+}
+.mk-listbar{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.mk-listcnt{
+  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+}
+.mk-list{
+  max-height:180px; min-height:60px;
+  overflow-y:auto;
+  border:1px solid var(--border); border-radius:var(--r-3);
+  background:var(--well);
+  padding:4px;
+  display:flex; flex-direction:column; gap:2px;
+}
+.mk-list-empty{
+  padding:16px 10px; text-align:center;
+  font-size:12px; color:var(--text-faint);
+}
+.mk-app{
+  display:flex; align-items:center; gap:8px;
+  padding:5px 8px;
+  border-radius:var(--r-2);
+  font-size:12.5px;
+  cursor:pointer;
+}
+.mk-app:hover{ background:var(--surface-hover); }
+.mk-app input[type=checkbox]{
+  accent-color:var(--accent);
+  flex:0 0 auto;
+}
+.mk-app-name{
+  flex:0 0 auto; min-width:0;
+  color:var(--text);
+  max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mk-app-pkg{
+  flex:1 1 auto; min-width:0;
+  font-family:var(--font-mono); font-size:11px;
+  color:var(--text-faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mk-app .mk-app-del{
+  flex:0 0 auto;
+  width:20px; height:20px;
+  border:0; border-radius:var(--r-1);
+  background:transparent; color:var(--text-faint);
+  cursor:pointer; font-size:13px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+}
+.mk-app .mk-app-del:hover{
+  background:var(--err-soft); color:var(--err);
+}
+.mk-listadd{
+  display:flex; gap:6px;
+}
+.mk-hint{
+  font-size:11.5px; color:var(--text-faint); line-height:1.6;
+}
 
 /* 崩溃详情弹层（需求 B-1） */
 .mk-crash-mask{
@@ -4685,18 +4753,69 @@ body[data-navlabels="0"] .filenav-item.active::after{
          ====================================================================== -->
     <div class="page" id="page-monkey">
       <div class="mk-wrap">
-        <!-- 配置区 -->
+        <!-- ============================================================
+             配置区
+             ============================================================ -->
         <div class="mk-panel">
+
+          <!-- ---------- 测试范围 + 执行方式 ---------- -->
           <div class="mk-row">
+            <span class="mk-lbl">测试范围</span>
+            <div class="mk-seg" id="mk-scope">
+              <button type="button" data-scope="single" class="on" onclick="mkSetScope('single')">单包</button>
+              <button type="button" data-scope="white" onclick="mkSetScope('white')">白名单</button>
+              <button type="button" data-scope="black" onclick="mkSetScope('black')">黑名单</button>
+            </div>
+            <span class="mk-lbl">执行方式</span>
+            <div class="mk-seg" id="mk-exec">
+              <button type="button" data-exec="seq" class="on" onclick="mkSetExec('seq')"
+                      title="一个包跑完再跑下一个，结果最清晰（推荐）">顺序</button>
+              <button type="button" data-exec="rotate" onclick="mkSetExec('rotate')"
+                      title="所有包共用一个 monkey 进程，事件在包之间流转 —— 这是 monkey 官方支持的多包测法">轮转</button>
+            </div>
+          </div>
+
+          <!-- ---------- 单包模式：包名输入 ---------- -->
+          <div class="mk-row" id="mk-row-single">
             <span class="mk-lbl">包名</span>
             <input class="mk-inp" id="mk-pkg" placeholder="例：com.gxatek.ivi（点右侧按钮可从设备拉取列表）" spellcheck="false">
             <button class="btn ghost sm" onclick="mkListPkgs()" title="adb shell pm list packages -3，只列第三方应用">列出应用</button>
           </div>
+
+          <!-- ---------- 多包模式：应用清单 ---------- -->
+          <div class="mk-row" id="mk-row-list" style="display:none;">
+            <span class="mk-lbl" style="align-self:flex-start;padding-top:6px;">应用清单</span>
+            <div class="mk-listwrap">
+              <div class="mk-listbar">
+                <button class="btn ghost sm" onclick="mkScanApps()" title="adb shell pm list packages -3，扫设备上的第三方应用">从设备刷新</button>
+                <button class="btn ghost sm" onclick="mkImportFromApk()"
+                        title="复用「文件 → APK 管理」已经加载的列表，不重复扫描设备">从 APK 管理导入</button>
+                <span class="spacer"></span>
+                <span class="mk-listcnt" id="mk-listcnt">0 个</span>
+              </div>
+              <div class="mk-list" id="mk-list">
+                <div class="mk-list-empty">还没有应用。点「从设备刷新」或「从 APK 管理导入」。</div>
+              </div>
+              <div class="mk-listadd">
+                <input class="mk-inp" id="mk-add-pkg" placeholder="手动添加包名，回车确认（可逗号分隔多个）" spellcheck="false">
+                <button class="btn ghost sm" onclick="mkAddPkgFromInput()">添加</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- 黑名单说明 ---------- -->
+          <div class="mk-row" id="mk-row-blackhint" style="display:none;">
+            <span class="mk-hint" id="mk-black-hint"></span>
+          </div>
+
+          <!-- ---------- 时长 / 间隔 / 事件数 ---------- -->
           <div class="mk-row">
             <span class="mk-lbl">时长(分)</span>
-            <input class="mk-inp mk-num" id="mk-minutes" type="number" min="1" max="720" value="30">
+            <input class="mk-inp mk-num" id="mk-minutes" type="number" min="1" max="720" value="30"
+                   oninput="mkUpdateEstimate()">
             <span class="mk-lbl">事件间隔(ms)</span>
-            <input class="mk-inp mk-num" id="mk-throttle" type="number" min="50" max="5000" step="50" value="300">
+            <input class="mk-inp mk-num" id="mk-throttle" type="number" min="50" max="5000" step="50" value="300"
+                   oninput="mkUpdateEstimate()">
             <span class="mk-lbl">事件数</span>
             <input class="mk-inp mk-num" id="mk-count" type="number" min="0" value="0" title="0 = 不限制，按「时长」跑">
           </div>
@@ -4728,6 +4847,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <button class="btn primary" id="mk-start" onclick="mkStart()">开始遍历</button>
             <button class="btn danger" id="mk-stop" onclick="mkStop()" disabled>停止</button>
             <span class="spacer"></span>
+            <span class="mk-est" id="mk-est"></span>
             <span class="mk-state" id="mk-state">未开始</span>
           </div>
         </div>
@@ -5059,8 +5179,314 @@ var _mk = {
   logcatTimer: 0,    // 定时拉取 crash log 的句柄
   seenCrashSig: {}, // 已上报过的崩溃签名（时间+PID+类型），防重复计数
   restartCount: 0,   // 自动重启次数
-  logOffset: 0       // 已读到的 crash log 行数（增量拉取，防重复）
+  logOffset: 0,      // 已读到的 crash log 行数（增量拉取，防重复）
+
+  /* ---- 2026-11-22（多包/白名单/黑名单）---- */
+  scope: 'single',   // single | white | black
+  exec: 'seq',       // seq（顺序）| rotate（轮转）
+  apps: [],          // [{pkg, name, sel}] 应用清单（持久化到 ini）
+  queue: [],         // 顺序模式下待跑的包名队列
+  queueIdx: 0,       // 当前跑第几个
+  batchTotal: 0,     // 本轮总共要跑几个包
+  perPkgResults: [], // [{pkg, crash, anr, events, secs}] 每个包的结果，供汇总报告
+  rotateTimer: 0,    // 轮转模式的切换定时器
+  rotateIdx: 0
 };
+
+/* ============================================================================
+   多包 / 白名单 / 黑名单（2026-11-22）
+   ----------------------------------------------------------------------------
+   先讲清楚三种「多包」的真实语义，避免做出不可用的功能：
+
+   ① 测试范围 scope
+      single  单包        —— 只测一个包（原来的用法）
+      white   白名单      —— 只测清单里勾选的包
+      black   黑名单      —— 跑设备上所有第三方应用，但**排除**清单里的包
+
+   ② 执行方式 exec
+      seq     顺序        —— 一个包跑完再跑下一个，每个包独立结果
+      rotate  轮转        —— **所有包共用一个 monkey 进程**，事件在包之间流转
+
+   ⚠ 为什么轮转是"共用一个进程"而不是"多个进程并行"：
+      monkey 是通过发送触摸/按键事件工作的，事件只会打到**当前前台**的 App。
+     同一台设备起两个 monkey 分别跑 A 和 B，会互相把对方切换到后台，
+     事件归属完全混乱，两边的覆盖率都是错的。
+     所以「单设备多包并行」在物理上不成立；
+     正确做法是 monkey 官方的多包白名单 —— 一个进程，事件在包间自由流转。
+     这也正是 monkey 设计上支持的多包测试方式。
+
+   ⚠ 黑名单为什么必须配 -p：
+     纯黑名单（不给 -p）= 跑全设备所有第三方应用，排除名单里的。
+     配 -p A 时 = 只在 A 里产生事件，但 A 跳到外部 App（浏览器等）后，
+     名单里的包不会被继续点击 —— 这才是"-p + 黑名单"的有效用法。
+     如果 -p 的包本身在黑名单里，monkey 什么都不会做（逻辑互斥），
+     所以下面会给出提示。
+   ============================================================================ */
+
+function mkSetScope(v){
+  _mk.scope = v;
+  var box = document.getElementById('mk-scope');
+  if(box){
+    var bs = box.querySelectorAll('button');
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-scope')===v);
+  }
+  // 单包模式显示包名输入；多包模式显示清单
+  var rowSingle = document.getElementById('mk-row-single');
+  var rowList = document.getElementById('mk-row-list');
+  var rowHint = document.getElementById('mk-row-blackhint');
+  if(rowSingle) rowSingle.style.display = (v==='single') ? '' : 'none';
+  if(rowList) rowList.style.display = (v==='single') ? 'none' : '';
+  if(rowHint) rowHint.style.display = (v==='black') ? '' : 'none';
+
+  // 黑名单模式：轮转没有意义（本来就是一个进程跑全部），强制顺序并禁用轮转
+  var execBox = document.getElementById('mk-exec');
+  if(execBox){
+    var ebs = execBox.querySelectorAll('button');
+    for(var j=0;j<ebs.length;j++){
+      var isRotate = ebs[j].getAttribute('data-exec')==='rotate';
+      // 黑名单 = 一个进程跑全部，本来就不需要"轮转"
+      ebs[j].disabled = (v==='black' && isRotate);
+      if(v==='black' && isRotate) ebs[j].classList.remove('on');
+    }
+  }
+  if(v==='black' && _mk.exec==='rotate') mkSetExec('seq');
+
+  mkUpdateBlackHint();
+  mkUpdateEstimate();
+  mkPersist();
+}
+
+function mkSetExec(v){
+  _mk.exec = v;
+  var box = document.getElementById('mk-exec');
+  if(box){
+    var bs = box.querySelectorAll('button');
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-exec')===v);
+  }
+  mkUpdateEstimate();
+  mkPersist();
+}
+
+function mkUpdateBlackHint(){
+  var el = document.getElementById('mk-black-hint');
+  if(!el) return;
+  var sel = _mk.apps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
+  if(!sel.length){
+    el.textContent = '黑名单为空时 = 跑设备上所有第三方应用。勾选要排除的包后，这些包不会被点击。';
+    el.style.color = 'var(--text-faint)';
+    return;
+  }
+  // 检测 -p 的包是否落在黑名单里（逻辑互斥，monkey 会什么都不做）
+  var single = ((document.getElementById('mk-pkg')||{}).value || '').trim();
+  if(single && sel.indexOf(single) >= 0){
+    el.textContent = '⚠ 单包「' + single + '」出现在黑名单里 —— 两者互斥，monkey 将什么都不做。请从黑名单移除它。';
+    el.style.color = 'var(--err)';
+  } else {
+    el.textContent = '已排除 ' + sel.length + ' 个包。monkey 会跑设备上其余所有第三方应用。';
+    el.style.color = 'var(--text-faint)';
+  }
+}
+
+/* ---------- 应用清单：渲染 / 增删 / 勾选 ---------- */
+function mkRenderList(){
+  var box = document.getElementById('mk-list');
+  if(!box) return;
+  var cnt = document.getElementById('mk-listcnt');
+
+  if(!_mk.apps.length){
+    box.innerHTML = '<div class="mk-list-empty">还没有应用。点「从设备刷新」或「从 APK 管理导入」。</div>';
+    if(cnt) cnt.textContent = '0 个';
+    return;
+  }
+
+  var selCount = 0;
+  var html = '';
+  for(var i=0;i<_mk.apps.length;i++){
+    var a = _mk.apps[i];
+    if(a.sel) selCount++;
+    var name = a.name || a.pkg;
+    html += '<label class="mk-app">'
+         +  '<input type="checkbox" data-pkg="' + mkEsc(a.pkg) + '"' + (a.sel ? ' checked' : '')
+         +  ' onchange="mkToggleApp(this)">'
+         +  '<span class="mk-app-name" title="' + mkEsc(name) + '">' + mkEsc(name) + '</span>'
+         +  '<span class="mk-app-pkg" title="' + mkEsc(a.pkg) + '">' + mkEsc(a.pkg) + '</span>'
+         +  '<button type="button" class="mk-app-del" title="从清单移除"'
+         +  ' onclick="mkRemoveApp(\'' + mkEsc(a.pkg).replace(/'/g, "\\'") + '\')">×</button>'
+         +  '</label>';
+  }
+  box.innerHTML = html;
+  if(cnt) cnt.textContent = selCount + ' / ' + _mk.apps.length + ' 个';
+}
+
+function mkEsc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function mkToggleApp(cb){
+  var pkg = cb.getAttribute('data-pkg');
+  for(var i=0;i<_mk.apps.length;i++){
+    if(_mk.apps[i].pkg === pkg){ _mk.apps[i].sel = cb.checked; break; }
+  }
+  mkRenderList();
+  mkUpdateBlackHint();
+  mkUpdateEstimate();
+  mkPersist();
+}
+
+function mkRemoveApp(pkg){
+  _mk.apps = _mk.apps.filter(function(a){ return a.pkg !== pkg; });
+  mkRenderList();
+  mkUpdateBlackHint();
+  mkUpdateEstimate();
+  mkPersist();
+}
+
+/* 合并一批 {pkg,name} 进清单：已有的保留勾选状态，新的默认勾选 */
+function mkMergeApps(items){
+  var map = {};
+  for(var i=0;i<_mk.apps.length;i++) map[_mk.apps[i].pkg] = _mk.apps[i];
+  var added = 0;
+  for(var j=0;j<items.length;j++){
+    var it = items[j];
+    if(!it || !it.pkg) continue;
+    if(map[it.pkg]){
+      // 已在清单里：补一下名字（APK 管理/扫描可能有更友好的名称）。
+      // 注意判断条件要看"名字是否等于包名"——手动添加时 name 会 fallback
+      // 成包名，那时它是 truthy，只用 !name 判断就永远补不上真名。
+      var cur = map[it.pkg];
+      if(it.name && (!cur.name || cur.name === cur.pkg)) cur.name = it.name;
+    } else {
+      // 没有名字就留空（不要 fallback 成包名），留给后续扫描/导入补全；
+      // 渲染时再 fallback 成包名显示。
+      map[it.pkg] = { pkg: it.pkg, name: it.name || '', sel: true };
+      added++;
+    }
+  }
+  _mk.apps = Object.keys(map).map(function(k){ return map[k]; });
+  mkRenderList();
+  mkUpdateBlackHint();
+  mkUpdateEstimate();
+  mkPersist();
+  return added;
+}
+
+function mkAddPkgFromInput(){
+  var el = document.getElementById('mk-add-pkg');
+  if(!el) return;
+  var raw = (el.value || '').trim();
+  if(!raw) return;
+  // 支持逗号/空格/分号分隔多个
+  var parts = raw.split(/[\s,;，；]+/).filter(function(x){ return x; });
+  var items = parts.map(function(p){ return { pkg: p, name: '' }; });
+  var added = mkMergeApps(items);
+  el.value = '';
+  if(added) toast('已添加 ' + added + ' 个包', 'ok');
+}
+
+/* 从设备扫描第三方应用 */
+function mkScanApps(){
+  mkLog('$ pm list packages -3', 'cmd');
+  try { post('run', 'shell pm list packages -3', 8); } catch(e) {}
+}
+
+/* 从 APK 管理导入（复用已加载列表，不重复扫设备） */
+function mkImportFromApk(){
+  if(typeof _apkApps === 'undefined' || !_apkApps || !_apkApps.length){
+    toast('APK 管理还没加载应用列表，请先到「文件 → APK 管理」刷新一次', 'err');
+    return;
+  }
+  var items = _apkApps.map(function(a){ return { pkg: a.pkg, name: a.name }; });
+  var added = mkMergeApps(items);
+  toast('已从 APK 管理导入 ' + added + ' 个应用' + (added ? '' : '（都已存在）'), 'ok');
+}
+
+/* 扫描结果回到清单（src=8） */
+function mkOnPkgScan(text){
+  var lines = String(text||'').split(/[\r\n]+/);
+  var items = [];
+  for(var i=0;i<lines.length;i++){
+    var m = lines[i].match(/^package:(.+)$/);
+    if(m) items.push({ pkg: m[1].trim(), name: '' });
+  }
+  if(!items.length) return;
+  var added = mkMergeApps(items);
+  toast('扫描到 ' + items.length + ' 个应用，新增 ' + added + ' 个', 'ok');
+}
+
+/* 估算总耗时 */
+function mkUpdateEstimate(){
+  var el = document.getElementById('mk-est');
+  if(!el) return;
+  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
+  var n = 0;
+  if(_mk.scope === 'single'){
+    n = (((document.getElementById('mk-pkg')||{}).value || '').trim()) ? 1 : 0;
+  } else if(_mk.scope === 'white'){
+    n = _mk.apps.filter(function(a){ return a.sel; }).length;
+  } else {
+    // 黑名单：跑全设备，数量未知，按清单外估算
+    n = 0;
+  }
+
+  if(_mk.scope === 'black'){
+    el.textContent = '将遍历设备上全部第三方应用（每包约 ' + min + ' 分钟）';
+    return;
+  }
+  if(!n){ el.textContent = ''; return; }
+  if(_mk.exec === 'seq'){
+    el.textContent = '共 ' + n + ' 个包，预计 ' + (n*min) + ' 分钟';
+  } else {
+    el.textContent = '共 ' + n + ' 个包，一个进程轮转，总时长 ' + min + ' 分钟';
+  }
+}
+
+/* ---------- 持久化（需求：应用列表要持久化）----------
+   存进 ini 的 monkey_apps 键，格式：
+     pkg|name|sel;pkg|name|sel
+   用 | 和 ; 而不是 JSON —— ini 是单行 key=value，
+   JSON 里的引号和逗号容易被 ini 解析搞坏，简单分隔符更稳。 */
+function mkPersist(){
+  var parts = [];
+  for(var i=0;i<_mk.apps.length;i++){
+    var a = _mk.apps[i];
+    parts.push([a.pkg, a.name||'', a.sel?'1':'0'].join('|'));
+  }
+  var cfg = {
+    apps: parts.join(';'),
+    scope: _mk.scope,
+    exec: _mk.exec,
+    minutes: (document.getElementById('mk-minutes')||{}).value || '30',
+    throttle: (document.getElementById('mk-throttle')||{}).value || '300',
+    type: _mk.type,
+    verbose: _mk.verbose
+  };
+  try { post('monkeysave', JSON.stringify(cfg)); } catch(e) {}
+}
+
+/* 从 ini 恢复（页面初始化时调用） */
+function mkRestore(cfg){
+  if(!cfg) return;
+  try {
+    if(cfg.apps){
+      var arr = String(cfg.apps).split(';').filter(function(x){ return x; });
+      _mk.apps = arr.map(function(s){
+        var p = s.split('|');
+        return { pkg: p[0] || '', name: p[1] || '', sel: p[2] === '1' };
+      }).filter(function(a){ return a.pkg; });
+    }
+    if(cfg.minutes) { var el1=document.getElementById('mk-minutes'); if(el1) el1.value = cfg.minutes; }
+    if(cfg.throttle){ var el2=document.getElementById('mk-throttle'); if(el2) el2.value = cfg.throttle; }
+    if(cfg.type) mkSetType(cfg.type);
+    if(cfg.verbose) mkSetVerbose(cfg.verbose);
+    if(cfg.scope) mkSetScope(cfg.scope);
+    if(cfg.exec) mkSetExec(cfg.exec);
+    mkRenderList();
+    mkUpdateBlackHint();
+    mkUpdateEstimate();
+  } catch(e){}
+}
 
 function mkSetType(v){
   _mk.type = v;
@@ -5084,28 +5510,50 @@ function mkSetVerbose(v){
      exec app_process /system/bin com.android.commands.monkey.Monkey \
      -p <pkg> --agent reuseq --running-minutes <min> --throttle <ms> -v -v
 */
-function mkBuildCmd(){
-  var pkg = (document.getElementById('mk-pkg') || {}).value || '';
-  pkg = pkg.trim();
-  if(!pkg) return null;
+/* 构建 monkey 命令。
+   pkgOverride：顺序模式下逐个包跑时传入当前包名；不传则用单包输入框的值。
+
+   ⚠ 三种范围模式的参数组合（这是最容易踩坑的地方）：
+     single  →  monkey -p <pkg>
+     white   →  monkey --pkg-whitelist-file <file>   （**不能同时给 -p**，否则取交集）
+     black   →  monkey -p <pkg> --pkg-blacklist-file <file>
+                （-p 限定只测目标包；黑名单防止跳到外部 App 后被继续点击） */
+function mkBuildCmd(pkgOverride){
+  var pkg = pkgOverride || ((document.getElementById('mk-pkg') || {}).value || '');
+  pkg = String(pkg).trim();
+
+  // 单包/黑名单模式必须有包名；白名单模式不需要 -p
+  if(_mk.scope !== 'white' && !pkg) return null;
 
   var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
   var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
   var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
   var seed = parseInt((document.getElementById('mk-seed')||{}).value, 10) || 0;
 
-  var parts = ['monkey', '-p', pkg, '--pct-touch', '0'];
-  // --pct-* 分配合法性：monkey 要求所有 pct 加起来 <= 100，这里按策略给一组合理配比
-  if(_mk.type === '15'){
-    parts = ['monkey', '-p', pkg];
-  } else if(_mk.type === '5'){
-    parts = ['monkey', '-p', pkg, '--pct-touch', '80', '--pct-motion', '20'];
-  } else if(_mk.type === '1'){
-    parts = ['monkey', '-p', pkg, '--pct-touch', '0', '--pct-motion', '0',
-             '--pct-nav', '50', '--pct-majornav', '30', '--pct-syskeys', '20'];
+  var parts = ['monkey'];
+
+  // ---- 包范围 ----
+  if(_mk.scope === 'white'){
+    // 白名单：只给文件，不给 -p（给了会取交集，导致只跑第一个包）
+    parts.push('--pkg-whitelist-file', '/sdcard/.mk_white.txt');
+  } else if(_mk.scope === 'black'){
+    parts.push('-p', pkg);
+    parts.push('--pkg-blacklist-file', '/sdcard/.mk_black.txt');
   } else {
-    parts = ['monkey', '-p', pkg, '--pct-touch', '40', '--pct-motion', '40', '--pct-trackball', '20'];
+    parts.push('-p', pkg);
   }
+
+  // ---- 事件权重 ----
+  // monkey 要求所有 --pct-* 加起来 <= 100，不指定则按默认权重分配
+  if(_mk.type === '5'){
+    parts.push('--pct-touch', '80', '--pct-motion', '20');
+  } else if(_mk.type === '1'){
+    parts.push('--pct-touch', '0', '--pct-motion', '0',
+               '--pct-nav', '50', '--pct-majornav', '30', '--pct-syskeys', '20');
+  } else if(_mk.type === '6'){
+    parts.push('--pct-touch', '40', '--pct-motion', '40', '--pct-trackball', '20');
+  }
+  // type === '15'（全部）→ 不加 --pct-*，用 monkey 默认配比
 
   parts.push('--throttle', String(thr));
   if(cnt > 0) parts.push(String(cnt)); else parts.push('--running-minutes-placeholder');
@@ -5120,6 +5568,12 @@ function mkBuildCmd(){
   parts = parts.concat(v);
 
   return parts.join(' ');
+}
+
+/* 生成白名单/黑名单文件内容（每行一个包名） */
+function mkBuildListFile(){
+  var sel = _mk.apps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
+  return sel.join('\n');
 }
 
 /* 时长是"多久后自动停"，monkey 原生没有 --running-minutes（那是 Fastbot 的参数），
@@ -5233,19 +5687,6 @@ function mkOnEnvDone(){
 function mkStart(){
   if(_mk.running) return;
 
-  var pkg = ((document.getElementById('mk-pkg')||{}).value || '').trim();
-  if(!pkg){
-    toast('请先填包名（可点「列出应用」从设备拉取）', 'err');
-    return;
-  }
-
-  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
-  var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
-  var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
-  if(cnt <= 0){
-    cnt = mkEstimateCount(min, thr);
-  }
-
   // 先探测设备能力（只探一次，之后复用结果）
   if(!_mkEnv.checked){
     mkSetState('检测设备能力…', true);
@@ -5257,16 +5698,81 @@ function mkStart(){
         toast('设备缺少 monkey / uiautomator / input，无法测试', 'err');
         return;
       }
-      mkStart();   // 探测完再进一次，此时 _mkEnv.checked = true
+      mkStart();
     });
     return;
   }
 
-  // 按设备实际能力选命令
+  /* ---- 1. 按范围模式确定要跑哪些包 ---- */
+  var pkgs = [];
+  if(_mk.scope === 'single'){
+    var one = ((document.getElementById('mk-pkg')||{}).value || '').trim();
+    if(!one){ toast('请先填包名（可点「列出应用」从设备拉取）', 'err'); return; }
+    pkgs = [one];
+  } else if(_mk.scope === 'white'){
+    pkgs = _mk.apps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
+    if(!pkgs.length){ toast('白名单为空，请先勾选要测的应用', 'err'); return; }
+  } else {
+    // 黑名单：需要设备的全部第三方应用 - 黑名单
+    // 这里拿不到全量列表就用清单外的包 —— 所以要求先扫一次设备
+    var sel = _mk.apps.filter(function(a){ return a.sel; }).map(function(a){ return a.pkg; });
+    var all = _mk.allThirdParty || [];
+    if(!all.length){
+      toast('黑名单模式需要先「从设备刷新」一次，以获取全部第三方应用', 'err');
+      return;
+    }
+    pkgs = all.filter(function(p){ return sel.indexOf(p) < 0; });
+    if(!pkgs.length){ toast('黑名单把全部应用都排除了，没有可测对象', 'err'); return; }
+  }
+
+  _mk.batchTotal = pkgs.length;
+  _mk.queue = pkgs.slice();
+  _mk.queueIdx = 0;
+  _mk.perPkgResults = [];
+  _mk.appsScope = pkgs.slice();
+
+  /* ---- 2. 白名单/黑名单模式：先把清单写成设备上的文件 ---- */
+  // monkey 的 --pkg-whitelist-file / --pkg-blacklist-file 读的是**设备上的文件**。
+  // 分两步：① C# 写本地临时文件（页面无法直接写磁盘）② 走现有 adb 通道 push。
+  if(_mk.scope === 'white' || _mk.scope === 'black'){
+    var content = mkBuildListFile();
+    var remote = _mk.scope === 'white' ? '/sdcard/.mk_white.txt' : '/sdcard/.mk_black.txt';
+    var local = 'C:\\Windows\\Temp\\mk_list_' + (_mk.scope) + '.txt';
+    try {
+      post('mkfile', content, 0, 0, { local: local });
+      post('run', 'push "' + local + '" "' + remote + '"', 9);
+    } catch(e){}
+    mkLog('  已写入 ' + _mk.scope + ' 名单（' + content.split('\n').length + ' 个包）→ ' + remote, '');
+  }
+
+  /* ---- 3. 轮转模式：一个进程跑全部（白名单）---- */
+  if(_mk.exec === 'rotate' && _mk.scope === 'white'){
+    mkRunRotate(pkgs);
+    return;
+  }
+
+  /* ---- 4. 顺序模式：逐个跑 ---- */
+  mkRunNextInQueue();
+}
+
+/* 顺序模式：跑队列里的下一个包 */
+function mkRunNextInQueue(){
+  if(_mk.queueIdx >= _mk.queue.length){
+    mkBatchFinish();
+    return;
+  }
+
+  var pkg = _mk.queue[_mk.queueIdx];
+  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
+  var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
+  var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
+  if(cnt <= 0) cnt = mkEstimateCount(min, thr);
+
+  /* ---- 按设备能力选命令 ---- */
   var cmd, modeName;
   if(_mkEnv.monkey){
-    cmd = mkBuildCmd();
-    if(!cmd) return;
+    cmd = mkBuildCmd(pkg);
+    if(!cmd){ mkBatchFinish(); return; }
     cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
     modeName = 'monkey';
   } else if(_mkEnv.uiautomator){
@@ -5277,6 +5783,7 @@ function mkStart(){
     modeName = 'input';
   }
 
+  /* ---- 本轮（这个包）的状态初始化 ---- */
   _mk.running = true;
   _mk.t0 = Date.now();
   _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
@@ -5294,63 +5801,174 @@ function mkStart(){
 
   document.getElementById('mk-start').disabled = true;
   document.getElementById('mk-stop').disabled = false;
-  mkSetState('遍历中（' + modeName + '）…', true);
 
-  mkLog('▶ 开始遍历：' + pkg, 'ok');
-  mkLog('  测试引擎：' + modeName, _mkEnv.monkey ? '' : 'anr');
-  mkLog('  预计 ' + cnt + ' 个事件，间隔 ' + thr + 'ms（约 ' + min + ' 分钟）', '');
+  var idxLabel = _mk.batchTotal > 1
+    ? '（' + (_mk.queueIdx + 1) + '/' + _mk.batchTotal + '）'
+    : '';
+  mkSetState('遍历中' + idxLabel + ' ' + pkg, true);
+
+  if(_mk.queueIdx === 0){
+    mkLog('▶ 开始遍历，共 ' + _mk.batchTotal + ' 个包', 'ok');
+    if(_mk.exec === 'seq' && _mk.batchTotal > 1){
+      mkLog('  执行方式：顺序（一个跑完换下一个）', '');
+    }
+  }
+  mkLog('── 第 ' + (_mk.queueIdx + 1) + ' 个：' + pkg + ' ──', 'cmd');
+  mkLog('  引擎 ' + modeName + '，预计 ' + cnt + ' 事件，约 ' + min + ' 分钟', '');
   mkLog('  命令：' + cmd, 'cmd');
 
-  // 走既有 adb 执行链路，输出经 src=4 回到本页
   try { post('run', cmd, 4); } catch(e) {
     mkLog('✗ 下发失败：' + e, 'crash');
-    mkEnd(false);
+    mkBatchFinish();
     return;
   }
 
-  // 每秒刷新用时
   _mk.timer = setInterval(mkTickStats, 1000);
-
-  // 2026-11-22（需求 B-1）：启动崩溃堆栈采集。
-  // monkey 的 stdout 只有 "CRASH: com.xxx" 一行，没有堆栈，
-  // 所以必须额外挂一条 logcat -b crash 的轮询通道。
   mkStartCrashWatch();
 
-  // 到点自动停（monkey 本身不知道"时长"）
+  // 时长到 → 结束当前包，进入下一个
   _mk.autoStop = setTimeout(function(){
-    if(_mk.running) mkStop(true);
+    if(_mk.running) mkStopCurrentPkg(true);
   }, min * 60 * 1000);
+}
+
+/* 轮转模式：一个 monkey 进程 + 白名单文件，事件在包间流转 */
+function mkRunRotate(pkgs){
+  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
+  var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
+  var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
+  if(cnt <= 0) cnt = mkEstimateCount(min, thr);
+
+  _mk.running = true;
+  _mk.t0 = Date.now();
+  _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
+  _mk.mode = 'monkey-rotate';
+  _mk.pkg = pkgs[0];   // 崩溃归属无法精确到包，暂记第一个
+  _mk.crashes = [];
+  _mk.seenCrashSig = {};
+  _mk.restartCount = 0;
+  _mk._crashBuf = [];
+  mkSetStat('mk-st-restart', 0, false);
+  mkSetStat('mk-st-crash', 0, false);
+  mkSetStat('mk-st-anr', 0, false);
+  mkSetStat('mk-st-events', 0, false);
+  document.getElementById('mk-st-elapsed').textContent = '00:00';
+
+  document.getElementById('mk-start').disabled = true;
+  document.getElementById('mk-stop').disabled = false;
+  mkSetState('轮转中（' + pkgs.length + ' 个包）…', true);
+
+  var cmd = mkBuildCmd();
+  if(!cmd){ mkBatchFinish(); return; }
+  cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
+
+  mkLog('▶ 开始轮转遍历，共 ' + pkgs.length + ' 个包', 'ok');
+  mkLog('  执行方式：轮转（一个 monkey 进程，事件在包之间流转）', '');
+  mkLog('  包含：' + pkgs.join(', '), '');
+  mkLog('  命令：' + cmd, 'cmd');
+
+  try { post('run', cmd, 4); } catch(e) {
+    mkLog('✗ 下发失败：' + e, 'crash');
+    mkBatchFinish();
+    return;
+  }
+
+  _mk.timer = setInterval(mkTickStats, 1000);
+  mkStartCrashWatch();
+
+  _mk.autoStop = setTimeout(function(){
+    if(_mk.running) mkStopCurrentPkg(true);
+  }, min * 60 * 1000);
+}
+
+/* 结束当前包：记录结果 → 顺序模式继续下一个；单包/轮转直接收尾 */
+function mkStopCurrentPkg(isAuto){
+  var secs = _mk.t0 ? Math.floor((Date.now() - _mk.t0)/1000) : 0;
+
+  // 记录这个包的结果（供汇总报告）
+  if(_mk.batchTotal > 1 && _mk.exec === 'seq'){
+    _mk.perPkgResults.push({
+      pkg: _mk.pkg,
+      crash: _mk.crash,
+      anr: _mk.anr,
+      events: _mk.events,
+      secs: secs,
+      crashes: _mk.crashes.slice()
+    });
+  }
+
+  if(_mk.timer){ clearInterval(_mk.timer); _mk.timer = 0; }
+  if(_mk.autoStop){ clearTimeout(_mk.autoStop); _mk.autoStop = 0; }
+  try { mkStopCrashWatch(); } catch(e) {}
+  try { post('run', 'logcat -b crash -d -t 200', 6); } catch(e) {}
+
+  _mk.running = false;
+  _mk.queueIdx++;
+
+  mkLog((isAuto ? '⏱ 本包到时' : '⏸ 已停止') + '：' + _mk.pkg
+        + '（崩溃 ' + _mk.crash + '，ANR ' + _mk.anr + '，事件 ' + _mk.events + '）',
+        _mk.crash ? 'crash' : 'ok');
+
+  // 用户主动停止 → 直接结束全部（用户确认的策略）
+  if(!isAuto){
+    mkLog('■ 已按用户要求结束全部测试', 'anr');
+    mkBatchFinish();
+    return;
+  }
+
+  // 顺序模式且还有下一个 → 继续；否则收尾
+  if(_mk.exec === 'seq' && _mk.queueIdx < _mk.queue.length){
+    mkSetState('准备下一个…', true);
+    setTimeout(function(){ mkRunNextInQueue(); }, 800);
+    return;
+  }
+
+  mkBatchFinish();
+}
+
+/* 批量收尾：恢复按钮，打印汇总 */
+function mkBatchFinish(){
+  _mk.running = false;
+  if(_mk.timer){ clearInterval(_mk.timer); _mk.timer = 0; }
+  if(_mk.autoStop){ clearTimeout(_mk.autoStop); _mk.autoStop = 0; }
+  try { mkStopCrashWatch(); } catch(e) {}
+
+  document.getElementById('mk-start').disabled = false;
+  document.getElementById('mk-stop').disabled = true;
+
+  if(_mk.perPkgResults.length > 1){
+    var totC = 0, totA = 0, totE = 0;
+    mkLog('', '');
+    mkLog('═══ 汇总（' + _mk.perPkgResults.length + ' 个包）═══', 'cmd');
+    for(var i=0;i<_mk.perPkgResults.length;i++){
+      var r = _mk.perPkgResults[i];
+      totC += r.crash; totA += r.anr; totE += r.events;
+      mkLog('  ' + r.pkg + '  崩溃 ' + r.crash + '  ANR ' + r.anr
+            + '  事件 ' + r.events + '  用时 ' + Math.floor(r.secs/60) + '分',
+            r.crash ? 'crash' : '');
+    }
+    mkLog('  合计：崩溃 ' + totC + '  ANR ' + totA + '  事件 ' + totE, totC ? 'crash' : 'ok');
+    mkSetState('已结束（' + _mk.perPkgResults.length + ' 个包，崩溃 ' + totC + '）', false);
+  } else {
+    var dur = _mk.t0 ? Math.floor((Date.now() - _mk.t0)/1000) : 0;
+    mkSetState('已结束（用时 ' + Math.floor(dur/60) + ' 分 ' + (dur%60) + ' 秒）', false);
+    mkLog('■ 遍历结束', 'ok');
+  }
 }
 
 function mkStop(auto){
   if(!_mk.running) return;
   try { post('stop'); } catch(e) {}
-  mkLog(auto ? '⏱ 到达设定时长，自动停止' : '⏸ 已请求停止', 'anr');
-  mkEnd(true);
+  // 2026-11-22（多包）：停止时按用户确认的策略「停当前包，直接结束全部」
+  // → 传 isAuto=false，mkStopCurrentPkg 会记录当前包结果后立即收尾。
+  mkStopCurrentPkg(!!auto);
 }
 
+/* mkEnd 保留为兼容入口（src=4 的 end 消息会调它）。
+   批量模式下走 mkStopCurrentPkg，保证结果被正确记录。 */
 function mkEnd(userStopped){
-  _mk.running = false;
-  if(_mk.timer){ clearInterval(_mk.timer); _mk.timer = 0; }
-  if(_mk.autoStop){ clearTimeout(_mk.autoStop); _mk.autoStop = 0; }
-  // 2026-11-22（需求 B-1）：停掉崩溃采集轮询
-  try { mkStopCrashWatch(); } catch(e) {}
-  // 最后一次拉取：把结束前最后一刻的崩溃也收进来
-  try { post('run', 'logcat -b crash -d -t 200', 6); } catch(e) {}
-
-  var sBtn = document.getElementById('mk-start');
-  var tBtn = document.getElementById('mk-stop');
-  if(sBtn) sBtn.disabled = false;
-  if(tBtn) tBtn.disabled = true;
-
-  var dur = _mk.t0 ? Math.floor((Date.now() - _mk.t0)/1000) : 0;
-  mkSetState('已结束（用时 ' + Math.floor(dur/60) + ' 分 ' + (dur%60) + ' 秒）', false);
-  mkLog('■ 遍历结束', 'ok');
-  if(_mk.crash > 0 || _mk.anr > 0){
-    mkLog('  发现 ' + _mk.crash + ' 个崩溃、' + _mk.anr + ' 个 ANR —— 详见设备 /sdcard/crash-dump.log', 'crash');
-  } else {
-    mkLog('  未发现崩溃 / ANR', 'ok');
-  }
+  if(!_mk.running) return;
+  mkStopCurrentPkg(!!userStopped);
 }
 
 /* src=4 的输出到达（由 appendLine 分发） */
@@ -5743,6 +6361,23 @@ function onMessage(ev){
           if(buf.length) mkOnCrashLogChunk(buf);
         } catch(e){}
       }
+      // src=8：应用扫描收完 → 解析进清单，同时记下全量（黑名单模式要用）
+      if(msg.src === 8 && typeof mkOnPkgScan === 'function'){
+        try {
+          var sbuf = _mk._scanBuf || [];
+          _mk._scanBuf = [];
+          var text = sbuf.join('\n');
+          // 记全量第三方包名：黑名单模式需要"全部 - 排除"
+          var all = [];
+          var ls = text.split(/[\r\n]+/);
+          for(var si=0; si<ls.length; si++){
+            var mm = ls[si].match(/^package:(.+)$/);
+            if(mm) all.push(mm[1].trim());
+          }
+          if(all.length) _mk.allThirdParty = all;
+          if(sbuf.length) mkOnPkgScan(text);
+        } catch(e){}
+      }
       break;
     case 'clear': clearLog(); break;
     case 'filePath': onFilePath(msg.data); break;
@@ -5830,6 +6465,15 @@ function appendLine(msg){
   }
   // src=7：崩溃后自动重启的命令输出，不占界面
   if(msg.src === 7){ try { mkLog('  ' + (msg.text||''), ''); } catch(e){} return; }
+  // src=8：多包模式下扫描设备第三方应用（package:xxx），解析进清单
+  if(msg.src === 8){
+    try {
+      (_mk._scanBuf = _mk._scanBuf || []).push(msg.text || '');
+    } catch(e){}
+    return;
+  }
+  // src=9：名单文件 push 的输出，只记日志不刷屏
+  if(msg.src === 9){ try { mkLog('  ' + (msg.text||''), ''); } catch(e){} return; }
   appendLog(msg);
 }
 
@@ -12366,6 +13010,13 @@ function v12OnMessage(msg){
     case 'prefs':
       prefsApply(msg.data || '');
       return true;
+    // 2026-11-22：Monkey 多包配置（应用清单/范围/执行方式/参数）重启后恢复
+    case 'monkeycfg':
+      try {
+        var mc = JSON.parse(msg.data || '{}');
+        if(typeof mkRestore === 'function') mkRestore(mc);
+      } catch(e){}
+      return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }
       txApplyFile(msg);
@@ -14947,6 +15598,14 @@ document.addEventListener('DOMContentLoaded', function (){
   } else {
     a32Init();
   }
+
+  // 2026-11-22：Monkey 页初始渲染。
+  // 配置稍后会由 C# 的 monkeycfg 消息推下来（mkRestore 会重绘），
+  // 这里先渲染一次空清单，避免页面打开后列表区是一片空白且无提示。
+  try {
+    if(document.getElementById('mk-list')) mkRenderList();
+    if(document.getElementById('mk-est')) mkUpdateEstimate();
+  } catch(e) {}
 })();
 
 </script>
