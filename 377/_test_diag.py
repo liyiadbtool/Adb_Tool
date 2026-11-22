@@ -52,9 +52,13 @@ setTimeout(function(){
   ok('诊断页签高亮', diagTab.classList.contains('active'));
 
   /* ---- 2. 五块区域齐全 ---- */
-  ['adb','pc','car','link','res','hist'].forEach(function(s){
+  // 2026-11-22（第 15 批）：link 并入「连接状态」卡，不再是独立 section。
+  // 改为验证"承载连通性行的容器"仍在（它在 adb 卡内部）。
+  ['adb','pc','car','res','hist'].forEach(function(s){
     ok('卡片存在：'+s, !!document.getElementById('diag-card-'+s));
   });
+  ok('连通性已并入连接状态卡', !!document.getElementById('diag-rows-link'));
+  ok('旧的独立连通性卡已移除', !document.getElementById('diag-card-link'));
 
   /* ---- 3. 顶部按钮 ---- */
   ok('重新检测按钮存在',

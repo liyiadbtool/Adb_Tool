@@ -114,8 +114,11 @@ JS = r"""
            'running=' + card.classList.contains('running') + ' posts=' + posted.length);
 
         // 3) 恢复了原生 onclick（这是"直接执行"的结构保证）
-        ok('A32-2 卡片保留原生 onclick=runQuick*',
-           /runQuick/.test(card.getAttribute('onclick') || ''),
+        // 2026-11-22（第 15 批）：入口从 runQuick 改成 qcardClick ——
+        // 后者在转调 runQuick 之前会排除"点在输入框上"的情况
+        // （拖拽的 setPointerCapture 会把 click 目标改成卡片，导致点输入框也执行）。
+        ok('A32-2 卡片保留原生 onclick（runQuick / qcardClick）',
+           /runQuick|qcardClick/.test(card.getAttribute('onclick') || ''),
            card.getAttribute('onclick'));
 
         try { window.post = _origPost; } catch(e) {}

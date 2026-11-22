@@ -771,7 +771,7 @@ namespace AdbLogExport.Gui
             try
             {
                 if (_web == null || _web.CoreWebView2 == null) return;
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"winstate\",\"max\":"
                     + (WindowState == FormWindowState.Maximized ? "1" : "0") + "}");
             }
@@ -783,7 +783,53 @@ namespace AdbLogExport.Gui
             try
             {
                 if (_web != null && _web.CoreWebView2 != null)
-                    _web.CoreWebView2.PostWebMessageAsJson(json);
+                    PushOnUi(json);
+            }
+            catch { }
+        }
+
+        // ====================================================================
+        //  2026-11-22（第 15 批）：后台线程安全推送
+        // --------------------------------------------------------------------
+        //  ★ 背景：WebView2 的 PostWebMessageAsJson 只能在 UI 线程调，
+        //    后台线程直接调会抛 InvalidOperationException。
+        //    如果外面套了 try{}catch{}（我们到处都是），异常被静默吞掉 ——
+        //    表现就是"后台算完了，但页面什么都没收到"，极难排查。
+        //
+        //  已经踩过两次：
+        //    · 第 12 批 定时任务日志推不出去（轮次在涨、页面没日志）
+        //    · 第 14 批 诊断页车机信息卡在"正在读取"（就是本函数的由来）
+        //
+        //  ★ 以后**任何后台线程**要推消息，一律用这个，别直接调
+        //    CoreWebView2.PostWebMessageAsJson。
+        //
+        //  用 BeginInvoke（异步投递）而不是 Invoke（同步等待）：
+        //    Invoke 会阻塞后台线程等 UI 处理完，高频推送时会把节奏拖慢。
+        // ====================================================================
+        private void PushOnUi(string json)
+        {
+            if (json == null) return;
+            try
+            {
+                if (_web == null) return;
+
+                if (_web.InvokeRequired)
+                {
+                    _web.BeginInvoke((MethodInvoker)delegate
+                    {
+                        try
+                        {
+                            if (_web != null && _web.CoreWebView2 != null)
+                                _web.CoreWebView2.PostWebMessageAsJson(json);
+                        }
+                        catch { }
+                    });
+                }
+                else
+                {
+                    if (_web.CoreWebView2 != null)
+                        _web.CoreWebView2.PostWebMessageAsJson(json);
+                }
             }
             catch { }
         }
@@ -1409,7 +1455,7 @@ namespace AdbLogExport.Gui
                       .Append('}');
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch { }
         }
@@ -1514,6 +1560,53 @@ namespace AdbLogExport.Gui
                     if (!string.IsNullOrEmpty(qtxt)) SubmitCmd(qtxt, 1, 0);
                     break;
 
+                // ====================================================================
+                // 2026-11-22（第 15 批）：补 case "run"
+                // --------------------------------------------------------------------
+                // ★ 这是个**大范围失效**的修复，不是新增功能。
+                //
+                // 页面里有 12 处用 post('run', cmd, src) 发后台命令，但本 switch
+                // 只有 cmd / quick 两个分支，kind='run' 匹配不到 → 直接走到 switch
+                // 末尾被静默丢弃，命令**从未下发**。
+                //
+                // 受影响的（全都不工作）：
+                //   诊断页连通性      src=20
+                //   Fastbot 运行      src=13      ← 点"开始"没反应
+                //   Fastbot 白名单扫描 src=15
+                //   Fastbot 部署前检查 src=10
+                //   查设备 ABI        src=11
+                //   读 crash-dump.log src=14
+                //   APK 列表          src=4 / 8
+                //   环境探测          src=5
+                //   文件 push         src=9
+                //   APK 操作          src=4
+                //   logcat crash      src=6
+                //   其他              src=7
+                //
+                // 为什么一直没被发现：几个入口有兜底路径掩盖了它
+                //   · APK 列表：case "ready" 时 C# 主动 PushApkApps() 推了一份
+                //   · Fastbot 部署：走 case "fbdeploy"（C# 实现），不是 run
+                //   · Fastbot 运行：走 run，**这条一直是坏的**
+                //
+                // 语义与 case "cmd" 完全一致，区别只是 src 由页面指定
+                // （决定输出路由到哪个收集器，而不是显示到终端）。
+                // ====================================================================
+                case "run":
+                    {
+                        string rtxt = GetField(json, "data");
+                        if (!string.IsNullOrEmpty(rtxt))
+                        {
+                            int rsrc = 0;
+                            string rsraw = GetField(json, "src");
+                            int.TryParse(rsraw, out rsrc);
+                            int rslot = 0;
+                            string rlraw = GetField(json, "slot");
+                            int.TryParse(rlraw, out rslot);
+                            SubmitCmd(rtxt, rsrc, rslot);
+                        }
+                    }
+                    break;
+
                 case "stop":
                     int stopSlot = 0;
                     string ssraw = GetField(json, "slot");
@@ -1547,7 +1640,7 @@ namespace AdbLogExport.Gui
                 case "customlist":
                     try
                     {
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"customcmds\",\"data\":"
                             + Json(AdbLogExport.CustomStore.Load()) + "}");
                     }
@@ -1884,13 +1977,13 @@ namespace AdbLogExport.Gui
                             sb2.Append("],\"adb\":").Append(Json(App.ADB == null ? "" : App.ADB))
                                .Append(",\"adbsrc\":").Append(Json(App.ADB_SOURCE == null ? "" : App.ADB_SOURCE))
                                .Append('}');
-                            _web.CoreWebView2.PostWebMessageAsJson(sb2.ToString());
+                            PushOnUi(sb2.ToString());
                         }
                         catch (Exception ex)
                         {
                             try
                             {
-                                _web.CoreWebView2.PostWebMessageAsJson(
+                                PushOnUi(
                                     "{\"kind\":\"diaglocal\",\"ok\":false,\"text\":" + Json(ex.Message) + "}");
                             }
                             catch { }
@@ -1940,17 +2033,14 @@ namespace AdbLogExport.Gui
                                 cb.Append("],\"res\":").Append(Json(App.CAR_RES == null ? "" : App.CAR_RES));
                                 cb.Append('}');
 
-                                try { _web.CoreWebView2.PostWebMessageAsJson(cb.ToString()); }
-                                catch { }
+                                // ★ 必须走 PushOnUi：本方法在后台线程，直接调
+                                //   PostWebMessageAsJson 会抛异常被吞 → 页面永远卡在
+                                //   "正在读取车机信息…"（第 14 批实测踩到）。
+                                PushOnUi(cb.ToString());
                             }
                             catch (Exception ex)
                             {
-                                try
-                                {
-                                    _web.CoreWebView2.PostWebMessageAsJson(
-                                        "{\"kind\":\"diagcar\",\"online\":false,\"text\":" + Json(ex.Message) + "}");
-                                }
-                                catch { }
+                                PushOnUi("{\"kind\":\"diagcar\",\"online\":false,\"text\":" + Json(ex.Message) + "}");
                             }
                         });
                         thc.IsBackground = true;
@@ -1969,7 +2059,7 @@ namespace AdbLogExport.Gui
                             int bar = s.IndexOf('|');
                             string cpu = bar > 0 ? s.Substring(0, bar) : "-1";
                             string mem = bar > 0 ? s.Substring(bar + 1) : "0";
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"diagsample\",\"cpu\":" + cpu
                                 + ",\"mem\":" + mem + "}");
                         }
@@ -1990,7 +2080,7 @@ namespace AdbLogExport.Gui
                                 Path.Combine("platform-tools", "adb.exe"));
                             if (!File.Exists(builtin))
                             {
-                                _web.CoreWebView2.PostWebMessageAsJson(
+                                PushOnUi(
                                     "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
                                     + Json("程序目录下没有 platform-tools\\adb.exe") + "}");
                                 break;
@@ -2029,7 +2119,7 @@ namespace AdbLogExport.Gui
                             catch { }
 
                             App.ADB_BUILTIN_VER = ver;
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"diagadbused\",\"ok\":true,\"text\":"
                                 + Json(ver.Length > 0 ? ver : builtin) + "}");
                         }
@@ -2037,7 +2127,7 @@ namespace AdbLogExport.Gui
                         {
                             try
                             {
-                                _web.CoreWebView2.PostWebMessageAsJson(
+                                PushOnUi(
                                     "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
                                     + Json(ex.Message) + "}");
                             }
@@ -2090,13 +2180,13 @@ namespace AdbLogExport.Gui
                                     {
                                         _web.BeginInvoke((MethodInvoker)delegate
                                         {
-                                            try { _web.CoreWebView2.PostWebMessageAsJson(payload); }
+                                            try { PushOnUi(payload); }
                                             catch { }
                                         });
                                     }
                                     else
                                     {
-                                        _web.CoreWebView2.PostWebMessageAsJson(payload);
+                                        PushOnUi(payload);
                                     }
                                 }
                                 catch { }
@@ -2154,7 +2244,7 @@ namespace AdbLogExport.Gui
 
                                 Action post = delegate
                                 {
-                                    try { _web.CoreWebView2.PostWebMessageAsJson(sb.ToString()); }
+                                    try { PushOnUi(sb.ToString()); }
                                     catch { }
                                 };
                                 if (_web.InvokeRequired) _web.BeginInvoke(post);
@@ -2164,7 +2254,7 @@ namespace AdbLogExport.Gui
                             {
                                 try
                                 {
-                                    _web.CoreWebView2.PostWebMessageAsJson(
+                                    PushOnUi(
                                         "{\"kind\":\"heaplist\",\"ok\":false,\"text\":" + Json(ex.Message) + "}");
                                 }
                                 catch { }
@@ -2190,7 +2280,7 @@ namespace AdbLogExport.Gui
                                 {
                                     Action post = delegate
                                     {
-                                        try { _web.CoreWebView2.PostWebMessageAsJson(
+                                        try { PushOnUi(
                                                 "{\"kind\":\"toast\",\"ok\":false,\"text\":" + Json("抓堆失败：" + ex.Message) + "}"); }
                                         catch { }
                                     };
@@ -2299,14 +2389,14 @@ namespace AdbLogExport.Gui
                     try
                     {
                         SetTitleBarDark(App.THEME == "dark");
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"theme\",\"name\":" + Json(App.THEME) + "}");
                         // 强调色单独回一条，让重启后按钮/进度条/选中态保持用户选的颜色
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"accent\",\"name\":" + Json(App.ACCENT) + "}");
                         // 字体 / 字号 / 动效偏好（base64 不透明串）
                         if (App.PREFS != null && App.PREFS.Length > 0)
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"prefs\",\"data\":" + Json(App.PREFS) + "}");
                         // 2026-11-22：Monkey 多包配置（应用清单/范围/执行方式/参数）。
                         // 单独一条而不是塞进 prefs —— prefs 里是字体/主题这类 UI 偏好，
@@ -2315,7 +2405,7 @@ namespace AdbLogExport.Gui
                         {
                             string mcfg = ReadIniKey("monkey_cfg");
                             if (!string.IsNullOrEmpty(mcfg))
-                                _web.CoreWebView2.PostWebMessageAsJson(
+                                PushOnUi(
                                     "{\"kind\":\"monkeycfg\",\"data\":" + Json(mcfg) + "}");
                         }
                         catch { }
@@ -2325,7 +2415,7 @@ namespace AdbLogExport.Gui
                         // 一眼就能判断当前窗口是哪一份，不用再猜。
                         try
                         {
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"build\",\"exe\":" + Json(StampOf(Application.ExecutablePath))
                                 + ",\"ui\":" + Json(StampOf(_uiPath))
                                 + ",\"dir\":" + Json(AppDomain.CurrentDomain.BaseDirectory) + "}");
@@ -2487,7 +2577,7 @@ namespace AdbLogExport.Gui
                     // 仍然是 false，与"还没查过"无从区分，按钮会一直转圈。
                     try
                     {
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"rootdone\",\"elevate\":" + (elevate ? "true" : "false")
                             + ",\"rooted\":" + (rooted ? "true" : "false") + "}");
                     }
@@ -2512,7 +2602,7 @@ namespace AdbLogExport.Gui
                     CoreWebView2File f = obj as CoreWebView2File;
                     if (f != null && !string.IsNullOrEmpty(f.Path))
                     {
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"filePath\",\"data\":" + Json(f.Path) + "}");
                     }
                 }
@@ -2598,7 +2688,7 @@ namespace AdbLogExport.Gui
                                     // （窗口冒烟的"无新增错误日志"就是这么抓到的）。
                                     // 没就绪就跳过：前端还有 5 秒兜底定时器，不会卡住。
                                     if (_web == null || _web.CoreWebView2 == null) return;
-                                    _web.CoreWebView2.PostWebMessageAsJson(
+                                    PushOnUi(
                                         "{\"kind\":\"status\",\"dev\":\"\",\"online\":false,"
                                         + "\"soc\":\"\",\"res\":\"\",\"dir\":\"\",\"rooted\":null,"
                                         + "\"msg\":\"未检测到设备\"}");
@@ -2785,7 +2875,7 @@ namespace AdbLogExport.Gui
                         // 再推一次完整状态，保证设备号、分辨率等也是最新的。
                         try
                         {
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"rootdone\",\"elevate\":false,\"rooted\":"
                                 + (rooted ? "true" : "false") + "}");
                         }
@@ -2805,7 +2895,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"status\",\"dev\":" + Json(devId)
                     + ",\"online\":true,\"soc\":\"\",\"res\":\"\",\"dir\":\"\",\"rooted\":null,\"msg\":\"连接中…\"}");
             }
@@ -2829,7 +2919,7 @@ namespace AdbLogExport.Gui
                 // 绝不能静默丢弃，否则前端占位行会永久"执行中"、互斥锁永不释放。
                 try
                 {
-                    _web.CoreWebView2.PostWebMessageAsJson(
+                    PushOnUi(
                         "{\"kind\":\"end\",\"ok\":false,\"ms\":0,\"feed\":null,\"busy\":true,\"slot\":" + slot + "}");
                 }
                 catch { }
@@ -2954,7 +3044,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"echo\",\"src\":" + _cmdSource[slot]
                     + ",\"slot\":" + slot
                     + ",\"data\":" + Json(cmd) + "}");
@@ -2964,7 +3054,7 @@ namespace AdbLogExport.Gui
 
         private void PushBegin(int slot)
         {
-            try { _web.CoreWebView2.PostWebMessageAsJson("{\"kind\":\"begin\",\"slot\":" + slot + "}"); }
+            try { PushOnUi("{\"kind\":\"begin\",\"slot\":" + slot + "}"); }
             catch { }
         }
 
@@ -2988,9 +3078,21 @@ namespace AdbLogExport.Gui
                          + ",\"ok\":" + (ok ? "true" : "false")
                          + ",\"ms\":" + ms + "}";
                 }
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"end\",\"ok\":" + (ok ? "true" : "false")
-                    + ",\"ms\":" + ms + ",\"feed\":" + feed + ",\"slot\":" + slot + "}");
+                    + ",\"ms\":" + ms + ",\"feed\":" + feed + ",\"slot\":" + slot
+                    // ★ 2026-11-22（第 15 批）：end 消息必须带 src。
+                    //
+                    // 页面的收尾逻辑全是按 src 分派的（case 'end' 里一长串
+                    // "if (msg.src === N)"）。之前这里没带 src，导致
+                    // msg.src 是 undefined，**所有 src 专用收尾一律不触发**：
+                    //   src=20 诊断页连通性 → 永远停在"采集超时"
+                    //   src=13 Fastbot 运行结束 → fbEnd 不调用
+                    //   src=4  Monkey 结束 → mkEnd 不调用
+                    //   src=10/11/14/15 Fastbot 各步收尾
+                    // 这些功能看起来"能用"是因为有别的兜底路径；
+                    // 但连通性没有兜底，所以直接暴露成"一直空着"。
+                    + ",\"src\":" + _cmdSource[slot] + "}");
             }
             catch { }
 
@@ -3067,7 +3169,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"toast\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"text\":\"" + (text ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
                         .Replace("\r", "").Replace("\n", " ") + "\"}");
@@ -3097,7 +3199,7 @@ namespace AdbLogExport.Gui
                 if (err != null && err.Length > 0) sb.Append(",\"err\":").Append(Json(err));
                 sb.Append('}');
 
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch { }
         }
@@ -3109,7 +3211,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"fbdeploydone\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"text\":\"" + (text ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
                         .Replace("\r", "").Replace("\n", " ") + "\"}");
@@ -3414,7 +3516,7 @@ namespace AdbLogExport.Gui
                     dir = App.CUR;
                 string m = msg == null ? "就绪" : msg;
 
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"status\",\"dev\":" + Json(dev)
                     // 只要确实知道一台设备，就不要因为某个调用方传了 false 就显示"未连接"。
                     // adbd 重启窗口里 online 会短暂为 false，界面不该跟着闪成离线态。
@@ -3458,7 +3560,7 @@ namespace AdbLogExport.Gui
                       .Append('}');
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch (Exception ex) { GuiEntry.Dump("PushCommands", ex); }
         }
@@ -3482,7 +3584,7 @@ namespace AdbLogExport.Gui
                       .Append('}');
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch (Exception ex) { GuiEntry.Dump("PushApkApps", ex); }
         }
@@ -3491,7 +3593,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"apkack\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"op\":" + Json(op)
                     + ",\"msg\":" + Json(msg) + "}");
@@ -3504,7 +3606,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"end\",\"ok\":false,\"ms\":0,\"feed\":null,\"busy\":true,\"slot\":0}");
             }
             catch { }
@@ -3690,7 +3792,7 @@ namespace AdbLogExport.Gui
                 {
                     try
                     {
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"apkdetail\",\"pkg\":" + Json(pkg)
                             + ",\"ver\":" + Json(ver)
                             + ",\"act\":" + Json(act)
@@ -3727,7 +3829,7 @@ namespace AdbLogExport.Gui
                     }
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch (Exception ex) { GuiEntry.Dump("PushApkVer", ex); }
         }
@@ -3823,7 +3925,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"ffmpegstat\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"path\":" + Json(path)
                     + ",\"source\":" + Json(source)
@@ -3931,7 +4033,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"scrcpystat\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"path\":" + Json(path)
                     + ",\"version\":" + Json(version)
@@ -3945,7 +4047,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"scrcpyres\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"slot\":" + slot + ",\"id\":" + id
                     + ",\"msg\":" + Json(msg == null ? "" : msg) + "}");
@@ -3962,7 +4064,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"logtag\",\"data\":" + Json(val == null ? "" : val) + "}");
             }
             catch { }
@@ -4006,7 +4108,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"devlist\",\"data\":" + Json(payload == null ? "" : payload) + "}");
             }
             catch { }
@@ -4157,7 +4259,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"netsimlog\",\"text\":" + Json(text) + "}");
             }
             catch { }
@@ -4201,7 +4303,7 @@ namespace AdbLogExport.Gui
                         if (!NetSim.Running) { _netStatThread = null; break; }
                         try
                         {
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"netsimstat\",\"up\":" + NetSim.UpBytes
                                 + ",\"down\":" + NetSim.DownBytes
                                 + ",\"conns\":" + NetSim.ConnTotal
@@ -4262,7 +4364,7 @@ namespace AdbLogExport.Gui
                       .Append('}');
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch (Exception ex) { GuiEntry.Dump("PushFsList", ex); }
         }
@@ -4335,7 +4437,7 @@ namespace AdbLogExport.Gui
                       .Append('}');
                 }
                 sb.Append("]}");
-                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                PushOnUi(sb.ToString());
             }
             catch (Exception ex) { GuiEntry.Dump("PushFsSearch", ex); }
         }
@@ -4386,7 +4488,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"fsprog\",\"done\":0,\"total\":1,\"name\":" + Json(name)
                     + ",\"bytes\":" + sent + ",\"bytesTotal\":" + total + "}");
             }
@@ -4397,7 +4499,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"fsprog\",\"done\":" + done + ",\"total\":" + total
                     + ",\"name\":" + Json(name) + "}");
             }
@@ -4419,7 +4521,7 @@ namespace AdbLogExport.Gui
             }
             if (src.Count == 0 || string.IsNullOrEmpty(dst))
             {
-                try { _web.CoreWebView2.PostWebMessageAsJson("{\"kind\":\"fsack\",\"ok\":false,\"msg\":\"没有选择文件\"}"); }
+                try { PushOnUi("{\"kind\":\"fsack\",\"ok\":false,\"msg\":\"没有选择文件\"}"); }
                 catch { }
                 return;
             }
@@ -4508,7 +4610,7 @@ namespace AdbLogExport.Gui
                             sb.Append(Json(failed[i]));
                         }
                         sb.Append("]}");
-                        _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
+                        PushOnUi(sb.ToString());
                     }
                     catch { }
                 });
@@ -4552,7 +4654,7 @@ namespace AdbLogExport.Gui
                 {
                     try
                     {
-                        _web.CoreWebView2.PostWebMessageAsJson(
+                        PushOnUi(
                             "{\"kind\":\"fsack\",\"ok\":" + (ok ? "true" : "false")
                             + ",\"op\":" + Json(op) + ",\"side\":" + Json(side)
                             + ",\"msg\":" + Json(err) + "}");
@@ -4600,7 +4702,7 @@ namespace AdbLogExport.Gui
                     {
                         try
                         {
-                            _web.CoreWebView2.PostWebMessageAsJson(
+                            PushOnUi(
                                 "{\"kind\":\"apkfront\",\"pkg\":" + Json(pkg) + "}");
                         }
                         catch { }
@@ -4679,7 +4781,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                _web.CoreWebView2.PostWebMessageAsJson(
+                PushOnUi(
                     "{\"kind\":\"wadb\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"ip\":" + Json(ip)
                     + ",\"msg\":" + Json(msg) + "}");

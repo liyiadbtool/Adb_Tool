@@ -47,11 +47,13 @@ setTimeout(function(){
   ok('定时导出日志框存在', !!document.getElementById('tt-log-box'));
   ok('定时监听异常框存在', !!document.getElementById('tt-crash-box'));
 
+  // 2026-11-22（第 15 批）：hint 元素已删除（为压缩高度，信息挪到 title）
   ['log','crash'].forEach(function(k){
-    ['min','start','pause','stop','state','out','hint'].forEach(function(f){
+    ['min','start','pause','stop','state','out'].forEach(function(f){
       ok('控件存在 '+k+'-'+f, !!document.getElementById('tt-'+k+'-'+f));
     });
   });
+  ok('hint 已移除（压高度）', !document.getElementById('tt-log-hint'));
 
   /* ---- 2. 默认间隔 30 分钟 ---- */
   ok('导出日志默认 30 分钟',
@@ -163,14 +165,11 @@ setTimeout(function(){
   /* ---- 8. 状态同步（C# → 页面）---- */
   ttOnState({kind:'autostate', state:'running', mode:1, minutes:15, round:3,
              remain:125, dir:'C:\\Users\\x\\Desktop\\logcat\\2026-11-22\\x_Log'});
-  ok('状态同步：轮次显示',
-     document.getElementById('tt-log-hint').textContent.indexOf('第 3 轮') >= 0,
-     document.getElementById('tt-log-hint').textContent);
-  ok('状态同步：倒计时显示',
-     /2 分 5 秒|125 秒/.test(document.getElementById('tt-log-hint').textContent),
-     document.getElementById('tt-log-hint').textContent);
-  ok('状态同步：导出目录显示',
-     document.getElementById('tt-log-hint').textContent.indexOf('logcat') >= 0);
+  // 2026-11-22（第 15 批）：hint 元素删除后，信息挂在 title 上
+  var minTitle = document.getElementById('tt-log-min').title || '';
+  ok('状态同步：轮次挂到 title', minTitle.indexOf('第 3 轮') >= 0, minTitle);
+  ok('状态同步：倒计时挂到 title',
+     /2 分 5 秒|125 秒/.test(minTitle), minTitle);
 
   ttOnState({kind:'autostate', state:'paused', mode:1, round:3, remain:0});
   ok('同步暂停态',

@@ -114,14 +114,14 @@ setTimeout(function(){
   var gridCols = getComputedStyle(rowBox).gridTemplateColumns;
   ok('宽屏下网格为 2 列', (gridCols.match(/px/g)||[]).length === 2, gridCols);
 
-  // adb 与连通性是半宽（并排）
+  // 2026-11-22（第 15 批）：adb + 连通性合并成一张「连接状态」卡，占整行。
   var adbCard = document.getElementById('diag-card-adb');
-  ok('adb 卡非整行（与连通性并排）',
-     !adbCard.classList.contains('diag-card--wide'));
+  ok('连接状态卡占整行（合并后）',
+     adbCard.classList.contains('diag-card--wide'));
   var adbW = adbCard.getBoundingClientRect().width;
   var pcW = card.getBoundingClientRect().width;
-  ok('adb 卡宽度约为整行一半',
-     adbW > 0 && Math.abs(adbW / pcW - 0.5) < 0.12,
+  ok('连接状态卡与其它整行卡同宽',
+     adbW > 0 && Math.abs(adbW - pcW) < 2,
      'adbW=' + Math.round(adbW) + ' pcW=' + Math.round(pcW));
 
   /* ---- 4. 复制按钮常驻可见 ---- */

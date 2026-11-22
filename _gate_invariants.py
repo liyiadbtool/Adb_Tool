@@ -383,7 +383,10 @@ A36_ADDS = {
                      "ttStart", "ttStop", "ttTogglePause",
                      # 2026-11-22 第 14 批：HeapDump 浮层
                      "openHeapDump", "closeHeapDump", "heapLoad",
-                     "heapPick", "heapGo", "heapFilter"]),
+                     "heapPick", "heapGo", "heapFilter",
+                     # 2026-11-22 第 15 批：问诊增强 + 输入框点击兜底
+                     "diagJumpTo", "diagDiffHist",
+                     "qcardClick", "qcardClickAt"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -425,7 +428,9 @@ A36_ADDS = {
                 # 2026-11-22 第 14 批：定时框两列容器 + HeapDump 浮层
                 "tt-row2",
                 "heap-mask", "heap-sub", "heap-search", "heap-all", "heap-list",
-                "heap-sel", "heap-go"]),
+                "heap-sel", "heap-go",
+                # 2026-11-22 第 15 批：状态汇总条 + 复制格式 + 合并卡备注
+                "diag-sum", "diag-fmt", "diag-link-note"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
