@@ -1863,6 +1863,195 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-22（需求）：诊断页 —— 采集本机信息并回传。
+                // 为什么走 C# 而不是页面 JS：浏览器里拿不到 WMI 数据
+                // （CPU 型号、内存 DDR 代数、系统 Build 都只能从 Windows 查）。
+                // 页面只负责渲染，数据由这里提供，保持"业务在页面、系统信息在 C#"的分工。
+                case "diagget":
+                    {
+                        try
+                        {
+                            var rows = Diag.CollectLocal();
+                            var sb2 = new StringBuilder();
+                            sb2.Append("{\"kind\":\"diaglocal\",\"ok\":true,\"rows\":[");
+                            for (int i = 0; i < rows.Count; i++)
+                            {
+                                if (i > 0) sb2.Append(',');
+                                sb2.Append("{\"k\":").Append(Json(rows[i].K))
+                                   .Append(",\"v\":").Append(Json(rows[i].V))
+                                   .Append(",\"lv\":").Append(Json(rows[i].Lv)).Append('}');
+                            }
+                            sb2.Append("],\"adb\":").Append(Json(App.ADB == null ? "" : App.ADB))
+                               .Append(",\"adbsrc\":").Append(Json(App.ADB_SOURCE == null ? "" : App.ADB_SOURCE))
+                               .Append('}');
+                            _web.CoreWebView2.PostWebMessageAsJson(sb2.ToString());
+                        }
+                        catch (Exception ex)
+                        {
+                            try
+                            {
+                                _web.CoreWebView2.PostWebMessageAsJson(
+                                    "{\"kind\":\"diaglocal\",\"ok\":false,\"text\":" + Json(ex.Message) + "}");
+                            }
+                            catch { }
+                        }
+                    }
+                    break;
+
+                // 2026-11-22（需求）：诊断页 —— 车机信息。
+                //
+                // 必须放后台线程：App.LoadCarInfo() 是一次同步的 shell 往返，
+                // 在 UI 线程上直接调会把界面卡住 0.5~2 秒（设备慢的时候更久）。
+                // 采集完再 PostWebMessageAsJson 回页面，期间界面不冻结。
+                case "diagcar":
+                    {
+                        Thread thc = new Thread(delegate()
+                        {
+                            try
+                            {
+                                bool online = !App.OFFLINE && App.DEVN > 0;
+                                bool got = false;
+                                if (online)
+                                {
+                                    try { got = App.LoadCarInfo(); } catch { }
+                                }
+
+                                StringBuilder cb = new StringBuilder();
+                                cb.Append("{\"kind\":\"diagcar\",\"online\":")
+                                  .Append(online ? "true" : "false")
+                                  .Append(",\"got\":").Append(got ? "true" : "false");
+
+                                // 是否 root：ROOTED 是探测结果，ROOT_PROBED 表示探过没有
+                                cb.Append(",\"root\":").Append(App.ROOTED ? "true" : "false")
+                                  .Append(",\"rootprobed\":").Append(App.ROOT_PROBED ? "true" : "false");
+
+                                cb.Append(",\"serial\":").Append(Json(App.SERIAL == null ? "" : App.SERIAL));
+                                cb.Append(",\"devn\":").Append(App.DEVN);
+
+                                // 9 项车机信息：标签 + 值
+                                cb.Append(",\"rows\":[");
+                                for (int i = 0; i < App.CAR_LABELS.Length; i++)
+                                {
+                                    if (i > 0) cb.Append(',');
+                                    cb.Append("{\"k\":").Append(Json(App.CAR_LABELS[i]))
+                                       .Append(",\"v\":").Append(Json(App.CAR_VALS[i] == null ? "" : App.CAR_VALS[i]))
+                                       .Append('}');
+                                }
+                                cb.Append("],\"res\":").Append(Json(App.CAR_RES == null ? "" : App.CAR_RES));
+                                cb.Append('}');
+
+                                try { _web.CoreWebView2.PostWebMessageAsJson(cb.ToString()); }
+                                catch { }
+                            }
+                            catch (Exception ex)
+                            {
+                                try
+                                {
+                                    _web.CoreWebView2.PostWebMessageAsJson(
+                                        "{\"kind\":\"diagcar\",\"online\":false,\"text\":" + Json(ex.Message) + "}");
+                                }
+                                catch { }
+                            }
+                        });
+                        thc.IsBackground = true;
+                        thc.Start();
+                    }
+                    break;
+
+                // 2026-11-22（需求）：诊断页 —— 本工具自身 CPU / 内存采样。
+                // 只在页面点「开始采样」后由定时器轮询，停止就不再来问，
+                // 保证平时零开销（用户明确要求"只在采样时开"）。
+                case "diagsample":
+                    {
+                        try
+                        {
+                            string s = Diag.SampleSelf();   // "cpu|memMB"
+                            int bar = s.IndexOf('|');
+                            string cpu = bar > 0 ? s.Substring(0, bar) : "-1";
+                            string mem = bar > 0 ? s.Substring(bar + 1) : "0";
+                            _web.CoreWebView2.PostWebMessageAsJson(
+                                "{\"kind\":\"diagsample\",\"cpu\":" + cpu
+                                + ",\"mem\":" + mem + "}");
+                        }
+                        catch { }
+                    }
+                    break;
+
+                // 2026-11-22（需求）：诊断页 —— 一键启用内置 adb。
+                // 场景：机器上完全没装 adb，但包里带了 platform-tools。
+                // 这里直接把 App.ADB 指向内置那份，不写 ini（下次启动仍按
+                // PATH -> ... -> 内置 的优先级自动找，不会锁死）。
+                case "diaguseadb":
+                    {
+                        try
+                        {
+                            string builtin = Path.Combine(
+                                AppDomain.CurrentDomain.BaseDirectory,
+                                Path.Combine("platform-tools", "adb.exe"));
+                            if (!File.Exists(builtin))
+                            {
+                                _web.CoreWebView2.PostWebMessageAsJson(
+                                    "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
+                                    + Json("程序目录下没有 platform-tools\\adb.exe") + "}");
+                                break;
+                            }
+                            App.ADB = builtin;
+                            App.ADB_SOURCE = "内置 platform-tools";
+
+                            // 取一次版本号，顺带确认这份 adb 真能跑
+                            string ver = "";
+                            try
+                            {
+                                var psi = new ProcessStartInfo();
+                                psi.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                                psi.Arguments = "/s /c \"\"" + builtin + "\" version\"";
+                                psi.UseShellExecute = false;
+                                psi.CreateNoWindow = true;
+                                psi.RedirectStandardOutput = true;
+                                psi.RedirectStandardError = true;
+                                using (var p = Process.Start(psi))
+                                {
+                                    string o = p.StandardOutput.ReadToEnd();
+                                    p.StandardError.ReadToEnd();
+                                    if (!p.WaitForExit(8000)) { try { p.Kill(); } catch { } }
+                                    // 输出形如：
+                                    //   Android Debug Bridge version 1.0.41
+                                    //   Version 35.0.0-11411520
+                                    int vi = o.IndexOf("Version ");
+                                    if (vi >= 0)
+                                    {
+                                        int nl = o.IndexOf('\n', vi);
+                                        string line = nl > vi ? o.Substring(vi, nl - vi) : o.Substring(vi);
+                                        ver = line.Trim();
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            App.ADB_BUILTIN_VER = ver;
+                            _web.CoreWebView2.PostWebMessageAsJson(
+                                "{\"kind\":\"diagadbused\",\"ok\":true,\"text\":"
+                                + Json(ver.Length > 0 ? ver : builtin) + "}");
+                        }
+                        catch (Exception ex)
+                        {
+                            try
+                            {
+                                _web.CoreWebView2.PostWebMessageAsJson(
+                                    "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
+                                    + Json(ex.Message) + "}");
+                            }
+                            catch { }
+                        }
+                    }
+                    break;
+
+                // 2026-11-22（需求）：诊断页 —— 开始采样时重置 CPU 基准，
+                // 否则第一帧会拿"上次采样到这次"的时间差，算出不合理的值。
+                case "diagsample_reset":
+                    try { Diag.ResetSample(); } catch { }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");

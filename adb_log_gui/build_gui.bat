@@ -105,9 +105,14 @@ if exist "%WV2%\Microsoft.Web.WebView2.WinForms.dll" set "RES=%RES% /resource:"%
 if exist "%WV2%\WebView2Loader.dll" set "RES=%RES% /resource:"%WV2%\WebView2Loader.dll",adb.WebView2Loader.dll"
 if exist "%~dp0adb_log_export.ini" set "RES=%RES% /resource:"%~dp0adb_log_export.ini",adb.default.ini"
 if exist "%~dp0cmds.ini" set "RES=%RES% /resource:"%~dp0cmds.ini",adb.default.cmds.ini"
+rem 2026-11-22: System.Management.dll is required by Diag.cs
+rem   (WMI queries: CPU model / SMBIOS memory type / OS build number).
+rem   WARNING: never put a "rem" line INSIDE the multi-line compile command
+rem   below. The line-continuation makes "rem" an ordinary argument, and the
+rem   compiler then treats the comment words as source file names (CS2001).
 echo Single-exe resources:%RES%
 
-"%CSC%" /nologo /optimize+ /target:winexe /platform:x64 /codepage:65001 /langversion:5 /main:AdbLogExport.Gui.GuiEntry /win32icon:"%~dp0adb_Tool.ico" /out:"%TMPOUT%" %RES% /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:"%WV2%\Microsoft.Web.WebView2.Core.dll" /reference:"%WV2%\Microsoft.Web.WebView2.WinForms.dll" "%SRC%\Program.cs" "%SRC%\Prefix.cs" "%SRC%\Adb.cs" "%SRC%\AdbCmd.cs" "%SRC%\CmdRegistry.cs" "%SRC%\PkgVer.cs" "%SRC%\Env.cs" "%SRC%\Render.cs" "%SRC%\LineEdit.cs" "%SRC%\Send.cs" "%SRC%\Voice.cs" "%SRC%\Common.cs" "%SRC%\Probe.cs" "%SRC%\Reconnect.cs" "%SRC%\Root.cs" "%SRC%\CarInfo.cs" "%SRC%\TaskCmds.cs" "%SRC%\Hdc.cs" "%SRC%\ApkList.cs" "%SRC%\ApkCmds.cs" "%SRC%\Wireless.cs" "%SRC%\DeviceWatcher.cs" "%SRC%\FileBrowser.cs" "%SRC%\Embed.cs" "%SRC%\Ffmpeg.cs" "%SRC%\Scrcpy.cs" "%SRC%\Tbox.cs" "%SRC%\CustomStore.cs" "%SRC%\Profile.cs" "%SRC%\GuiSink.cs" "%SRC%\GuiMain.cs" "%SRC%\GuiWeb.cs" "%SRC%\NetSim.cs" "%SRC%\GuiSelfCheck.cs" "%SRC%\GuiHeadless.cs" "%SRC%\GuiEntry.cs"
+"%CSC%" /nologo /optimize+ /target:winexe /platform:x64 /codepage:65001 /langversion:5 /main:AdbLogExport.Gui.GuiEntry /win32icon:"%~dp0adb_Tool.ico" /out:"%TMPOUT%" %RES% /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Management.dll /reference:"%WV2%\Microsoft.Web.WebView2.Core.dll" /reference:"%WV2%\Microsoft.Web.WebView2.WinForms.dll" "%SRC%\Program.cs" "%SRC%\Prefix.cs" "%SRC%\Adb.cs" "%SRC%\AdbCmd.cs" "%SRC%\CmdRegistry.cs" "%SRC%\PkgVer.cs" "%SRC%\Env.cs" "%SRC%\Render.cs" "%SRC%\LineEdit.cs" "%SRC%\Send.cs" "%SRC%\Voice.cs" "%SRC%\Common.cs" "%SRC%\Probe.cs" "%SRC%\Reconnect.cs" "%SRC%\Root.cs" "%SRC%\CarInfo.cs" "%SRC%\TaskCmds.cs" "%SRC%\Hdc.cs" "%SRC%\ApkList.cs" "%SRC%\ApkCmds.cs" "%SRC%\Wireless.cs" "%SRC%\DeviceWatcher.cs" "%SRC%\FileBrowser.cs" "%SRC%\Embed.cs" "%SRC%\Ffmpeg.cs" "%SRC%\Scrcpy.cs" "%SRC%\Tbox.cs" "%SRC%\CustomStore.cs" "%SRC%\Profile.cs" "%SRC%\GuiSink.cs" "%SRC%\GuiMain.cs" "%SRC%\GuiWeb.cs" "%SRC%\Diag.cs" "%SRC%\NetSim.cs" "%SRC%\GuiSelfCheck.cs" "%SRC%\GuiHeadless.cs" "%SRC%\GuiEntry.cs"
 
 if errorlevel 1 (
     echo.
@@ -218,6 +223,35 @@ if exist "%~dp0..\fastbot" (
     echo [WARN] fastbot\ folder not found - the Fastbot tab will report
     echo        "not deployed" and one-click deploy will fail.
     echo        expected at: %~dp0..\fastbot
+)
+
+rem [2026-11-22] Built-in platform-tools (adb 35.0.0).
+rem
+rem   Why: some tester machines have no adb at all, and those that do often have
+rem   a stale or conflicting copy. Shipping one lets the tool work out of the box.
+rem
+rem   IMPORTANT: this is a LAST-RESORT fallback, not the preferred source.
+rem   Program.cs ResolveAdb() tries PATH -> exe dir -> ANDROID_HOME -> common
+rem   install dirs -> and only then this one. Reason: the Windows adb server is
+rem   a global singleton on port 5037; picking a different version than the one
+rem   the user normally runs makes the two clients kill each other's server
+rem   ("adb server version (41) doesn't match this client"), which shows up as
+rem   random disconnects.
+rem
+rem   Only 3 files are needed. fastboot / mke2fs / etc1tool are deliberately
+rem   left out (~5 MB saved). NOTICE.txt is kept for license compliance.
+if exist "%~dp0..\platform-tools\adb.exe" (
+    mkdir "%DIST%\platform-tools" >nul 2>&1
+    copy /y "%~dp0..\platform-tools\adb.exe"           "%DIST%\platform-tools\" >nul
+    copy /y "%~dp0..\platform-tools\AdbWinApi.dll"     "%DIST%\platform-tools\" >nul
+    copy /y "%~dp0..\platform-tools\AdbWinUsbApi.dll"  "%DIST%\platform-tools\" >nul
+    copy /y "%~dp0..\platform-tools\NOTICE.txt"        "%DIST%\platform-tools\" >nul
+    echo Built-in adb: copied to dist\platform-tools
+) else (
+    echo.
+    echo [WARN] platform-tools\adb.exe not found - the tool will only work on
+    echo        machines that already have adb installed.
+    echo        expected at: %~dp0..\platform-tools
 )
 
 rem Guard: if any required file is missing, say so loudly. Shipping a package

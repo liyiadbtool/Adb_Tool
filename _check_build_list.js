@@ -19,7 +19,13 @@ const CLI_BAT = path.join(SRC, "build.bat");
 const GUI_BAT = path.join(ROOT, "adb_log_gui", "build_gui.bat");
 
 // GUI 专用文件：只在 GUI 版编译，CLI 不需要（必须显式列在这里，防止"漏了"被当成正常）
-const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs", "NetSim.cs"];
+//
+// Diag.cs（2026-11-22）：诊断页的本机信息采集。
+//   为什么 GUI-only：它用了 System.Windows.Forms（Screen / Application）读
+//   屏幕分辨率和缩放，还调了 GuiEntry.LogDir() 算日志目录体积 ——
+//   这两个依赖 CLI 版都没有（CLI 不引用 WinForms，也不编译 GuiEntry）。
+//   CLI 版本身没有诊断界面，不存在"编出半成品 exe"的风险。
+const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs", "NetSim.cs", "Diag.cs"];
 
 let fail = 0;
 function bad(m) { console.log("  [XX]   " + m); fail++; }

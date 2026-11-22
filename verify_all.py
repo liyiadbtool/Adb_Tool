@@ -60,6 +60,12 @@ EDGE_TESTS = [
     ("_test_settings_layout.py", "设置面板布局（自适应/并排/导航宽度）"),
     ("_test_monkey.py", "Monkey 稳定性测试页"),
     ("_test_fastbot.py", "Fastbot 子页（部署/配置/解析）"),
+    ("_test_diag.py", "诊断页（adb/本机/车机/采样/复制）"),
+    # 2026-11-22：诊断页端到端 —— 走 --uitest 在**真实 WebView2** 里跑，
+    # 真的触发 C# 的 WMI 采集并断言回包字段。
+    # 上面那条只验证渲染层（喂造数据），这条才验证 C# 采集链路。
+    # 没编译过时自行 SKIP（返回 0），不影响 --fast 档。
+    ("_test_diag_e2e.py", "诊断页端到端（真实 WMI 采集）"),
 ]
 
 # ---- 全量档专属：重型套件（--full 才跑）----

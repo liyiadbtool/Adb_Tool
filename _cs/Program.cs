@@ -31,6 +31,13 @@ namespace AdbLogExport
     {
         // ==================== 一、配置（可被同目录 adb_log_export.ini 覆盖）====================
         internal static string ADB = "adb";
+        // 2026-11-22：adb 是从哪儿来的，供诊断页显示。
+        // 现场排查"adb 连不上"时，第一件事就是确认到底用的哪一份 ——
+        // 本机经常同时存在 SDK 的一份、platform-tools 解压的一份、
+        // 别的工具自带的一份，版本不同会互相抢 5037 端口。
+        internal static string ADB_SOURCE = "";
+        // 内置 platform-tools 的版本号（读 source.properties 或 adb version 缓存）
+        internal static string ADB_BUILTIN_VER = "";
         internal static string SERIAL = "";
         internal static string FFMPEG = "ffmpeg.exe";   // 截帧录屏编码用（ini: ffmpeg=路径）
         // 外挂 scrcpy（R10）：有它就用它开流畅窗口，没有就走内置截帧通道。
@@ -247,7 +254,7 @@ namespace AdbLogExport
                     try
                     {
                         string cand = Path.Combine(d, "adb.exe");
-                        if (File.Exists(cand)) { ADB = cand; return; }
+                        if (File.Exists(cand)) { ADB = cand; ADB_SOURCE = "系统 PATH"; return; }
                     }
                     catch { }
                 }
@@ -255,7 +262,6 @@ namespace AdbLogExport
 
             // 1) 程序自己目录（绿色版常把 adb.exe 放旁边）
             try { cands.Add(Path.Combine(ExeDir(), "adb.exe")); } catch { }
-
             // 2) 环境变量里的 SDK
             string[] envs = { "ANDROID_HOME", "ANDROID_SDK_ROOT", "ANDROID_SDK_HOME" };
             for (int i = 0; i < envs.Length; i++)
@@ -287,6 +293,23 @@ namespace AdbLogExport
                 cands.Add(drv[i] + "\\Program Files\\platform-tools\\adb.exe");
             }
 
+            // 5) 内置 platform-tools（2026-11-22）
+            //
+            // 为什么放在**最后**而不是最前：
+            //   Windows 的 adb server 是全局单例（固定 5037 端口），由第一个
+            //   连上来的客户端启动。如果本工具用内置的那份（版本固定），
+            //   而用户平时在命令行用 PATH 里的另一份，两边版本不一致就会
+            //       adb server version (41) doesn't match this client (39); killing...
+            //   —— 客户端反复杀掉正在用的 server 重启，表现就是随机断线。
+            //   （见上面第 0 条注释里记的那个现场问题。）
+            //   所以：用户环境有 adb 就用他的，一份都没有才用内置的兜底，
+            //   这样不会去抢别人正在用的 server。
+            try
+            {
+                cands.Add(Path.Combine(ExeDir(), Path.Combine("platform-tools", "adb.exe")));
+            }
+            catch { }
+
             for (int i = 0; i < cands.Count; i++)
             {
                 try
@@ -294,11 +317,38 @@ namespace AdbLogExport
                     if (File.Exists(cands[i]))
                     {
                         ADB = cands[i];
+                        ADB_SOURCE = SourceOf(cands[i]);
                         return;
                     }
                 }
                 catch { }
             }
+
+            // 一份都没找到：仍然保留 "adb"（PATH 里可能有但读不到），
+            // 由调用方报错。诊断页会显示"未安装"，并提供内置一键安装。
+            ADB_SOURCE = "未找到";
+        }
+
+        // 把候选路径翻译成人能看懂的中文来源，供诊断页显示。
+        private static string SourceOf(string path)
+        {
+            try
+            {
+                string exe = ExeDir();
+                if (!string.IsNullOrEmpty(exe)
+                    && path.StartsWith(exe, StringComparison.OrdinalIgnoreCase))
+                {
+                    // 程序目录下还要再区分「绿色版放旁边」和「内置 platform-tools」
+                    if (path.IndexOf("platform-tools", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "内置 platform-tools";
+                    return "程序目录";
+                }
+                if (path.IndexOf("Android\\Sdk", StringComparison.OrdinalIgnoreCase) >= 0
+                    || path.IndexOf("Android/Sdk", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return "Android SDK";
+            }
+            catch { }
+            return "常见安装位置";
         }
 
         // 双击启动时崩溃不会有任何提示，窗口一闪就没了 —— 至少落一份现场

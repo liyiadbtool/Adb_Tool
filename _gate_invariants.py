@@ -185,8 +185,8 @@ A31_PAGE_REMOVED = ["page-cast"]
 # 页签 / 页面允许"追加"（顺序不能变，新页签必须在这里登记）
 # 2026-11-22（第 10 批需求）：新增「Monkey」稳定性测试页签。
 # 它是纯新增页（插在"文件"之后），不影响既有页签顺序。
-A12_TAB_ADD = ["text", "monkey"]
-A12_PAGE_ADD = ["page-text", "page-monkey"]
+A12_TAB_ADD = ["text", "monkey", "diag"]   # 2026-11-22 加 diag（诊断页）
+A12_PAGE_ADD = ["page-text", "page-monkey", "page-diag"]
 
 # A13 轮新增（自绘标题栏四点 / 输出区点空白收起），逐项登记而不是放宽断言：
 #   tb-status    四圆点容器（原 .topbar 里的 root/无线/日志/设备 徽章搬进标题栏）
@@ -356,7 +356,7 @@ A35_ADDS = {
 #               mkListPkgs / mkOpenLogDir
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
-    "kinds": set(["monkeycfg", "fbdeploydone"]),
+    "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
@@ -370,7 +370,12 @@ A36_ADDS = {
                      # 2026-11-22 Fastbot 白名单
                      "fbSetScope", "fbScanApps", "fbAddPkg",
                      # 2026-11-22 从 APK 管理导入
-                     "fbImportFromApk"]),
+                     "fbImportFromApk",
+                     # 2026-11-22 诊断页：刷新/复制/采样/快照/内置adb
+                     "diagRefresh", "diagCopyAll", "diagCopySection",
+                     "diagCopyOne", "diagCopyHist", "diagSaveSnapshot",
+                     "diagToggleSample", "diagClearHistory",
+                     "diagInstallBuiltinAdb"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -394,7 +399,16 @@ A36_ADDS = {
                 "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
                 "fastbot-out",
                 # 2026-11-22 Fastbot 白名单（单包/Activity黑名单已删除）
-                "fb-hint-text", "fb-list", "fb-listcnt", "fb-add-pkg"]),
+                "fb-hint-text", "fb-list", "fb-listcnt", "fb-add-pkg",
+                # 2026-11-22 诊断页
+                "page-diag", "diag-sub", "diag-scroll",
+                "diag-card-adb", "diag-card-pc", "diag-card-car",
+                "diag-card-link", "diag-card-res", "diag-card-hist",
+                "diag-adb-dot", "diag-adb-note",
+                "diag-car-dot", "diag-car-note", "diag-link-dot", "diag-hist-note",
+                "diag-rows-adb", "diag-rows-pc", "diag-rows-car",
+                "diag-rows-link", "diag-rows-res", "diag-rows-hist",
+                "diag-sample-btn"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

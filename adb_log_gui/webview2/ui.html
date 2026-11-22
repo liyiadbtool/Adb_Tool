@@ -4132,6 +4132,118 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-color:var(--accent);
 }
 
+/* ============================================================================
+   2026-11-22（需求）：诊断页
+   ============================================================================ */
+.diag-wrap{
+  flex:1 1 auto; min-height:0;
+  display:flex; flex-direction:column;
+}
+.diag-bar{
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:8px;
+  padding:12px 18px;
+  border-bottom:1px solid var(--border);
+}
+.diag-title{
+  font-size:14px; font-weight:700; color:var(--text);
+}
+.diag-sub{
+  font-size:11.5px; color:var(--text-faint);
+}
+.diag-scroll{
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  padding:14px 18px 24px;
+  display:flex; flex-direction:column; gap:12px;
+}
+
+.diag-card{
+  border:1px solid var(--border); border-radius:var(--r-5);
+  background:var(--surface);
+  overflow:hidden;
+}
+.diag-card-head{
+  display:flex; align-items:center; gap:8px;
+  padding:9px 14px;
+  border-bottom:1px solid var(--border);
+  background:var(--well);
+}
+.diag-dot{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--text-faint);
+  flex:0 0 auto;
+}
+.diag-dot.ok{ background:var(--ok); }
+.diag-dot.bad{ background:var(--err); }
+.diag-dot.warn{ background:var(--accent); }
+.diag-card-title{
+  font-size:12.5px; font-weight:700; color:var(--text);
+}
+.diag-card-note{
+  font-size:11px; color:var(--text-faint);
+}
+.diag-copy-card{
+  border:0; background:transparent;
+  color:var(--text-faint);
+  font-size:11px; cursor:pointer;
+  padding:2px 6px; border-radius:var(--r-2);
+  font-family:var(--font-ui);
+}
+.diag-copy-card:hover{ background:var(--surface-hover); color:var(--accent); }
+
+.diag-rows{ padding:4px 0; }
+.diag-empty{
+  padding:14px 16px; font-size:12px; color:var(--text-faint);
+}
+
+/* 一行：标签 / 值 / 复制按钮 */
+.diag-row{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:5px 14px;
+  font-size:12.5px;
+  line-height:1.6;
+}
+.diag-row:hover{ background:var(--surface-hover); }
+.diag-k{
+  flex:0 0 128px;
+  color:var(--text-faint);
+}
+.diag-v{
+  flex:1 1 auto; min-width:0;
+  color:var(--text);
+  font-family:var(--font-mono);
+  font-size:12px;
+  word-break:break-all;
+}
+.diag-v.warn{ color:var(--accent); }
+.diag-v.bad{ color:var(--err); }
+.diag-v.ok{ color:var(--ok); }
+.diag-row .diag-cp{
+  flex:0 0 auto;
+  border:0; background:transparent;
+  color:var(--text-faint);
+  font-size:11px; cursor:pointer;
+  padding:1px 5px; border-radius:var(--r-1);
+  opacity:0;
+  transition:opacity 120ms linear;
+  font-family:var(--font-ui);
+}
+.diag-row:hover .diag-cp{ opacity:1; }
+.diag-row .diag-cp:hover{ background:var(--accent-soft); color:var(--accent); }
+
+/* 快照历史条目 */
+.diag-hist-item{
+  display:flex; align-items:center; gap:10px;
+  padding:7px 14px;
+  font-size:12px;
+  border-bottom:1px solid var(--border);
+}
+.diag-hist-item:last-child{ border-bottom:0; }
+.diag-hist-t{ color:var(--text-dim); font-family:var(--font-mono); flex:0 0 auto; }
+.diag-hist-s{ color:var(--text-faint); flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
 /* 崩溃详情弹层（需求 B-1） */
 .mk-crash-mask{
   position:fixed; inset:0; z-index:96;
@@ -4318,6 +4430,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
       <svg viewBox="0 0 24 24"><path d="M3.4 7.6a2 2 0 012-2h3.6l2 2.2h7.6a2 2 0 012 2v8.2a2 2 0 01-2 2H5.4a2 2 0 01-2-2z"/></svg><span>文件</span></button>
     <button class="tab" data-tab="monkey" onclick="switchTab('monkey')">
       <svg viewBox="0 0 24 24"><path d="M7.6 8.4a4.4 4.4 0 018.8 0"/><circle cx="12" cy="14.2" r="5.6"/><circle cx="9.9" cy="13.2" r=".9" fill="currentColor" stroke="none"/><circle cx="14.1" cy="13.2" r=".9" fill="currentColor" stroke="none"/><path d="M10 16.2c1.2.9 2.8.9 4 0"/><path d="M4.2 10.6c-.9-1-1-2.4.2-3.2M19.8 10.6c.9-1 1-2.4-.2-3.2"/></svg><span>Monkey</span></button>
+    <!-- 2026-11-22（需求）：诊断页。环境排查入口 —— adb 状态、本机信息、
+         车机信息、连通性、资源占用。用户要求"一键单独复制某一项"。 -->
+    <button class="tab" data-tab="diag" onclick="switchTab('diag')">
+      <svg viewBox="0 0 24 24"><path d="M3 12h3.6l2.2-5.4 3.6 11 2.4-6.6 1.8 3.2H21"/></svg><span>诊断</span></button>
   </div>
 
   <div class="main">
@@ -5096,6 +5212,118 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <button class="btn ghost sm" onclick="mkCloseCrash()">关闭</button>
         </div>
         <pre class="mk-crash-body" id="mk-crash-body"></pre>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         2026-11-22（需求）：诊断页
+         ----------------------------------------------------------------------
+         用户要的是「装完工具先能自己判断环境对不对」，所以分五块：
+           ① adb 状态   —— 有没有、哪一份、什么版本、多个 adb 冲突告警
+           ② 本机信息   —— CPU / 内存(DDR) / 系统 / 分辨率+缩放 / 存储 / 设备名
+           ③ 车机信息   —— ROOT / 车型 / SOC / MCU / Android / VIN / UUID / DID / OPENID
+           ④ 连通性     —— 授权状态 / adb server / 5037 端口
+           ⑤ 资源占用   —— 只在点「开始采样」时测（平时不占性能）
+
+         交互关键：用户明确要求「支持一键复制，比如可以一键单独复制 SOC 版本」，
+         所以每一行右侧都有独立的复制按钮，另外每块有「复制本块」，
+         顶部有「复制全部」和「保存快照」。
+         ====================================================================== -->
+    <div class="page" id="page-diag">
+      <div class="diag-wrap">
+
+        <!-- 顶部工具条 -->
+        <div class="diag-bar">
+          <div class="diag-title">环境诊断</div>
+          <span class="diag-sub" id="diag-sub">点「重新检测」采集最新信息</span>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" onclick="diagRefresh()" title="重新采集本机与车机信息">重新检测</button>
+          <button class="btn ghost sm" onclick="diagCopyAll()" title="把所有诊断结果复制到剪贴板">复制全部</button>
+          <button class="btn primary sm" onclick="diagSaveSnapshot()"
+                  title="把本次诊断结果存进历史，便于以后对比排查">保存快照</button>
+        </div>
+
+        <div class="diag-scroll" id="diag-scroll">
+
+          <!-- ① adb 状态 -->
+          <section class="diag-card" id="diag-card-adb">
+            <header class="diag-card-head">
+              <span class="diag-dot" id="diag-adb-dot"></span>
+              <span class="diag-card-title">adb 状态</span>
+              <span class="diag-card-note" id="diag-adb-note"></span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="diagCopySection('adb')" title="复制本块">复制本块</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-adb"></div>
+          </section>
+
+          <!-- ② 本机信息 -->
+          <section class="diag-card" id="diag-card-pc">
+            <header class="diag-card-head">
+              <span class="diag-dot ok"></span>
+              <span class="diag-card-title">本机信息</span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="diagCopySection('pc')" title="复制本块">复制本块</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-pc">
+              <div class="diag-empty">正在采集…</div>
+            </div>
+          </section>
+
+          <!-- ③ 车机信息 -->
+          <section class="diag-card" id="diag-card-car">
+            <header class="diag-card-head">
+              <span class="diag-dot" id="diag-car-dot"></span>
+              <span class="diag-card-title">车机信息</span>
+              <span class="diag-card-note" id="diag-car-note"></span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="diagCopySection('car')" title="复制本块">复制本块</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-car">
+              <div class="diag-empty">未连接设备</div>
+            </div>
+          </section>
+
+          <!-- ④ 连通性 -->
+          <section class="diag-card" id="diag-card-link">
+            <header class="diag-card-head">
+              <span class="diag-dot" id="diag-link-dot"></span>
+              <span class="diag-card-title">连通性</span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="diagCopySection('link')" title="复制本块">复制本块</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-link"></div>
+          </section>
+
+          <!-- ⑤ 资源占用（只在采样时测） -->
+          <section class="diag-card" id="diag-card-res">
+            <header class="diag-card-head">
+              <span class="diag-dot"></span>
+              <span class="diag-card-title">资源占用</span>
+              <span class="diag-card-note">只在本工具上，不含整机</span>
+              <div class="spacer"></div>
+              <button class="btn ghost sm" id="diag-sample-btn" onclick="diagToggleSample()">开始采样</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-res">
+              <div class="diag-empty">点「开始采样」后才开始测量（避免平时占用性能）</div>
+            </div>
+          </section>
+
+          <!-- 快照历史 -->
+          <section class="diag-card" id="diag-card-hist">
+            <header class="diag-card-head">
+              <span class="diag-dot"></span>
+              <span class="diag-card-title">快照历史</span>
+              <span class="diag-card-note" id="diag-hist-note"></span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="diagClearHistory()" title="清空历史">清空</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-hist">
+              <div class="diag-empty">还没有快照。点顶部「保存快照」记录当前环境。</div>
+            </div>
+          </section>
+
+        </div>
       </div>
     </div>
 
@@ -7113,6 +7341,428 @@ function fbExport(){
   } catch(e){ toast('导出失败：' + e, 'err'); }
 }
 
+/* ============================================================================
+   诊断页（2026-11-22）
+   ----------------------------------------------------------------------------
+   用户需求拆解：
+     ① adb 是否安装 / 版本 / 未安装时用内置一键装
+     ② 本机 CPU / 内存(要 DDR4/DDR5) / Windows / 分辨率+缩放 / 存储 /
+        设备名 / 系统类型 / 进程数 / 日志目录大小
+     ③ 车机 ROOT / 车型 / SOC / MCU / Android / VIN / UUID / DID / OPENID /
+        分辨率 / 设备 ID
+     ④ 连通性：授权状态 / adb server
+     ⑤ 资源占用：只在采样时测（无 GPU，用户已去掉）
+     ⑥ 一键复制（重点是「单独复制某一项」，比如只复制 SOC 版本）
+     ⑦ 诊断快照历史（不存实时采样）
+
+   数据来源分工：
+     · 本机信息 → C# WMI（浏览器拿不到 CPU 型号、内存代数）
+     · 车机信息 → C# 一次 shell 往返（复用 App.LoadCarInfo）
+     · cpu/mem  → C# 进程采样（页面拿不到进程资源）
+   页面只负责渲染 + 复制 + 快照。
+   ============================================================================ */
+var _diag = {
+  local: null,      // 本机行数据
+  adb: '',          // adb 路径
+  adbsrc: '',       // adb 来源
+  car: null,        // 车机数据
+  sampling: false,
+  timer: 0,
+  lastCpu: -1,
+  lastMem: 0,
+  hist: []
+};
+
+var DIAG_HIST_KEY = 'diag_history_v1';
+var DIAG_HIST_MAX = 20;
+
+/* 进入诊断页：本机信息每次进都重采（很快），车机信息也重取 */
+function diagOnEnter(){
+  diagRefresh();
+}
+
+function diagRefresh(){
+  var sub = document.getElementById('diag-sub');
+  if(sub) sub.textContent = '正在采集…';
+
+  // 本机（快）
+  try { post('diagget'); } catch(e){}
+
+  // 车机（后台线程，可能慢）
+  diagRenderCarLoading();
+  try { post('diagcar'); } catch(e){}
+
+  // adb 状态：从本机信息回包里带回来，不需要单独请求
+  var linkBox = document.getElementById('diag-rows-link');
+  if(linkBox) linkBox.innerHTML = '<div class="diag-empty">采集设备连通性…</div>';
+  try { post('run', 'shell "echo AUTH=$(getprop ro.adb.secure); echo DEVSTATE=$(getprop dev.bootcomplete); echo MODEL=$(getprop ro.product.model); echo ABI=$(getprop ro.product.cpu.abi); echo SDK=$(getprop ro.build.version.sdk)"', 20); } catch(e){}
+}
+
+/* ---------- 本机信息渲染 ---------- */
+function diagOnLocal(msg){
+  if(!msg || !msg.ok){
+    var b = document.getElementById('diag-rows-pc');
+    if(b) b.innerHTML = '<div class="diag-empty">采集失败：' + mkEsc((msg&&msg.text)||'未知') + '</div>';
+    return;
+  }
+  _diag.local = msg.rows || [];
+  _diag.adb = msg.adb || '';
+  _diag.adbsrc = msg.adbsrc || '';
+
+  // adb 卡片
+  diagRenderAdb();
+
+  // 本机卡片
+  var box = document.getElementById('diag-rows-pc');
+  if(box){
+    var html = '';
+    for(var i=0;i<_diag.local.length;i++){
+      html += diagRowHtml('pc', _diag.local[i].k, _diag.local[i].v, _diag.local[i].lv);
+    }
+    box.innerHTML = html || '<div class="diag-empty">没有采集到信息</div>';
+  }
+
+  var sub = document.getElementById('diag-sub');
+  if(sub){
+    var t = new Date();
+    sub.textContent = '最后采集 ' + String(t.getHours()).padStart(2,'0') + ':'
+      + String(t.getMinutes()).padStart(2,'0') + ':'
+      + String(t.getSeconds()).padStart(2,'0');
+  }
+}
+
+function diagRenderAdb(){
+  var box = document.getElementById('diag-rows-adb');
+  var dot = document.getElementById('diag-adb-dot');
+  var note = document.getElementById('diag-adb-note');
+  if(!box) return;
+
+  var adb = _diag.adb || 'adb';
+  var src = _diag.adbsrc || '';
+  var missing = (src === '未找到');
+
+  if(missing){
+    if(dot){ dot.className = 'diag-dot bad'; }
+    if(note) note.textContent = '没有可用的 adb';
+    box.innerHTML =
+        diagRowHtml('adb', '状态', '未安装 / 未找到', 'bad')
+      + diagRowHtml('adb', '内置版本', 'platform-tools 35.0.0（随包提供，点下方按钮启用）', '')
+      + '<div class="diag-row"><span class="diag-k"></span><span class="diag-v">'
+      + '<button class="btn primary sm" onclick="diagInstallBuiltinAdb()">一键启用内置 adb</button>'
+      + '</span></div>';
+    return;
+  }
+
+  if(dot){ dot.className = 'diag-dot ok'; }
+  if(note) note.textContent = src ? ('来源：' + src) : '';
+  box.innerHTML =
+      diagRowHtml('adb', '状态', '已找到', 'ok')
+    + diagRowHtml('adb', '路径', adb)
+    + diagRowHtml('adb', '来源', src || '未知');
+}
+
+/* 一键启用内置 adb：让 C# 把 program\platform-tools\adb.exe 作为 adb 使用 */
+function diagInstallBuiltinAdb(){
+  try { post('diaguseadb'); } catch(e){
+    toast('启用失败：' + e, 'err');
+    return;
+  }
+}
+
+function diagOnUseAdb(msg){
+  if(msg && msg.ok){
+    toast('已切换到内置 adb（' + (msg.text||'') + '）', 'ok');
+    diagRefresh();
+  } else {
+    toast('启用失败：' + ((msg && msg.text) || '未知原因'), 'err');
+  }
+}
+
+/* ---------- 车机信息渲染 ---------- */
+function diagRenderCarLoading(){
+  var box = document.getElementById('diag-rows-car');
+  if(box) box.innerHTML = '<div class="diag-empty">正在读取车机信息…</div>';
+}
+
+function diagOnCar(msg){
+  _diag.car = msg;
+  var box = document.getElementById('diag-rows-car');
+  var dot = document.getElementById('diag-car-dot');
+  var note = document.getElementById('diag-car-note');
+  if(!box) return;
+
+  if(!msg || !msg.online){
+    if(dot) dot.className = 'diag-dot bad';
+    if(note) note.textContent = '未连接设备';
+    box.innerHTML = '<div class="diag-empty">没有连接设备。请先连上 adb 设备再刷新。</div>';
+    return;
+  }
+
+  if(dot) dot.className = msg.got ? 'diag-dot ok' : 'diag-dot warn';
+  if(note) note.textContent = msg.got ? '' : '部分属性未取到';
+
+  var html = '';
+
+  // ROOT 状态
+  if(!msg.rootprobed){
+    html += diagRowHtml('car', '是否 ROOT', '未探测', '');
+  } else {
+    html += diagRowHtml('car', '是否 ROOT', msg.root ? '✓ 已 root' : '✗ 未 root',
+                        msg.root ? 'ok' : 'warn');
+  }
+
+  // 9 项（车型/SOC/MCU/Android/VIN/UUID/DID/OPENID + 分辨率）
+  var rows = msg.rows || [];
+  for(var i=0;i<rows.length;i++){
+    html += diagRowHtml('car', rows[i].k, rows[i].v || '（空）', rows[i].v ? '' : 'warn');
+  }
+  if(msg.res) html += diagRowHtml('car', '屏幕分辨率', msg.res);
+
+  // 设备 ID / 序列号
+  if(msg.serial) html += diagRowHtml('car', '设备 ID', msg.serial);
+
+  box.innerHTML = html;
+}
+
+/* ---------- 连通性 ---------- */
+function diagOnLink(lines){
+  var box = document.getElementById('diag-rows-link');
+  var dot = document.getElementById('diag-link-dot');
+  if(!box) return;
+
+  var map = {};
+  for(var i=0;i<lines.length;i++){
+    var m = String(lines[i]).match(/^(\w+)=(.*)$/);
+    if(m) map[m[1]] = m[2].trim();
+  }
+
+  var html = '';
+  var auth = map.AUTH;
+  if(auth === '1'){
+    html += diagRowHtml('link', 'adb 授权', '已开启（首次连接需在车机上点允许）', 'ok');
+  } else if(auth === '0'){
+    html += diagRowHtml('link', 'adb 授权', '未开启', 'warn');
+  }
+  if(map.DEVSTATE) html += diagRowHtml('link', '设备启动完成', map.DEVSTATE === '1' ? '是' : '否');
+  if(map.MODEL) html += diagRowHtml('link', '设备型号', map.MODEL);
+  if(map.ABI) html += diagRowHtml('link', 'CPU 架构', map.ABI);
+  if(map.SDK) html += diagRowHtml('link', 'SDK 版本', map.SDK);
+
+  if(!html) html = '<div class="diag-empty">设备无响应</div>';
+  box.innerHTML = html;
+  if(dot) dot.className = html.indexOf('diag-empty') < 0 ? 'diag-dot ok' : 'diag-dot warn';
+}
+
+/* ---------- 通用行渲染 ---------- */
+var _diagData = {};   // { 'pc:CPU': 'xxx' } 供复制用
+
+function diagRowHtml(sec, k, v, lv){
+  _diagData[sec + ':' + k] = v;
+  var cls = lv ? (' ' + lv) : '';
+  return '<div class="diag-row">'
+    + '<span class="diag-k">' + mkEsc(k) + '</span>'
+    + '<span class="diag-v' + cls + '">' + mkEsc(v) + '</span>'
+    + '<button class="diag-cp" data-sec="' + sec + '" data-k="' + mkEsc(k) + '"'
+    + ' onclick="diagCopyOne(this)" title="复制这一项">复制</button>'
+    + '</div>';
+}
+
+/* ---------- 复制 ---------- */
+function diagCopyText(txt, tip){
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ toast(tip || '已复制', 'ok'); },
+        function(){ mkFallbackCopy(txt); });
+    } else {
+      mkFallbackCopy(txt);
+    }
+  } catch(e){ mkFallbackCopy(txt); }
+}
+
+/* 单行复制：用户明确要的能力「一键单独复制 SOC 版本」 */
+function diagCopyOne(btn){
+  var k = btn.getAttribute('data-k');
+  var sec = btn.getAttribute('data-sec');
+  var v = _diagData[sec + ':' + k];
+  if(v === undefined) v = '';
+  diagCopyText(k + ': ' + v, '已复制「' + k + '」');
+}
+
+/* 整块复制 */
+function diagCopySection(sec){
+  var box = document.getElementById('diag-rows-' + sec);
+  if(!box){ return; }
+  var rows = box.querySelectorAll('.diag-row');
+  var out = [];
+  for(var i=0;i<rows.length;i++){
+    var k = rows[i].querySelector('.diag-k');
+    var v = rows[i].querySelector('.diag-v');
+    if(!k || !v) continue;
+    var kt = (k.textContent||'').trim();
+    var vt = (v.textContent||'').trim();
+    if(!kt) continue;
+    out.push(kt + ': ' + vt);
+  }
+  if(!out.length){ toast('这一块还没有数据', 'err'); return; }
+  var title = { adb:'adb 状态', pc:'本机信息', car:'车机信息', link:'连通性', res:'资源占用' }[sec] || sec;
+  diagCopyText('【' + title + '】\n' + out.join('\n'), '已复制' + title);
+}
+
+/* 全部复制 */
+function diagCopyAll(){
+  var secs = ['adb','pc','car','link'];
+  var titles = { adb:'adb 状态', pc:'本机信息', car:'车机信息', link:'连通性' };
+  var parts = [];
+  for(var s=0;s<secs.length;s++){
+    var box = document.getElementById('diag-rows-' + secs[s]);
+    if(!box) continue;
+    var rows = box.querySelectorAll('.diag-row');
+    var out = [];
+    for(var i=0;i<rows.length;i++){
+      var k = rows[i].querySelector('.diag-k');
+      var v = rows[i].querySelector('.diag-v');
+      if(!k || !v) continue;
+      var kt = (k.textContent||'').trim();
+      if(!kt) continue;
+      out.push(kt + ': ' + (v.textContent||'').trim());
+    }
+    if(out.length) parts.push('【' + titles[secs[s]] + '】\n' + out.join('\n'));
+  }
+  if(!parts.length){ toast('还没有诊断数据', 'err'); return; }
+  var head = '环境诊断 · ' + new Date().toLocaleString('zh-CN') + '\n\n';
+  diagCopyText(head + parts.join('\n\n'), '已复制全部诊断信息');
+}
+
+/* ---------- 资源采样 ---------- */
+function diagToggleSample(){
+  if(_diag.sampling) diagStopSample(); else diagStartSample();
+}
+
+function diagStartSample(){
+  _diag.sampling = true;
+  _diag.lastCpu = -1;
+  var btn = document.getElementById('diag-sample-btn');
+  if(btn){ btn.textContent = '停止采样'; btn.classList.add('primary'); }
+  var box = document.getElementById('diag-rows-res');
+  if(box) box.innerHTML = '<div class="diag-empty">测量中…（CPU 需要两次采样才能算出占用）</div>';
+  try { post('diagsample_reset'); } catch(e){}
+  _diag.timer = setInterval(function(){
+    try { post('diagsample'); } catch(e){}
+  }, 2000);
+  try { post('diagsample'); } catch(e){}
+}
+
+function diagStopSample(){
+  _diag.sampling = false;
+  if(_diag.timer){ clearInterval(_diag.timer); _diag.timer = 0; }
+  var btn = document.getElementById('diag-sample-btn');
+  if(btn){ btn.textContent = '开始采样'; btn.classList.remove('primary'); }
+  var box = document.getElementById('diag-rows-res');
+  if(box) box.innerHTML = '<div class="diag-empty">已停止采样</div>';
+}
+
+function diagOnSample(msg){
+  if(!_diag.sampling || !msg) return;
+  var box = document.getElementById('diag-rows-res');
+  if(!box) return;
+  var cpu = msg.cpu;
+  var mem = msg.mem;
+  var cpuText = (cpu < 0) ? '测量中…' : (cpu + ' %');
+  var html =
+      diagRowHtml('res', '本工具 CPU', cpuText, cpu < 0 ? '' : (cpu > 50 ? 'warn' : 'ok'))
+    + diagRowHtml('res', '本工具内存', mem + ' MB', '');
+  box.innerHTML = html;
+}
+
+/* ---------- 快照历史（localStorage，不存实时采样）---------- */
+function diagLoadHist(){
+  try {
+    var raw = localStorage.getItem(DIAG_HIST_KEY);
+    _diag.hist = raw ? JSON.parse(raw) : [];
+    if(!(_diag.hist instanceof Array)) _diag.hist = [];
+  } catch(e){ _diag.hist = []; }
+  diagRenderHist();
+}
+
+function diagSaveSnapshot(){
+  if(!_diag.local || !_diag.local.length){
+    toast('还没有采集到数据，先点「重新检测」', 'err');
+    return;
+  }
+  // 只存关键字段，不存实时采样的 CPU/内存（用户明确要求）
+  var pick = {};
+  for(var i=0;i<_diag.local.length;i++){
+    var k = _diag.local[i].k;
+    if(k === '本工具 CPU' || k === '本工具内存') continue;
+    pick[k] = _diag.local[i].v;
+  }
+  var snap = {
+    t: new Date().toISOString(),
+    pc: pick,
+    adb: _diag.adb,
+    adbsrc: _diag.adbsrc,
+    car: (_diag.car && _diag.car.rows) ? _diag.car.rows : [],
+    root: _diag.car ? !!_diag.car.root : null
+  };
+  _diag.hist.unshift(snap);
+  while(_diag.hist.length > DIAG_HIST_MAX) _diag.hist.pop();
+  try { localStorage.setItem(DIAG_HIST_KEY, JSON.stringify(_diag.hist)); } catch(e){}
+  diagRenderHist();
+  toast('快照已保存（保留最近 ' + DIAG_HIST_MAX + ' 条）', 'ok');
+}
+
+function diagRenderHist(){
+  var box = document.getElementById('diag-rows-hist');
+  var note = document.getElementById('diag-hist-note');
+  if(!box) return;
+  if(!_diag.hist.length){
+    box.innerHTML = '<div class="diag-empty">还没有快照。点顶部「保存快照」记录当前环境。</div>';
+    if(note) note.textContent = '';
+    return;
+  }
+  if(note) note.textContent = '共 ' + _diag.hist.length + ' 条';
+  var html = '';
+  for(var i=0;i<_diag.hist.length;i++){
+    var s = _diag.hist[i];
+    var d = new Date(s.t);
+    var ts = d.toLocaleString('zh-CN');
+    var soc = '';
+    for(var j=0;j<(s.car||[]).length;j++){
+      if(s.car[j].k === 'SOC 版本'){ soc = s.car[j].v; break; }
+    }
+    var desc = (s.pc['Windows'] || '') + (soc ? (' · SOC ' + soc) : '') + (s.adbsrc ? (' · adb ' + s.adbsrc) : '');
+    html += '<div class="diag-hist-item">'
+      + '<span class="diag-hist-t">' + mkEsc(ts) + '</span>'
+      + '<span class="diag-hist-s" title="' + mkEsc(desc) + '">' + mkEsc(desc) + '</span>'
+      + '<button class="diag-cp" style="opacity:1;" onclick="diagCopyHist(' + i + ')" title="复制这条快照">复制</button>'
+      + '</div>';
+  }
+  box.innerHTML = html;
+}
+
+function diagCopyHist(i){
+  var s = _diag.hist[i];
+  if(!s) return;
+  var out = ['环境快照 · ' + new Date(s.t).toLocaleString('zh-CN'), ''];
+  out.push('【本机】');
+  for(var k in s.pc){ if(s.pc.hasOwnProperty(k)) out.push(k + ': ' + s.pc[k]); }
+  if(s.adb) out.push('adb: ' + s.adb + (s.adbsrc ? ('（' + s.adbsrc + '）') : ''));
+  if(s.car && s.car.length){
+    out.push('');
+    out.push('【车机】');
+    for(var j=0;j<s.car.length;j++) out.push(s.car[j].k + ': ' + s.car[j].v);
+  }
+  diagCopyText(out.join('\n'), '已复制该快照');
+}
+
+function diagClearHistory(){
+  if(!_diag.hist.length){ toast('没有历史记录', 'err'); return; }
+  _diag.hist = [];
+  try { localStorage.removeItem(DIAG_HIST_KEY); } catch(e){}
+  diagRenderHist();
+  toast('历史已清空', 'ok');
+}
+
 function mkOpenLogDir(){
   try { post('openlogdir'); } catch(e) {}
 }
@@ -7198,6 +7848,13 @@ function onMessage(ev){
         try {
           var fb2 = _fb._scanBuf || []; _fb._scanBuf = [];
           if(fb2.length) fbOnPkgScan(fb2.join('\n'));
+        } catch(e){}
+      }
+      // src=20：诊断页连通性收完
+      if(msg.src === 20 && typeof diagOnLink === 'function'){
+        try {
+          var lb = _diag._linkBuf || []; _diag._linkBuf = [];
+          diagOnLink(lb);
         } catch(e){}
       }
       break;
@@ -7320,6 +7977,11 @@ function appendLine(msg){
   if(msg.src === 15){ try { (_fb._scanBuf = _fb._scanBuf || []).push(msg.text || ''); } catch(e){} return; }
   // src=16：Activity 黑名单文件 push 输出
   if(msg.src === 16){ try { fbLog('  ' + (msg.text||''), ''); } catch(e){} return; }
+  // src=20：诊断页 —— 连通性采集（AUTH=/DEVSTATE=/MODEL=/ABI=/SDK=）
+  if(msg.src === 20){
+    try { (_diag._linkBuf = _diag._linkBuf || []).push(msg.text || ''); } catch(e){}
+    return;
+  }
   appendLog(msg);
 }
 
@@ -8131,6 +8793,10 @@ function switchTab(name){
   // 2026-11-22（需求）：Monkey 稳定性测试页
   var pm = document.getElementById('page-monkey');
   if(pm) pm.classList.toggle('active', name === 'monkey');
+  // 2026-11-22（需求）：诊断页
+  var pd = document.getElementById('page-diag');
+  if(pd) pd.classList.toggle('active', name === 'diag');
+  if(name === 'diag'){ try { diagOnEnter(); } catch(e){} }
   // 旧的两个一级页容器已不存在（内容搬进 #fileview-ui / #fileview-text），
   // 保留这两行只为兼容可能存在的极早期代码路径；元素不存在时静默跳过。
   var pu = document.getElementById('page-ui');
@@ -13870,6 +14536,22 @@ function v12OnMessage(msg){
     case 'fbdeploydone':
       try { if(typeof fbOnDeployResult === 'function') fbOnDeployResult(msg); } catch(e){}
       return true;
+    // 2026-11-22：诊断页 —— 本机信息（WMI 采集）
+    case 'diaglocal':
+      try { if(typeof diagOnLocal === 'function') diagOnLocal(msg); } catch(e){}
+      return true;
+    // 2026-11-22：诊断页 —— 车机信息
+    case 'diagcar':
+      try { if(typeof diagOnCar === 'function') diagOnCar(msg); } catch(e){}
+      return true;
+    // 2026-11-22：诊断页 —— 本工具资源采样
+    case 'diagsample':
+      try { if(typeof diagOnSample === 'function') diagOnSample(msg); } catch(e){}
+      return true;
+    // 2026-11-22：诊断页 —— 切换内置 adb 的结果
+    case 'diagadbused':
+      try { if(typeof diagOnUseAdb === 'function') diagOnUseAdb(msg); } catch(e){}
+      return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }
       txApplyFile(msg);
@@ -16459,6 +17141,9 @@ document.addEventListener('DOMContentLoaded', function (){
     if(document.getElementById('mk-list')) mkRenderList();
     if(document.getElementById('mk-est')) mkUpdateEstimate();
   } catch(e) {}
+
+  // 2026-11-22：诊断页快照历史（存 localStorage，不依赖 C#）
+  try { if(typeof diagLoadHist === 'function') diagLoadHist(); } catch(e) {}
 })();
 
 </script>

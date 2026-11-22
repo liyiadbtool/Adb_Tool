@@ -53,7 +53,12 @@ setTimeout(function(){
   var order=[];
   for(var i=0;i<tabs.length;i++) order.push(tabs[i].getAttribute('data-tab'));
   ok('Monkey 页签已加入', order.indexOf('monkey')>=0, order.join(','));
-  ok('Monkey 是最后一个页签', order[order.length-1]==='monkey', order.join(','));
+  // 2026-11-22：诊断页排在 Monkey 之后，所以 Monkey 不再是最后一个。
+  // 改为断言它仍在正确位置（紧跟 file 之后），且诊断页在其后。
+  ok('Monkey 页签位置正确（file 之后）',
+     order.indexOf('monkey')===3, order.join(','));
+  ok('诊断页在 Monkey 之后',
+     order.indexOf('diag')>order.indexOf('monkey'), order.join(','));
   ok('既有三页顺序未变', order.slice(0,3).join(',')==='quick,cmd,file', order.join(','));
 
   var mkTab=null;
