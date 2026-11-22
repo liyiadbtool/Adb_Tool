@@ -280,8 +280,10 @@ function runAll(){
   /* 浏览器会把 HEX 规范化成 rgb()，所以不能数 "#XXXXXX"。
      改数色标数量：每个 stop 形如 "rgb(...) 12.34%"，数百分号。 */
   var bg = track ? (track.style.background || '') : '';
+  /* 2026-11-23（第 25 批）：渐变从 192 个离散色改成**插值后的连续色域**
+     （相邻色差大就补中间色），色标数会远多于 192 —— 这正是不再有硬色带的原因。 */
   var stops = (bg.match(/[\d.]+%/g) || []).length;
-  ok('★ 轨道渐变含 192 个色标', stops === 192, stops + ' | ' + bg.slice(0, 90));
+  ok('★ 轨道渐变用插值的连续色域（>192 色标）', stops > 200, stops);
   ok('' + '滑块 max = 191',
      document.getElementById('as-input').max === '191',
      document.getElementById('as-input').max);

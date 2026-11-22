@@ -518,5 +518,25 @@ ck('圆角刻度令牌齐备（--r-1..--r-6）',
 // ---- T9（2026-11-19）：非自定义分组内指令 name 不许重复（DOM 级断言在 _check_a14.py） ----
 ck('airec 卡片只保留一张（T9）', (src.match(/cmd:'airec'/g) || []).length === 1);
 
+/* ★ 2026-11-23（第 25 批·血的教训）：**铁律 —— </html> 之后不能有任何内容**。
+   上一轮我用"文件末尾追加"往 HTML 里加 CSS，结果写到了 </html> 之后，
+   CSS 变成页面正文（顶部一长串代码）、整个布局崩掉，
+   而所有既有自检都没抓到（它们只查结构/CSS 规则是否存在，不查文档边界）。
+   这条断言就是为了让同类错误**不可能再溜过去**。 */
+(function(){
+  var htmlClose = src.lastIndexOf('</html>');
+  if (htmlClose < 0){
+    ck('文档以 </html> 收尾', false, '找不到 </html>');
+    return;
+  }
+  var tail = src.slice(htmlClose + 7).trim();
+  ck('文档在 </html> 之后没有多余内容', tail === '', tail.slice(0, 80));
+  // 另外确认 <style> 只有一对，且 css 规则没有跑到 style 外
+  var styleOpen = (src.match(/<style>/g) || []).length;
+  var styleClose = (src.match(/<\/style>/g) || []).length;
+  ck('<style> 标签成对且唯一', styleOpen === 1 && styleClose === 1,
+     'open=' + styleOpen + ' close=' + styleClose);
+})();
+
 console.log('');
 console.log(FAIL === 0 ? '  ui.html 静态自检全部通过' : '  失败 ' + FAIL + ' 项');process.exit(FAIL === 0 ? 0 : 1);
