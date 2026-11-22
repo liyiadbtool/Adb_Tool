@@ -49,19 +49,29 @@ JS = r"""
   function has(sel){ return !!document.querySelector(sel); }
 
   setTimeout(function(){
-    /* ============ 需求 1（已改向）：页签滑块去除 ============
-       2026-11-22 第 8 批需求 1 原话：「指令 tab 导航页标签底部的滑动条去除」。
-       所以断言反过来：滑块层必须**不存在**，且激活页签改回自带底色。 */
+    /* ============ 需求 1：顶部页签玻璃胶囊（已恢复）============
+       2026-11-22 修正：上一轮把这里误删了。
+       用户原话「顶部指令、终端、文件的点击特效给我恢复，不要瞎改，
+       我要改的是指令下面导航标签，顶部的没说过要改」。
+       第 8 批说的「页签底部滑动条」指的是左侧导航的宽度拖拽条（.qsplit），
+       不是这个顶部胶囊。所以断言恢复成"胶囊存在且有玻璃质感"。 */
     var gl = document.querySelector('.tab-glider');
-    ok('A32-1 页签滑块层已移除（按需求）', !gl);
-    var actTab = document.querySelector('.tabs .tab.active');
-    ok('A32-1 有激活页签', !!actTab);
-    if (actTab){
-      var acs = getComputedStyle(actTab);
-      // 激活项应实色铺满（不再依赖底下的滑块层）
-      ok('A32-1 激活页签自带实色底',
-         acs.backgroundColor && acs.backgroundColor !== 'rgba(0, 0, 0, 0)',
-         acs.backgroundColor);
+    ok('A32-1 顶部页签胶囊层已恢复', !!gl);
+    if (gl){
+      var cs = getComputedStyle(gl);
+      var bg = cs.backgroundImage || cs.background;
+      ok('A32-1 胶囊底是渐变（非实色）', /gradient/.test(bg), bg.slice(0, 60));
+      var bf = cs.backdropFilter || cs.webkitBackdropFilter;
+      ok('A32-1 胶囊带 backdrop-filter 玻璃', /blur/.test(bf || ''), bf);
+      ok('A32-1 胶囊边缘有内高光(inset)', /inset/.test(cs.boxShadow),
+         cs.boxShadow.slice(0, 50));
+      ok('A32-1 transform 过渡使用弹簧曲线',
+         /cubic-bezier/.test(cs.transition) && /transform/.test(cs.transition),
+         cs.transition.slice(0, 80));
+      var actTab = document.querySelector('.tabs .tab.active');
+      ok('A32-1 有激活页签', !!actTab);
+      ok('A32-1 胶囊有宽度（已定位）', (parseFloat(cs.width) || 0) > 10, cs.width);
+      ok('A32-1 胶囊可见（opacity>0.5）', parseFloat(cs.opacity) > 0.5, cs.opacity);
     }
     testReq2();
 
@@ -72,58 +82,45 @@ JS = r"""
       ok('A32-2 指令页有卡片可点', !!card);
       if (!card){ finish(); return; }
 
-      var name = card.querySelector('.qname').textContent.trim();
+      /* 2026-11-22（需求）：详情弹窗已彻底删除。
+         用户原话「彻底删除这段弹窗（而不是修补动画），恢复"点卡片直接执行"」。
+         所以这里断言：点卡片后**没有**任何遮罩/详情面板出现，
+         命令直接进入执行态（卡片加 .running）。
+
+         为什么之前的"卡死"要整段删而不是修：
+           原实现把 runQuickAt 写进 qzClose 的 320ms 回调，
+           链路一断 → 弹窗关不掉 + 命令不发 + 全屏 mask 挡住界面。 */
+
+      // 拦截 post 以便观察是否真的下发了命令
+      var posted = [];
+      var _origPost = window.post;
+      try {
+        window.post = function(k, v){ posted.push({k:k, v:v}); return _origPost ? _origPost(k,v) : null; };
+      } catch(e) {}
+
       card.click();
 
       setTimeout(function(){
-        var panel = document.querySelector('.qz-panel');
-        ok('A32-2 点击后出现详情面板', !!panel);
-        var mask = document.querySelector('.qz-mask');
-        ok('A32-2 出现遮罩', !!mask && mask.classList.contains('open'));
+        // 1) 不出现任何弹窗/遮罩
+        ok('A32-2 点击卡片不弹详情面板', !document.querySelector('.qz-panel'));
+        ok('A32-2 点击卡片不出现遮罩', !document.querySelector('.qz-mask'));
+        ok('A32-2 界面上无残留 .qz-* 元素',
+           document.querySelectorAll('[class*="qz-"]').length === 0,
+           document.querySelectorAll('[class*="qz-"]').length);
 
-        if (panel){
-          ok('A32-2 详情显示卡片名称', panel.textContent.indexOf(name) >= 0,
-             'panel=' + panel.textContent.slice(0,60) + ' / card=' + name);
-          ok('A32-2 详情有执行按钮', !!panel.querySelector('.qz-run'));
-          ok('A32-2 详情有关闭按钮', !!panel.querySelector('.qz-x'));
+        // 2) 卡片直接进入执行态（说明 onclick=runQuick 真的被触发了）
+        ok('A32-2 卡片直接进入执行态（running）',
+           card.classList.contains('running') || posted.length > 0,
+           'running=' + card.classList.contains('running') + ' posts=' + posted.length);
 
-          // 面板已放大到目标尺寸 —— 用 offsetWidth（不受 transform 影响）
-          // 不能用 getBoundingClientRect：它返回的是**变换后**的视觉尺寸，
-          // 动画正向 scale(1) 收敛但若还在中途，量到的就偏小。
-          var pw = panel.offsetWidth, ph = panel.offsetHeight;
-          var cw = card.offsetWidth;
-          ok('A32-2 面板已放大（比卡片大）',
-             pw > cw * 1.2, 'panel=' + pw + 'x' + ph + ' card=' + cw);
-          // 视觉上要真的铺开：宽度应接近 min(520, vw-48)
-          var expectW = Math.min(520, window.innerWidth - 48);
-          ok('A32-2 面板宽度=目标宽度',
-             Math.abs(pw - expectW) < 4, pw + ' vs ' + expectW);
-          // 放大动画在推进（scale 应从 <1 趋向 1）
-          // 注意：headless 的虚拟时钟会把 CSS 过渡冻在中途，所以这里只断言
-          // "动画确实启动了"（存在 matrix 且 scaleX 在 0~1 收敛），
-          // 不断言"已归位"—— 那在 headless 下必然假红，属测试环境限制而非缺陷。
-          var tf = getComputedStyle(panel).transform;
-          var mtx = tf.match(/matrix\(([-0-9.]+),\s*([-0-9.]+),\s*([-0-9.]+),\s*([-0-9.]+)/);
-          var sx = mtx ? parseFloat(mtx[1]) : (tf === 'none' ? 1 : -1);
-          ok('A32-2 放大动画已启动（scaleX 在 0~1 收敛）',
-             tf === 'none' || (sx >= 0 && sx <= 1.02),
-             'transform=' + tf + ' scaleX=' + sx);
+        // 3) 恢复了原生 onclick（这是"直接执行"的结构保证）
+        ok('A32-2 卡片保留原生 onclick=runQuick*',
+           /runQuick/.test(card.getAttribute('onclick') || ''),
+           card.getAttribute('onclick'));
 
-          // 关闭 → 原路收回后消失
-          panel.querySelector('.qz-x').click();
-          setTimeout(function(){
-            var p2 = document.querySelector('.qz-panel');
-            ok('A32-2 关闭后面板内容已清空',
-               !p2 || p2.textContent.trim() === '', p2 ? p2.textContent.slice(0,40) : 'removed');
-            var m2 = document.querySelector('.qz-mask');
-            ok('A32-2 关闭后遮罩收起',
-               !m2 || !m2.classList.contains('open'));
-            testReq3();
-          }, 520);
-        } else {
-          testReq3();
-        }
-      }, 900);
+        try { window.post = _origPost; } catch(e) {}
+        testReq3();
+      }, 700);
     }
 
     function testReq3(){

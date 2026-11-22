@@ -317,7 +317,13 @@ body{
 
 /* 指令页：侧边导航式 */
 .quick-wrap{flex:1;min-height:0;display:flex;overflow:hidden;}
-.quick-nav{flex:0 0 auto;width:var(--nav-w,148px);background:var(--surface);border-right:1px solid var(--border);padding:14px 6px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-gutter:stable;}   /* 2026-11-21：右侧留白 20px→12px */
+/* 2026-11-22（需求6）：宽度自适应内容，不再由 --nav-w 手工控制。
+   width:max-content 让导航按最长分组名撑开；
+   max-width 防止极长名字把内容区挤没；
+   min-width 保证"仅图标"形态下仍有足够触达面积。
+   注：从固定宽改为自适应后，切换不同长度的分组时会有轻微宽度变化 —— 
+       这是"自适应内容宽度"的固有表现，用户已确认接受。 */
+.quick-nav{flex:0 0 auto;width:max-content;min-width:120px;max-width:240px;background:var(--surface);border-right:1px solid var(--border);padding:14px 6px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;scrollbar-gutter:stable;}
 .quick-nav::-webkit-scrollbar{width:6px;}
 .quick-nav::-webkit-scrollbar-thumb{background:var(--border);border:3px solid transparent;background-clip:content-box;border-radius:var(--r-2);}
 .quick-nav .qnav-title{font-size:12px;color:var(--text-faint);padding:2px 10px 8px;}
@@ -1844,12 +1850,14 @@ html[data-winmax="1"] .rz{display:none;}
   background:var(--accent);color:var(--on-accent);
   box-shadow:inset 0 1px 0 var(--rim-strong),0 1px 3px var(--edge),0 0 0 1px var(--accent);
 }
-/* 设置里的色板复用 #accent-pop（同一份 9 色点，避免两处维护） */
+/* 2026-11-22（需求3）：设置里的色点网格**不再显示**，
+   强调色改由渐变滑动条（#accent-slider）承担。
+   ⚠ 但 DOM 必须保留：applyAccent() 靠遍历 .accent-dot 来同步选中态，
+     删掉节点会让选中态失效。所以这里用 display:none 隐藏而非删除。
+   原本的 display:grid !important 会压过内联 display:none —— 这就是
+   上一轮"色块还在显示"的真正原因。 */
 .set-panel .accent-pop{
-  position:static;display:grid !important;
-  grid-template-columns:repeat(9,1fr);gap:6px;
-  background:transparent;border:0;box-shadow:none;padding:0;
-  animation:none;
+  display:none !important;
 }
 .set-panel .accent-pop-label{display:none;}
 .set-panel .accent-dot{
@@ -2660,11 +2668,9 @@ select{ color-scheme:inherit; }
 /* ---------------- §8 色板：13 个点排 5 列 ----------------
    生成器已经把默认列数改成 5；这里补设置面板里的覆盖，
    顺便让最后一行（3 个）左对齐而不是被拉散。 */
-.accent-pop{ grid-template-columns:repeat(4,40px); }
+/* 2026-11-22（需求3）：设置面板的色点网格统一隐藏（见上方 .set-panel .accent-pop） */
 .set-panel .accent-pop{
-  position:static; display:grid;
-  background:transparent; border:0; box-shadow:none;
-  padding:0; gap:8px;
+  display:none !important;
 }
 .set-panel .accent-pop-label{ display:none; }
 
@@ -2759,13 +2765,11 @@ body.v16-tabdrag .page{
   padding:8px;
   gap:8px;
 }
-/* 可拖分隔条：只改 --nav-w 一个变量，不动布局树 */
-:root{ --nav-w:168px; }   /* 2026-11-22：148→168，让分组名完整显示不截断 */
-.qsplit{
-  flex:0 0 4px;cursor:col-resize;background:transparent;position:relative;z-index:4;
-  transition:background .12s;
-}
-.qsplit:hover, .qsplit.dragging{ background:color-mix(in srgb, var(--accent) 45%, transparent); }
+/* 2026-11-22（需求6）：可拖分隔条 .qsplit 已删除。
+   导航宽度改为**自适应内容**（由 .quick-nav 的 width:auto + max-content 实现），
+   不再需要 :root --nav-w 这个手工宽度变量来驱动拖拽。
+   ⚠ 分组拖拽排序（applyNavOrder / _prefs.navOrder）与此无关，完整保留。 */
+:root{ --nav-w:auto; }
 
 #page-quick .quick-nav{
   border:1px solid var(--border);
@@ -3289,114 +3293,94 @@ body::after{
         所以只在指令页启用、且宽度 >= 960 时显示；小窗自动退回原导航。
    ========================================================================== */
 
-/* ---------- 需求1（第 8 批）：页签样式 ----------
-   用户要求「指令 tab 页签标签底部的滑动条去除」。
-   原来 A32 用 .tab-glider 做玻璃胶囊滑块，现在整个下线，
-   改回「激活项自己带底色」这种最直接的写法 —— 也更不容易出错。 */
+/* ---------- 顶部页签：玻璃胶囊滑块（2026-11-22 恢复）----------
+   ⚠ 教训：第 8 批需求说的「页签标签底部的滑动条去除」指的是
+     **指令页左侧导航标签**下方那条可拖的宽度分隔条（.qsplit），
+     不是顶部这三个页签（指令/终端/文件）的胶囊动效。
+     上一轮删错了，这里原样恢复。 */
 .tabs{ position:relative; }
 
+/* 胶囊本体：半透明玻璃 + 边缘细高光 */
+.tab-glider{
+  position:absolute;
+  top:50%;
+  left:0;
+  height:36px;
+  margin-top:-18px;
+  border-radius:var(--r-pill);
+  pointer-events:none;
+  z-index:0;
+
+  /* 半透明玻璃底：不用实色 accent，否则"玻璃"不成立 */
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 30%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 18%, transparent) 100%);
+  -webkit-backdrop-filter:blur(14px) saturate(180%);
+  backdrop-filter:blur(14px) saturate(180%);
+
+  /* 边缘一圈细高光：外描边 + 内顶部亮线 + 外发光 */
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--accent) 55%, white),
+    inset 0 -1px 0 0 color-mix(in srgb, var(--accent) 25%, transparent),
+    inset 1px 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent),
+    inset -1px 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent),
+    0 2px 10px -2px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 6px 22px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+
+  /* 位移：走弹簧曲线；宽度变化单独给，避免拉伸影响定位 */
+  transition:
+    transform 380ms cubic-bezier(.34,1.56,.64,1),
+    width 240ms cubic-bezier(.22,1,.36,1),
+    opacity 180ms linear;
+
+  opacity:0;
+  will-change:transform,width;
+}
+.tab-glider.on{ opacity:1; }
+
+/* 胶囊滑过高亮扫光（移动瞬间的一道流光，强化"液态"感） */
+.tab-glider::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--accent) 55%, white) 50%,
+    transparent 80%);
+  opacity:0;
+  transition:opacity 200ms linear;
+}
+.tab-glider.moving::after{ opacity:.55; }
+
+/* 激活页签文字要在胶囊之上，且不能自己再画底 */
 .tabs .tab{ position:relative; z-index:1; }
 .tabs .tab.active{
-  background:var(--accent) !important;
-  border-color:var(--accent) !important;
-  color:var(--on-accent) !important;
-  font-weight:600;
-  box-shadow:var(--shadow-sm);
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+  color:var(--accent) !important;
 }
-.tabs .tab.active svg{ stroke:var(--on-accent); }
+.tabs .tab.active svg{ stroke:var(--accent); }
 
-/* 浅色/护眼下保持可读：底用 accent，字用 on-accent（在 tokens 里已配好对比度） */
+/* 浅色/护眼下"半透明 + 提饱和"容易糊，给实一点但仍保留玻璃感 */
+[data-theme="light"] .tab-glider,
+[data-theme="eye"] .tab-glider{
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 22%, var(--chrome-solid)) 0%,
+      color-mix(in srgb, var(--accent) 12%, var(--chrome-solid)) 100%);
+  box-shadow:
+    inset 0 1px 0 0 var(--rim-strong),
+    inset 0 -1px 0 0 color-mix(in srgb, var(--accent) 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent),
+    0 2px 10px -2px color-mix(in srgb, var(--accent) 38%, transparent);
+}
 
-/* ==========================================================================
-   需求2：点击 → 原位放大为详情视图，关闭原路收回
-   --------------------------------------------------------------------------
-   实现要点（FLIP 思路）：
-     ① 点击时先量源卡片 getBoundingClientRect()
-     ② 详情面板以 position:fixed 定位到**那个矩形**（看起来还没动）
-     ③ 下一帧加 .open 类，过渡到目标尺寸/位置 → 视觉上"从原位长出来"
-     ④ 关闭时反向：先回到源矩形，再淡出并移除
-   这样不需要测量祖先变换，也不会被 overflow 裁剪。
-   ========================================================================== */
-.qz-mask{
-  position:fixed; inset:0; z-index:94;
-  background:var(--scrim);
-  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-  opacity:0; transition:opacity 260ms var(--ease-soft);
-}
-.qz-mask.open{ opacity:1; }
-
-.qz-panel{
-  position:fixed;
-  z-index:95;
-  display:flex; flex-direction:column;
-  border-radius:var(--r-6);
-  border:1px solid var(--edge);
-  background:var(--chrome-solid);
-  box-shadow:var(--shadow-modal);
-  overflow:hidden;
-  /* 尺寸/位置由 JS 一次性定格（全程不变），动效只走 transform + opacity：
-     这样动画走合成层、不触发布局重排，也不会因为"width/left 过渡没启动"
-     而卡在起始尺寸（headless / 后台标签页上实测会）。 */
-  transition:
-    transform 320ms cubic-bezier(.34,1.56,.64,1),
-    opacity 220ms var(--ease-soft);
-  transform-origin:center center;
-  will-change:transform,opacity;
-}
-.qz-panel.zoom-from{ opacity:.15; }
-
-.qz-head{
-  flex:0 0 auto;
-  display:flex; align-items:center; gap:10px;
-  padding:14px 16px 12px;
-  border-bottom:1px solid var(--border);
-}
-.qz-ico{
-  width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-4);
-  display:grid;place-items:center;
-  background:var(--accent-soft); color:var(--accent);
-  border:1px solid color-mix(in srgb, var(--accent) 26%, transparent);
-}
-.qz-ico svg{ width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;
-  stroke-linecap:round;stroke-linejoin:round; }
-.qz-title{ flex:1 1 auto; min-width:0; }
-.qz-name{ font-size:15px;font-weight:600;color:var(--text);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-.qz-sub{ margin-top:2px;font-size:11.5px;color:var(--text-faint);
-  font-family:var(--font-mono);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-.qz-x{
-  flex:0 0 auto;width:30px;height:30px;border-radius:var(--r-3);
-  border:1px solid transparent;background:transparent;color:var(--text-dim);
-  cursor:pointer;display:grid;place-items:center;
-  transition:background .15s,color .15s,transform .1s;
-}
-.qz-x:hover{ background:var(--surface-hover);color:var(--text); }
-.qz-x:active{ transform:scale(.94); }
-
-.qz-body{
-  flex:1 1 auto; min-height:0; overflow:auto;
-  padding:14px 16px;
-  display:flex; flex-direction:column; gap:12px;
-}
-.qz-row{ display:flex;flex-direction:column;gap:4px; }
-.qz-k{ font-size:11px;color:var(--text-faint);letter-spacing:.02em; }
-.qz-v{
-  font-family:var(--font-mono); font-size:12.5px; color:var(--text);
-  background:var(--surface);
-  border:1px solid var(--border); border-radius:var(--r-3);
-  padding:8px 10px; word-break:break-all; line-height:1.6;
-  -webkit-user-select:text; user-select:text;
-}
-.qz-hint{ font-size:11.5px;color:var(--text-faint);line-height:1.7; }
-
-.qz-foot{
-  flex:0 0 auto;
-  display:flex; align-items:center; gap:8px;
-  padding:12px 16px;
-  border-top:1px solid var(--border);
-}
-.qz-foot .spacer{ flex:1 1 auto; }
+/* 2026-11-22：.qz-mask / .qz-panel / .qz-* 整套详情弹窗样式已删除
+   （配合 JS 侧同步移除，恢复"点卡片直接执行"）。 */
 
 /* ==========================================================================
    需求1（第 7 批）：左侧导航的「图标形态」+ 名称开关
@@ -3508,12 +3492,19 @@ body[data-navlabels="0"] .qnav-item.active .qico2{
   box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
 }
 
-/* 图标态：导航栏整体收窄 */
-body[data-navlabels="0"]{ --nav-w:64px; }
+/* 图标态：导航栏整体收窄。
+   2026-11-22（需求6）：宽度改自适应后，--nav-w 不再驱动 .quick-nav，
+   所以这里直接覆盖 .quick-nav 的宽度（且不设 max-width，避免被 240px 限制）。 */
+body[data-navlabels="0"]{ --nav-w:auto; }
+body[data-navlabels="0"] .quick-nav{
+  width:64px;
+  min-width:64px;
+  max-width:64px;
+}
 
 /* 图标态下隐藏「导航分隔条」的拖拽提示（宽度已由形态决定，拖了也会被覆盖，
    避免用户以为拖不动是坏的） */
-body[data-navlabels="0"] .qsplit{ cursor:default; }
+/* 2026-11-22：.qsplit 已删除，对应的 cursor 规则一并移除 */
 
 /* ==========================================================================
    需求3（第 7 批）：文件页内的二级分组导航
@@ -3670,19 +3661,65 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
    ============================================================================ */
 
 /* ---------- 需求3：紧凑分段按钮（主题/字号等，按钮更小） ---------- */
+/* 2026-11-22（需求4/5）：设置项并排布局。
+   .set-row2  一行两列，各占一半；窄窗自动换行回上下两行。
+   .set-row3  一行三列（"显示"区的三个开关）。
+   两者都不留白：子项 flex:1 均分宽度。 */
+.set-row2{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;         /* 窄窗自动换行（用户已确认允许） */
+  align-items:flex-start;
+}
+.set-row2 > .set-col{
+  flex:1 1 150px;         /* 2026-11-22：180→150，更容易同排 */
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.set-row2 > .set-col .set-h,
+.set-row3 > .set-col .set-h{
+  /* 并排时标题上间距归零，避免两列高度错位 */
+  margin:0;
+  font-size:11.5px;
+}
+
+.set-row3{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+.set-row3 > .set-col{
+  flex:1 1 100px;         /* 2026-11-22：140→100，"显示"三组更容易同排 */
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.set-row3 > .set-col .set-h{ margin:0; }
+
+/* 2026-11-22（需求2/4/5）：按钮组改成"撑满一行 + 按钮均分宽度"。
+   原来是 inline-flex + align-self:flex-start，只占内容宽度，右侧留白一片，
+   用户明确要求「自适应大小一行，不要留白」。
+   现在：display:flex 撑满父容器，按钮 flex:1 均分；
+   窄窗放不下时按 flex-wrap 自动换行（需求："允许自动换行，按钮布局大小要合理"）。 */
 .set-seg-compact{
-  display:inline-flex;
+  display:flex;
+  width:100%;
   gap:2px;
   padding:2px;
   border-radius:var(--r-2);
   background:var(--surface);
   border:1px solid var(--border);
-  align-self:flex-start;
   flex-wrap:wrap;
 }
 .set-seg-compact button{
+  flex:1 1 auto;
+  min-width:40px;          /* 2026-11-22：52→40，让五档字号能在半宽内容器里放下 */
   height:26px;
-  padding:0 11px;
+  padding:0 5px;
   border:none;
   border-radius:var(--r-1);
   background:transparent;
@@ -3692,6 +3729,7 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
   cursor:pointer;
   transition:background 140ms linear, color 140ms linear;
   white-space:nowrap;
+  text-align:center;
 }
 .set-seg-compact button:hover{ color:var(--text); background:var(--surface-hover); }
 .set-seg-compact button.on{
@@ -3808,7 +3846,9 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
 
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce){
-  .qz-panel{
+  /* 详情弹窗已删除（.qz-panel 不存在了）。
+     改成页签胶囊：它在恢复后带 380ms 弹簧位移，减少动效偏好下应即刻到位。 */
+  .tab-glider{
     transition-duration:1ms !important;
     animation-duration:1ms !important;
   }
@@ -3960,8 +4000,10 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
     <div class="page active" id="page-quick">
       <div class="quick-wrap">
         <div class="quick-nav" id="quick-nav"></div>
-        <!-- 2026-11-21：可拖分隔条（调导航宽度）。双击恢复默认 148px -->
-        <div class="qsplit" id="qsplit" title="拖动调整宽度 · 双击恢复默认"></div>
+        <!-- 2026-11-22（需求6）：导航宽度的可拖分隔条已删除，
+             改为 CSS 自适应内容宽度（width:auto）。
+             注意：分组自身的拖拽排序（applyNavOrder）**保留**，
+             两者是不同的东西 —— 去掉的只是"拖宽度"这条。 -->
         <div class="quick-body">
           <div class="quick-head">
             <span class="qgname" id="quick-group-name">日志抓取</span>
@@ -4531,9 +4573,12 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
       <!-- 3. 显示（深黑 / 护眼强度，内容由 _v15.js 填） -->
       <section class="set-sec" id="a15-sec-display">
         <div class="set-h">显示</div>
-        <div class="set-seg set-seg-compact" id="set-auto"></div>
-        <div class="set-seg set-seg-compact" id="set-oled"></div>
-        <div class="set-seg set-seg-compact" id="set-eyelevel"></div>
+        <!-- 2026-11-22（需求4）：三个开关并排一行，各占三分之一；窄窗自动换行。 -->
+        <div class="set-row3">
+          <div class="set-col"><div class="set-seg set-seg-compact" id="set-auto"></div></div>
+          <div class="set-col"><div class="set-seg set-seg-compact" id="set-oled"></div></div>
+          <div class="set-col"><div class="set-seg set-seg-compact" id="set-eyelevel"></div></div>
+        </div>
         <div class="set-fsize-hint" id="set-display-hint"></div>
       </section>
 
@@ -4543,16 +4588,21 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
         <select class="set-sel" id="set-font" onchange="setFont(this.value)"></select>
       </section>
 
+      <!-- 2026-11-22（需求5）：字号 + 导航栏显示名称 合并为一行，各占一半自适应。
+           窄窗时通过 flex-wrap 自动换行回两行（用户已确认"允许自动换行"）。 -->
       <section class="set-sec">
-        <div class="set-h">字体大小</div>
-        <div class="set-seg set-seg-compact" id="set-fsize"></div>
-      </section>
-
-      <section class="set-sec">
-        <div class="set-h">导航栏显示名称</div>
-        <div class="set-seg set-seg-compact" id="set-navlabels">
-          <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
-          <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
+        <div class="set-row2">
+          <div class="set-col">
+            <div class="set-h">字体大小</div>
+            <div class="set-seg set-seg-compact" id="set-fsize"></div>
+          </div>
+          <div class="set-col">
+            <div class="set-h">导航栏显示名称</div>
+            <div class="set-seg set-seg-compact" id="set-navlabels">
+              <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
+              <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -6833,52 +6883,13 @@ function navDragEnd(ev){
    存 _prefs.uiSplit.nav，启动恢复。 */
 var _navSplit = null;
 
-function applyNavWidth(w){
-  if (!w) return;
-  if (w < 120) w = 120;
-  if (w > 300) w = 300;
-  document.documentElement.style.setProperty('--nav-w', w + 'px');
-}
-
-function initNavSplit(){
-  var bar = document.getElementById('qsplit');
-  if (!bar || bar.__bound) return;
-  bar.__bound = 1;
-
-  bar.addEventListener('pointerdown', function (ev) {
-    if (ev.button !== 0) return;
-    var nav = document.getElementById('quick-nav');
-    _navSplit = { x0: ev.clientX, w0: nav ? nav.getBoundingClientRect().width : 148, pid: ev.pointerId };
-    bar.classList.add('dragging');
-    try { bar.setPointerCapture(ev.pointerId); } catch (e) {}
-    ev.preventDefault();
-  });
-  bar.addEventListener('pointermove', function (ev) {
-    if (!_navSplit) return;
-    applyNavWidth(_navSplit.w0 + (ev.clientX - _navSplit.x0));
-  });
-  function stop() {
-    if (!_navSplit) return;
-    try { bar.releasePointerCapture(_navSplit.pid); } catch (e) {}
-    _navSplit = null;
-    bar.classList.remove('dragging');
-    var nav = document.getElementById('quick-nav');
-    var w = nav ? Math.round(nav.getBoundingClientRect().width) : 148;
-    if (!_prefs.uiSplit) _prefs.uiSplit = {};
-    _prefs.uiSplit.nav = w;
-    try { prefsSave(); } catch (e) {}
-  }
-  bar.addEventListener('pointerup', stop);
-  bar.addEventListener('pointercancel', stop);
-  // 双击恢复默认
-  bar.addEventListener('dblclick', function () {
-    applyNavWidth(148);
-    if (!_prefs.uiSplit) _prefs.uiSplit = {};
-    _prefs.uiSplit.nav = 148;
-    try { prefsSave(); } catch (e) {}
-    try { toast('已恢复默认宽度', 'ok'); } catch (e) {}
-  });
-}
+/* 2026-11-22（需求6）：导航宽度拖拽已删除。
+   原 applyNavWidth / initNavSplit（含双击复位）全部移除 ——
+   导航宽度现在由 CSS 的 width:max-content 自适应内容，不再允许手工拖。
+   ⚠ 分组拖拽排序（applyNavOrder）是另一套逻辑，未受影响。
+   保留 applyNavWidth 的空壳：prefs 恢复路径（uiSplit.nav）还在调它，
+   做成空操作比逐个改调用点安全，也不会让 try/catch 吞掉真异常。 */
+function applyNavWidth(){ /* 已下线：宽度改自适应，忽略历史偏好里的手工宽度 */ }
 
 /* 2026-11-21（第 7 批需求1）：分组图标。
    底部 Dock 已删除，图标迁到这里。按分组名映射，新增分组没配图标时
@@ -13096,7 +13107,7 @@ document.addEventListener('DOMContentLoaded', function (){
 
   function boot() {
     try { initTabDrag(); } catch (e) {}
-    try { initNavSplit(); } catch (e) {}   // 2026-11-21：导航分隔条
+    // 2026-11-22：initNavSplit 已删除（导航宽改自适应内容）
   }
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', boot);
@@ -13830,7 +13841,72 @@ document.addEventListener('DOMContentLoaded', function (){
      保留 window.a32Glider 这个空函数：其它地方（applyTabOrder / a32Init /
      navOrder 恢复）还在调它，做成空操作比逐个删调用点更安全、
      也不会让那些 try/catch 白白吞掉真异常。 */
-  function moveGlider(){ /* 已下线：页签滑块按要求移除，保留空实现供调用点兼容 */ }
+  /* 2026-11-22（修正）：上一轮误删了顶部页签胶囊，这里恢复。
+     用户原话「顶部指令、终端、文件的点击特效给我恢复，不要瞎改，
+     我要改的是指令下面导航标签，顶部的没说过要改」。 */
+  var _glider = null;
+  var _gliderTimer = 0;
+
+  function ensureGlider(){
+    if (_glider && _glider.parentNode) return _glider;
+    var tabs = document.querySelector('.tabs');
+    if (!tabs) return null;
+    _glider = document.createElement('div');
+    _glider.className = 'tab-glider';
+    tabs.insertBefore(_glider, tabs.firstChild);
+    return _glider;
+  }
+
+  function moveGlider(animate){
+    var tabs = document.querySelector('.tabs');
+    var g = ensureGlider();
+    if (!tabs || !g) return;
+    var act = tabs.querySelector('.tab.active');
+    if (!act){
+      g.classList.remove('on');
+      return;
+    }
+
+    var left = act.offsetLeft;
+    var w = act.offsetWidth;
+    var h = act.offsetHeight || 36;
+
+    // 首次定位：不要动画，否则会从左上角"飞"过来
+    if (!animate){
+      g.style.transition = 'none';
+    }
+
+    g.style.height = h + 'px';
+    g.style.marginTop = (-h / 2) + 'px';
+    g.style.width = w + 'px';
+    g.style.transform = 'translateX(' + left + 'px)';
+    g.classList.add('on');
+
+    if (!animate){
+      // 强制回流后再恢复过渡
+      void g.offsetWidth;
+      g.style.transition = '';
+      return;
+    }
+
+    // 移动中的一瞬流光：加 .moving，结束后移除
+    g.classList.add('moving');
+    clearTimeout(_gliderTimer);
+    _gliderTimer = setTimeout(function(){ g.classList.remove('moving'); }, 340);
+  }
+
+  // 包装 switchTab（保持原函数完全不变，只在之后补动效）
+  if (typeof window.switchTab === 'function' && !window.__a32TabWrapped){
+    var _origSwitchTab = window.switchTab;
+    window.switchTab = function(){
+      var r = _origSwitchTab.apply(this, arguments);
+      try { moveGlider(true); } catch(e){}
+      return r;
+    };
+    window.__a32TabWrapped = true;
+  }
+
+  window.a32Glider = moveGlider;
 
   /* ======================================================================
      需求2：点击卡片 → 原位放大为详情视图（关闭原路收回）
@@ -13839,182 +13915,30 @@ document.addEventListener('DOMContentLoaded', function (){
        点击卡片 = 打开详情（放大动画）；详情里的「执行」按钮才发命令。
        这样既不破坏既有的互斥/忙碌/参数补齐逻辑，也让"详情"有实际用途。
      ====================================================================== */
-  var _qz = { mask:null, panel:null, srcRect:null, onKey:null, cur:null };
+  /* ======================================================================
+     2026-11-22（需求）：彻底删除「点击卡片 → 详情弹窗 → 再点执行」的二次确认。
+     ----------------------------------------------------------------------
+     用户原话：「彻底删除这段弹窗（而不是修补动画），恢复"点卡片直接执行"」。
 
-  function qzBuild(){
-    if (_qz.mask) return;
-    var mask = document.createElement('div');
-    mask.className = 'qz-mask';
-    mask.addEventListener('click', function(){ qzClose(); });
-    document.body.appendChild(mask);
-    _qz.mask = mask;
+     删除内容：
+       · _qz 状态 / qzBuild / qzOpen / qzClose（含"原路收回"动画）
+       · 卡片点击拦截器（捕获阶段 preventDefault + qzOpen）
+       · window.qzOpen / window.qzClose 导出
+       · CSS 里的 .qz-mask / .qz-panel / .qz-* 一套
 
-    var p = document.createElement('div');
-    p.className = 'qz-panel';
-    p.addEventListener('click', function(e){ e.stopPropagation(); });
-    document.body.appendChild(p);
-    _qz.panel = p;
-  }
+     为什么整段删而不是修：
+       原实现里「执行」按钮把 runQuickAt 写进 qzClose 的回调，
+       而 qzClose 靠 setTimeout(320ms) 才触发回调。一旦这个链路断掉
+       （缩放动画没提交、面板 state 异常），回调永不执行 →
+       弹窗关不掉 + 命令不发 + 全屏 mask 挡住整个界面 = 表现为"卡死"。
+       没有遮罩层，就不存在卡死的可能。
 
-  function qzTargetRect(){
-    // 目标尺寸：不超过视口，居中
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var w = Math.min(520, vw - 48);
-    var h = Math.min(460, vh - 96);
-    return { left: (vw - w) / 2, top: (vh - h) / 2, width: w, height: h };
-  }
+     删除后的行为：
+       卡片恢复原生 onclick="runQuickAt(...)"，点一下直接执行，
+       与 A32 之前的语义完全一致（互斥/忙碌/参数补齐逻辑都不变）。
+     ====================================================================== */
 
-  function qzOpen(cardEl, item){
-    if (!cardEl || !item) return;
-    qzBuild();
 
-    var src = cardEl.getBoundingClientRect();
-    _qz.srcRect = { left: src.left, top: src.top, width: src.width, height: src.height };
-    _qz.cur = { card: cardEl, item: item };
-
-    var p = _qz.panel;
-    var t = qzTargetRect();
-
-    // ① 面板直接就位到**终点矩形**（尺寸/位置只设一次，全程不动）
-    //    动效全部交给 transform —— 这是关键：
-    //    · 只过渡 transform/opacity，走合成层，绝不触发布局重排
-    //    · 不会被"过渡没启动"坑到（width/left 过渡依赖样式重算，在
-    //      headless / 后台标签页里经常不启动，实测面板会卡在起始尺寸）
-    p.style.transition = 'none';
-    p.style.left = t.left + 'px';
-    p.style.top = t.top + 'px';
-    p.style.width = t.width + 'px';
-    p.style.height = t.height + 'px';
-    p.style.borderRadius = 'var(--r-6)';
-
-    // 计算"从源卡片看过去"的反向变换：缩放 + 平移到卡片中心
-    var sx = src.width / t.width;
-    var sy = src.height / t.height;
-    var dx = (src.left + src.width / 2) - (t.left + t.width / 2);
-    var dy = (src.top + src.height / 2) - (t.top + t.height / 2);
-    p.style.transformOrigin = 'center center';
-    p.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
-    p.style.opacity = '0.15';
-    p.classList.add('zoom-from');
-
-    // ② 填内容
-    var iconSvg = cardEl.querySelector('.qico') ? cardEl.querySelector('.qico').innerHTML : '';
-    var name = item.name || '';
-    var desc = item.desc || '';
-    var cmd = item.cmd || '';
-
-    p.innerHTML =
-      '<div class="qz-head">'
-      +   '<span class="qz-ico">' + iconSvg + '</span>'
-      +   '<span class="qz-title">'
-      +     '<div class="qz-name">' + escHtml(name) + '</div>'
-      +     '<div class="qz-sub">' + escHtml(desc) + '</div>'
-      +   '</span>'
-      +   '<button class="qz-x" title="关闭" aria-label="关闭">'
-      +     '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '
-      +     'stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
-      +   '</button>'
-      + '</div>'
-      + '<div class="qz-body">'
-      +   '<div class="qz-row"><span class="qz-k">执行命令</span>'
-      +     '<span class="qz-v">' + escHtml(cmd || '（无）') + '</span></div>'
-      +   (item.usage ? '<div class="qz-row"><span class="qz-k">用法</span>'
-      +     '<span class="qz-v">' + escHtml(item.usage) + '</span></div>' : '')
-      +   '<div class="qz-hint">'
-      +     (item.arg
-                ? '这条指令需要补充参数，点「执行」会跳到终端并带上命令。'
-                : '点「执行」开始运行；执行期间的输出会出现在终端页与下方记录区。')
-      +   '</div>'
-      + '</div>'
-      + '<div class="qz-foot">'
-      +   '<span class="spacer"></span>'
-      +   '<button class="btn ghost sm qz-cancel">取消</button>'
-      +   '<button class="btn primary sm qz-run">执行</button>'
-      + '</div>';
-
-    // 关闭按钮 / 取消
-    p.querySelector('.qz-x').addEventListener('click', function(){ qzClose(); });
-    p.querySelector('.qz-cancel').addEventListener('click', function(){ qzClose(); });
-
-    // 执行：关闭详情后走原逻辑
-    p.querySelector('.qz-run').addEventListener('click', function(){
-      var c = _qz.cur;
-      var j = c.card ? parseInt(c.card.getAttribute('data-j'), 10) : -1;
-      qzClose(function(){
-        if (j >= 0){
-          if (typeof runQuickAt === 'function') runQuickAt(_quickIdx, j, c.card);
-          else if (typeof runQuick === 'function') runQuick(j);
-        }
-      });
-    });
-
-    // ③ 强制提交起始变换，然后下一拍切到恒等变换 → 触发放大动画
-    void p.offsetWidth;
-    setTimeout(function(){
-      p.style.transition = '';
-      p.style.transform = 'translate(0,0) scale(1,1)';
-      p.style.opacity = '1';
-      p.classList.remove('zoom-from');
-    }, 20);
-
-    _qz.mask.classList.add('open');
-
-    // Esc 关闭
-    _qz.onKey = function(e){ if (e.key === 'Escape'){ e.preventDefault(); qzClose(); } };
-    document.addEventListener('keydown', _qz.onKey);
-  }
-
-  function qzClose(after){
-    if (!_qz.panel) { if (after) after(); return; }
-    var p = _qz.panel;
-    var s = _qz.srcRect;
-    var t = qzTargetRect();
-
-    if (_qz.onKey){ document.removeEventListener('keydown', _qz.onKey); _qz.onKey = null; }
-    _qz.mask.classList.remove('open');
-
-    // 原路收回：尺寸/位置不动，只把 transform 反向缩回源卡片（与打开完全对称）
-    if (s){
-      var sx = s.width / t.width;
-      var sy = s.height / t.height;
-      var dx = (s.left + s.width / 2) - (t.left + t.width / 2);
-      var dy = (s.top + s.height / 2) - (t.top + t.height / 2);
-      p.classList.add('zoom-from');
-      p.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
-      p.style.opacity = '0.15';
-    }
-
-    setTimeout(function(){
-      p.innerHTML = '';
-      p.classList.remove('zoom-from');
-      p.style.transform = '';
-      p.style.opacity = '';
-      _qz.cur = null;
-      if (after) after();
-    }, 320);
-  }
-
-  window.qzOpen = qzOpen;
-  window.qzClose = qzClose;
-
-  // 卡片点击拦截：改为打开详情（捕获阶段，优先于卡片的 onclick=runQuick）
-  document.addEventListener('click', function(e){
-    var card = e.target.closest ? e.target.closest('#quick-grid .qcard') : null;
-    if (!card) return;
-    // 执行中的卡片不拦（那是"停止"动作，应直达原逻辑）
-    if (card.classList.contains('running')) return;
-    // 拖拽刚结束时不要误触发详情
-    if (window.__a32Dragging) return;
-
-    var j = parseInt(card.getAttribute('data-j'), 10);
-    var it = (typeof quickGroups !== 'undefined' && quickGroups[_quickIdx])
-             ? quickGroups[_quickIdx].items[j] : null;
-    if (!it) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    qzOpen(card, it);
-  }, true);
 
 
 
@@ -14022,15 +13946,20 @@ document.addEventListener('DOMContentLoaded', function (){
      初始化
      ====================================================================== */
   function a32Init(){
-    // 1) 页签滑块已按要求下线（moveGlider 是空实现，调用无害，保留兼容）
+    // 1) 顶部页签胶囊：等字体加载完再定位（否则测到的宽度不准，胶囊会偏窄）
+    //    2026-11-22 修正：原实现有三次定位（立即 / 60ms / 260ms），
+    //    上一轮误删后只剩一次，而首次调用时字体往往还没就绪。
     try { moveGlider(false); } catch(e){}
+    setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 60);
+    setTimeout(function(){ try { moveGlider(false); } catch(e){} }, 260);
 
     // 2) 2026-11-22（第 8 批需求4）：强调色滑动条
     try { asInit(); } catch(e){}
     setTimeout(function(){ try { asSyncFromAccent(); } catch(e){} }, 120);
 
-    // 3) 窗口尺寸变化：滑动条位置用百分比定位，无需重算；这里留空以免以后加东西忘了
+    // 3) 窗口尺寸变化：胶囊位置要重算；滑动条用百分比定位，无需重算
     window.addEventListener('resize', function(){
+      try { moveGlider(false); } catch(e){}
       try { asSyncFromAccent(); } catch(e){}
     });
   }
