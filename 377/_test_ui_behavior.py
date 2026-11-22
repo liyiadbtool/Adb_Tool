@@ -775,9 +775,16 @@ BEHAVIOR = r"""
         var zdTxt = document.getElementById('quick-grid').textContent;
         ok('ZD 含「导出高德日志」卡', zdTxt.indexOf('导出高德日志') >= 0);
         var zdItems = quickGroups[zdIdx].items;
+        // 2026-11-22（第 14 批）：智驾出行扩到 18 张卡并重排了分组，
+        // 不再是"第一张就是导出高德日志"，改成按名字查找。
+        var gmItem = null;
+        for(var zi=0; zi<zdItems.length; zi++){
+          if(zdItems[zi].name === '导出高德日志'){ gmItem = zdItems[zi]; break; }
+        }
         ok('ZD 导出高德日志走 :gmqtlog',
-           zdItems.length > 0 && zdItems[0].cmd === ':gmqtlog',
-           zdItems.length > 0 ? zdItems[0].cmd : '空');
+           gmItem !== null && gmItem.cmd === ':gmqtlog',
+           gmItem ? gmItem.cmd : '没找到该卡');
+        ok('ZD 共 18 张卡', zdItems.length === 18, zdItems.length);
       }
       /* ---- 需求 16：改名校验 ---- */
       ok('P16 TBOX 已改名为 Tbox', grpIdx('TBOX') < 0 && grpIdx('Tbox') >= 0);

@@ -318,6 +318,26 @@ namespace AdbLogExport
             if (n == "envhttps" || n == "envhttpscheck") { DoEnvHttps(); return; }
             if (n == "apkverify" || n == "verifyapk") { DoApkVerify(arg); return; }
 
+            // ---- 2026-11-22 第 14 批需求：智驾出行 / 地图排障 ----
+            // :mapinfo          查地图版本/路径/PID/Activity
+            // :mapstop          停止地图进程
+            // :mapclear         清理地图数据（pm clear，会清登录态等全部私有数据）
+            // :maptime / :fullog / :syslog
+            // :timeprep [:settime 时间] / :timerestore
+            // :maptrad          切换繁体（会重启 Android 框架）
+            // :heapdump [包名|PID]  抓 Java 堆（不传参数时用地图包）
+            if (n == "mapinfo" || n == "mapver") { DoMapInfo(); return; }
+            if (n == "mapstop" || n == "mapkill") { DoMapStop(); return; }
+            if (n == "mapclear" || n == "mapwipe") { DoMapClear(); return; }
+            if (n == "fullog" || n == "fulllog") { DoFullLog(); return; }
+            if (n == "syslog" || n == "syslogonly") { DoSysLog(); return; }
+            if (n == "maptrad" || n == "trad") { DoSwitchTraditional(); return; }
+            if (n == "timeprep" || n == "timeprepare") { DoTimePrepare(); return; }
+            if (n == "settime") { DoSetTime(arg); return; }
+            if (n == "timerestore" || n == "timeresume") { DoTimeRestore(); return; }
+            if (n == "mapactive" || n == "mapact") { DoMapActivate(arg); return; }
+            if (n == "heapdump" || n == "hdump") { DoHeapDump(arg); return; }
+
             // :pki [del|pre|prod]   PKI 证书：删除 / 切预发布 / 切正式（root + 多步）
             if (n == "pki" || n == "pkicert") { DoPkiCmd(arg); return; }
 

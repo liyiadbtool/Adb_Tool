@@ -2129,6 +2129,82 @@ namespace AdbLogExport.Gui
                     try { PushAutoState(""); } catch { }
                     break;
 
+                // 2026-11-22（第 14 批）：HeapDump 进程列表。
+                // 页面打开浮层时拉一次，按 RSS 倒序（内存占用大的在前）——
+                // 用户原始需求是"疑似内存泄漏时抓 dump"，谁占内存最多最有用。
+                case "heaplist":
+                    {
+                        Thread thHl = new Thread(delegate()
+                        {
+                            try
+                            {
+                                bool all = GetField(json, "all") == "1";
+                                var rows = App.ListProcRows(all);
+
+                                StringBuilder sb = new StringBuilder();
+                                sb.Append("{\"kind\":\"heaplist\",\"ok\":true,\"rows\":[");
+                                for (int i = 0; i < rows.Count; i++)
+                                {
+                                    if (i > 0) sb.Append(',');
+                                    sb.Append("{\"pid\":").Append(Json(rows[i][0]))
+                                      .Append(",\"rss\":").Append(Json(rows[i][1]))
+                                      .Append(",\"name\":").Append(Json(rows[i][2])).Append('}');
+                                }
+                                sb.Append("]}");
+
+                                Action post = delegate
+                                {
+                                    try { _web.CoreWebView2.PostWebMessageAsJson(sb.ToString()); }
+                                    catch { }
+                                };
+                                if (_web.InvokeRequired) _web.BeginInvoke(post);
+                                else post();
+                            }
+                            catch (Exception ex)
+                            {
+                                try
+                                {
+                                    _web.CoreWebView2.PostWebMessageAsJson(
+                                        "{\"kind\":\"heaplist\",\"ok\":false,\"text\":" + Json(ex.Message) + "}");
+                                }
+                                catch { }
+                            }
+                        });
+                        thHl.IsBackground = true;
+                        thHl.Start();
+                    }
+                    break;
+
+                // 2026-11-22（第 14 批）：HeapDump 执行（页面浮层选中进程后调）。
+                // 放后台线程：dump 大堆可能几分钟，不能卡住 UI 线程。
+                // 用 PID 而不是包名 —— 页面已经拿到准确 PID，避免再解析一次。
+                case "heapdump":
+                    {
+                        string pid = GetField(json, "pid");
+                        Thread thHd = new Thread(delegate()
+                        {
+                            try { App.DoHeapDump(pid); }
+                            catch (Exception ex)
+                            {
+                                try
+                                {
+                                    Action post = delegate
+                                    {
+                                        try { _web.CoreWebView2.PostWebMessageAsJson(
+                                                "{\"kind\":\"toast\",\"ok\":false,\"text\":" + Json("抓堆失败：" + ex.Message) + "}"); }
+                                        catch { }
+                                    };
+                                    if (_web.InvokeRequired) _web.BeginInvoke(post);
+                                    else post();
+                                }
+                                catch { }
+                            }
+                        });
+                        thHd.IsBackground = true;
+                        thHd.Start();
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");

@@ -75,9 +75,11 @@ setTimeout(function(){
     _quickIdx = vrIdx;
     _quickFilter = '';
     renderQuickItems();
+    // 2026-11-22 第 2 版：显隐挂在 .tt-row2 容器上（两个框外面那层网格），
+    // 不再单独控制 tt-log-box / tt-crash-box。
     ok('语音助手分组显示任务框',
-       document.getElementById('tt-log-box').style.display !== 'none',
-       document.getElementById('tt-log-box').style.display);
+       document.getElementById('tt-row2').style.display !== 'none',
+       document.getElementById('tt-row2').style.display);
   }
   // 切到别的分组应隐藏
   for(var j=0;j<quickGroups.length;j++){
@@ -86,8 +88,8 @@ setTimeout(function(){
     }
   }
   ok('其它分组隐藏任务框',
-     document.getElementById('tt-log-box').style.display === 'none',
-     document.getElementById('tt-log-box').style.display);
+     document.getElementById('tt-row2').style.display === 'none',
+     document.getElementById('tt-row2').style.display);
 
   /* ---- 5. 启动：按钮状态机 ---- */
   // headless Edge 没有 WebView2 的 chrome.webview 对象，postObj 会静默失败。

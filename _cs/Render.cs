@@ -155,6 +155,12 @@ namespace AdbLogExport
             UseDefault();
         }
 
+        // 空行：给多段输出之间留呼吸（"①②③" 分步输出时用）
+        internal static void Blank()
+        {
+            Console.WriteLine("");
+        }
+
         // ==================== 三、动作回显 ====================
         // 只在"这条输入被工具接管/改写"时调用（透传不打，否则每条命令多一行噪音）
         //   → adb     devices

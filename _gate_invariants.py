@@ -357,7 +357,7 @@ A35_ADDS = {
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
     "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused",
-                      "autolog", "autostate"]),
+                      "autolog", "autostate", "heaplist"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
@@ -380,7 +380,10 @@ A36_ADDS = {
                      # 2026-11-22 第 2 版：卡片折叠
                      "diagToggleCard",
                      # 2026-11-22 定时任务
-                     "ttStart", "ttStop", "ttTogglePause"]),
+                     "ttStart", "ttStop", "ttTogglePause",
+                     # 2026-11-22 第 14 批：HeapDump 浮层
+                     "openHeapDump", "closeHeapDump", "heapLoad",
+                     "heapPick", "heapGo", "heapFilter"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -418,7 +421,11 @@ A36_ADDS = {
                 "tt-log-box", "tt-log-min", "tt-log-start", "tt-log-pause",
                 "tt-log-stop", "tt-log-state", "tt-log-out", "tt-log-hint",
                 "tt-crash-box", "tt-crash-min", "tt-crash-start", "tt-crash-pause",
-                "tt-crash-stop", "tt-crash-state", "tt-crash-out", "tt-crash-hint"]),
+                "tt-crash-stop", "tt-crash-state", "tt-crash-out", "tt-crash-hint",
+                # 2026-11-22 第 14 批：定时框两列容器 + HeapDump 浮层
+                "tt-row2",
+                "heap-mask", "heap-sub", "heap-search", "heap-all", "heap-list",
+                "heap-sel", "heap-go"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
