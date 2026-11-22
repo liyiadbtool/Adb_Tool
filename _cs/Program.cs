@@ -454,7 +454,19 @@ namespace AdbLogExport
                                 // 2026-11-15（A17）：13 色强调色，非法值回退蓝。
                                 // white / black 是旧版的名字，已合并成 graphite（石墨）——
                                 // 老 ini 里存着的值必须能读进来，否则升级后强调色静默丢失。
-                                string av = (v == null ? "" : v.Trim().ToLowerInvariant());
+                                /* ★ 2026-11-23（第 26 批）：**读取端也要认 HEX**。
+                                   这是"切换强调色后启动又变蓝"的确切根因：
+                                     · 写入端 NormalizeAccent 已支持 #RRGGBB → ini 存下 "#A7B1A3"
+                                     · 读取端这里还是旧的 16 色白名单 → 不认 HEX → 回退 blue
+                                   于是 ini 里明明写着用户选的颜色，启动却永远回到蓝。 */
+                                string av = (v == null ? "" : v.Trim());
+                                if (av.Length == 7 && av[0] == '#'
+                                    && System.Text.RegularExpressions.Regex.IsMatch(av, "^#[0-9A-Fa-f]{6}$"))
+                                {
+                                    ACCENT = av.ToUpperInvariant();
+                                    break;
+                                }
+                                av = av.ToLowerInvariant();
                                 if (av == "white" || av == "black") av = "graphite";
                                 if ("|blue|cyan|teal|mint|green|yellow|orange|red|pink|purple|indigo|brown|graphite|purewhite|eyewhite|glasswhite|"
                                     .IndexOf("|" + av + "|", StringComparison.Ordinal) < 0) av = "blue";
@@ -566,13 +578,32 @@ namespace AdbLogExport
             return def;
         }
 
-        private static string ExeDir()
+        /* ★ 2026-11-23（第 26 批）：**exe 目录必须用进程真实路径**。
+           ------------------------------------------------------------------
+           症状：白天切黑夜 → 关闭 → 再打开还是白天；强调色/字号也一样。
+           根因：单文件发布下 Assembly.GetExecutingAssembly().Location 可能返回空，
+                回退到 Environment.CurrentDirectory —— 那是"启动时的工作目录"，
+                未必是 exe 所在目录。于是 ini 读不到 → 全部用默认值（light + blue），
+                用户改的设置看起来"没保存"。
+           修法：优先 ProcessPath / MainModule.FileName（总是真实 exe 路径）。
+           ------------------------------------------------------------------ */
+        internal static string ExeDir()
         {
-            string dir = "";
-            try { dir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location); }
+            // 本项目是 .NET Framework，没有 Environment.ProcessPath，
+            // 直接用 MainModule.FileName（总是真实 exe 路径，不受单文件解压影响）。
+            try
+            {
+                string mm = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                if (!string.IsNullOrEmpty(mm)) return Path.GetDirectoryName(mm);
+            }
             catch { }
-            if (string.IsNullOrEmpty(dir)) dir = Environment.CurrentDirectory;
-            return dir;
+            try
+            {
+                string d = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                if (!string.IsNullOrEmpty(d)) return d;
+            }
+            catch { }
+            return Environment.CurrentDirectory;
         }
 
         private static bool ParseArgs(string[] args)

@@ -3469,11 +3469,35 @@ namespace AdbLogExport.Gui
 
         // 把主题写回 ini（只改 theme= 那一行，其它原样保留）。
         // 没有 ini 文件（单 exe 目录）或没有这个键时什么都不做 —— 不新建、不破坏。
+        /* ★ 2026-11-23（第 26 批）：保存 ini 必须和 LoadIni 用**同一个**目录解析。
+           原来写的是 AppDomain.BaseDirectory（单文件下可能是临时解压目录），
+           而读取走 Program.ExeDir()（真实 exe 目录）—— 写 A 读 B，
+           表现就是"设置保存了但重启永远读不到"。 */
+        private static string AppGlobalExeDir()
+        {
+            /* 逻辑与 Program.ExeDir() **保持一致**（这里是独立实现，
+               因为 GUI 的编译单元里不包含 Program，直接引用会 CS0234）：
+               优先 MainModule.FileName（真实 exe 路径），最后才回退 BaseDirectory。 */
+            try
+            {
+                string mm = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                if (!string.IsNullOrEmpty(mm)) return Path.GetDirectoryName(mm);
+            }
+            catch { }
+            try
+            {
+                string d = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                if (!string.IsNullOrEmpty(d)) return d;
+            }
+            catch { }
+            return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
         private static void SaveThemePreference(string theme)
         {
             try
             {
-                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+                string p = Path.Combine(AppGlobalExeDir(), "adb_log_export.ini");
                 if (!File.Exists(p)) return;
                 string[] lines = File.ReadAllLines(p);
                 bool found = false;
@@ -3497,7 +3521,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+                string p = Path.Combine(AppGlobalExeDir(), "adb_log_export.ini");
                 // A17：原来这里 ini 不存在就直接 return —— 单 exe 目录本来就可能没有
                 // 配置文件，于是"选了颜色但没落盘"，重启又是默认色。改成没有就新建。
                 string[] lines = File.Exists(p) ? File.ReadAllLines(p) : new string[0];
@@ -3657,7 +3681,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+                string p = Path.Combine(AppGlobalExeDir(), "adb_log_export.ini");
                 if (!File.Exists(p)) return "";
                 foreach (string line in File.ReadAllLines(p))
                 {
@@ -3675,7 +3699,7 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                string p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_log_export.ini");
+                string p = Path.Combine(AppGlobalExeDir(), "adb_log_export.ini");
                 if (!File.Exists(p)) return;
                 string[] lines = File.ReadAllLines(p);
                 bool found = false;
