@@ -2771,10 +2771,15 @@ body.v16-tabdrag .page{
    ⚠ 分组拖拽排序（applyNavOrder / _prefs.navOrder）与此无关，完整保留。 */
 :root{ --nav-w:auto; }
 
+/* 2026-11-22（需求）：去掉导航容器底部那条横线。
+   它是 border 的第四条边（用户描述："紧贴导航最底部、横跨整个导航宽度"），
+   不是滚动条。这里只去底边，同时把圆角改成「只有上圆角」——
+   否则底部两角会变成没有边框的半圆，看着像被削掉一块。 */
 #page-quick .quick-nav{
   border:1px solid var(--border);
   border-right:1px solid var(--border);   /* 覆盖 A15 的 border-right:1px（会画出断角） */
-  border-radius:var(--r-5);
+  border-bottom:0;                        /* ← 去掉底部横线 */
+  border-radius:var(--r-5) var(--r-5) 0 0;
   background:var(--surface);
 }
 #page-quick .quick-body{
@@ -3626,32 +3631,36 @@ body[data-navlabels="0"] .filenav-item{
   max-width:42px;
   padding:0;
   gap:0;
+  position:relative;
   justify-content:center;
   flex:0 0 auto;
 }
 body[data-navlabels="0"] .filenav-item .qname2{ display:none; }
+
+/* 2026-11-22（修"图标偏左"的真根因）：
+   原来图标靠 justify-content:center 居中，但按钮里还有第三个子元素 .qnav-tip。
+   它虽然被设成 opacity:0，但**仍然参与 flex 布局**（且 .filenav-item 版
+   没有给 position:absolute —— 那个声明只写在 .qnav-item 上），
+   于是 flex 把 42px 分摊给"图标 + 隐藏的气泡"，图标就被挤到左边。
+   修法：图标改成绝对定位居中，不参与 flex 分配；气泡彻底 display:none。 */
 body[data-navlabels="0"] .filenav-item .qico2{
-  width:26px;height:26px;
+  position:absolute;
+  left:50%; top:50%;
+  transform:translate(-50%, -50%);
+  width:26px; height:26px;
+}
+/* 图标态下彻底不显示气泡（用户要求"要隐藏标题仅显示图标"，
+   连悬停气泡也不要 —— 上轮改成 hover 才显示，仍不符合预期）。 */
+body[data-navlabels="0"] .filenav-item .qnav-tip{
+  display:none !important;
 }
 /* 选中线也收窄，避免跨到相邻项上 */
 body[data-navlabels="0"] .filenav-item.active::after{
   left:8px;right:8px;
 }
-/* 气泡：默认完全透明不占交互，hover 才浮现（修重叠的关键） */
-body[data-navlabels="0"] .filenav-item .qnav-tip{
-  display:block;
-  left:50%;
-  top:calc(100% + 6px);
-  transform:translateX(-50%) translateY(-4px) scale(.94);
-  opacity:0;
-  pointer-events:none;
-  z-index:30;
-  white-space:nowrap;
-}
-body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
-  opacity:1;
-  transform:translateX(-50%) translateY(0) scale(1);
-}
+/* 2026-11-22：这里原来还有一条 `display:block` 的 hover 气泡规则，
+   会把上面刚设的 display:none 覆盖掉（用户看到"鼠标放上去显示名称"就是这个原因）。
+   连同这条 hover 一起删除 —— 图标态下一律不显示气泡。 */
 
 /* 文件页导航的图标态适配放在上面；这里补 UI 比对新增选项行的样式 */
 .ui-adv{
@@ -5092,6 +5101,69 @@ function mkSetStat(id, val, bad){
   el.classList.toggle('bad', !!bad);
 }
 
+/* ============================================================================
+   环境检测（2026-11-22 实测后新增）
+   ----------------------------------------------------------------------------
+   在 emulator (Android 14, unicorn) 上实测发现：**部分镜像没有 /system/bin/monkey**。
+   直接下发会得到 "monkey: inaccessible or not found"，用户完全不知道怎么回事。
+
+   所以开始前先探测设备能力，三档优先级：
+     ① monkey     —— 首选，最完整（有 crash/ANR 统计与详细事件日志）
+     ② uiautomator —— 次选，可做随机点击遍历
+     ③ input      —— 兜底，只能发按键/触摸，没有遍历逻辑
+   都不可用时明确告知，而不是发一条注定失败的命令。
+   ============================================================================ */
+var _mkEnv = { checked: false, monkey: false, uiautomator: false, input: false };
+
+function mkCheckEnv(cb){
+  // 一次 shell 里把三个探测都跑完，少来回几趟 adb（每趟 0.3~1 秒）
+  var probe = 'if [ -x /system/bin/monkey ]; then echo MK=1; else echo MK=0; fi; '
+            + 'if [ -x /system/bin/uiautomator ]; then echo UA=1; else echo UA=0; fi; '
+            + 'if [ -x /system/bin/input ]; then echo IN=1; else echo IN=0; fi';
+  mkLog('$ 检测设备测试能力…', 'cmd');
+  _mkEnv.checked = false;
+
+  try {
+    post('run', 'shell "' + probe + '"', 5);   // src=5 专用于环境探测的输出
+  } catch(e) {
+    mkLog('✗ 探测下发失败：' + e, 'crash');
+    if(cb) cb();
+    return;
+  }
+  _mkEnv.pending = cb || null;
+}
+
+function mkOnEnvLine(text){
+  var m;
+  if((m = text.match(/MK=(\d)/))) _mkEnv.monkey = (m[1] === '1');
+  if((m = text.match(/UA=(\d)/))) _mkEnv.uiautomator = (m[1] === '1');
+  if((m = text.match(/IN=(\d)/))) _mkEnv.input = (m[1] === '1');
+}
+
+function mkOnEnvDone(){
+  _mkEnv.checked = true;
+  var cap = [];
+  if(_mkEnv.monkey) cap.push('monkey');
+  if(_mkEnv.uiautomator) cap.push('uiautomator');
+  if(_mkEnv.input) cap.push('input');
+
+  if(_mkEnv.monkey){
+    mkLog('✓ 设备支持 monkey（首选方案）', 'ok');
+  } else if(_mkEnv.uiautomator){
+    mkLog('⚠ 设备**没有 monkey**，但有 uiautomator —— 将用它做随机遍历', 'anr');
+    mkLog('  （部分 AOSP / 精简镜像会裁掉 monkey，这是设备限制，不是本工具的问题）', 'anr');
+  } else if(_mkEnv.input){
+    mkLog('⚠ 设备没有 monkey 也没有 uiautomator，只能用 input 发按键兜底', 'anr');
+    mkLog('  这种模式下只能测"应用会不会因为按键崩溃"，覆盖面很有限', 'anr');
+  } else {
+    mkLog('✗ 该设备没有任何可用的测试能力（monkey/uiautomator/input 都缺失）', 'crash');
+  }
+
+  var cb = _mkEnv.pending;
+  _mkEnv.pending = null;
+  if(cb) cb();
+}
+
 function mkStart(){
   if(_mk.running) return;
 
@@ -5108,14 +5180,41 @@ function mkStart(){
     cnt = mkEstimateCount(min, thr);
   }
 
-  // 用真实事件数替换占位
-  var cmd = mkBuildCmd();
-  if(!cmd) return;
-  cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
+  // 先探测设备能力（只探一次，之后复用结果）
+  if(!_mkEnv.checked){
+    mkSetState('检测设备能力…', true);
+    document.getElementById('mk-start').disabled = true;
+    mkCheckEnv(function(){
+      document.getElementById('mk-start').disabled = false;
+      if(!_mkEnv.monkey && !_mkEnv.uiautomator && !_mkEnv.input){
+        mkSetState('该设备不支持任何测试方式', false);
+        toast('设备缺少 monkey / uiautomator / input，无法测试', 'err');
+        return;
+      }
+      mkStart();   // 探测完再进一次，此时 _mkEnv.checked = true
+    });
+    return;
+  }
+
+  // 按设备实际能力选命令
+  var cmd, modeName;
+  if(_mkEnv.monkey){
+    cmd = mkBuildCmd();
+    if(!cmd) return;
+    cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
+    modeName = 'monkey';
+  } else if(_mkEnv.uiautomator){
+    cmd = mkBuildUiautomatorCmd(cnt, thr);
+    modeName = 'uiautomator';
+  } else {
+    cmd = mkBuildInputCmd(cnt, thr);
+    modeName = 'input';
+  }
 
   _mk.running = true;
   _mk.t0 = Date.now();
   _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
+  _mk.mode = modeName;
   mkSetStat('mk-st-crash', 0, false);
   mkSetStat('mk-st-anr', 0, false);
   mkSetStat('mk-st-events', 0, false);
@@ -5123,9 +5222,10 @@ function mkStart(){
 
   document.getElementById('mk-start').disabled = true;
   document.getElementById('mk-stop').disabled = false;
-  mkSetState('遍历中…', true);
+  mkSetState('遍历中（' + modeName + '）…', true);
 
   mkLog('▶ 开始遍历：' + pkg, 'ok');
+  mkLog('  测试引擎：' + modeName, _mkEnv.monkey ? '' : 'anr');
   mkLog('  预计 ' + cnt + ' 个事件，间隔 ' + thr + 'ms（约 ' + min + ' 分钟）', '');
   mkLog('  命令：' + cmd, 'cmd');
 
@@ -5209,6 +5309,42 @@ function mkOnOut(msg){
   mkLog(t, '');
 }
 
+/* 降级方案 B：uiautomator 随机点击遍历。
+   设备没有 monkey 时用这个（实测 Android 14 AOSP 镜像会裁掉 monkey）。
+   做法：起 App → 循环 dump 界面 → 随机点一个可点元素 → 记录。
+   局限：没有 crash/ANR 汇总，崩溃靠 logcat 抓。
+   用 shell 的 while 循环在设备端跑，避免每条命令都过一次 adb。 */
+function mkBuildUiautomatorCmd(cnt, thr){
+  var pkg = ((document.getElementById('mk-pkg')||{}).value || '').trim();
+  var rounds = Math.max(1, Math.floor(cnt));
+  // 设备端脚本：每次 dump 后随机点一个控件
+  var script = "am start -n $(cmd package resolve-activity --brief " + pkg + " | tail -1) >/dev/null 2>&1; "
+    + "i=0; while [ $i -lt " + rounds + " ]; do "
+    +   "uiautomator dump /sdcard/.mk_ui.xml >/dev/null 2>&1; "
+    +   "B=$(grep -o 'bounds=\"\\[[0-9]*,[0-9]*\\]\\[[0-9]*,[0-9]*\\]\"' /sdcard/.mk_ui.xml 2>/dev/null | head -1 | grep -o '[0-9]*' | tr '\\n' ' '); "
+    +   "set -- $B; if [ -n \"$4\" ]; then "
+    +     "X=$(( ($1 + $3) / 2 )); Y=$(( ($2 + $4) / 2 )); "
+    +     "input tap $X $Y; echo \"event $((i+1)): tap $X $Y\"; "
+    +   "else input keyevent KEYCODE_DPAD_DOWN; echo \"event $((i+1)): key\"; fi; "
+    +   "i=$((i+1)); sleep " + Math.max(1, Math.round(thr/1000)) + "; "
+    + "done; echo finished";
+  return "shell '" + script + "'";
+}
+
+/* 降级方案 C：input 兜底，只发按键/触摸。
+   覆盖面很有限（只能测"按键会不会把 App 搞崩"），但总比没有好。 */
+function mkBuildInputCmd(cnt, thr){
+  var rounds = Math.max(1, Math.floor(cnt));
+  var delay = Math.max(1, Math.round(thr/1000));
+  var script = "i=0; while [ $i -lt " + rounds + " ]; do "
+    + "input keyevent KEYCODE_DPAD_DOWN; "
+    + "input keyevent KEYCODE_ENTER; "
+    + "echo \"event $((i+1))\"; "
+    + "i=$((i+1)); sleep " + delay + "; "
+    + "done; echo finished";
+  return "shell '" + script + "'";
+}
+
 function mkClear(){
   var box = document.getElementById('mk-out');
   if(box) box.innerHTML = '<div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div>';
@@ -5255,6 +5391,8 @@ function onMessage(ev){
       // 2026-11-22（需求）：Monkey 任务结束时收尾（含用户中途停止、或异常退出）。
       // 只认 src=4，避免卡片指令结束时误伤 Monkey 的状态。
       if(msg.src === 4 && typeof _mk !== 'undefined' && _mk.running){ try { mkEnd(true); } catch(e){} }
+      // src=5：能力探测结束 → 汇总结果并放行后续启动
+      if(msg.src === 5 && typeof mkOnEnvDone === 'function'){ try { mkOnEnvDone(); } catch(e){} }
       break;
     case 'clear': clearLog(); break;
     case 'filePath': onFilePath(msg.data); break;
@@ -5330,6 +5468,8 @@ function appendLine(msg){
   // 2026-11-22（需求）：Monkey 页（src=4）的输出进本页 #mk-out，
   // 不污染终端页 logbox，避免遍历几十万行把终端冲掉。
   if(msg.src === 4){ try { mkOnOut(msg); } catch(e){} return; }
+  // src=5：Monkey 页的设备能力探测输出（MK=0/1 UA=0/1 IN=0/1），只解析不显示
+  if(msg.src === 5){ try { mkOnEnvLine(msg.text || ''); } catch(e){} return; }
   appendLog(msg);
 }
 

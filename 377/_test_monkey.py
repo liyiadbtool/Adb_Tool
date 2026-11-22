@@ -131,6 +131,28 @@ setTimeout(function(){
     ok('终端页未被污染',
        (document.getElementById('logbox-0')||{textContent:''}).textContent.indexOf('CRASH:')<0);
 
+    /* ---- 5b. 设备能力降级（2026-11-22 实测后补）----
+       实测 emulator Android 14 镜像是**没有 monkey 的**（部分 AOSP 会裁掉）。
+       所以必须有降级路径，否则用户点了"开始遍历"只会看到一条失败命令。 */
+    ok('环境检测函数存在', typeof mkCheckEnv === 'function');
+    ok('uiautomator 降级命令可生成',
+       /uiautomator dump/.test(mkBuildUiautomatorCmd(5, 300) || ''),
+       (mkBuildUiautomatorCmd(5,300)||'').slice(0,60));
+    ok('input 兜底命令可生成',
+       /input keyevent/.test(mkBuildInputCmd(5, 300) || ''),
+       (mkBuildInputCmd(5,300)||'').slice(0,60));
+    ok('降级命令轮数正确',
+       (mkBuildInputCmd(7, 200) || '').indexOf('i -lt 7') >= 0);
+
+    // 能力解析：喂一行模拟输出验证解析逻辑
+    _mkEnv.monkey=false; _mkEnv.uiautomator=false; _mkEnv.input=false;
+    mkOnEnvLine('MK=0');
+    mkOnEnvLine('UA=1');
+    mkOnEnvLine('IN=1');
+    ok('能力解析 MK=0 正确', _mkEnv.monkey === false);
+    ok('能力解析 UA=1 正确', _mkEnv.uiautomator === true);
+    ok('能力解析 IN=1 正确', _mkEnv.input === true);
+
     /* ---- 6. 清空 ---- */
     mkClear();
     ok('清空后回到空态', !!box.querySelector('.mk-empty'));
