@@ -150,7 +150,7 @@ body{
   user-select:none;-webkit-user-select:none;
 }
 .wadb-btn:hover{color:var(--text);border-color:var(--accent);}
-.wadb-btn.on{color:var(--ok);border-color:var(--ok);background:var(--ok-soft);}
+.wadb-btn.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
 .wadb-btn.busy{color:var(--text-faint);pointer-events:none;}
 .wadb-btn .wdot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto;}
 .wadb-btn.busy .wdot{animation:rpulse 1s ease-in-out infinite;}
@@ -264,7 +264,7 @@ body{
 .logbox::-webkit-scrollbar{width:12px;}
 .logbox::-webkit-scrollbar-thumb{background:var(--border);border:4px solid transparent;background-clip:content-box;border-radius:var(--r-3);}
 .ln{white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;}
-.c-ok{color:var(--ok);}.c-err{color:var(--err);}.c-dim{color:var(--text-dim);}.c-faint{color:var(--text-faint);}.c-path{color:var(--text);}
+.c-ok{color:var(--accent);}.c-err{color:var(--err);}.c-dim{color:var(--text-dim);}.c-faint{color:var(--text-faint);}.c-path{color:var(--text);}
 .echo{display:flex;gap:8px;margin:12px 0 3px;}
 .echo .pmt{color:var(--text-faint);}
 .echo .cmd{color:var(--text);font-weight:600;}
@@ -478,7 +478,7 @@ body{
 .qcard.progress.running .qbar{display:block;}
 .qcard.progress.running .qbar i{display:block;height:100%;width:30%;background:var(--accent);animation:qrun 1.2s ease-in-out infinite;}
 .qcard.progress.done .qbar{display:block;}
-.qcard.progress.done .qbar i{display:block;height:100%;width:100%;background:var(--ok);}
+.qcard.progress.done .qbar i{display:block;height:100%;width:100%;background:var(--accent);}
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes qrun{0%{transform:translateX(-100%);}100%{transform:translateX(400%);}}
 
@@ -605,7 +605,7 @@ body{
   font-size:11px;padding:0 4px;border-radius:var(--r-1);line-height:15px;font-weight:600;
   white-space:nowrap;
 }
-.fb-row .fb-meta .badge.ok{color:var(--ok);background:var(--accent-soft);}
+.fb-row .fb-meta .badge.ok{color:var(--accent);background:var(--accent-soft);}
 .fb-row .fb-meta .badge.err{color:var(--err);background:var(--err-soft);}
 /* 耗时：右对齐定宽，个位/万位数字都对齐在同一列 */
 .fb-row .fb-meta .d{
@@ -870,7 +870,7 @@ body{
 .apk-pkg.bad{border-color:var(--err);}
 .apk-pkg::placeholder{color:var(--text-faint);font-family:var(--font-ui);}
 .apk-pkghint{flex:0 0 auto;font-size:12px;color:var(--err);white-space:nowrap;}
-.apk-pkghint.ok{color:var(--ok);}
+.apk-pkghint.ok{color:var(--accent);}
 /* 下拉容器：面板里唯一会"浮起来"的东西，因此自己带定位上下文 */
 .apk-select{position:relative;flex:1;min-width:0;}
 .apk-selbtn{
@@ -1061,7 +1061,7 @@ body{
 .ns-tip{font-size:11px;color:var(--text-faint);line-height:1.6;flex:1 1 260px;min-width:0;}
 /* T3：代理状态与实时流量 */
 .ns-state{font-size:12px;color:var(--text-faint);white-space:nowrap;}
-.ns-state.on{color:var(--ok);font-weight:600;}
+.ns-state.on{color:var(--accent);font-weight:600;}
 .ns-stat{font-size:11px;color:var(--text-faint);font-family:var(--font-mono);white-space:nowrap;}
 .ns-panel input,.ns-panel select{
   height:28px;background:var(--bg);color:var(--text);border:1px solid var(--border);
@@ -1205,7 +1205,7 @@ input:disabled,select:disabled,textarea:disabled{
 /* 视图五态：loading / empty / error / success（不改变内容，只统一外观） */
 .fs-empty,.fs-info,.ui-empty,.log-empty{ color:var(--text-faint); }
 .fs-empty.err,.fb-row.err .fb-meta,.toast.err{ color:var(--err); }
-.toast.ok,.fb-row .fb-meta .badge.ok{ color:var(--ok); }
+.toast.ok,.fb-row .fb-meta .badge.ok{ color:var(--accent); }
 .spin{ animation:spin 900ms linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 .qcard.running,.cast-cell.on{ border-color:var(--accent); }
@@ -2759,7 +2759,7 @@ select{ color-scheme:inherit; }
 .v15-pop .v15-row .v15-dot{
   width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--text-faint);
 }
-.v15-pop .v15-row .v15-dot.ok{ background:var(--ok); }
+.v15-pop .v15-row .v15-dot.ok{ background:var(--accent); }
 .v15-pop .v15-row .v15-dot.err{ background:var(--err); }
 .v15-pop .v15-sep{ height:1px; background:var(--border); margin:7px 2px; }
 .v15-pop .v15-acts{ display:flex; gap:6px; padding:2px; }
@@ -4137,7 +4137,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-empty{ color:var(--text-faint); font-family:var(--font-ui); font-size:12px; }
 .mk-out .mk-l-crash{ color:var(--err); font-weight:600; }
 .mk-out .mk-l-anr{ color:var(--accent); font-weight:600; }
-.mk-out .mk-l-ok{ color:var(--ok); }
+.mk-out .mk-l-ok{ color:var(--accent); }
 .mk-out .mk-l-cmd{ color:var(--accent); }
 
 
@@ -4270,9 +4270,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
   white-space:nowrap;
 }
 .fb-status.ok{
-  color:var(--ok);
-  border-color:var(--ok);
-  background:var(--ok-soft);
+  color:var(--accent);
+  border-color:var(--accent);
+  background:var(--accent-soft);
 }
 .fb-status.bad{
   color:var(--err);
@@ -4421,8 +4421,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .h5-new-url{ flex:1 1 auto; }
 .h5-ok{ border-color:var(--accent); color:var(--accent); }
 
-/* 删除类按钮 hover 标红 */
-.h5-del:hover{ border-color:var(--err); color:var(--err); }
+/* 删除类按钮的 hover 色由 .h5-gact--del / .h5-seg-del 各自负责，
+   用户明确要求删除按钮不要常驻红色，仅在 hover 时给语义提示。 */
 
 .h5-empty{
   padding:40px 12px; text-align:center;
@@ -4578,7 +4578,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-radius:var(--r-pill);
   border:1px solid var(--border);
 }
-.clu-state.ok{ color:var(--ok); border-color:var(--ok); background:var(--ok-soft); }
+.clu-state.ok{ color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
 .clu-state.bad{ color:var(--err); border-color:var(--err); background:var(--err-soft); }
 .clu-state.wait{ color:var(--accent); border-color:var(--accent); }
 
@@ -4643,7 +4643,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   flex:0 0 auto;
 }
 .diag-sum-item.ok{ color:var(--text-dim); }
-.diag-sum-item.ok .sd{ background:var(--ok); }
+.diag-sum-item.ok .sd{ background:var(--accent); }
 .diag-sum-item.warn{ color:var(--accent); background:var(--accent-soft); }
 .diag-sum-item.warn .sd{ background:var(--accent); }
 .diag-sum-item.bad{ color:var(--err); background:var(--err-soft); }
@@ -4750,7 +4750,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   background:var(--text-faint);
   flex:0 0 auto;
 }
-.diag-dot.ok{ background:var(--ok); }
+.diag-dot.ok{ background:var(--accent); }
 .diag-dot.bad{ background:var(--err); }
 .diag-dot.warn{ background:var(--accent); }
 .diag-card-title{ font-size:13px; font-weight:700; color:var(--text); }
@@ -4802,7 +4802,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 .diag-v.warn{ color:var(--accent); }
 .diag-v.bad{ color:var(--err); }
-.diag-v.ok{ color:var(--ok); }
+.diag-v.ok{ color:var(--accent); }
 
 /* 2026-11-22（需求）：复制按钮常驻可见。
    上一版是 opacity:0 + hover 才出现 —— 用户明确说要改。 */
@@ -4836,7 +4836,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 .diag-meter-fill{
   height:100%; border-radius:var(--r-pill);
-  background:var(--ok);
+  background:var(--accent);
   transition:width 220ms linear, background 220ms linear;
 }
 .diag-meter-fill.warn{ background:var(--accent); }
@@ -4918,7 +4918,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   font-family:var(--font-mono);
   margin-left:auto;
 }
-.tt-state.run{ color:var(--ok); }
+.tt-state.run{ color:var(--accent); }
 .tt-state.pause{ color:var(--accent); }
 .tt-out{
   max-height:96px; overflow-y:auto; overflow-x:hidden;
@@ -5130,6 +5130,57 @@ body[data-navlabels="0"] .filenav-item.active::after{
   text-transform:none;   /* 原来只有 .qcat 写了 uppercase，对中文无效，删掉 */
 }
 
+/* ============================================================================
+   2026-11-23（第 21 批）：H5 操作按钮 —— **一体化分段控件**
+   ----------------------------------------------------------------------------
+   用户反馈：打开/复制/删除 三个独立小方块，和全局按钮风格不一致，
+   要求改成"一体的按钮"，并参考设置里的「字体大小」那组（.set-seg）。
+   规格直接对齐 .set-seg：
+     容器 --well 底 + --edge 描边 + --r-5 圆角 + 3px 内边距
+     每格 flex:1 均分、无边框、透明底
+     hover 单格强调色底，当前态用 --accent 填充
+   ============================================================================ */
+.h5-seg{
+  flex:0 0 auto;
+  display:flex; gap:2px; padding:2px;
+  background:var(--well);
+  border:1px solid var(--edge);
+  border-radius:var(--r-4);
+}
+.h5-seg button{
+  flex:1;
+  min-width:46px; height:26px;
+  border:0; border-radius:var(--r-2);
+  background:transparent;
+  color:var(--text-dim);
+  font-family:var(--font-ui); font-size:11px; font-weight:600;
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:background 120ms linear, color 120ms linear;
+}
+.h5-seg button:hover{ background:var(--accent-soft); color:var(--accent); }
+.h5-seg button:active{ background:var(--accent); color:var(--on-accent); }
+/* 确定/删除只在 hover 时给强调色，不常驻红（用户要求） */
+.h5-seg .h5-seg-del:hover{ background:var(--accent-soft); color:var(--accent); }
+.h5-seg .h5-seg-ok{
+  background:var(--accent); color:var(--on-accent);
+}
+.h5-seg .h5-seg-ok:hover{ filter:brightness(1.08); }
+
+/* 分组头的两个操作：同套尺寸，但更轻（不抢条目按钮的视觉重量） */
+.h5-gact{
+  flex:0 0 auto;
+  height:26px; padding:0 10px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:transparent; color:var(--text-dim);
+  font-family:var(--font-ui); font-size:11px; font-weight:600;
+  cursor:pointer;
+  transition:border-color 120ms linear, color 120ms linear;
+}
+.h5-gact:hover{ border-color:var(--accent); color:var(--accent); }
+.h5-gact--del{ padding:0 8px; }
+.h5-gact--del:hover{ border-color:var(--err); color:var(--err); }
+
 /* ---- 2026-11-23（第 20 批 S6）：H5 添加分组弹窗（仿 .apk-mgr）---- */
 .h5g-mask{
   position:fixed; inset:0; z-index:96;
@@ -5291,6 +5342,23 @@ body[data-navlabels="0"] .filenav-item.active::after{
   .res-col + .res-col{ border-left:0; padding-left:0; border-top:1px solid var(--border); padding-top:10px; margin-top:4px; }
 }
 .res-col .diag-group:first-child{ padding-top:2px; }
+
+/* ★ 2026-11-23（第 21 批）：资源占用的进程名不再换行。
+   根因：.diag-k 全局是 flex:0 0 96px（固定 96px），
+   而 "1. msedgewebview2" 这类名字超过 96px 就折成两行 ——
+   左侧明明有大量留白却用不上。
+   这里只针对资源占用放开：名称吃满可用宽度（超长省略），数值定宽右对齐。 */
+.res-col .diag-row{ align-items:center; }
+.res-col .diag-k{
+  flex:1 1 auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.res-col .diag-v{
+  flex:0 0 auto;
+  min-width:68px;
+  text-align:right;
+  word-break:normal; overflow-wrap:normal;
+}
 
 /* ---- A4 圆角：面板/卡片统一 --r-4（.diag-card 原来是 --r-5）---- */
 .diag-card{ border-radius:var(--r-4); }
@@ -9246,7 +9314,7 @@ function ttLog(mode, text, lv){
   // 有第一行日志才展开 —— 空闲时不占高度。
   if(box.style.display === 'none') box.style.display = '';
   var d = document.createElement('div');
-  if(lv === 'ok') d.style.color = 'var(--ok)';
+  if(lv === 'ok') d.style.color = 'var(--accent)';
   else if(lv === 'warn') d.style.color = 'var(--accent)';
   else if(lv === 'bad') d.style.color = 'var(--err)';
   d.textContent = text;
@@ -9557,10 +9625,13 @@ function diagStartSample(){
 
   function tick(){
     if(!_diag.sampling) return;
-    // ★ 第 19 批：只发 diagtop5。
-    //   原来还发 diagsample（本工具自身 CPU/内存），但那个渲染函数
-    //   diagRenderSample 和新的 renderRes 都会写 #diag-rows-res，互相覆盖。
-    //   用户要的是"剩余 CPU/内存 + TOP5"，本工具开销不是重点，去掉。
+    /* 2026-11-23（第 21 批）：两条通道都发。
+       第 19 批只发 diagtop5，把本应用自身的 CPU/内存弄没了（用户指出是破坏功能）。
+       现在：
+         diagsample → 本工具自身 CPU/内存（回包走 diagOnSample，只记录数值）
+         diagtop5   → 本机剩余 + 车机 + TOP5
+       两个回包都触发 renderRes()，统一在一个容器里渲染，不会互相覆盖。 */
+    try { post('diagsample'); } catch(e){}
     try { postObj({ kind: 'diagtop5' }); } catch(e){}
   }
 
@@ -9578,11 +9649,11 @@ function diagStopSample(){
 }
 
 function diagOnSample(msg){
-  // 第 19 批：本工具自身 CPU/内存不再在「资源占用」里显示。
-  // 保留这个入口只记录数值（调试时能看），不渲染。
+  // 2026-11-23（第 21 批）：恢复渲染 —— 本应用占用是原有功能，不该被删。
   if(!_diag.sampling || !msg) return;
   _diag.lastCpu = msg.cpu;
   _diag.lastMem = msg.mem;
+  renderRes();
 }
 
 /* 资源占用渲染（2026-11-22 第 2 版）：CPU / 内存都用进度条。
@@ -10858,8 +10929,29 @@ function renderRes(){
   // 2026-11-23（第 20 批 S2）：左本机 / 右车机，两栏并排
   var html = '<div class="res-cols">';
 
-  // ---- 左栏：本机 ----
-  html += '<div class="res-col"><div class="diag-group">本机</div>';
+  // ---- 左栏：本应用 + 本机 ----
+  html += '<div class="res-col">';
+
+  /* ★ 2026-11-23（第 21 批）：恢复「本应用占用」。
+     第 19 批我把它换成了"剩余 CPU/内存"，属于**替换**而不是新增，
+     把原有功能弄丢了。现在三块并存：
+        本应用占用  ← 这次恢复（本工具自身的 CPU / 内存）
+        本机剩余    ← 第 20 批加的
+        TOP5        ← 第 20 批加的 */
+  html += '<div class="diag-group">本应用</div>';
+  if (_diag.sampling && _diag.lastCpu >= 0){
+    html += resRow('CPU', _diag.lastCpu, ' %');
+    html += resRow('内存', _diag.lastMem, ' MB');
+  } else if (_diag.sampling){
+    html += '<div class="diag-row"><span class="diag-k">CPU</span>'
+          + '<span class="diag-v" style="color:var(--text-faint)">测量中…</span></div>';
+    html += resRow('内存', _diag.lastMem > 0 ? _diag.lastMem : null, ' MB');
+  } else {
+    html += resRow('CPU', null);
+    html += resRow('内存', null);
+  }
+
+  html += '<div class="diag-group">本机</div>';
   if (host && host.ok){
     html += resRow('剩余 CPU', host.freeCpu, '%');
     html += resRow('剩余内存', host.freeMem, ' GB');
@@ -10904,6 +10996,7 @@ function top5OnData(msg){
   if (!msg) return;
   _top5.host = msg.host || null;
   _top5.car = msg.car || null;
+  // 连带本应用自身的占用一起刷新（它由 diagsample 通道单独回来）
   renderRes();
 }
 
@@ -11042,8 +11135,8 @@ function h5Render(){
           +   '<span class="h5-gname" onclick="h5ToggleGroup(\'' + gid + '\')">' + mkEsc(g.name) + '</span>'
           +   '<span class="h5-gcount">' + (g.items || []).length + '</span>'
           +   '<div class="spacer"></div>'
-          +   '<button class="mini-btn" onclick="h5StartAdd(\'' + gid + '\')">+ 添加</button>'
-          +   '<button class="mini-btn h5-del" onclick="h5DelGroup(\'' + gid + '\')" title="删除分组">×</button>'
+          +   '<button class="h5-gact" onclick="h5StartAdd(\'' + gid + '\')">+ 添加</button>'
+          +   '<button class="h5-gact h5-gact--del" onclick="h5DelGroup(\'' + gid + '\')" title="删除分组">×</button>'
           + '</div>';
 
     // 条目（折叠时不渲染）
@@ -11059,10 +11152,13 @@ function h5Render(){
             // 2026-11-23（第 20 批 S7）：链接本身也可点，直接开浏览器
             +   '<span class="h5-url" title="' + escAttr(it.url) + '" '
             +     'onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">' + mkEsc(it.url) + '</span>'
-            +   '<div class="h5-acts">'
-            +     '<button class="mini-btn" onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">打开</button>'
-            +     '<button class="mini-btn" onclick="h5Copy(\'' + gid + '\',\'' + it.id + '\')">复制</button>'
-            +     '<button class="mini-btn h5-del" onclick="h5DelItem(\'' + gid + '\',\'' + it.id + '\')">删除</button>'
+            // 2026-11-23（第 21 批）：打开/复制/删除 改成**一体化分段控件**
+            //   参考设置里的「字体大小」(.set-seg)：一个容器 + 三格均分，
+            //   不再是三个各带边框的小方块。
+            +   '<div class="h5-seg">'
+            +     '<button onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">打开</button>'
+            +     '<button onclick="h5Copy(\'' + gid + '\',\'' + it.id + '\')">复制</button>'
+            +     '<button class="h5-seg-del" onclick="h5DelItem(\'' + gid + '\',\'' + it.id + '\')">删除</button>'
             +   '</div>'
             + '</div>';
     }
@@ -11073,9 +11169,9 @@ function h5Render(){
             +   '<input class="inp h5-new-name" id="h5-new-name" placeholder="名称" spellcheck="false">'
             +   '<input class="inp h5-new-url" id="h5-new-url" placeholder="H5链接（不写协议自动补）"'
             +     ' spellcheck="false" onkeydown="h5NewKey(event,\'' + gid + '\')">'
-            +   '<div class="h5-acts">'
-            +     '<button class="mini-btn" onclick="h5CancelAdd()">取消</button>'
-            +     '<button class="mini-btn h5-ok" onclick="h5CommitAdd(\'' + gid + '\')">确定</button>'
+            +   '<div class="h5-seg">'
+            +     '<button onclick="h5CancelAdd()">取消</button>'
+            +     '<button class="h5-seg-ok" onclick="h5CommitAdd(\'' + gid + '\')">确定</button>'
             +   '</div>'
             + '</div>';
     }
@@ -13112,7 +13208,7 @@ function cluLog(text, lv){
   var empty = box.querySelector('.clu-empty');
   if(empty) box.removeChild(empty);
   var d = document.createElement('div');
-  if(lv === 'ok') d.style.color = 'var(--ok)';
+  if(lv === 'ok') d.style.color = 'var(--accent)';
   else if(lv === 'bad') d.style.color = 'var(--err)';
   else if(lv === 'warn') d.style.color = 'var(--accent)';
   d.textContent = text;

@@ -1745,25 +1745,38 @@ namespace AdbLogExport
                 return;
             }
 
-            // 先把"执行的命令"列出来（用户要求把执行过程也显示出来）
-            UseDim();
-            Console.Write("  $ adb shell getprop ");
-            Console.Write(string.Join("/", new string[]
+            // 2026-11-23（第 21 批）：GUI 模式下**不打印命令回显**。
+            //
+            // 现象：用户在 GUI 的终端页看到
+            //   $ adb shell getprop sys.product.gacvehicleplatform/ro.product...
+            //   $ adb shell wm size
+            //   （然后是车机信息表格）
+            // 原因：这段"把执行的命令列出来"是给 CLI 看的，
+            //       而 GUI 也复用了 RetryRefresh()，Console 输出被 GuiSink
+            //       捕获后当成终端行渲染 —— 终端页于是混进了页面功能的数据。
+            // 处理：只跳过这两行"过程回显"，下面的 RenderCarInfo 表格照常输出
+            //       （用户要的是"保留结果，不显示长命令"）。
+            if (!App.GUI_MODE)
             {
-                "sys.product.gacvehicleplatform",
-                "ro.product.version.short_name",
-                "sys.vehicle.mcu.version",
-                "ro.build.version.release",
-                "persist.sys.vehicle.vin",
-                "persist.sys.navi.uuid",
-                "persist.sys.navi.did",
-                "persist.sys.navi.openid"
-            }));
-            Console.WriteLine();
-            UseDim();
-            Console.WriteLine("  $ adb shell wm size");
-            UseDefault();
-            Console.WriteLine();
+                UseDim();
+                Console.Write("  $ adb shell getprop ");
+                Console.Write(string.Join("/", new string[]
+                {
+                    "sys.product.gacvehicleplatform",
+                    "ro.product.version.short_name",
+                    "sys.vehicle.mcu.version",
+                    "ro.build.version.release",
+                    "persist.sys.vehicle.vin",
+                    "persist.sys.navi.uuid",
+                    "persist.sys.navi.did",
+                    "persist.sys.navi.openid"
+                }));
+                Console.WriteLine();
+                UseDim();
+                Console.WriteLine("  $ adb shell wm size");
+                UseDefault();
+                Console.WriteLine();
+            }
 
             // 再输出 9 项取值（对齐成列）
             RenderCarInfo(false, false);

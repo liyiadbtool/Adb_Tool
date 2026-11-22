@@ -156,7 +156,14 @@ setTimeout(function(){
   var colorWarn = outBox.children[2].style.color;
   ok('ok 行有颜色', colorOk.length > 0, colorOk);
   ok('warn 行有颜色', colorWarn.length > 0, colorWarn);
-  ok('ok/warn 颜色不同', colorOk !== colorWarn, colorOk + ' vs ' + colorWarn);
+  /* 2026-11-23（第 21 批）：用户要求"成功也改强调色"，
+     ok 与 warn 现在都是 var(--accent)。
+     这里不再要求两者不同色，但要求**都不是绿色**（绿色已全量替换）。
+     ⚠ 副作用已记录：ok 和 warn 同色后只能靠文字/图标区分，
+       如果用户需要区分，warn 应另给一个语义色（如橙）。 */
+  ok('ok/warn 已统一为强调色（非绿）',
+     colorOk.indexOf('--accent') >= 0 && colorWarn.indexOf('--accent') >= 0,
+     colorOk + ' vs ' + colorWarn);
 
   // 行数上限（跑几小时不能撑爆内存）
   for(var n=0;n<350;n++) ttLog(1, '填充行 ' + n, '');

@@ -208,9 +208,10 @@ function runAll(){
   var itemEl = document.querySelector('.h5-item');
   ok('★ 条目行有名称', itemEl && itemEl.textContent.indexOf('测试看板') >= 0);
   ok('★ 条目行有链接', itemEl && itemEl.textContent.indexOf('board.example.com') >= 0);
-  var acts = itemEl.querySelectorAll('.h5-acts button');
+  // 第 21 批：三个按钮改成一体化分段控件 .h5-seg
+  var acts = itemEl.querySelectorAll('.h5-seg button');
   ok('★ 条目行有 打开/复制/删除 三个按钮', acts.length === 3, acts.length);
-  var actTxt = itemEl.querySelector('.h5-acts').textContent;
+  var actTxt = itemEl.querySelector('.h5-seg').textContent;
   ok('含「打开」', actTxt.indexOf('打开') >= 0, actTxt);
   ok('含「复制」', actTxt.indexOf('复制') >= 0);
   ok('含「删除」', actTxt.indexOf('删除') >= 0);
