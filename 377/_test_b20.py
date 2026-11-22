@@ -303,6 +303,15 @@ function runAll(){
 
   applyAccent('blue');
 
+  /* ============ 第 26 批：启动过渡动画必须跟随强调色 ============ */
+  /* 这不是页面能自测的（首帧在 JS 跑之前），改为静态验证源头：
+     .splash 的光晕必须引用 --accent-soft（而不是硬编码色）。 */
+  ok('★ 启动层光晕引用 --accent-soft',
+     /\.splash\{[^}]*var\(--accent-soft\)/.test(css),
+     'splash 用 --accent-soft');
+  ok('★ 启动层光晕不是硬编码蓝色',
+     !/\.splash\{[^}]*#0A84FF/i.test(css), 'no hardcoded blue');
+
   ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));
   finish();
 }

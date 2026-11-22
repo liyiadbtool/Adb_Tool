@@ -1404,6 +1404,44 @@ namespace AdbLogExport.Gui
                             "(<html[^>]*?data-accent=\")([^\"]*)(\")",
                             "$1" + acc + "$3",
                             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                        /* ★ 2026-11-23（第 26 批）：**HEX 强调色必须在首帧就注入 CSS 变量**。
+                           根因：启动过渡动画(.splash)的光晕用 var(--accent-soft)，
+                                而 --accent 系列是由 [data-theme][data-accent="预设名"] 规则提供的。
+                                自定义 HEX 时 data-accent 被写成 "#B28F98"，
+                                **没有对应规则** → 变量仍是默认蓝 → 启动动画一片蓝，
+                                跟用户选的强调色完全无关。
+                           修法：HEX 时在 </head> 前插一段 :root 变量，
+                                让首帧（含原生遮罩撤掉前的那一瞬）就是正确颜色。 */
+                        if (acc.Length == 7 && acc[0] == '#')
+                        {
+                            int r = Convert.ToInt32(acc.Substring(1, 2), 16);
+                            int g = Convert.ToInt32(acc.Substring(3, 2), 16);
+                            int b = Convert.ToInt32(acc.Substring(5, 2), 16);
+                            double lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
+                            string onAcc = lum > 0.62 ? "#1d1d1f" : "#ffffff";
+                            /* 特异性必须**高于**主题色板：
+                                 主题是  [data-theme="dark"][data-accent="blue"]  → (0,2,0)
+                                 我们写 :root[data-theme="dark"][data-accent]      → (0,2,1) 赢
+                               不能只用 :root{(0,1,0)} —— 会被主题色板直接盖掉，
+                               那等于没注入（这正是第一次没生效的第二个原因）。
+                               也不能加 !important —— 那会压死页面自己的 inline 覆盖，
+                               用户后续拖滑块就不生效了。 */
+                            string vars =
+                                "<style id=\"custom-accent-firstframe\">"
+                                + ":root[data-theme=\"" + thm + "\"][data-accent]{"
+                                + "--accent:" + acc + ";"
+                                + "--accent-soft:rgba(" + r + "," + g + "," + b + ",0.16);"
+                                + "--on-accent:" + onAcc + ";"
+                                + "}</style>";
+                            /* ★ 这里必须用 <body 做锚点：本项目 ui.html **没有 </head>**
+                               （结束标签被省略，浏览器容错），原来按 </head> 注入
+                               根本不会命中 —— 这就是"注入了但没生效"的原因。 */
+                            replaced = System.Text.RegularExpressions.Regex.Replace(
+                                replaced, "(<body)", vars + "$1", 
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            App.Trace("accent: HEX 首帧变量已注入 " + acc);
+                        }
                         if (replaced != html)
                         {
                             string tmp = System.IO.Path.Combine(
@@ -1418,10 +1456,28 @@ namespace AdbLogExport.Gui
                     catch (Exception exx) { App.Trace("accent: 替换 ui.html 默认值失败 " + exx.Message); }
 
                     // 双保险：DocumentCreated 时再同步改一次（若上面替换没生效，仍有这一层兜底）
-                    if (ProbeJs == null) _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
-                        "(function(){ var d=document.documentElement; " +
-                        "d.setAttribute('data-theme','" + thm + "'); " +
-                        "d.setAttribute('data-accent','" + acc + "'); })();");
+                    /* 2026-11-23（第 26 批）：双保险脚本里也要处理 HEX ——
+                       只设 data-accent 对自定义色无效（没有对应 CSS 规则），
+                       必须同时把 --accent 系列写到行内。 */
+                    if (ProbeJs == null)
+                    {
+                        string jsAcc = "d.setAttribute('data-accent','" + acc + "');";
+                        if (acc.Length == 7 && acc[0] == '#')
+                        {
+                            int r2 = Convert.ToInt32(acc.Substring(1, 2), 16);
+                            int g2 = Convert.ToInt32(acc.Substring(3, 2), 16);
+                            int b2 = Convert.ToInt32(acc.Substring(5, 2), 16);
+                            double lum2 = (0.299 * r2 + 0.587 * g2 + 0.114 * b2) / 255.0;
+                            string onAcc2 = lum2 > 0.62 ? "#1d1d1f" : "#ffffff";
+                            jsAcc = "d.setAttribute('data-accent','custom');"
+                                  + "d.style.setProperty('--accent','" + acc + "');"
+                                  + "d.style.setProperty('--accent-soft','rgba(" + r2 + "," + g2 + "," + b2 + ",0.16)');"
+                                  + "d.style.setProperty('--on-accent','" + onAcc2 + "');";
+                        }
+                        _web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                            "(function(){ var d=document.documentElement; " +
+                            "d.setAttribute('data-theme','" + thm + "'); " + jsAcc + " })();");
+                    }
 
                     // 防止 WebView2 缓存旧版 ui.html：file:// 内容改动后
                     // 不刷新会一直显示上一次的界面（用户看到蓝色图标就是缓存）。
