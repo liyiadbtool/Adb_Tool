@@ -183,8 +183,10 @@ A31_TAB_REMOVED = ["cast"]
 A31_PAGE_REMOVED = ["page-cast"]
 
 # 页签 / 页面允许"追加"（顺序不能变，新页签必须在这里登记）
-A12_TAB_ADD = ["text"]
-A12_PAGE_ADD = ["page-text"]
+# 2026-11-22（第 10 批需求）：新增「Monkey」稳定性测试页签。
+# 它是纯新增页（插在"文件"之后），不影响既有页签顺序。
+A12_TAB_ADD = ["text", "monkey"]
+A12_PAGE_ADD = ["page-text", "page-monkey"]
 
 # A13 轮新增（自绘标题栏四点 / 输出区点空白收起），逐项登记而不是放宽断言：
 #   tb-status    四圆点容器（原 .topbar 里的 root/无线/日志/设备 徽章搬进标题栏）
@@ -345,6 +347,27 @@ A35_ADDS = {
                 "about-mask", "about-ver", "about-exe", "about-ui", "about-dir"]),
 }
 
+# A36（2026-11-22 第 10 批）：新增「Monkey」稳定性测试页签。
+# 用户要求「tab 栏新增 Monkey 集成 Fastbot 功能」。
+# 第一版先用系统 adb shell monkey 跑通链路（方案 C），
+# Fastbot 的 jar 到位后只替换 mkBuildCmd() 里的命令字符串，界面不动。
+#
+# 新增 onclick：mkSetType / mkSetVerbose / mkStart / mkStop / mkClear /
+#               mkListPkgs / mkOpenLogDir
+# 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
+A36_ADDS = {
+    "kinds": set(),
+    "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
+                     "mkClear", "mkListPkgs", "mkOpenLogDir"]),
+    "ids": set(["page-monkey",
+                "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
+                "mk-type", "mk-verbose",
+                "mk-ignore-crash", "mk-ignore-timeout", "mk-ignore-security",
+                "mk-start", "mk-stop", "mk-state",
+                "mk-st-crash", "mk-st-anr", "mk-st-events", "mk-st-elapsed",
+                "mk-out"]),
+}
+
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
 # 关闭仍可用右上角 × 或 Esc；「关闭应用」入口移进关于弹层，避免误触。
 A35_REMOVED = {
@@ -381,7 +404,8 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A17_ADDS[k] and x not in A27_ADDS[k]
              and x not in A29_ADDS[k] and x not in A30_ADDS[k]
              and x not in A33_ADDS[k] and x not in A34_ADDS[k]
-             and x not in A35_ADDS[k]]
+             and x not in A35_ADDS[k]
+             and x not in A36_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k]
               and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]
               and x not in A33_REMOVED[k] and x not in A35_REMOVED[k]]

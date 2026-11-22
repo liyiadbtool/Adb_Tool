@@ -78,8 +78,10 @@ JS = r"""
       // 2026-11-15 第二轮：末尾追加「文本」页（需求 4），顺序仍是前五个冻结
       // 2026-11-19：投屏页已删除（改外部 scrcpy 窗口），页签 6 → 5
       // 2026-11-21（第 7 批需求3）：UI / 文本并入文件页，一级页签只剩三个
-      ok('页签顺序为 指令→终端→文件',
-         order.join(',') === 'quick,cmd,file', order.join(','));
+      // 2026-11-22（第 10 批需求）：末尾新增「Monkey」稳定性测试页。
+      // 前三个的顺序仍然冻结，只在尾部追加，不影响既有习惯。
+      ok('页签顺序为 指令→终端→文件→Monkey',
+         order.join(',') === 'quick,cmd,file,monkey', order.join(','));
       ok('第一个页签文字是「指令」', tabs[0].textContent.trim() === '指令', tabs[0].textContent);
       ok('第二个页签文字是「终端」', tabs[1].textContent.trim() === '终端', tabs[1].textContent);
       ok('第三个页签文字是「文件」', tabs[2].textContent.trim() === '文件',

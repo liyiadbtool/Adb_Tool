@@ -3604,7 +3604,22 @@ body[data-navlabels="0"] .quick-nav{
    名称隐藏后 gap 依然参与宽度计算，加上各项文字长度不同 → 实际宽度不一致，
    相邻按钮挤在一起、底部选中线互相压住。
    改成：图标态下一律固定宽度（42px）、gap 归零、靠 .filenav 的 gap 统一间隔。 */
-body[data-navlabels="0"] .filenav{ gap:4px; }
+/* ============================================================================
+   2026-11-22（需求）：仅图标态下文件页 tab「标题和图重叠」的真正原因
+   ----------------------------------------------------------------------------
+   前两次都在改 .qname2（标题）的隐藏，方向错了。真正的重叠源是
+   **悬停气泡 .qnav-tip**：
+     · 图标态下按钮只有 42px 宽，而气泡文字「数据互传」约 60px，比按钮还宽
+     · .qnav-tip 是 position:absolute，.filenav 又没有 overflow:hidden
+     · 原规则直接给了 display:block（常显），于是气泡从按钮中心向两侧溢出，
+       压在相邻图标上 —— 看起来就是「标题和图标重叠」
+
+   修法三条：
+     ① 气泡平时 opacity:0 且 pointer-events:none，只在 hover 时浮现
+     ② .filenav 容器允许溢出（气泡要能露出来）+ 抬高层级，避免被右侧内容盖住
+     ③ 气泡自身 z-index 拉高，保证浮在图标之上而不是和图标混在一起
+   ============================================================================ */
+body[data-navlabels="0"] .filenav{ gap:4px; position:relative; z-index:6; overflow:visible; }
 body[data-navlabels="0"] .filenav-item{
   width:42px;
   min-width:42px;
@@ -3622,14 +3637,19 @@ body[data-navlabels="0"] .filenav-item .qico2{
 body[data-navlabels="0"] .filenav-item.active::after{
   left:8px;right:8px;
 }
-/* 气泡改到按钮正下方，宽度不受 42px 限制 */
+/* 气泡：默认完全透明不占交互，hover 才浮现（修重叠的关键） */
 body[data-navlabels="0"] .filenav-item .qnav-tip{
   display:block;
   left:50%;
   top:calc(100% + 6px);
   transform:translateX(-50%) translateY(-4px) scale(.94);
+  opacity:0;
+  pointer-events:none;
+  z-index:30;
+  white-space:nowrap;
 }
 body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
+  opacity:1;
   transform:translateX(-50%) translateY(0) scale(1);
 }
 
@@ -3717,9 +3737,9 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
 }
 .set-seg-compact button{
   flex:1 1 auto;
-  min-width:40px;          /* 2026-11-22：52→40，让五档字号能在半宽内容器里放下 */
-  height:26px;
-  padding:0 5px;
+  min-width:40px;          /* 兜底下限：极窄窗口下不压成一条缝 */
+  height:30px;             /* 2026-11-22：26→30，独占一行后按钮可以更舒展好点 */
+  padding:0 8px;
   border:none;
   border-radius:var(--r-1);
   background:transparent;
@@ -3843,6 +3863,104 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
   padding-top:8px;
   border-top:1px solid var(--border);
 }
+
+/* ============================================================================
+   2026-11-22（需求）：Monkey 稳定性测试页样式
+   ============================================================================ */
+.mk-wrap{
+  flex:1; min-height:0;
+  display:flex; flex-direction:column;
+  gap:10px; padding:12px 14px 14px;
+  overflow:hidden;
+}
+.mk-panel{
+  flex:0 0 auto;
+  display:flex; flex-direction:column; gap:9px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--surface);
+}
+.mk-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;
+}
+.mk-lbl{
+  font-size:12px; color:var(--text-dim);
+  white-space:nowrap; flex:0 0 auto;
+}
+.mk-inp{
+  flex:1 1 200px; min-width:0;
+  height:30px; padding:0 10px;
+  border:1px solid var(--edge); border-radius:var(--r-2);
+  background:var(--well); color:var(--text);
+  font-family:var(--font-ui); font-size:12.5px;
+  outline:none;
+}
+.mk-inp:focus{ border-color:var(--accent); }
+.mk-inp.mk-num{ flex:0 0 88px; text-align:center; }
+.mk-chk{
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:12px; color:var(--text-dim);
+  cursor:pointer; white-space:nowrap;
+}
+.mk-chk input{ accent-color:var(--accent); }
+.mk-seg{
+  display:inline-flex; gap:2px; padding:2px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--well);
+}
+.mk-seg button{
+  height:26px; padding:0 12px; border:0; border-radius:var(--r-1);
+  background:transparent; color:var(--text-dim);
+  font-family:inherit; font-size:12px; cursor:pointer;
+  transition:background 140ms linear, color 140ms linear;
+  white-space:nowrap;
+}
+.mk-seg button:hover{ color:var(--text); background:var(--surface-hover); }
+.mk-seg button.on{
+  background:var(--accent); color:var(--on-accent); font-weight:600;
+}
+.mk-actions{ margin-top:2px; }
+.mk-state{
+  font-size:12px; color:var(--text-faint); white-space:nowrap;
+}
+.mk-state.running{ color:var(--accent); font-weight:600; }
+
+/* 统计卡 */
+.mk-stats{
+  flex:0 0 auto;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.mk-stat{
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  min-width:72px; padding:6px 10px;
+  border:1px solid var(--border); border-radius:var(--r-3);
+  background:var(--surface);
+}
+.mk-stat-v{
+  font-size:16px; font-weight:700; color:var(--text);
+  font-family:var(--font-mono); line-height:1.15;
+}
+.mk-stat-v.bad{ color:var(--err); }
+.mk-stat-k{ font-size:10.5px; color:var(--text-faint); }
+
+/* 输出区 */
+.mk-out{
+  flex:1 1 auto; min-height:0;
+  overflow:auto;
+  padding:10px 12px;
+  border:1px solid var(--border); border-radius:var(--r-4);
+  background:var(--well);
+  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  color:var(--text-dim);
+  white-space:pre-wrap; word-break:break-all;
+}
+.mk-empty{ color:var(--text-faint); font-family:var(--font-ui); font-size:12px; }
+.mk-out .mk-l-crash{ color:var(--err); font-weight:600; }
+.mk-out .mk-l-anr{ color:var(--accent); font-weight:600; }
+.mk-out .mk-l-ok{ color:var(--ok); }
+.mk-out .mk-l-cmd{ color:var(--accent); }
+
 
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce){
@@ -3988,6 +4106,8 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
       <svg viewBox="0 0 24 24"><rect x="2.8" y="4.4" width="18.4" height="15.2" rx="3"/><path d="M7 10l2.3 2.1L7 14.2"/><path d="M12.6 14.6h4"/></svg><span>终端</span></button>
     <button class="tab" data-tab="file" onclick="switchTab('file')">
       <svg viewBox="0 0 24 24"><path d="M3.4 7.6a2 2 0 012-2h3.6l2 2.2h7.6a2 2 0 012 2v8.2a2 2 0 01-2 2H5.4a2 2 0 01-2-2z"/></svg><span>文件</span></button>
+    <button class="tab" data-tab="monkey" onclick="switchTab('monkey')">
+      <svg viewBox="0 0 24 24"><path d="M7.6 8.4a4.4 4.4 0 018.8 0"/><circle cx="12" cy="14.2" r="5.6"/><circle cx="9.9" cy="13.2" r=".9" fill="currentColor" stroke="none"/><circle cx="14.1" cy="13.2" r=".9" fill="currentColor" stroke="none"/><path d="M10 16.2c1.2.9 2.8.9 4 0"/><path d="M4.2 10.6c-.9-1-1-2.4.2-3.2M19.8 10.6c.9-1 1-2.4-.2-3.2"/></svg><span>Monkey</span></button>
   </div>
 
   <div class="main">
@@ -4497,6 +4617,86 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
     </div>
     <!-- V12:TEXT END -->
 
+    <!-- ======================================================================
+         2026-11-22（需求）：Monkey 稳定性测试页
+         ----------------------------------------------------------------------
+         第一版走「方案 C」：用 Android 系统自带的 adb shell monkey 跑通链路，
+         先把「配置 → 下发 → 实时回显 → 结果收集」这条链路验证扎实。
+
+         为什么不直接上 Fastbot：
+           Fastbot 官方仓库不提供预编译 jar，需要自建 Android SDK + NDK + gradle
+           才能编出 monkeyq.jar。在被这个前置条件卡住之前，先用系统 monkey
+           把架构和界面定下来 —— 将来 Fastbot 的 jar 到位后，
+           只需要在 monkeyBuildCmd() 里换命令字符串，界面与输出链路完全不动。
+
+         与既有架构的关系：
+           · 执行仍然走 post('run', cmd)，复用现有 adb 通道与输出路由
+           · 长任务互斥沿用 _busy，开始前先占位，避免与卡片指令冲突
+           · 输出落到本页自己的日志区，不干扰终端页
+         ====================================================================== -->
+    <div class="page" id="page-monkey">
+      <div class="mk-wrap">
+        <!-- 配置区 -->
+        <div class="mk-panel">
+          <div class="mk-row">
+            <span class="mk-lbl">包名</span>
+            <input class="mk-inp" id="mk-pkg" placeholder="例：com.gxatek.ivi（点右侧按钮可从设备拉取列表）" spellcheck="false">
+            <button class="btn ghost sm" onclick="mkListPkgs()" title="adb shell pm list packages -3，只列第三方应用">列出应用</button>
+          </div>
+          <div class="mk-row">
+            <span class="mk-lbl">时长(分)</span>
+            <input class="mk-inp mk-num" id="mk-minutes" type="number" min="1" max="720" value="30">
+            <span class="mk-lbl">事件间隔(ms)</span>
+            <input class="mk-inp mk-num" id="mk-throttle" type="number" min="50" max="5000" step="50" value="300">
+            <span class="mk-lbl">事件数</span>
+            <input class="mk-inp mk-num" id="mk-count" type="number" min="0" value="0" title="0 = 不限制，按「时长」跑">
+          </div>
+          <div class="mk-row">
+            <span class="mk-lbl">策略</span>
+            <div class="mk-seg" id="mk-type">
+              <button type="button" data-mk="15" class="on" onclick="mkSetType('15')">全部</button>
+              <button type="button" data-mk="5" onclick="mkSetType('5')">触摸</button>
+              <button type="button" data-mk="1" onclick="mkSetType('1')">按键</button>
+              <button type="button" data-mk="6" onclick="mkSetType('6')">手势</button>
+            </div>
+            <span class="mk-lbl">日志级别</span>
+            <div class="mk-seg" id="mk-verbose">
+              <button type="button" data-mkv="1" onclick="mkSetVerbose('1')">简</button>
+              <button type="button" data-mkv="2" class="on" onclick="mkSetVerbose('2')">详</button>
+            </div>
+          </div>
+          <div class="mk-row">
+            <label class="mk-chk"><input type="checkbox" id="mk-ignore-crash" checked> 崩溃后继续跑</label>
+            <label class="mk-chk"><input type="checkbox" id="mk-ignore-timeout" checked> 超时无响应继续跑</label>
+            <label class="mk-chk"><input type="checkbox" id="mk-ignore-security" checked> 忽略权限异常</label>
+            <span class="mk-lbl">随机种子</span>
+            <input class="mk-inp mk-num" id="mk-seed" type="number" min="0" value="0"
+                   title="填同一个种子可以复现同一次遍历；0 = 每次随机">
+          </div>
+          <div class="mk-row mk-actions">
+            <button class="btn primary" id="mk-start" onclick="mkStart()">开始遍历</button>
+            <button class="btn danger" id="mk-stop" onclick="mkStop()" disabled>停止</button>
+            <span class="spacer"></span>
+            <span class="mk-state" id="mk-state">未开始</span>
+          </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div class="mk-stats">
+          <div class="mk-stat"><span class="mk-stat-v" id="mk-st-crash">0</span><span class="mk-stat-k">崩溃</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="mk-st-anr">0</span><span class="mk-stat-k">ANR</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="mk-st-events">0</span><span class="mk-stat-k">事件数</span></div>
+          <div class="mk-stat"><span class="mk-stat-v" id="mk-st-elapsed">00:00</span><span class="mk-stat-k">已用时</span></div>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" onclick="mkOpenLogDir()" title="打开桌面 logcat 日期目录">打开日志目录</button>
+          <button class="btn ghost sm" onclick="mkClear()">清空</button>
+        </div>
+
+        <!-- 输出区 -->
+        <div class="mk-out" id="mk-out"><div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -4573,11 +4773,15 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
       <!-- 3. 显示（深黑 / 护眼强度，内容由 _v15.js 填） -->
       <section class="set-sec" id="a15-sec-display">
         <div class="set-h">显示</div>
-        <!-- 2026-11-22（需求4）：三个开关并排一行，各占三分之一；窄窗自动换行。 -->
-        <div class="set-row3">
+        <!-- 2026-11-22（需求）：护眼强度（轻/中/深）单独占一行。
+             原因：三个开关挤一行时，「轻|中|深」被压得很窄、点起来不准。
+             现在：跟随系统 + 纯黑 OLED 共一行（各一半），护眼强度整行独占。 -->
+        <div class="set-row2">
           <div class="set-col"><div class="set-seg set-seg-compact" id="set-auto"></div></div>
           <div class="set-col"><div class="set-seg set-seg-compact" id="set-oled"></div></div>
-          <div class="set-col"><div class="set-seg set-seg-compact" id="set-eyelevel"></div></div>
+        </div>
+        <div class="set-col" style="margin-top:10px;">
+          <div class="set-seg set-seg-compact" id="set-eyelevel"></div>
         </div>
         <div class="set-fsize-hint" id="set-display-hint"></div>
       </section>
@@ -4588,21 +4792,19 @@ body[data-navlabels="0"] .filenav-item:hover .qnav-tip{
         <select class="set-sel" id="set-font" onchange="setFont(this.value)"></select>
       </section>
 
-      <!-- 2026-11-22（需求5）：字号 + 导航栏显示名称 合并为一行，各占一半自适应。
-           窄窗时通过 flex-wrap 自动换行回两行（用户已确认"允许自动换行"）。 -->
+      <!-- 2026-11-22（需求）：字号与导航名称**分开两行**。
+           上一轮把它们并成一行（.set-row2），但设置面板只有约 367px 可用宽，
+           五档字号 + 两个导航按钮挤在一起按钮被压得很窄。改回各占一行。 -->
       <section class="set-sec">
-        <div class="set-row2">
-          <div class="set-col">
-            <div class="set-h">字体大小</div>
-            <div class="set-seg set-seg-compact" id="set-fsize"></div>
-          </div>
-          <div class="set-col">
-            <div class="set-h">导航栏显示名称</div>
-            <div class="set-seg set-seg-compact" id="set-navlabels">
-              <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
-              <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
-            </div>
-          </div>
+        <div class="set-h">字体大小</div>
+        <div class="set-seg set-seg-compact" id="set-fsize"></div>
+      </section>
+
+      <section class="set-sec">
+        <div class="set-h">导航栏显示名称</div>
+        <div class="set-seg set-seg-compact" id="set-navlabels">
+          <button type="button" data-nl="1" class="on" onclick="setNavLabels('1')">显示</button>
+          <button type="button" data-nl="0" onclick="setNavLabels('0')">仅图标</button>
         </div>
       </section>
 
@@ -4765,6 +4967,270 @@ function post(kind, data, src, slot, extra){
   try{ window.chrome.webview.postMessage(o); }catch(e){}
 }
 
+/* ============================================================================
+   2026-11-22（需求）：Monkey 稳定性测试页
+   ----------------------------------------------------------------------------
+   第一版用 Android 系统自带 `adb shell monkey` 跑通链路（方案 C）。
+   将来换 Fastbot 只需替换 mkBuildCmd() 返回的命令字符串，其余全不动。
+
+   输出路由：走 src=4，由 appendLine 分发到本页 #mk-out，
+   与终端页（slot）、指令页（src=1）、APK（src=3）互不干扰。
+   ============================================================================ */
+var _mk = {
+  running: false,
+  type: '15',        // monkey -p 事件类型位掩码：15=全部 / 5=触摸 / 1=按键 / 6=手势
+  verbose: '2',      // -v 层数
+  t0: 0,
+  timer: 0,
+  crash: 0,
+  anr: 0,
+  events: 0
+};
+
+function mkSetType(v){
+  _mk.type = v;
+  var box = document.getElementById('mk-type');
+  if(!box) return;
+  var bs = box.querySelectorAll('button');
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-mk') === v);
+}
+
+function mkSetVerbose(v){
+  _mk.verbose = v;
+  var box = document.getElementById('mk-verbose');
+  if(!box) return;
+  var bs = box.querySelectorAll('button');
+  for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-mkv') === v);
+}
+
+/* 拼命令。故意拆成独立函数：换 Fastbot 时只改这里。
+   --- Fastbot 版长这样（jar 到位后用）---
+   adb shell CLASSPATH=/sdcard/monkeyq.jar:/sdcard/framework.jar:/sdcard/fastbot-thirdpart.jar \
+     exec app_process /system/bin com.android.commands.monkey.Monkey \
+     -p <pkg> --agent reuseq --running-minutes <min> --throttle <ms> -v -v
+*/
+function mkBuildCmd(){
+  var pkg = (document.getElementById('mk-pkg') || {}).value || '';
+  pkg = pkg.trim();
+  if(!pkg) return null;
+
+  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
+  var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
+  var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
+  var seed = parseInt((document.getElementById('mk-seed')||{}).value, 10) || 0;
+
+  var parts = ['monkey', '-p', pkg, '--pct-touch', '0'];
+  // --pct-* 分配合法性：monkey 要求所有 pct 加起来 <= 100，这里按策略给一组合理配比
+  if(_mk.type === '15'){
+    parts = ['monkey', '-p', pkg];
+  } else if(_mk.type === '5'){
+    parts = ['monkey', '-p', pkg, '--pct-touch', '80', '--pct-motion', '20'];
+  } else if(_mk.type === '1'){
+    parts = ['monkey', '-p', pkg, '--pct-touch', '0', '--pct-motion', '0',
+             '--pct-nav', '50', '--pct-majornav', '30', '--pct-syskeys', '20'];
+  } else {
+    parts = ['monkey', '-p', pkg, '--pct-touch', '40', '--pct-motion', '40', '--pct-trackball', '20'];
+  }
+
+  parts.push('--throttle', String(thr));
+  if(cnt > 0) parts.push(String(cnt)); else parts.push('--running-minutes-placeholder');
+  if(seed > 0) parts.push('-s', String(seed));
+
+  if((document.getElementById('mk-ignore-crash')||{}).checked) parts.push('--ignore-crashes');
+  if((document.getElementById('mk-ignore-timeout')||{}).checked) parts.push('--ignore-timeouts');
+  if((document.getElementById('mk-ignore-security')||{}).checked) parts.push('--ignore-security-exceptions');
+
+  var v = [];
+  for(var i=0;i<parseInt(_mk.verbose,10);i++) v.push('-v');
+  parts = parts.concat(v);
+
+  return parts.join(' ');
+}
+
+/* 时长是"多久后自动停"，monkey 原生没有 --running-minutes（那是 Fastbot 的参数），
+   所以这里用「预估事件数 + 前端定时停止」来实现：
+     事件数 = 时长(秒) * 1000 / throttle
+   同时起一个定时器，到点自动发 stop，保证不会跑超。 */
+function mkEstimateCount(min, thr){
+  var sec = min * 60;
+  return Math.max(1, Math.floor(sec * 1000 / Math.max(50, thr)));
+}
+
+function mkLog(text, cls){
+  var box = document.getElementById('mk-out');
+  if(!box) return;
+  var empty = box.querySelector('.mk-empty');
+  if(empty) empty.remove();
+  var d = document.createElement('div');
+  if(cls) d.className = 'mk-l-' + cls;
+  d.textContent = text;
+  var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.appendChild(d);
+  if(atBottom) box.scrollTop = box.scrollHeight;
+}
+
+function mkSetState(text, running){
+  var el = document.getElementById('mk-state');
+  if(!el) return;
+  el.textContent = text;
+  el.classList.toggle('running', !!running);
+}
+
+function mkTickStats(){
+  var el = document.getElementById('mk-st-elapsed');
+  if(!el || !_mk.t0) return;
+  var s = Math.floor((Date.now() - _mk.t0) / 1000);
+  var mm = String(Math.floor(s/60)).padStart(2,'0');
+  var ss = String(s%60).padStart(2,'0');
+  el.textContent = mm + ':' + ss;
+}
+
+function mkSetStat(id, val, bad){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = val;
+  el.classList.toggle('bad', !!bad);
+}
+
+function mkStart(){
+  if(_mk.running) return;
+
+  var pkg = ((document.getElementById('mk-pkg')||{}).value || '').trim();
+  if(!pkg){
+    toast('请先填包名（可点「列出应用」从设备拉取）', 'err');
+    return;
+  }
+
+  var min = parseInt((document.getElementById('mk-minutes')||{}).value, 10) || 30;
+  var thr = parseInt((document.getElementById('mk-throttle')||{}).value, 10) || 300;
+  var cnt = parseInt((document.getElementById('mk-count')||{}).value, 10) || 0;
+  if(cnt <= 0){
+    cnt = mkEstimateCount(min, thr);
+  }
+
+  // 用真实事件数替换占位
+  var cmd = mkBuildCmd();
+  if(!cmd) return;
+  cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
+
+  _mk.running = true;
+  _mk.t0 = Date.now();
+  _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
+  mkSetStat('mk-st-crash', 0, false);
+  mkSetStat('mk-st-anr', 0, false);
+  mkSetStat('mk-st-events', 0, false);
+  document.getElementById('mk-st-elapsed').textContent = '00:00';
+
+  document.getElementById('mk-start').disabled = true;
+  document.getElementById('mk-stop').disabled = false;
+  mkSetState('遍历中…', true);
+
+  mkLog('▶ 开始遍历：' + pkg, 'ok');
+  mkLog('  预计 ' + cnt + ' 个事件，间隔 ' + thr + 'ms（约 ' + min + ' 分钟）', '');
+  mkLog('  命令：' + cmd, 'cmd');
+
+  // 走既有 adb 执行链路，输出经 src=4 回到本页
+  try { post('run', cmd, 4); } catch(e) {
+    mkLog('✗ 下发失败：' + e, 'crash');
+    mkEnd(false);
+    return;
+  }
+
+  // 每秒刷新用时
+  _mk.timer = setInterval(mkTickStats, 1000);
+
+  // 到点自动停（monkey 本身不知道"时长"）
+  _mk.autoStop = setTimeout(function(){
+    if(_mk.running) mkStop(true);
+  }, min * 60 * 1000);
+}
+
+function mkStop(auto){
+  if(!_mk.running) return;
+  try { post('stop'); } catch(e) {}
+  mkLog(auto ? '⏱ 到达设定时长，自动停止' : '⏸ 已请求停止', 'anr');
+  mkEnd(true);
+}
+
+function mkEnd(userStopped){
+  _mk.running = false;
+  if(_mk.timer){ clearInterval(_mk.timer); _mk.timer = 0; }
+  if(_mk.autoStop){ clearTimeout(_mk.autoStop); _mk.autoStop = 0; }
+
+  var sBtn = document.getElementById('mk-start');
+  var tBtn = document.getElementById('mk-stop');
+  if(sBtn) sBtn.disabled = false;
+  if(tBtn) tBtn.disabled = true;
+
+  var dur = _mk.t0 ? Math.floor((Date.now() - _mk.t0)/1000) : 0;
+  mkSetState('已结束（用时 ' + Math.floor(dur/60) + ' 分 ' + (dur%60) + ' 秒）', false);
+  mkLog('■ 遍历结束', 'ok');
+  if(_mk.crash > 0 || _mk.anr > 0){
+    mkLog('  发现 ' + _mk.crash + ' 个崩溃、' + _mk.anr + ' 个 ANR —— 详见设备 /sdcard/crash-dump.log', 'crash');
+  } else {
+    mkLog('  未发现崩溃 / ANR', 'ok');
+  }
+}
+
+/* src=4 的输出到达（由 appendLine 分发） */
+function mkOnOut(msg){
+  var t = msg.text || '';
+  var low = t.toLowerCase();
+
+  // 计数：monkey 的输出格式
+  //   // Monkey finished
+  //   ** Monkey aborted due to error.
+  //   :Monkey: seed=... count=...
+  //   CRASH: com.xxx
+  //   NOT RESPONDING: com.xxx
+  if(low.indexOf('crash:') >= 0 || low.indexOf('// crash') >= 0){
+    _mk.crash++;
+    mkSetStat('mk-st-crash', _mk.crash, true);
+    mkLog(t, 'crash');
+    return;
+  }
+  if(low.indexOf('not responding') >= 0 || low.indexOf(':monkey anr') >= 0){
+    _mk.anr++;
+    mkSetStat('mk-st-anr', _mk.anr, true);
+    mkLog(t, 'anr');
+    return;
+  }
+  // 事件进度：monkey 每 15 个事件打一行 "Events injected: N"
+  var m = t.match(/Events injected:\s*(\d+)/i);
+  if(m){
+    _mk.events = parseInt(m[1], 10);
+    mkSetStat('mk-st-events', _mk.events, false);
+  }
+  // 结束标志
+  if(low.indexOf('monkey finished') >= 0 || low.indexOf('monkey aborted') >= 0){
+    mkLog(t, 'ok');
+    return;
+  }
+  mkLog(t, '');
+}
+
+function mkClear(){
+  var box = document.getElementById('mk-out');
+  if(box) box.innerHTML = '<div class="mk-empty">还没有开始。填好包名后点「开始遍历」，输出会实时显示在这里。</div>';
+  _mk.crash = 0; _mk.anr = 0; _mk.events = 0;
+  mkSetStat('mk-st-crash', 0, false);
+  mkSetStat('mk-st-anr', 0, false);
+  mkSetStat('mk-st-events', 0, false);
+  document.getElementById('mk-st-elapsed').textContent = '00:00';
+  mkSetState('未开始', false);
+}
+
+/* 列出第三方应用（-3 只列第三方，避免一屏几百个系统包） */
+function mkListPkgs(){
+  mkLog('$ pm list packages -3', 'cmd');
+  try { post('run', 'shell pm list packages -3', 4); } catch(e) {}
+}
+
+function mkOpenLogDir(){
+  try { post('openlogdir'); } catch(e) {}
+}
+
+
 // 帮助按钮等快捷入口：直接以"命令"形式发给 C# 执行（等价于在输入框敲 :h 回车）
 function sendCmd(cmd){
   post('cmd', cmd);
@@ -4783,7 +5249,13 @@ function onMessage(ev){
     case 'echo': appendEcho(msg); break;
     case 'status': setStatus(msg); break;      // status 字段在顶层，传整个 msg
     case 'begin': beginRun(msg); break;
-    case 'end': endRun(msg); if(_customRunning) customOnEnd(msg); break;
+    case 'end':
+      endRun(msg);
+      if(_customRunning) customOnEnd(msg);
+      // 2026-11-22（需求）：Monkey 任务结束时收尾（含用户中途停止、或异常退出）。
+      // 只认 src=4，避免卡片指令结束时误伤 Monkey 的状态。
+      if(msg.src === 4 && typeof _mk !== 'undefined' && _mk.running){ try { mkEnd(true); } catch(e){} }
+      break;
     case 'clear': clearLog(); break;
     case 'filePath': onFilePath(msg.data); break;
     case 'rootdone': onRootDone(msg); break;
@@ -4855,6 +5327,9 @@ function appendLine(msg){
   if(msg.src === 2){ appendOut(msg); return; }
   // APK 管理（src=3）的输出进面板自己的结果区
   if(msg.src === 3){ appendApkOut(msg); return; }
+  // 2026-11-22（需求）：Monkey 页（src=4）的输出进本页 #mk-out，
+  // 不污染终端页 logbox，避免遍历几十万行把终端冲掉。
+  if(msg.src === 4){ try { mkOnOut(msg); } catch(e){} return; }
   appendLog(msg);
 }
 
@@ -5663,6 +6138,9 @@ function switchTab(name){
   document.getElementById('page-quick').classList.toggle('active', name === 'quick');
   var pf = document.getElementById('page-file');
   if(pf) pf.classList.toggle('active', name === 'file');
+  // 2026-11-22（需求）：Monkey 稳定性测试页
+  var pm = document.getElementById('page-monkey');
+  if(pm) pm.classList.toggle('active', name === 'monkey');
   // 旧的两个一级页容器已不存在（内容搬进 #fileview-ui / #fileview-text），
   // 保留这两行只为兼容可能存在的极早期代码路径；元素不存在时静默跳过。
   var pu = document.getElementById('page-ui');

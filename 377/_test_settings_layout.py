@@ -65,18 +65,18 @@ setTimeout(function(){
     var track=document.getElementById('as-track');
     ok('需求3 滑动条仍可见', !!track && track.getBoundingClientRect().height>0);
 
-    /* ---- 需求4：显示三按钮同排 ---- */
-    var ids=['set-auto','set-oled','set-eyelevel'];
-    var tops=ids.map(function(id){var e=document.getElementById(id);return e?Math.round(e.getBoundingClientRect().top):-999;});
-    ok('需求4 显示三按钮同一行',
-       tops.every(function(t){return Math.abs(t-tops[0])<6;}), tops.join(','));
+    /* ---- 需求4（2026-11-22 改向）：护眼强度单独一行 ----
+       用户原话「显示里面深、轻、重单独显示一行」。
+       所以断言反过来：跟随系统 + 纯黑 OLED 同行，护眼强度（轻/中/深）另起一行。 */
+    function mkTop(id){var e=document.getElementById(id);return e?Math.round(e.getBoundingClientRect().top):-999;}
+    var tAuto=mkTop('set-auto'), tOled=mkTop('set-oled'), tEye=mkTop('set-eyelevel');
+    ok('需求4 跟随系统与纯黑同一行', Math.abs(tAuto-tOled)<6, tAuto+' / '+tOled);
+    ok('需求4 护眼强度单独一行', tEye - tAuto > 20, tAuto+' -> '+tEye);
 
-    /* ---- 需求5：字号与导航名称同排 ---- */
-    var fs=document.getElementById('set-fsize');
-    var nl=document.getElementById('set-navlabels');
-    var t1=fs?Math.round(fs.getBoundingClientRect().top):-999;
-    var t2=nl?Math.round(nl.getBoundingClientRect().top):-999;
-    ok('需求5 字号与导航名称同一行', Math.abs(t1-t2)<10, t1+' vs '+t2);
+    /* ---- 需求5（2026-11-22 改向）：字号与导航名称分开两行 ----
+       用户原话「字体大小和导航栏显示名称分开显示，不要显示在一行」。 */
+    var t1=mkTop('set-fsize'), t2=mkTop('set-navlabels');
+    ok('需求5 字号与导航名称分为两行', Math.abs(t1-t2) > 20, t1+' vs '+t2);
 
     /* ---- 需求6：去拖拽条、宽度自适应、保留分组排序 ---- */
     ok('需求6 导航拖拽条已删除', !document.getElementById('qsplit'));
@@ -89,6 +89,28 @@ setTimeout(function(){
     }
     ok('需求6 分组拖拽排序保留（applyNavOrder 存在）',
        typeof applyNavOrder === 'function');
+
+
+    /* ---- 附加：按钮组不留白（用户要求"占满一行，不要留白"）----
+       分两类判定，避免误判：
+         · 独占一行的组（主题 / 护眼 / 字号 / 导航名称）→ 要占满 95% 以上
+         · 并排两列的组（跟随系统 / 纯黑 OLED）→ 各占约一半即可（合计撑满） */
+    var fullGroups=['set-theme','set-eyelevel','set-fsize','set-navlabels'];
+    var halfGroups=['set-auto','set-oled'];
+    var notFull=[];
+    for(var gi=0; gi<fullGroups.length; gi++){
+      var g=document.getElementById(fullGroups[gi]);
+      if(!g) continue;
+      var gw=g.getBoundingClientRect().width;
+      if(gw < pw*0.95) notFull.push(fullGroups[gi]+'='+Math.round(gw)+'/'+Math.round(pw));
+    }
+    var halfSum=0;
+    for(var hj=0; hj<halfGroups.length; hj++){
+      var h=document.getElementById(halfGroups[hj]);
+      if(h) halfSum += h.getBoundingClientRect().width;
+    }
+    if(halfSum < (pw-16)*0.95) notFull.push('两列合计='+Math.round(halfSum));
+    ok('按钮组全部不留白', notFull.length===0, notFull.join(', '));
 
     ok('无运行时错误', window.__E.length===0, window.__E.join('; '));
     document.title='@@R@@'+JSON.stringify(R)+'@@E@@';

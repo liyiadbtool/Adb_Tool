@@ -58,6 +58,7 @@ EDGE_TESTS = [
     ("_test_ui_compare.py", "UI 比对（真实导入图片/抗锯齿/结构比对）"),
     ("_test_settings_panel.py", "设置面板（滑动条/五档字号/问号按钮）"),
     ("_test_settings_layout.py", "设置面板布局（自适应/并排/导航宽度）"),
+    ("_test_monkey.py", "Monkey 稳定性测试页"),
 ]
 
 # ---- 全量档专属：重型套件（--full 才跑）----
