@@ -2052,6 +2052,83 @@ namespace AdbLogExport.Gui
                     try { Diag.ResetSample(); } catch { }
                     break;
 
+                // ==================== 2026-11-22：定时任务（语音助手页）====================
+                // 需求 2.1 / 2.2：把两个 bat 变成界面功能
+                //   autostart  {mode:1|2, minutes}  启动（模式 1=导日志 2=监听异常）
+                //   autopause / autoresume / autostop
+                // 引擎在 AutoTask.cs，这里只做参数解析和日志转发。
+                case "autostart":
+                    {
+                        try
+                        {
+                            string ms = GetField(json, "mode");
+                            string mi = GetField(json, "minutes");
+                            int mode = 1, minutes = 30;
+                            int.TryParse(ms, out mode);
+                            if (!int.TryParse(mi, out minutes) || minutes < 1) minutes = 30;
+                            if (mode != 1 && mode != 2) mode = 1;
+
+                            // 日志回调：每行都推到页面，同时不刷终端页
+                            // （定时任务跑几小时，刷终端会把有用输出顶没）
+                            //
+                            // ★ 必须切回 UI 线程：AutoTask 在后台线程跑，
+                            //   WebView2 的 PostWebMessageAsJson 只能在 UI 线程调，
+                            //   跨线程直接调会抛 InvalidOperationException —— 被 catch
+                            //   吞掉后表现就是"引擎在跑但页面一行日志都收不到"。
+                            //   （真机端到端测出来的，纯页面测试发现不了。）
+                            //   用 BeginInvoke 异步投递，不用 Invoke —— 高频日志下
+                            //   Invoke 会阻塞后台线程等 UI，把导出节奏拖慢。
+                            Action<string, string> rep = delegate(string text, string level)
+                            {
+                                try
+                                {
+                                    string payload =
+                                        "{\"kind\":\"autolog\",\"text\":" + Json(text == null ? "" : text)
+                                        + ",\"lv\":" + Json(level == null ? "" : level) + "}";
+
+                                    if (_web.InvokeRequired)
+                                    {
+                                        _web.BeginInvoke((MethodInvoker)delegate
+                                        {
+                                            try { _web.CoreWebView2.PostWebMessageAsJson(payload); }
+                                            catch { }
+                                        });
+                                    }
+                                    else
+                                    {
+                                        _web.CoreWebView2.PostWebMessageAsJson(payload);
+                                    }
+                                }
+                                catch { }
+                            };
+
+                            bool ok = AutoTask.Start(mode, minutes, rep);
+                            PushAutoState(ok ? "" : "启动失败");
+                        }
+                        catch (Exception ex)
+                        {
+                            PostToast(false, "启动定时任务失败：" + ex.Message);
+                        }
+                    }
+                    break;
+
+                case "autopause":
+                    try { AutoTask.Pause(); PushAutoState(""); } catch { }
+                    break;
+
+                case "autoresume":
+                    try { AutoTask.Resume(); PushAutoState(""); } catch { }
+                    break;
+
+                case "autostop":
+                    try { AutoTask.Stop(); PushAutoState(""); } catch { }
+                    break;
+
+                // 页面定时轮询状态（倒计时 / 轮次 / 暂停态）
+                case "autostate":
+                    try { PushAutoState(""); } catch { }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
@@ -2918,6 +2995,33 @@ namespace AdbLogExport.Gui
                     "{\"kind\":\"toast\",\"ok\":" + (ok ? "true" : "false")
                     + ",\"text\":\"" + (text ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"")
                         .Replace("\r", "").Replace("\n", " ") + "\"}");
+            }
+            catch { }
+        }
+
+        // 2026-11-22：把定时任务状态推给页面。
+        // 单独一个方法是因为有 4 个入口要推（启动/暂停/恢复/停止/轮询），
+        // 写五遍 JSON 拼接必然有一处漏字段。
+        private void PushAutoState(string err)
+        {
+            try
+            {
+                string state = "idle";
+                if (AutoTask.Running) state = AutoTask.Paused ? "paused" : "running";
+                if (err != null && err.Length > 0) state = "error";
+
+                StringBuilder sb = new StringBuilder();
+                sb.Append("{\"kind\":\"autostate\"")
+                  .Append(",\"state\":").Append(Json(state))
+                  .Append(",\"mode\":").Append(AutoTask.CurMode)
+                  .Append(",\"minutes\":").Append(AutoTask.IntervalMin)
+                  .Append(",\"round\":").Append(AutoTask.Round)
+                  .Append(",\"remain\":").Append(AutoTask.RemainSec)
+                  .Append(",\"dir\":").Append(Json(AutoTask.LastDir == null ? "" : AutoTask.LastDir));
+                if (err != null && err.Length > 0) sb.Append(",\"err\":").Append(Json(err));
+                sb.Append('}');
+
+                _web.CoreWebView2.PostWebMessageAsJson(sb.ToString());
             }
             catch { }
         }

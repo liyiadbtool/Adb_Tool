@@ -631,7 +631,9 @@ BEHAVIOR = r"""
         var cpGrid = document.getElementById('quick-grid');
         var cpCards = cpGrid.querySelectorAll('.qcard');
         var cpTxt = cpGrid.textContent;
-        ok('CP 手车互联共 16 张卡', cpCards.length === 16, cpCards.length);
+        // 2026-11-22（第 12 批需求 4）：补一张「查询se_linux」，16 → 17 张。
+        ok('CP 手车互联共 17 张卡', cpCards.length === 17, cpCards.length);
+        ok('CP 新增「查询se_linux」卡', cpTxt.indexOf('查询se_linux') >= 0);
         // ---- 2026-11-20 第 5 批需求 1~8：讯飞音频 / SELinux / 拾音 / dump ----
         ok('CP 新增「讯飞音频」分类', cpTxt.indexOf('讯飞音频') >= 0);
         ok('CP 新增「SELinux」分类', cpTxt.indexOf('SELinux') >= 0);

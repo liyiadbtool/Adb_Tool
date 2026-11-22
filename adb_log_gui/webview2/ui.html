@@ -4134,6 +4134,23 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* ============================================================================
    2026-11-22（需求）：诊断页
+   ----------------------------------------------------------------------------
+   第 2 版：用户反馈「内容显示不全、交互体验极差」，重做。
+
+   ★ 上一版有个真 bug（不是审美问题）：
+     .diag-scroll 是 flex column，.diag-card 作为 flex 子项默认 flex-shrink:1，
+     窗口高度不够时每张卡片被压扁；而 .diag-card 有 overflow:hidden（为了圆角），
+     超出部分直接被裁掉 —— 裁剪发生在卡片内部，所以连滚动条都没有。
+     表现就是「本机信息只显示 6 行、下面四张卡全空」。
+     修法：.diag-card{flex:0 0 auto}，永不被压缩。
+
+   ★ 布局改版（参考 vsFetch / Sysinfo-php / ATS 的分组网格思路）：
+     · 宽屏 ≥900px：两列网格，adb+连通性一行、资源+历史一行
+       本机/车机内容多，内部再拆两列（13 行→7 行高）
+     · 窄屏：单列，内部也单列
+     · 卡片可折叠（点标题），状态存 localStorage
+     · 复制按钮常驻可见（原来 hover 才出，用户明确要求改）
+     · 存储/CPU 用进度条（比纯文字直观）
    ============================================================================ */
 .diag-wrap{
   flex:1 1 auto; min-height:0;
@@ -4145,30 +4162,59 @@ body[data-navlabels="0"] .filenav-item.active::after{
   padding:12px 18px;
   border-bottom:1px solid var(--border);
 }
-.diag-title{
-  font-size:14px; font-weight:700; color:var(--text);
-}
-.diag-sub{
-  font-size:11.5px; color:var(--text-faint);
-}
+.diag-title{ font-size:14px; font-weight:700; color:var(--text); }
+.diag-sub{ font-size:11.5px; color:var(--text-faint); }
+
+/* 滚动容器：flex 网格 */
 .diag-scroll{
   flex:1 1 auto; min-height:0;
   overflow-y:auto; overflow-x:hidden;
   padding:14px 18px 24px;
-  display:flex; flex-direction:column; gap:12px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-content:flex-start;
 }
 
+/* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
 .diag-card{
+  flex:0 0 auto;              /* ★ 关键：不让 flex 压扁（上一版 bug 根源） */
+  min-width:0;
+  box-sizing:border-box;
+  width:calc(50% - 6px);
   border:1px solid var(--border); border-radius:var(--r-5);
   background:var(--surface);
   overflow:hidden;
 }
+.diag-card--wide{ width:100%; }
+
+/* 窄屏：全部单列 */
+@media (max-width: 900px){
+  .diag-card{ width:100%; }
+}
+
 .diag-card-head{
   display:flex; align-items:center; gap:8px;
   padding:9px 14px;
   border-bottom:1px solid var(--border);
   background:var(--well);
+  cursor:pointer;
+  user-select:none; -webkit-user-select:none;
 }
+.diag-card-head:hover{ background:var(--surface-hover); }
+/* 折叠后标题栏不该有下边框（内容已经没了） */
+.diag-card.folded .diag-card-head{ border-bottom:0; }
+.diag-card.folded .diag-rows{ display:none; }
+
+/* 折叠箭头 */
+.diag-caret{
+  flex:0 0 auto;
+  width:12px; height:12px;
+  color:var(--text-faint);
+  transition:transform 140ms linear;
+}
+.diag-card.folded .diag-caret{ transform:rotate(-90deg); }
+
 .diag-dot{
   width:7px; height:7px; border-radius:50%;
   background:var(--text-faint);
@@ -4177,12 +4223,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-dot.ok{ background:var(--ok); }
 .diag-dot.bad{ background:var(--err); }
 .diag-dot.warn{ background:var(--accent); }
-.diag-card-title{
-  font-size:12.5px; font-weight:700; color:var(--text);
-}
-.diag-card-note{
-  font-size:11px; color:var(--text-faint);
-}
+.diag-card-title{ font-size:12.5px; font-weight:700; color:var(--text); }
+.diag-card-note{ font-size:11px; color:var(--text-faint); }
 .diag-copy-card{
   border:0; background:transparent;
   color:var(--text-faint);
@@ -4192,44 +4234,144 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 .diag-copy-card:hover{ background:var(--surface-hover); color:var(--accent); }
 
+/* 行容器：宽屏两列（本机 13 行压成 7 行高） */
 .diag-rows{ padding:4px 0; }
+.diag-rows--cols{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  column-gap:10px;
+}
+@media (max-width: 1180px){
+  .diag-rows--cols{ grid-template-columns:1fr; }
+}
 .diag-empty{
   padding:14px 16px; font-size:12px; color:var(--text-faint);
 }
 
 /* 一行：标签 / 值 / 复制按钮 */
 .diag-row{
-  display:flex; align-items:flex-start; gap:10px;
-  padding:5px 14px;
+  display:flex; align-items:flex-start; gap:8px;
+  padding:4px 14px;
   font-size:12.5px;
-  line-height:1.6;
+  line-height:1.55;
+  min-width:0;
 }
 .diag-row:hover{ background:var(--surface-hover); }
 .diag-k{
-  flex:0 0 128px;
+  flex:0 0 96px;
   color:var(--text-faint);
+  font-size:11.5px;
 }
+.diag-row--wide .diag-k{ flex:0 0 128px; }
 .diag-v{
   flex:1 1 auto; min-width:0;
   color:var(--text);
   font-family:var(--font-mono);
-  font-size:12px;
+  font-size:11.5px;
   word-break:break-all;
 }
 .diag-v.warn{ color:var(--accent); }
 .diag-v.bad{ color:var(--err); }
 .diag-v.ok{ color:var(--ok); }
+
+/* 2026-11-22（需求）：复制按钮常驻可见。
+   上一版是 opacity:0 + hover 才出现 —— 用户明确说要改。 */
 .diag-row .diag-cp{
   flex:0 0 auto;
-  border:0; background:transparent;
+  border:1px solid transparent; background:transparent;
   color:var(--text-faint);
-  font-size:11px; cursor:pointer;
-  padding:1px 5px; border-radius:var(--r-1);
-  opacity:0;
-  transition:opacity 120ms linear;
+  font-size:10.5px; cursor:pointer;
+  padding:0 5px; border-radius:var(--r-1);
+  opacity:.55;
+  transition:opacity 120ms linear, background 120ms linear, color 120ms linear;
   font-family:var(--font-ui);
+  white-space:nowrap;
 }
 .diag-row:hover .diag-cp{ opacity:1; }
+.diag-row .diag-cp:hover{
+  background:var(--accent-soft); color:var(--accent);
+  border-color:var(--accent);
+}
+
+/* 进度条（存储占用 / CPU / 内存） */
+.diag-meter{
+  flex:1 1 auto; min-width:0;
+  display:flex; align-items:center; gap:8px;
+}
+.diag-meter-track{
+  flex:1 1 auto; min-width:40px;
+  height:5px; border-radius:var(--r-pill);
+  background:var(--border);
+  overflow:hidden;
+}
+.diag-meter-fill{
+  height:100%; border-radius:var(--r-pill);
+  background:var(--ok);
+  transition:width 220ms linear, background 220ms linear;
+}
+.diag-meter-fill.warn{ background:var(--accent); }
+.diag-meter-fill.bad{ background:var(--err); }
+.diag-meter-txt{
+  flex:0 0 auto;
+  font-family:var(--font-mono); font-size:11px;
+  color:var(--text-dim);
+  white-space:nowrap;
+}
+
+/* 快照历史条目 */
+.diag-hist-item{
+  display:flex; align-items:center; gap:10px;
+  padding:7px 14px;
+  font-size:12px;
+  border-bottom:1px solid var(--border);
+}
+.diag-hist-item:last-child{ border-bottom:0; }
+.diag-hist-t{ color:var(--text-dim); font-family:var(--font-mono); flex:0 0 auto; font-size:11px; }
+.diag-hist-s{
+  color:var(--text-faint); flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* 定时任务控制区（语音助手页） */
+.tt-box{
+  border:1px solid var(--border); border-radius:var(--r-4);
+  background:var(--well);
+  padding:10px 12px;
+  margin-top:8px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.tt-head{
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700; color:var(--text);
+}
+.tt-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.tt-lbl{ font-size:11.5px; color:var(--text-faint); }
+.tt-inp{
+  width:70px;
+  padding:4px 8px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface); color:var(--text);
+  font-family:var(--font-mono); font-size:12px;
+  outline:none;
+}
+.tt-inp:focus{ border-color:var(--accent); }
+.tt-state{
+  font-size:11px; color:var(--text-faint);
+  font-family:var(--font-mono);
+}
+.tt-state.run{ color:var(--ok); }
+.tt-state.pause{ color:var(--accent); }
+.tt-out{
+  max-height:140px; overflow-y:auto; overflow-x:hidden;
+  font-family:var(--font-mono); font-size:11px; line-height:1.55;
+  color:var(--text-dim);
+  border-top:1px solid var(--border);
+  padding-top:6px;
+}
+.tt-out div{ white-space:pre-wrap; word-break:break-all; }
+
 .diag-row .diag-cp:hover{ background:var(--accent-soft); color:var(--accent); }
 
 /* 快照历史条目 */
@@ -4509,6 +4651,65 @@ body[data-navlabels="0"] .filenav-item.active::after{
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>发送
               </button>
             </div>
+          </div>
+
+          <!-- ==================================================================
+               2026-11-22（第 12 批需求 2.1 / 2.2）：定时任务
+               ------------------------------------------------------------------
+               对应两个 bat：
+                 pull_log-iflytek-system.bat  每 30 分钟导日志
+                 check_crash.bat              每 30 分钟扫异常（有新增才导）
+
+               交互：
+                 · 间隔可输入（分钟），默认 30
+                 · 开始 / 暂停 / 继续 / 停止
+                 · 导出到 桌面\logcat\<日期>\<时间戳>_Log
+               两块共用一套 JS（ttStart(1|2)），只差 mode。
+               ================================================================== -->
+          <div class="tt-box" id="tt-log-box" style="display:none;">
+            <div class="tt-head">
+              <span>定时导出日志</span>
+              <span class="spacer"></span>
+              <span class="tt-state" id="tt-log-state">未启动</span>
+            </div>
+            <div class="tt-row">
+              <span class="tt-lbl">间隔</span>
+              <input class="tt-inp" id="tt-log-min" type="number" min="1" max="720" value="30">
+              <span class="tt-lbl">分钟</span>
+              <span class="spacer"></span>
+              <button class="btn primary sm" id="tt-log-start" onclick="ttStart(1)">开始</button>
+              <button class="btn ghost sm" id="tt-log-pause" onclick="ttTogglePause(1)" disabled>暂停</button>
+              <button class="btn danger sm" id="tt-log-stop" onclick="ttStop(1)" disabled>停止</button>
+            </div>
+            <div class="tt-row">
+              <span class="tt-lbl" id="tt-log-hint">
+                导 anr / tombstones / dropbox / perfetto / iflytek_log / androidlog → 桌面logcat
+              </span>
+            </div>
+            <div class="tt-out" id="tt-log-out"></div>
+          </div>
+
+          <div class="tt-box" id="tt-crash-box" style="display:none;">
+            <div class="tt-head">
+              <span>定时监听异常</span>
+              <span class="spacer"></span>
+              <span class="tt-state" id="tt-crash-state">未启动</span>
+            </div>
+            <div class="tt-row">
+              <span class="tt-lbl">间隔</span>
+              <input class="tt-inp" id="tt-crash-min" type="number" min="1" max="720" value="30">
+              <span class="tt-lbl">分钟</span>
+              <span class="spacer"></span>
+              <button class="btn primary sm" id="tt-crash-start" onclick="ttStart(2)">开始</button>
+              <button class="btn ghost sm" id="tt-crash-pause" onclick="ttTogglePause(2)" disabled>暂停</button>
+              <button class="btn danger sm" id="tt-crash-stop" onclick="ttStop(2)" disabled>停止</button>
+            </div>
+            <div class="tt-row">
+              <span class="tt-lbl" id="tt-crash-hint">
+                扫 anr / crash / tombstone，**有新增才导出** → 桌面logcat
+              </span>
+            </div>
+            <div class="tt-out" id="tt-crash-out"></div>
           </div>
 
           <!-- APK 管理面板（仅「APK管理」分组显示）。
@@ -5243,56 +5444,65 @@ body[data-navlabels="0"] .filenav-item.active::after{
                   title="把本次诊断结果存进历史，便于以后对比排查">保存快照</button>
         </div>
 
+        <!-- 2026-11-22（第 2 版）：
+             卡片按"可折叠 + 两列网格"排布。
+             点标题栏折叠/展开，状态存 localStorage（下次打开保持）。
+             本机/车机两张卡内容多，加 diag-card--wide 占整行，
+             内部再用 diag-rows--cols 拆两列，把 13 行压成 7 行高。 -->
         <div class="diag-scroll" id="diag-scroll">
 
           <!-- ① adb 状态 -->
           <section class="diag-card" id="diag-card-adb">
-            <header class="diag-card-head">
+            <header class="diag-card-head" onclick="diagToggleCard('adb')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               <span class="diag-dot" id="diag-adb-dot"></span>
               <span class="diag-card-title">adb 状态</span>
               <span class="diag-card-note" id="diag-adb-note"></span>
               <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="diagCopySection('adb')" title="复制本块">复制本块</button>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagCopySection('adb')" title="复制本块">复制本块</button>
             </header>
             <div class="diag-rows" id="diag-rows-adb"></div>
           </section>
 
-          <!-- ② 本机信息 -->
-          <section class="diag-card" id="diag-card-pc">
-            <header class="diag-card-head">
+          <!-- ④ 连通性（放在 adb 旁边，同属"环境通不通"） -->
+          <section class="diag-card" id="diag-card-link">
+            <header class="diag-card-head" onclick="diagToggleCard('link')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              <span class="diag-dot" id="diag-link-dot"></span>
+              <span class="diag-card-title">连通性</span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagCopySection('link')" title="复制本块">复制本块</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-link"></div>
+          </section>
+
+          <!-- ② 本机信息（整行 + 内部两列） -->
+          <section class="diag-card diag-card--wide" id="diag-card-pc">
+            <header class="diag-card-head" onclick="diagToggleCard('pc')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               <span class="diag-dot ok"></span>
               <span class="diag-card-title">本机信息</span>
               <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="diagCopySection('pc')" title="复制本块">复制本块</button>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagCopySection('pc')" title="复制本块">复制本块</button>
             </header>
-            <div class="diag-rows" id="diag-rows-pc">
+            <div class="diag-rows diag-rows--cols" id="diag-rows-pc">
               <div class="diag-empty">正在采集…</div>
             </div>
           </section>
 
-          <!-- ③ 车机信息 -->
-          <section class="diag-card" id="diag-card-car">
-            <header class="diag-card-head">
+          <!-- ③ 车机信息（整行 + 内部两列） -->
+          <section class="diag-card diag-card--wide" id="diag-card-car">
+            <header class="diag-card-head" onclick="diagToggleCard('car')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               <span class="diag-dot" id="diag-car-dot"></span>
               <span class="diag-card-title">车机信息</span>
               <span class="diag-card-note" id="diag-car-note"></span>
               <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="diagCopySection('car')" title="复制本块">复制本块</button>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagCopySection('car')" title="复制本块">复制本块</button>
             </header>
-            <div class="diag-rows" id="diag-rows-car">
+            <div class="diag-rows diag-rows--cols" id="diag-rows-car">
               <div class="diag-empty">未连接设备</div>
             </div>
-          </section>
-
-          <!-- ④ 连通性 -->
-          <section class="diag-card" id="diag-card-link">
-            <header class="diag-card-head">
-              <span class="diag-dot" id="diag-link-dot"></span>
-              <span class="diag-card-title">连通性</span>
-              <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="diagCopySection('link')" title="复制本块">复制本块</button>
-            </header>
-            <div class="diag-rows" id="diag-rows-link"></div>
           </section>
 
           <!-- ⑤ 资源占用（只在采样时测） -->
@@ -5300,9 +5510,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <header class="diag-card-head">
               <span class="diag-dot"></span>
               <span class="diag-card-title">资源占用</span>
-              <span class="diag-card-note">只在本工具上，不含整机</span>
+              <span class="diag-card-note">只在本工具上</span>
               <div class="spacer"></div>
-              <button class="btn ghost sm" id="diag-sample-btn" onclick="diagToggleSample()">开始采样</button>
+              <button class="btn ghost sm" id="diag-sample-btn"
+                      onclick="event.stopPropagation();diagToggleSample()">开始采样</button>
             </header>
             <div class="diag-rows" id="diag-rows-res">
               <div class="diag-empty">点「开始采样」后才开始测量（避免平时占用性能）</div>
@@ -5311,12 +5522,13 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
           <!-- 快照历史 -->
           <section class="diag-card" id="diag-card-hist">
-            <header class="diag-card-head">
+            <header class="diag-card-head" onclick="diagToggleCard('hist')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
               <span class="diag-dot"></span>
               <span class="diag-card-title">快照历史</span>
               <span class="diag-card-note" id="diag-hist-note"></span>
               <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="diagClearHistory()" title="清空历史">清空</button>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagClearHistory()" title="清空历史">清空</button>
             </header>
             <div class="diag-rows" id="diag-rows-hist">
               <div class="diag-empty">还没有快照。点顶部「保存快照」记录当前环境。</div>
@@ -7370,11 +7582,40 @@ var _diag = {
   timer: 0,
   lastCpu: -1,
   lastMem: 0,
-  hist: []
+  hist: [],
+  totalMemGB: 0     // 从本机信息里解析出来，给"内存占比"进度条用
 };
 
 var DIAG_HIST_KEY = 'diag_history_v1';
 var DIAG_HIST_MAX = 20;
+var DIAG_FOLD_KEY = 'diag_folded_v1';   // 折叠状态
+
+/* ---------- 折叠（2026-11-22 第 2 版）----------
+   点标题栏收起/展开，状态存 localStorage，下次打开保持。
+   避免每次进诊断页都要滚很长。 */
+function diagLoadFold(){
+  var set = {};
+  try {
+    var raw = localStorage.getItem(DIAG_FOLD_KEY);
+    if(raw) set = JSON.parse(raw) || {};
+  } catch(e){ set = {}; }
+  ['adb','link','pc','car','hist'].forEach(function(k){
+    var el = document.getElementById('diag-card-' + k);
+    if(el) el.classList.toggle('folded', !!set[k]);
+  });
+}
+
+function diagToggleCard(k){
+  var el = document.getElementById('diag-card-' + k);
+  if(!el) return;
+  el.classList.toggle('folded');
+  var set = {};
+  ['adb','link','pc','car','hist'].forEach(function(x){
+    var e = document.getElementById('diag-card-' + x);
+    if(e && e.classList.contains('folded')) set[x] = 1;
+  });
+  try { localStorage.setItem(DIAG_FOLD_KEY, JSON.stringify(set)); } catch(e){}
+}
 
 /* 进入诊断页：本机信息每次进都重采（很快），车机信息也重取 */
 function diagOnEnter(){
@@ -7417,10 +7658,30 @@ function diagOnLocal(msg){
   if(box){
     var html = '';
     for(var i=0;i<_diag.local.length;i++){
-      html += diagRowHtml('pc', _diag.local[i].k, _diag.local[i].v, _diag.local[i].lv);
+      var row = _diag.local[i];
+      var k = row.k, v = row.v, lv = row.lv;
+
+      // 内存：记下总容量，给"资源占用"里的占比条用
+      if(k === '内存') _diag.totalMemGB = diagParseTotalMemGB(v);
+
+      // 存储：改成进度条（已用百分比），比纯文字直观
+      if(k.indexOf('存储') === 0){
+        var d = diagParseDisk(v);
+        if(d){
+          html += diagRowHtml('pc', k, v, lv, {
+            pct: d.pct,
+            text: '已用 ' + d.pct.toFixed(0) + '%  ·  剩 ' + d.free + ' GB'
+          });
+          continue;
+        }
+      }
+      html += diagRowHtml('pc', k, v, lv);
     }
     box.innerHTML = html || '<div class="diag-empty">没有采集到信息</div>';
   }
+
+  // 采样在跑的话，用新拿到的总内存刷新一下占比
+  if(_diag.sampling && _diag.lastMem > 0) diagRenderSample(_diag.lastCpu, _diag.lastMem);
 
   var sub = document.getElementById('diag-sub');
   if(sub){
@@ -7556,18 +7817,185 @@ function diagOnLink(lines){
 /* ---------- 通用行渲染 ---------- */
 var _diagData = {};   // { 'pc:CPU': 'xxx' } 供复制用
 
-function diagRowHtml(sec, k, v, lv){
+/* 一行：标签 + 值 + 常驻复制按钮。
+   第 4 个参数 lv 控制颜色（ok/warn/bad）；
+   第 5 个参数 meter 可选，传 {pct: 0~100, text: '补充文字'} 时渲染进度条。 */
+function diagRowHtml(sec, k, v, lv, meter){
   _diagData[sec + ':' + k] = v;
   var cls = lv ? (' ' + lv) : '';
+
+  var valueHtml;
+  if(meter){
+    var pct = Math.max(0, Math.min(100, meter.pct));
+    var mcls = pct >= 90 ? ' bad' : (pct >= 75 ? ' warn' : '');
+    valueHtml = '<span class="diag-meter">'
+      + '<span class="diag-meter-track">'
+      +   '<span class="diag-meter-fill' + mcls + '" style="width:' + pct.toFixed(1) + '%"></span>'
+      + '</span>'
+      + '<span class="diag-meter-txt">' + mkEsc(meter.text || (pct.toFixed(0) + '%')) + '</span>'
+      + '</span>';
+  } else {
+    valueHtml = '<span class="diag-v' + cls + '">' + mkEsc(v) + '</span>';
+  }
+
   return '<div class="diag-row">'
     + '<span class="diag-k">' + mkEsc(k) + '</span>'
-    + '<span class="diag-v' + cls + '">' + mkEsc(v) + '</span>'
+    + valueHtml
     + '<button class="diag-cp" data-sec="' + sec + '" data-k="' + mkEsc(k) + '"'
     + ' onclick="diagCopyOne(this)" title="复制这一项">复制</button>'
     + '</div>';
 }
 
+/* 从 "16 GB  DDR3-1867MHz" 里抠出 16，供内存占比进度条用 */
+function diagParseTotalMemGB(s){
+  var m = String(s || '').match(/([\d.]+)\s*GB/i);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+/* 从 "446.9 GB（剩余 211.5 GB）" 里抠出总量和剩余，算已用百分比 */
+function diagParseDisk(s){
+  var m = String(s || '').match(/([\d.]+)\s*GB.*?剩余\s*([\d.]+)\s*GB/i);
+  if(!m) return null;
+  var total = parseFloat(m[1]), free = parseFloat(m[2]);
+  if(!total || isNaN(total) || isNaN(free)) return null;
+  return { total: total, free: free, pct: (total - free) / total * 100 };
+}
+
 /* ---------- 复制 ---------- */
+/* ============================================================================
+   定时任务（2026-11-22 第 12 批需求 2.1 / 2.2）
+   ----------------------------------------------------------------------------
+   两个 bat → 界面里的两个框：
+     mode 1  定时导出日志    pull_log-iflytek-system.bat
+     mode 2  定时监听异常    check_crash.bat（有新增才导出）
+
+   两块共用一套函数，只差 mode。C# 侧是 AutoTask.cs。
+   ============================================================================ */
+var _tt = {
+  1: { state: 'idle', timer: 0 },
+  2: { state: 'idle', timer: 0 }
+};
+
+function ttEl(mode, name){
+  return document.getElementById('tt-' + (mode === 1 ? 'log' : 'crash') + '-' + name);
+}
+
+function ttLog(mode, text, lv){
+  var box = ttEl(mode, 'out');
+  if(!box) return;
+  var d = document.createElement('div');
+  if(lv === 'ok') d.style.color = 'var(--ok)';
+  else if(lv === 'warn') d.style.color = 'var(--accent)';
+  else if(lv === 'bad') d.style.color = 'var(--err)';
+  d.textContent = text;
+  var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 24;
+  box.appendChild(d);
+  // 只保留最近 300 行，跑几小时也不会把内存撑爆
+  while(box.children.length > 300) box.removeChild(box.firstChild);
+  if(atBottom) box.scrollTop = box.scrollHeight;
+}
+
+function ttSetState(mode, text, cls){
+  var el = ttEl(mode, 'state');
+  if(!el) return;
+  el.textContent = text;
+  el.className = 'tt-state' + (cls ? ' ' + cls : '');
+}
+
+function ttStart(mode){
+  var minEl = ttEl(mode, 'min');
+  var minutes = parseInt((minEl || {}).value, 10);
+  if(!minutes || minutes < 1){ toast('间隔至少 1 分钟', 'err'); return; }
+  if(minutes > 720){ toast('间隔最多 720 分钟', 'err'); return; }
+
+  var box = ttEl(mode, 'out');
+  if(box) box.innerHTML = '';
+
+  try { postObj({ kind: 'autostart', mode: mode, minutes: minutes }); }
+  catch(e){ toast('启动失败：' + e, 'err'); return; }
+
+  ttEl(mode, 'start').disabled = true;
+  ttEl(mode, 'pause').disabled = false;
+  ttEl(mode, 'pause').textContent = '暂停';
+  ttEl(mode, 'stop').disabled = false;
+  ttSetState(mode, '运行中', 'run');
+
+  // 每 2 秒问一次状态（倒计时 / 轮次），停止后清掉
+  _tt[mode].timer = setInterval(function(){
+    try { postObj({ kind: 'autostate' }); } catch(e){}
+  }, 2000);
+}
+
+function ttTogglePause(mode){
+  var btn = ttEl(mode, 'pause');
+  var paused = btn && btn.textContent === '继续';
+  try { postObj({ kind: paused ? 'autoresume' : 'autopause' }); }
+  catch(e){ toast('操作失败：' + e, 'err'); return; }
+  if(btn) btn.textContent = paused ? '暂停' : '继续';
+  ttSetState(mode, paused ? '运行中' : '已暂停', paused ? 'run' : 'pause');
+}
+
+function ttStop(mode){
+  try { postObj({ kind: 'autostop' }); } catch(e){}
+  ttStopLocal(mode);
+}
+
+function ttStopLocal(mode){
+  if(_tt[mode].timer){ clearInterval(_tt[mode].timer); _tt[mode].timer = 0; }
+  var s = ttEl(mode, 'start'); if(s) s.disabled = false;
+  var p = ttEl(mode, 'pause'); if(p){ p.disabled = true; p.textContent = '暂停'; }
+  var t = ttEl(mode, 'stop'); if(t) t.disabled = true;
+  ttSetState(mode, '已停止', '');
+}
+
+/* C# 推来的日志行 */
+function ttOnLog(msg){
+  if(!msg) return;
+  // 只有当前在跑的那个模式才收（两块共用一条 autolog 通道）
+  var mode = AutoTaskMode();
+  if(mode) ttLog(mode, msg.text || '', msg.lv || '');
+}
+
+/* 当前哪个模式在跑（C# 侧只有一个任务实例） */
+var _ttCurMode = 0;
+function AutoTaskMode(){ return _ttCurMode; }
+
+/* C# 推来的状态 */
+function ttOnState(msg){
+  if(!msg) return;
+  var mode = msg.mode || _ttCurMode;
+  if(!mode) return;
+  _ttCurMode = mode;
+
+  var st = msg.state || 'idle';
+  if(st === 'running'){
+    ttSetState(mode, '运行中', 'run');
+    var p = ttEl(mode, 'pause'); if(p){ p.disabled = false; p.textContent = '暂停'; }
+    var s = ttEl(mode, 'start'); if(s) s.disabled = true;
+    var t = ttEl(mode, 'stop'); if(t) t.disabled = false;
+  } else if(st === 'paused'){
+    ttSetState(mode, '已暂停', 'pause');
+    var p2 = ttEl(mode, 'pause'); if(p2){ p2.disabled = false; p2.textContent = '继续'; }
+  } else {
+    ttStopLocal(mode);
+    return;
+  }
+
+  // 轮次 / 倒计时
+  var parts = [];
+  if(msg.round) parts.push('第 ' + msg.round + ' 轮');
+  if(msg.remain > 0){
+    var m = Math.floor(msg.remain / 60), sec = msg.remain % 60;
+    parts.push('下次 ' + (m > 0 ? (m + ' 分 ' + sec + ' 秒后') : (sec + ' 秒后')));
+  }
+  if(msg.dir) parts.push('→ ' + msg.dir);
+  if(parts.length){
+    var h = ttEl(mode, 'hint');
+    if(h) h.textContent = parts.join('  ·  ');
+  }
+  if(msg.err) toast(msg.err, 'err');
+}
+
 function diagCopyText(txt, tip){
   try {
     if(navigator.clipboard && navigator.clipboard.writeText){
@@ -7663,14 +8091,39 @@ function diagStopSample(){
 
 function diagOnSample(msg){
   if(!_diag.sampling || !msg) return;
+  _diag.lastCpu = msg.cpu;
+  _diag.lastMem = msg.mem;
+  diagRenderSample(msg.cpu, msg.mem);
+}
+
+/* 资源占用渲染（2026-11-22 第 2 版）：CPU / 内存都用进度条。
+   内存占比需要总容量 —— 从"本机信息"里的内存行解析（_diag.totalMemGB），
+   拿不到就只显示数值，不硬算百分比（宁可不显示也不瞎猜）。 */
+function diagRenderSample(cpu, mem){
   var box = document.getElementById('diag-rows-res');
   if(!box) return;
-  var cpu = msg.cpu;
-  var mem = msg.mem;
-  var cpuText = (cpu < 0) ? '测量中…' : (cpu + ' %');
-  var html =
-      diagRowHtml('res', '本工具 CPU', cpuText, cpu < 0 ? '' : (cpu > 50 ? 'warn' : 'ok'))
-    + diagRowHtml('res', '本工具内存', mem + ' MB', '');
+
+  var html = '';
+  if(cpu < 0){
+    html += diagRowHtml('res', '本工具 CPU', '测量中…', '');
+  } else {
+    html += diagRowHtml('res', '本工具 CPU', cpu + ' %', '',
+      { pct: cpu, text: cpu.toFixed(1) + ' %' });
+  }
+
+  if(_diag.totalMemGB > 0){
+    var memPct = (mem / 1024.0) / _diag.totalMemGB * 100;
+    if(memPct > 100) memPct = 100;
+    // 进度条文字：绝对值 + 占整机百分比，两个都保留 ——
+    // 光看 MB 看不出"这算多还是少"，光看百分比又不知道实际占用。
+    var memTxt = mem + ' MB / ' + _diag.totalMemGB + ' GB'
+               + '（占整机 ' + memPct.toFixed(2) + '%）';
+    html += diagRowHtml('res', '本工具内存', memTxt, '',
+      { pct: memPct, text: memTxt });
+  } else {
+    // 拿不到总容量就只显示数值，不硬算百分比（宁可不显示也不瞎猜）
+    html += diagRowHtml('res', '本工具内存', mem + ' MB', '');
+  }
   box.innerHTML = html;
 }
 
@@ -9638,7 +10091,17 @@ var quickGroups = [
     // ---- 配置入口 ----
     {name:'日志配置', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stlogcfg', cat:'配置入口'},
     {name:'账号助手', desc:'工程模式-助手页（SynTestUtil zhzs 实测）', cmd:'staccount', cat:'配置入口'},
-    {name:'下线配置', desc:'工程模式-离线配置页（SynTestUtil xxpz）', cmd:'stoffline', cat:'配置入口'}
+    {name:'下线配置', desc:'工程模式-离线配置页（SynTestUtil xxpz）', cmd:'stoffline', cat:'配置入口'},
+    // ---- 环境与校验（2026-11-22 第 12 批需求 3）----
+    // 这四条都是"确认环境对不对"的只读/开关类动作。
+    // 用户给的原始命令是 `adb shell getprop | findstr domain` —— findstr 是 Windows
+    // 命令，在工具的 shell 封装里不可用，所以统一改成设备端 grep（跨平台一致）。
+    {name:'查询环境域名', desc:'getprop | grep domain（设备端过滤）', cmd:':envdomain', cat:'环境与校验'},
+    {name:'查询环境https', desc:'getprop | grep https（设备端过滤）', cmd:':envhttps', cat:'环境与校验'},
+    {name:'禁用系统Apk验证检查', desc:'setprop persist.sys.verify_apk false（回读确认）',
+     cmd:':apkverify off', progress:true, cat:'环境与校验'},
+    {name:'启用系统Apk验证检查', desc:'setprop persist.sys.verify_apk true（回读确认）',
+     cmd:':apkverify on', progress:true, cat:'环境与校验'}
   ]},
   // 网联服务（2026-11-15 用户第 2 批需求）：紧跟在「指令执行」下面。
   // 这一组全是"云端 / 后台 / 日志取证"的联调动作 —— 打开车机上的某个后台页、
@@ -9740,6 +10203,11 @@ var quickGroups = [
     {name:'导出讯飞audio.service.rc',
      desc:'pull /vendor/etc/init/android.hardware.audio.service.rc → 桌面logcat\\日期\\audiohal',
      cmd:':audiohal rc', progress:true, cat:'讯飞音频'},
+    // 2026-11-22（第 12 批需求 4）：补一条「查询」——
+    // 原来只有 关/开 两张卡，用户要确认当前是 Enforcing 还是 Permissive，
+    // 只能自己敲终端。查放在最前面，符合"先看再改"的排障顺序。
+    {name:'查询se_linux', desc:'getenforce（Enforcing=开启 / Permissive=关闭）',
+     cmd:':selinux get', cat:'SELinux'},
     {name:'关闭se_linux', desc:'root → remount → setenforce 0（关完回读确认）',
      cmd:':selinux off', progress:true, cat:'SELinux'},
     {name:'打开se_linux', desc:'root → remount → setenforce 1（开完回读确认）',
@@ -9771,10 +10239,24 @@ var quickGroups = [
     {name:'三排左唤醒', desc:'voiceArea=4', cmd:':vr wake -a 4', cat:'唤醒'},
     {name:'三排右唤醒', desc:'voiceArea=5', cmd:':vr wake -a 5', cat:'唤醒'},
     {name:'语助版本号', desc:'versionName + versionCode', cmd:':vr ver', cat:'调试'},
-    {name:'重启语助进程', desc:'force-stop 后由语音拉起', cmd:':vr restart', cat:'调试'},
+    {name:'重启语助进程', desc:'先 chmod 777 /iflytek_a/iflytek，再 force-stop（语音会拉起）',
+     cmd:':vr restart', cat:'调试'},
     {name:'打开后台设置', desc:'SettingDebugActivity', cmd:':vr set', cat:'调试'},
     {name:'文本语义调试', desc:'DebugTextExecuteSemantic', cmd:':vr dbg', cat:'调试'},
-    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log', cat:'调试'}
+    {name:'打开语音自检后台', desc:'SelfCheckActivity', cmd:':vr selfcheck', cat:'调试'},
+    {name:'语音日志', desc:'只显示 讲话内容= / 【TTS】 两类行', cmd:':vr log', cat:'调试'},
+    // ---- 2026-11-22（第 12 批需求 2.4 / 2.6~2.9）----
+    {name:'删除语音助手Apk',
+     desc:'root → remount → disable-verity → pm path 解析 → rm 目录 → sync（删完复核）',
+     cmd:':vr delapk', progress:true, cat:'信源与环境'},
+    {name:'查询信源环境', desc:'getprop persist.sys.autofly.web.deploy',
+     cmd:':vr deploy', cat:'信源与环境'},
+    {name:'切信源环境测试', desc:'setprop ... test（测试环境）',
+     cmd:':vr deploy test', progress:true, cat:'信源与环境'},
+    {name:'切信源环境预发布', desc:'setprop ... autogray（预发布环境）',
+     cmd:':vr deploy autogray', progress:true, cat:'信源与环境'},
+    {name:'切信源环境量产', desc:'setprop ... dev（量产环境）',
+     cmd:':vr deploy dev', progress:true, cat:'信源与环境'}
   ]},
 
 
@@ -10225,6 +10707,14 @@ function renderQuickItems(){
   var panel = document.getElementById('vr-panel');
   if(panel) panel.style.display = (g.name === '语音助手') ? '' : 'none';
 
+  // 2026-11-22（第 12 批需求 2.1/2.2）：两个定时任务框也只在语音助手分组显示。
+  // 它们和语音业务强相关（导的是语助日志、扫的是语助崩溃），放别的组没意义。
+  var isVr = (g.name === '语音助手');
+  var ttLog = document.getElementById('tt-log-box');
+  if(ttLog) ttLog.style.display = isVr ? '' : 'none';
+  var ttCrash = document.getElementById('tt-crash-box');
+  if(ttCrash) ttCrash.style.display = isVr ? '' : 'none';
+
   // APK 管理：面板与卡片网格互斥（这一组本来就没有卡片）
   var apkPanel = document.getElementById('apk-panel');
   if(apkPanel) apkPanel.style.display = (g.panel === 'apk') ? '' : 'none';
@@ -10322,6 +10812,9 @@ function renderSearchResults(){
   var cntEl = document.getElementById('quick-group-count');
   var panel = document.getElementById('vr-panel');
   if(panel) panel.style.display = 'none';
+  // 2026-11-22：定时任务框跟随语音助手面板一起隐藏
+  var ttL = document.getElementById('tt-log-box'); if(ttL) ttL.style.display = 'none';
+  var ttC = document.getElementById('tt-crash-box'); if(ttC) ttC.style.display = 'none';
   // 从 netsim / apk 面板直接进搜索时，grid 还停在 display:none（面板分组把它藏了），
   // 搜索结果必须显式恢复，否则只会看到一片空白。
   var ap = document.getElementById('apk-panel'); if(ap) ap.style.display = 'none';
@@ -14552,6 +15045,13 @@ function v12OnMessage(msg){
     case 'diagadbused':
       try { if(typeof diagOnUseAdb === 'function') diagOnUseAdb(msg); } catch(e){}
       return true;
+    // 2026-11-22：定时任务 —— 日志行 / 状态
+    case 'autolog':
+      try { if(typeof ttOnLog === 'function') ttOnLog(msg); } catch(e){}
+      return true;
+    case 'autostate':
+      try { if(typeof ttOnState === 'function') ttOnState(msg); } catch(e){}
+      return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }
       txApplyFile(msg);
@@ -17144,6 +17644,8 @@ document.addEventListener('DOMContentLoaded', function (){
 
   // 2026-11-22：诊断页快照历史（存 localStorage，不依赖 C#）
   try { if(typeof diagLoadHist === 'function') diagLoadHist(); } catch(e) {}
+  // 2026-11-22：诊断页卡片折叠状态（上次收起的这次还是收起）
+  try { if(typeof diagLoadFold === 'function') diagLoadFold(); } catch(e) {}
 })();
 
 </script>

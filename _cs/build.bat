@@ -10,6 +10,12 @@ rem    2) compile to a temp name (never touches the locked exe)
 rem    3) replace the old exe after compile; if it is still locked,
 rem       keep the new build as *_new.exe and tell the user what to do
 rem ============================================================================
+rem 2026-11-22: honor NO_PAUSE=1 so this script can be driven from automation.
+rem   build_gui.bat already had this; without it, an automated build sits on
+rem   `pause` forever (one earlier run hung for 55 minutes).
+set "DOPAUSE=pause"
+if defined NO_PAUSE set "DOPAUSE=rem"
+
 setlocal EnableExtensions
 cd /d "%~dp0"
 
@@ -23,7 +29,7 @@ if not defined CSC if exist "%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 if not defined CSC (
     echo [ERROR] csc.exe not found. Please install .NET Framework 4.x.
-    pause
+    %DOPAUSE%
     exit /b 1
 )
 
@@ -49,7 +55,7 @@ if errorlevel 1 (
     echo.
     echo [ERROR] compile failed, see errors above
     if exist "%TMPOUT%" del /f /q "%TMPOUT%" >nul 2>&1
-    pause
+    %DOPAUSE%
     exit /b 1
 )
 
@@ -71,14 +77,14 @@ if exist "%OUT%" (
     echo           1. close the running adb_log_export.exe, then run this script again
     echo           2. right-click this build.bat - Run as administrator
     echo           3. close the program, then rename *_new.exe to adb_log_export.exe
-    pause
+    %DOPAUSE%
     exit /b 1
 )
 
 move /y "%TMPOUT%" "%OUT%" >nul
 if not exist "%OUT%" (
     echo [ERROR] move failed, new build is at %TMPOUT%
-    pause
+    %DOPAUSE%
     exit /b 1
 )
 
@@ -90,7 +96,7 @@ echo   - log browsing / export: ls / cd / pull / push / type a Windows path
 echo   - Chinese intent send  : send TEXT  or just type Chinese
 echo   - package versions     : ver / now
 echo Configure via adb_log_export.ini and cmds.ini in the same folder.
-pause
+%DOPAUSE%
 exit /b 0
 
 rem ============================================================================
@@ -125,5 +131,5 @@ echo.
 echo [ERROR] %~1 is still running after 3 attempts.
 echo         It is probably started as Administrator, so a normal taskkill fails.
 echo         Please close it manually first, or run this script as Administrator.
-pause
+%DOPAUSE%
 exit /b 1

@@ -259,6 +259,13 @@ namespace AdbLogExport
             if (n == "un" || n == "uninstall") { VrUninstall(rest); return; }
             if (n == "set" || n == "settings") { VrOpenAct(VR_ACT_SETTING, "语音后台设置"); return; }
             if (n == "dbg" || n == "debug") { VrOpenAct(VR_ACT_TEXTDBG, "文本语义调试页"); return; }
+            // 2026-11-22（第 12 批需求）：
+            //   :vr selfcheck   打开语音自检后台（SelfCheckActivity）
+            //   :vr delapk      删除语助 APK（root→remount→disable-verity→pm path 动态解析→rm→sync）
+            //   :vr deploy [v]  查/切信源环境（test=测试 autogray=预发布 dev=量产）
+            if (n == "selfcheck" || n == "sc" || n == "check") { VrSelfCheck(); return; }
+            if (n == "delapk" || n == "rmapk") { VrDelApk(); return; }
+            if (n == "deploy" || n == "signal" || n == "sigsrc") { VrDeploy(rest); return; }
             if (n == "area" || n == "areas") { VrAreaTable(); OkLocal(); return; }
             if (n == "log" || n == "logs") { VrLog(rest); OkLocal(); return; }
             if (n == "h" || n == "help" || n == "?") { VrHelp(); OkLocal(); return; }
@@ -693,10 +700,271 @@ namespace AdbLogExport
         }
 
         // ==================== 九、重启语助进程 ====================
+        // 2026-11-22（第 12 批需求 2.5）：重启语助进程前先补授权。
+        //
+        // 用户给的原始命令是两步：
+        //   chmod 777 -R /iflytek_a/iflytek     ← 授权
+        //   am force-stop <pkg>                 ← 重启（再次语音会拉起）
+        //
+        // 为什么必须先 chmod：/iflytek_a/iflytek 是讯飞侧的私有数据目录，
+        // 权限被改窄之后语助进程读不到配置，重启后会一直初始化失败。
+        // 现场排障时这一步经常被漏掉，所以固化进指令里。
+        //
+        // 注意：chmod 这一步失败不算致命（目录可能不存在或已是 777），
+        // 所以不中断流程，只提示，然后照常 force-stop。
         private static void VrRestart()
         {
             if (OFFLINE) { Warn("设备未连接"); Hint("输入 :r 重连"); return; }
-            VrAdb(new List<string> { "shell", "am force-stop " + VR_PKG }, "语助进程已强制停止（再次语音可拉起）");
+
+            Info("① 授权 /iflytek_a/iflytek（chmod 777 -R）…");
+            string o = "", e = "";
+            int rc = ShellCall(CUR, "chmod 777 -R /iflytek_a/iflytek 2>&1", out o, out e);
+            string msg = (o + e).Trim();
+            if (rc != 0 && msg.Length > 0)
+            {
+                // 非致命：目录不存在 / 已是 777 都会在这里，继续往下走
+                Warn("  授权未成功（不中断）：" + FirstLine(msg));
+            }
+            else
+            {
+                Ok("  授权完成");
+            }
+
+            Info("② 强制停止语助进程…");
+            VrAdb(new List<string> { "shell", "am force-stop " + VR_PKG },
+                  "语助进程已强制停止（再次语音可拉起）");
+        }
+
+        // ==================== 十、语助调试页 / 删 APK / 信源环境 ====================
+        // 2026-11-22（第 12 批需求 2.3 ~ 2.9）
+
+        // 2.3 打开语音自检后台
+        // 用户给的完整命令：
+        //   am start -n com.iflytek.cutefly.speechclient.hmi/\
+        //     com.iflytek.cutefly.speechclient.hmi.debugpages.selfcheck.SelfCheckActivity
+        // 注意这里 Activity 是**完整类名**（不带前导点），交给 VrComponent 拼成
+        // pkg/<完整类名> —— 不能写成 pkg/.Cls，那样 am 会再叠一层包名（见 VrComponent 注释）。
+        internal static string VR_ACT_SELFCHECK =
+            "com.iflytek.cutefly.speechclient.hmi.debugpages.selfcheck.SelfCheckActivity";
+
+        private static void VrSelfCheck()
+        {
+            VrOpenAct(VR_ACT_SELFCHECK, "语音自检后台");
+        }
+
+        // 2.4 删除语音助手 APK
+        //
+        // 用户给的流程：
+        //   adb root → adb remount → adb disable-verity
+        //   adb shell pm path <pkg>        ← 查路径
+        //   adb shell rm -rf /system/priv-app/SpeechHMI/*
+        //   adb shell sync
+        //
+        // ★ 关键改动：**路径动态解析，不写死**。
+        //   用户给的脚本里 rm 的路径是硬编码的 /system/priv-app/SpeechHMI/*，
+        //   但注释又写着"是上面查询到的路径"——两者不一致。
+        //   如果某台车机上装在别的地方（比如 /system/app/ 或 /product/priv-app/），
+        //   硬编码就会删错目录，甚至删空。
+        //   所以这里：pm path 拿到 apk 全路径 → 取它所在**目录** → 只删该目录。
+        //
+        // ★ 用户明确要求不做二次确认，所以这里不拦。
+        //   但会把"将删除什么"完整打到输出区（先 ls 再 rm），
+        //   万一解析错了，从输出里能一眼看出来，便于事后定位。
+        private static void VrDelApk()
+        {
+            if (OFFLINE) { Warn("设备未连接"); Hint("输入 :r 重连"); return; }
+
+            Info("【删除语助 APK】开始");
+
+            // ① root
+            Info("① adb root");
+            string o = "", e = "";
+            ShellCall(CUR, "root", out o, out e);
+            // adb root 后服务会重启，稍微等一会儿再继续
+            System.Threading.Thread.Sleep(900);
+
+            // ② remount
+            Info("② adb remount");
+            o = ""; e = "";
+            int rc = ShellCall(CUR, "remount", out o, out e);
+            string rm1 = (o + e).Trim();
+            if (rm1.Length > 0) Hint("  " + FirstLine(rm1));
+            if (rc != 0)
+            {
+                Fail("remount 失败，系统分区不可写。请确认已 root。");
+                Hint("可尝试先执行 :vr delapk 前手动 adb disable-verity 并重启设备");
+                return;
+            }
+
+            // ③ disable-verity（拿不到就提示，不中断 —— 有些机器 remount 已经够了）
+            Info("③ adb disable-verity");
+            o = ""; e = "";
+            ShellCall(CUR, "disable-verity", out o, out e);
+            string dv = (o + e).Trim();
+            if (dv.Length > 0) Hint("  " + FirstLine(dv));
+
+            // ④ pm path —— 查真实路径
+            Info("④ 查询 APK 路径（pm path " + VR_PKG + "）");
+            o = ""; e = "";
+            ShellCall(CUR, "pm path " + VR_PKG, out o, out e);
+            string all = (o + e);
+            // 输出形如：package:/system/priv-app/SpeechHMI/SpeechHMI.apk
+            string apkPath = "";
+            string[] ls = all.Split('\n');
+            for (int i = 0; i < ls.Length; i++)
+            {
+                string line = ls[i].Trim();
+                if (line.StartsWith("package:"))
+                {
+                    apkPath = line.Substring("package:".Length).Trim();
+                    break;
+                }
+            }
+            if (apkPath.Length == 0)
+            {
+                Fail("没查到 APK 路径，语助可能没装或包名不对。");
+                Hint("  包名：" + VR_PKG);
+                Hint("  原始输出：" + FirstLine(all));
+                return;
+            }
+            Ok("  " + apkPath);
+
+            // 取目录：/system/priv-app/SpeechHMI/SpeechHMI.apk → /system/priv-app/SpeechHMI
+            int slash = apkPath.LastIndexOf('/');
+            if (slash <= 0)
+            {
+                Fail("路径解析失败（没有目录部分）：" + apkPath);
+                return;
+            }
+            string dir = apkPath.Substring(0, slash);
+
+            // 安全阀：只允许删系统应用目录，别的地方一律拒绝。
+            // 万一 pm path 返回了奇怪的东西（比如 /data/app/...），
+            // 硬删会破坏用户数据。这里保守拦住。
+            if (dir.IndexOf("/system/", StringComparison.Ordinal) < 0
+                && dir.IndexOf("/product/", StringComparison.Ordinal) < 0
+                && dir.IndexOf("/vendor/", StringComparison.Ordinal) < 0)
+            {
+                Fail("解析到的目录不在系统分区，已拒绝删除：" + dir);
+                Hint("  出于安全考虑，只允许删除 /system、/product、/vendor 下的应用目录");
+                return;
+            }
+
+            Info("⑤ 待删除目录：" + dir);
+            // 先把目录内容列出来 —— 用户要求不做二次确认，
+            // 那至少让输出里能看到"删的是什么"，事后能追溯。
+            o = ""; e = "";
+            ShellCall(CUR, "ls -la " + dir + " 2>&1", out o, out e);
+            string listing = (o + e).Trim();
+            if (listing.Length > 0)
+            {
+                Info("  目录内容：");
+                string[] fl = listing.Split('\n');
+                for (int i = 0; i < fl.Length && i < 20; i++)
+                    Hint("    " + fl[i].TrimEnd());
+            }
+
+            // ⑥ rm -rf
+            Info("⑥ 删除：" + dir);
+            o = ""; e = "";
+            rc = ShellCall(CUR, "rm -rf " + dir, out o, out e);
+            string rmerr = (o + e).Trim();
+            if (rmerr.Length > 0) Warn("  " + FirstLine(rmerr));
+
+            // ⑦ sync
+            Info("⑦ sync");
+            ShellCall(CUR, "sync", out o, out e);
+
+            // ⑧ 复核：再查一次 pm path，确认真的没了
+            o = ""; e = "";
+            ShellCall(CUR, "pm path " + VR_PKG, out o, out e);
+            string after = (o + e).Trim();
+            if (after.IndexOf("package:") >= 0)
+            {
+                Warn("删除后仍能查到 APK，可能没删干净：" + FirstLine(after));
+                Hint("  可重启设备后再确认：:vr delapk");
+            }
+            else
+            {
+                Ok("✓ 语助 APK 已删除（pm path 已查不到）");
+                Hint("  提示：重启设备后系统才完全生效；重装需要对应版本的 APK");
+            }
+        }
+
+        // 2.6 ~ 2.9 信源环境（persist.sys.autofly.web.deploy）
+        //
+        // 用户确认：「量产真的用 dev」—— 所以 dev 就是量产环境，不是写反。
+        // 三个取值：
+        //   test      测试
+        //   autogray  预发布
+        //   dev       量产
+        //
+        // 为什么写完要回读：setprop 在部分车机上被 SELinux 拦住或只读，
+        // 静默失败很常见（:pki / :carplaycert 也是同样的处理）。
+        internal const string VR_DEPLOY_KEY = "persist.sys.autofly.web.deploy";
+
+        private static void VrDeploy(string rest)
+        {
+            if (OFFLINE) { Warn("设备未连接"); Hint("输入 :r 重连"); return; }
+
+            string v = (rest == null) ? "" : rest.Trim().ToLowerInvariant();
+
+            // 无参数 / query → 查询
+            if (v.Length == 0 || v == "q" || v == "query" || v == "get")
+            {
+                string o = "", e = "";
+                ShellCall(CUR, "getprop " + VR_DEPLOY_KEY, out o, out e);
+                string cur = o.Trim();
+                if (e.Trim().Length > 0) cur = (cur + " " + e.Trim()).Trim();
+                if (cur.Length == 0) cur = "（空，未设置）";
+
+                Info("信源环境：" + DeployName(cur));
+                Hint("  原始值：" + cur);
+                Hint("  可切换：:vr deploy test | autogray | dev");
+                return;
+            }
+
+            // 归一化别名
+            if (v == "t") v = "test";
+            if (v == "gray" || v == "pre" || v == "autogray") v = "autogray";
+            if (v == "prod" || v == "production") v = "dev";   // 量产就是 dev（用户确认）
+
+            if (v != "test" && v != "autogray" && v != "dev")
+            {
+                Warn("不认识的取值：" + v);
+                Hint("  用法：:vr deploy [test|autogray|dev]");
+                Hint("  对应：test=测试  autogray=预发布  dev=量产");
+                return;
+            }
+
+            Info("切换信源环境 → " + DeployName(v) + "（" + v + "）");
+
+            string so = "", se = "";
+            int rc = ShellCall(CUR, "setprop " + VR_DEPLOY_KEY + " " + v, out so, out se);
+            string seMsg = (so + se).Trim();
+            if (rc != 0 && seMsg.Length > 0) Warn("  " + FirstLine(seMsg));
+
+            // 回读确认 —— setprop 静默失败很常见，不回读等于不知道成不成
+            so = ""; se = "";
+            System.Threading.Thread.Sleep(250);
+            ShellCall(CUR, "getprop " + VR_DEPLOY_KEY, out so, out se);
+            string now = so.Trim();
+
+            if (now == v)
+                Ok("✓ 已切到 " + DeployName(v) + "（回读确认：" + now + "）");
+            else
+            {
+                Warn("设置未生效：期望 " + v + "，实际 " + (now.Length == 0 ? "（空）" : now));
+                Hint("  可能被 SELinux 拦住或属性只读（persist.sys.* 需要 root 写入）");
+            }
+        }
+
+        private static string DeployName(string v)
+        {
+            if (v == "test") return "测试";
+            if (v == "autogray") return "预发布";
+            if (v == "dev") return "量产";
+            return v;
         }
 
         // ==================== 十、卸载语助 ====================

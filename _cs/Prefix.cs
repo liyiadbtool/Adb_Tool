@@ -310,6 +310,14 @@ namespace AdbLogExport
             if (n == "audiodumppull" || n == "dumppull") { DoAudioDumpPull(); return; }
             if (n == "gmqtlog" || n == "amap" || n == "amapbllog") { DoAmapLog(); return; }
 
+            // ---- 2026-11-22 第 12 批需求 3：环境与校验 ----
+            // :envdomain      查环境域名（getprop | grep -i domain）
+            // :envhttps       查环境 https（getprop | grep -i https）
+            // :apkverify [on|off]  开关系统 APK 验证检查（persist.sys.verify_apk）
+            if (n == "envdomain" || n == "envdomaincheck") { DoEnvDomain(); return; }
+            if (n == "envhttps" || n == "envhttpscheck") { DoEnvHttps(); return; }
+            if (n == "apkverify" || n == "verifyapk") { DoApkVerify(arg); return; }
+
             // :pki [del|pre|prod]   PKI 证书：删除 / 切预发布 / 切正式（root + 多步）
             if (n == "pki" || n == "pkicert") { DoPkiCmd(arg); return; }
 

@@ -356,7 +356,8 @@ A35_ADDS = {
 #               mkListPkgs / mkOpenLogDir
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
-    "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused"]),
+    "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused",
+                      "autolog", "autostate"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
@@ -375,7 +376,11 @@ A36_ADDS = {
                      "diagRefresh", "diagCopyAll", "diagCopySection",
                      "diagCopyOne", "diagCopyHist", "diagSaveSnapshot",
                      "diagToggleSample", "diagClearHistory",
-                     "diagInstallBuiltinAdb"]),
+                     "diagInstallBuiltinAdb",
+                     # 2026-11-22 第 2 版：卡片折叠
+                     "diagToggleCard",
+                     # 2026-11-22 定时任务
+                     "ttStart", "ttStop", "ttTogglePause"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -408,7 +413,12 @@ A36_ADDS = {
                 "diag-car-dot", "diag-car-note", "diag-link-dot", "diag-hist-note",
                 "diag-rows-adb", "diag-rows-pc", "diag-rows-car",
                 "diag-rows-link", "diag-rows-res", "diag-rows-hist",
-                "diag-sample-btn"]),
+                "diag-sample-btn",
+                # 2026-11-22 定时任务（语音助手页）
+                "tt-log-box", "tt-log-min", "tt-log-start", "tt-log-pause",
+                "tt-log-stop", "tt-log-state", "tt-log-out", "tt-log-hint",
+                "tt-crash-box", "tt-crash-min", "tt-crash-start", "tt-crash-pause",
+                "tt-crash-stop", "tt-crash-state", "tt-crash-out", "tt-crash-hint"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

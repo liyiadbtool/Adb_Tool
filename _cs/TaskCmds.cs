@@ -2166,8 +2166,129 @@ namespace AdbLogExport
             Hint("      :selinux on    打开（root → remount → setenforce 1）");
         }
 
-        // :md5so            查找 siri 拾音日志：对 /vendor/lib(64) 下所有 .so 求 md5
+        // ==================== 2026-11-22（第 12 批需求 3）环境与校验 ====================
         //
+        // 用户给的原始命令是：adb shell getprop | findstr domain
+        // 这里改成设备端 grep，原因：
+        //   · findstr 是 Windows 命令，走 cmd 管道能跑，但工具的 shell 封装
+        //     把整条命令交给 adb shell 时，`|` 和 findstr 都不在设备上，
+        //     结果要么语法错误，要么过滤不到；
+        //   · grep 在车机上都有（toybox/busybox），跨平台一致。
+        // 用户已确认改成设备端 grep。
+
+        // :envdomain   查环境域名（getprop 里所有含 domain 的行）
+        private static void DoEnvDomain()
+        {
+            if (!RequireDevice("")) return;
+            Info("查询含 domain 的系统属性…");
+            string o = ShellValue("getprop | grep -i domain");
+            PrintPropLines(o, "domain");
+        }
+
+        // :envhttps    查环境 https 配置
+        private static void DoEnvHttps()
+        {
+            if (!RequireDevice("")) return;
+            Info("查询含 https 的系统属性…");
+            string o = ShellValue("getprop | grep -i https");
+            PrintPropLines(o, "https");
+        }
+
+        // getprop | grep 的输出形如：[key]: [value]
+        // 注意 `]: [` 之间有个**空格**，真机输出是
+        //     [persist.sys.tsp.platform.domain]: [pv-release.gacicv.com:8080]
+        // 所以不能简单地"取第一个 ] 后面的内容"——那样会连着 ": [" 一起拿到。
+        // 这里按 `]: [` 整体切分，再把尾部多余的空格/方括号剥掉。
+        private static void PrintPropLines(string output, string keyword)
+        {
+            string s = (output == null) ? "" : output.Trim();
+            if (s.Length == 0)
+            {
+                Warn("没有找到含 \"" + keyword + "\" 的属性");
+                Hint("可能该环境没有配置，或属性名不含这个关键字");
+                return;
+            }
+            string[] lines = s.Split('\n');
+            int n = 0;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (line.Length == 0) continue;
+                // 过滤 shell 报错行
+                if (line.StartsWith("getprop:") || line.StartsWith("grep:")) continue;
+
+                string key = "";
+                string val = "";
+
+                // 标准形态：[key]: [value]
+                int sep = line.IndexOf("]: [", StringComparison.Ordinal);
+                if (sep > 0 && line.StartsWith("["))
+                {
+                    key = line.Substring(1, sep - 1);
+                    int vstart = sep + 4;
+                    int vend = line.LastIndexOf(']');
+                    if (vend > vstart) val = line.Substring(vstart, vend - vstart);
+                    else val = line.Substring(vstart);
+                }
+                else
+                {
+                    // 兜底：没有方括号就直接原样显示
+                    Ok("  " + line);
+                    n++;
+                    continue;
+                }
+
+                val = val.Trim();
+                Ok("  " + key + " = " + (val.Length == 0 ? "（空）" : val));
+                n++;
+            }
+            if (n == 0) Warn("没有匹配到含 \"" + keyword + "\" 的属性");
+            else Info("共 " + n + " 条");
+        }
+
+        // :apkverify on|off   开关系统 APK 验证检查（persist.sys.verify_apk）
+        //
+        // 为什么写完一定回读：persist.sys.* 在部分车机上被 SELinux 拦住或只读，
+        // setprop 静默失败很常见。不回读就等于"不知道成没成"
+        // （:pki / :carplaycert / :vr deploy 都是同样的处理）。
+        private static void DoApkVerify(string argRaw)
+        {
+            if (!RequireDevice("")) return;
+
+            string a = (argRaw == null ? "" : argRaw).Trim().ToLowerInvariant();
+            string target = "";
+            if (a == "off" || a == "0" || a == "false" || a == "disable" || a == "关")
+                target = "false";
+            else if (a == "on" || a == "1" || a == "true" || a == "enable" || a == "开")
+                target = "true";
+            else if (a.Length == 0 || a == "get" || a == "q")
+            {
+                string cur0 = ShellValue("getprop persist.sys.verify_apk").Trim();
+                if (cur0.Length == 0) Warn("APK 验证检查 = 未设置（系统默认行为）");
+                else Ok("APK 验证检查 = " + cur0);
+                Hint("用法：:apkverify off   禁用    :apkverify on   启用");
+                return;
+            }
+            else
+            {
+                Fail(":apkverify 的参数不认识：" + argRaw);
+                Hint("用法：:apkverify off   禁用    :apkverify on   启用");
+                return;
+            }
+
+            Info("设置 persist.sys.verify_apk = " + target + "（" + (target == "false" ? "禁用" : "启用") + "）");
+            ShellValue("setprop persist.sys.verify_apk " + target);
+
+            // 回读
+            System.Threading.Thread.Sleep(200);
+            string cur = ShellValue("getprop persist.sys.verify_apk").Trim();
+            if (cur == target)
+                Ok("✓ 已生效（回读确认：" + cur + "）");
+            else
+                Warn("设置未生效：期望 " + target + "，实际 " + (cur.Length == 0 ? "（空）" : cur));
+        }
+
+        // :md5so            查找 siri 拾音日志：对 /vendor/lib(64) 下所有 .so 求 md5        //
         // 需求 5：root → remount → find ... | xargs md5sum > /data/md5.txt
         // 注意 find 的结果可能上万行，全量回显会瞬间刷满输出框，
         // 所以只回显"写了多少行"这种可核对的信息，内容靠下一步 :md5pull 导出。

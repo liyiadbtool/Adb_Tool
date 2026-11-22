@@ -25,7 +25,7 @@ const GUI_BAT = path.join(ROOT, "adb_log_gui", "build_gui.bat");
 //   屏幕分辨率和缩放，还调了 GuiEntry.LogDir() 算日志目录体积 ——
 //   这两个依赖 CLI 版都没有（CLI 不引用 WinForms，也不编译 GuiEntry）。
 //   CLI 版本身没有诊断界面，不存在"编出半成品 exe"的风险。
-const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs", "NetSim.cs", "Diag.cs"];
+const GUI_ONLY = ["GuiSink.cs", "GuiMain.cs", "GuiWeb.cs", "GuiSelfCheck.cs", "GuiHeadless.cs", "GuiEntry.cs", "NetSim.cs", "Diag.cs", "AutoTask.cs"];
 
 let fail = 0;
 function bad(m) { console.log("  [XX]   " + m); fail++; }
