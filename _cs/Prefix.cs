@@ -347,6 +347,8 @@ namespace AdbLogExport
             if (n == "clogout" || n == "clusterlogout") { ClusterLogout(); return; }
             if (n == "cdetect" || n == "chipdetect") { DoChipDetect(); return; }
             if (n == "ccast" || n == "clustercast") { DoClusterCastCli(arg); return; }
+            // 2026-11-22（第 17 批）：动态列屏幕（scrcpy --list-displays）
+            if (n == "displays" || n == "screens" || n == "列屏") { DoListDisplays(); return; }
 
             // :pki [del|pre|prod]   PKI 证书：删除 / 切预发布 / 切正式（root + 多步）
             if (n == "pki" || n == "pkicert") { DoPkiCmd(arg); return; }

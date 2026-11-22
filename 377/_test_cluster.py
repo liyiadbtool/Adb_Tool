@@ -90,13 +90,21 @@ function runAll(){
   var cont = (idxs.length === 3) && (idxs[1] === idxs[0]+1) && (idxs[2] === idxs[0]+2);
   ok('★ 三张参数输入卡连续排列', cont, idxs.join(','));
 
-  /* ---------- B. 仪表页存在 ---------- */
-  ok('页签存在', !!document.querySelector('[data-tab="cluster"]'));
-  ok('页面容器存在', !!document.getElementById('page-cluster'));
+  /* ---------- B. 仪表已并入「指令 → Scrcpy投屏」面板 ----------
+     2026-11-22（第 17 批需求 3）：独立仪表页签已删除，
+     芯片/登录/投屏三块搬进 cast-panel。 */
+  ok('原仪表页签已删除', !document.querySelector('[data-tab="cluster"]'));
+  ok('原仪表页容器已删除', !document.getElementById('page-cluster'));
 
-  switchTab('cluster');
-  ok('切换到仪表页后可见',
-     document.getElementById('page-cluster').classList.contains('active'));
+  var castIdx2 = -1;
+  for (var ci = 0; ci < quickGroups.length; ci++)
+    if (quickGroups[ci].name === 'Scrcpy投屏') castIdx2 = ci;
+  ok('存在 Scrcpy投屏 分组', castIdx2 >= 0);
+  switchTab('quick');
+  _quickIdx = castIdx2; _quickFilter = ''; renderQuickItems();
+  ok('投屏面板已显示', document.getElementById('cast-panel').style.display !== 'none');
+  ok('仪表控件在面板内', !!document.querySelector('#cast-panel #clu-chip'));
+  ok('登录按钮在面板内', !!document.querySelector('#cast-panel #clu-login'));
 
   /* ---------- C. 芯片切换显示/隐藏凭据 ---------- */
   var sel = document.getElementById('clu-chip');

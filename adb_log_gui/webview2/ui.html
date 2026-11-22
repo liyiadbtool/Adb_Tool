@@ -9,7 +9,7 @@
   /* Apple 深色 = dimming 而非反转：#000 → #1C1C1E → #2C2C2E 三级抬升 */
   --bg:#000000; --surface:#1c1c1e; --surface-2:#2c2c2e;
   --border:rgba(84,84,88,.60); --border-strong:rgba(235,235,245,.30);
-  --text:#f5f5f7; --text-dim:rgba(235,235,245,.68); --text-faint:rgba(235,235,245,.46);
+  --text:#f5f5f7; --text-dim:rgba(235,235,245,.72); --text-faint:rgba(235,235,245,.54);
   --accent:#0a84ff; --accent-soft:rgba(10,132,255,.16);
   --ok:#30d158; --ok-soft:rgba(48,209,88,.16);
   --err:#ff453a; --err-soft:rgba(255,69,58,.14); --err-soft-hover:rgba(255,69,58,.24);
@@ -109,7 +109,7 @@ body{
   display:inline-flex;align-items:center;gap:7px;
   height:28px;padding:0 12px 0 9px;
   border-radius:var(--r-pill);cursor:pointer;
-  border:1px solid;font-size:12.5px;font-weight:600;
+  border:1px solid;font-size:13px;font-weight:600;
   font-family:var(--font-ui);
   transition:background .15s,border-color .15s,color .15s,transform .08s;
   white-space:nowrap;user-select:none;-webkit-user-select:none;
@@ -139,7 +139,7 @@ body{
   display:inline-flex;align-items:center;gap:7px;
   height:28px;padding:0 11px 0 9px;border-radius:var(--r-pill);cursor:pointer;
   border:1px solid var(--border-strong);background:transparent;
-  color:var(--text-dim);font-size:12.5px;font-weight:600;
+  color:var(--text-dim);font-size:13px;font-weight:600;
   font-family:var(--font-ui);
   white-space:nowrap;transition:color .15s,border-color .15s,background .15s;
   user-select:none;-webkit-user-select:none;
@@ -161,7 +161,7 @@ body{
   outline:none;font-family:var(--font-mono);
 }
 .wadb-pop input:focus{border-color:var(--accent);}
-.wadb-tip{font-size:11.5px;color:var(--text-faint);line-height:1.6;}
+.wadb-tip{font-size:12px;color:var(--text-faint);line-height:1.6;}
 .wadb-tip.err{color:var(--err);}
 .wadb-acts{display:flex;gap:8px;}
 .wadb-acts .btn{flex:1;}
@@ -415,7 +415,7 @@ body{
   background:var(--surface);
   color:var(--text);
   font-family:var(--font-mono);
-  font-size:11.5px;
+  font-size:12px;
   outline:none;
   user-select:text; -webkit-user-select:text;
   box-sizing:border-box;
@@ -636,7 +636,7 @@ body{
   flex:1 1 auto;min-width:0;
   overflow-y:auto;overflow-x:hidden;
   max-height:200px;
-  font-family:var(--font-mono);font-size:12px;line-height:1.5;
+  font-family:var(--font-mono);font-size:12px;line-height:1.6;
   color:var(--text-dim);
   white-space:pre-wrap;word-break:break-all;overflow-wrap:anywhere;
   /* 常显滚动条占位（macOS 风格的 overlay 滚动条默认不占位、也不显眼），
@@ -763,7 +763,7 @@ body{
 .apk-detail{display:flex;flex-direction:column;gap:4px;padding:6px 2px;
   /* 2026-11-20 反馈1：查询结果要能选中复制 */
   user-select:text;-webkit-user-select:text;cursor:text;}
-.apk-drow{display:flex;gap:10px;font-size:12.5px;line-height:1.7;}
+.apk-drow{display:flex;gap:10px;font-size:13px;line-height:1.7;}
 .apk-dk{flex:0 0 74px;color:var(--text-faint);user-select:text;-webkit-user-select:text;}
 .apk-dv{flex:1;min-width:0;color:var(--text);word-break:break-all;font-family:var(--font-mono);
   /* 2026-11-20 反馈2：超长（Activity/路径）必须换行 */
@@ -777,7 +777,7 @@ body{
 .fs-prog{display:flex;align-items:center;gap:8px;flex:0 0 auto;}
 .fs-prog-bar{width:150px;height:6px;border-radius:var(--r-1);background:var(--surface-2);overflow:hidden;}
 .fs-prog-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .12s;}
-.fs-prog-txt{font-size:11.5px;color:var(--text-dim);font-family:var(--font-mono);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fs-prog-txt{font-size:12px;color:var(--text-dim);font-family:var(--font-mono);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fs-panes{flex:1;min-height:0;display:flex;gap:6px;}
 /* 中间拖动条：可调左右两栏宽度（文件内容看不全时拉宽） */
 .fs-resizer{flex:0 0 6px;cursor:col-resize;border-radius:var(--r-1);background:transparent;}
@@ -797,7 +797,7 @@ body{
   border-bottom:1px solid var(--border-strong);flex:0 0 auto;}
 .fs-cols span.ct.c2,.fs-cols span.ct.c3{text-align:right;}
 .fs-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px;scrollbar-gutter:stable;}
-.fs-row{display:grid;grid-template-columns:14px 1fr 74px 112px;gap:6px;align-items:center;height:30px;padding:0 8px;border-radius:var(--r-2);font-size:12.5px;color:var(--text-dim);cursor:default;user-select:none;-webkit-user-select:none;}
+.fs-row{display:grid;grid-template-columns:14px 1fr 74px 112px;gap:6px;align-items:center;height:30px;padding:0 8px;border-radius:var(--r-2);font-size:13px;color:var(--text-dim);cursor:default;user-select:none;-webkit-user-select:none;}
 /* 树形：箭头列固定 14px，缩进由行内 padding-left 控制 */
 .fs-row .fs-arw{font-size:10px;color:var(--text-faint);text-align:center;min-width:10px;}
 /* 每栏独立的搜索框：左栏只搜电脑、右栏只搜设备（各自一个输入框，互不影响） */
@@ -809,7 +809,7 @@ body{
 /* 搜索结果：名称后面跟一段灰色父目录，方便区分同名文件 */
 .fs-row .srcdir{color:var(--text-faint);font-size:11px;margin-left:6px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;}
-.fs-info{padding:5px 10px;font-size:11.5px;color:var(--text-faint);}/* 拖拽落在哪个文件夹上：整行高亮（传输开始/结束都会清） */
+.fs-info{padding:5px 10px;font-size:12px;color:var(--text-faint);}/* 拖拽落在哪个文件夹上：整行高亮（传输开始/结束都会清） */
 .fs-row.drop-target{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);}
 /* 名称列靠左，尽量多留空间显示文件名 */
 .fs-row .n{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;}
@@ -822,8 +822,8 @@ body{
 .fs-row .n .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fs-row .i{flex:0 0 auto;width:14px;text-align:center;font-size:12px;color:var(--text-faint);}
 .fs-row.dir .i{color:var(--accent);}
-.fs-row .sz,.fs-row .tm{text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fs-empty{padding:16px 12px;font-size:12px;color:var(--text-faint);line-height:1.8;}
+.fs-row .sz,.fs-row .tm{text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fs-empty{padding:16px 12px;font-size:12px;color:var(--text-faint);line-height:1.9;}
 .fs-empty.err{color:var(--err);}
 .fs-acts{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex:0 0 auto;}
 .fs-act{flex:1;height:28px;border:1px solid var(--border);border-radius:var(--r-2);background:var(--bg);color:var(--text-dim);font-size:12px;cursor:pointer;font-family:inherit;}
@@ -833,7 +833,7 @@ body{
 .fs-modal{position:fixed;inset:0;z-index:96;background:var(--scrim);display:flex;align-items:center;justify-content:center;}
 .fs-modal-box{width:380px;max-width:calc(100vw - 48px);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-4);padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-lg);}
 .fs-modal-box h4{margin:0;font-size:13px;color:var(--text);font-weight:600;}
-.fs-modal-box p{margin:0;font-size:12.5px;color:var(--text-dim);line-height:1.7;word-break:break-all;}
+.fs-modal-box p{margin:0;font-size:13px;color:var(--text-dim);line-height:1.7;word-break:break-all;}
 .fs-modal-box input{height:32px;border:1px solid var(--border);border-radius:var(--r-2);background:var(--bg);color:var(--text);padding:0 10px;font-size:13px;outline:none;font-family:inherit;}
 .fs-modal-box input:focus{border-color:var(--accent);}
 .fs-modal-acts{display:flex;gap:8px;justify-content:flex-end;}
@@ -875,7 +875,7 @@ body{
 .apk-selbtn.open{border-color:var(--accent);}
 .apk-seltext{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .apk-seltext.ph{color:var(--text-faint);}
-.apk-caret{flex:0 0 auto;font-size:9px;color:var(--text-faint);}
+.apk-caret{flex:0 0 auto;font-size:10px;color:var(--text-faint);}
 .apk-drop{
   position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:70;
   background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--r-3);
@@ -971,7 +971,7 @@ body{
 .apk-mgr-row .mp{flex:1.4;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-faint);font-family:var(--font-mono);font-size:12px;}
 .apk-mgr-row .del{border:none;background:none;color:var(--text-faint);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:var(--r-1);}
 .apk-mgr-row .del:hover{color:var(--err);background:var(--surface);}
-.apk-mgr-empty{padding:18px 12px;color:var(--text-faint);font-size:12px;line-height:1.8;}
+.apk-mgr-empty{padding:18px 12px;color:var(--text-faint);font-size:12px;line-height:1.9;}
 
 /* ================= 2026-11-13 交互优化 ================= */
 /* 顶栏运行指示：任何页签都能看到"还在跑"并就地停止。
@@ -1049,7 +1049,7 @@ body{
   border-radius:var(--r-4);background:var(--surface);margin:0 0 12px;}
 .ns-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}
 .ns-lbl{font-size:12px;color:var(--text-dim);white-space:nowrap;flex:0 0 auto;}
-.ns-tip{font-size:11px;color:var(--text-faint);line-height:1.5;flex:1 1 260px;min-width:0;}
+.ns-tip{font-size:11px;color:var(--text-faint);line-height:1.6;flex:1 1 260px;min-width:0;}
 /* T3：代理状态与实时流量 */
 .ns-state{font-size:12px;color:var(--text-faint);white-space:nowrap;}
 .ns-state.on{color:var(--ok);font-weight:600;}
@@ -1063,14 +1063,14 @@ body{
 .ns-env{padding-bottom:10px;border-bottom:1px solid var(--border);}
 .ns-grid{display:flex;flex-direction:column;gap:6px;}
 .ns-row{display:grid;grid-template-columns:1fr 150px 150px;gap:8px;align-items:center;}
-.ns-row.ns-ghead{color:var(--text-faint);font-size:11.5px;padding-bottom:2px;}
+.ns-row.ns-ghead{color:var(--text-faint);font-size:12px;padding-bottom:2px;}
 .ns-row.ns-ghead span:not(:first-child){text-align:center;}
 .ns-row input{width:100%;}
 .ns-sep{width:1px;height:20px;background:var(--border);flex:0 0 auto;margin:0 2px;}
 .ns-acts{padding-top:10px;border-top:1px solid var(--border);}
 .ns-out{min-height:150px;max-height:280px;overflow:auto;background:var(--bg);
   border:1px solid var(--border-strong);border-radius:var(--r-3);padding:9px 11px;
-  font-family:var(--font-mono);font-size:11.5px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;}
+  font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap;word-break:break-all;}
 .ns-out-empty{color:var(--text-faint);font-family:inherit;}
 .ns-out .ns-o-t{color:var(--text-faint);}
 .ns-out .ns-o-c{color:var(--accent);}
@@ -1089,7 +1089,7 @@ body{
   outline:none;padding:0 8px;overflow:hidden;text-overflow:ellipsis;}
 .ui-path:focus{border-color:var(--accent);}
 .ui-line input[type=range]{width:120px;accent-color:var(--accent);}
-.ui-opv{font-size:11.5px;color:var(--text-faint);font-family:var(--font-mono);width:40px;}
+.ui-opv{font-size:12px;color:var(--text-faint);font-family:var(--font-mono);width:40px;}
 .ui-radio{font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
 .ui-radio input{accent-color:var(--accent);}
 .ui-thr{width:52px;height:24px;background:var(--bg);color:var(--text);border:1px solid var(--border);
@@ -1468,7 +1468,7 @@ input[type=radio],input[type=checkbox]{accent-color:var(--accent);}
 .cm-num{width:110px;height:38px;padding:0 10px;border:1px solid var(--border);
   border-radius:var(--r-sm);background:var(--bg);color:var(--text);font-size:13px;}
 .cm-unit{align-self:center;font-size:12px;color:var(--text-faint);}
-.cm-tip{align-self:center;font-size:11px;color:var(--text-faint);line-height:1.5;}
+.cm-tip{align-self:center;font-size:11px;color:var(--text-faint);line-height:1.6;}
 .cm-del{flex:0 0 auto;width:28px;height:28px;margin-top:6px;border:none;
   border-radius:var(--r-sm);background:none;color:var(--text-faint);
   font-size:16px;cursor:pointer;}
@@ -1799,11 +1799,11 @@ textarea:focus,select:focus{
 .tb-logo svg{width:15px;height:15px;}
 .tb-name{
   font-family:var(--font-ui);
-  font-size:12.5px;font-weight:600;letter-spacing:.2px;
+  font-size:13px;font-weight:600;letter-spacing:.2px;
   color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .tb-sub{
-  font-family:var(--font-ui);font-size:11.5px;color:var(--text-faint);
+  font-family:var(--font-ui);font-size:12px;color:var(--text-faint);
   margin-left:2px;white-space:nowrap;
 }
 .tb-btns{display:flex;align-items:stretch;height:100%;flex:0 0 auto;}
@@ -1930,7 +1930,7 @@ html[data-winmax="1"] .rz{display:none;}
 .heap-row:hover{background:var(--surface-hover);}
 .heap-row.sel{background:var(--accent-soft);}
 .heap-row .hn{flex:1 1 auto;min-width:0;
-  font-family:var(--font-mono);font-size:11.5px;color:var(--text);
+  font-family:var(--font-mono);font-size:12px;color:var(--text);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .heap-row .hp{flex:0 0 62px;font-family:var(--font-mono);font-size:11px;color:var(--text-faint);}
 .heap-row .hm{flex:0 0 72px;font-family:var(--font-mono);font-size:11px;
@@ -1942,7 +1942,7 @@ html[data-winmax="1"] .rz{display:none;}
   padding:10px 14px;
 }
 .heap-sel{
-  font-size:11.5px;color:var(--text-faint);
+  font-size:12px;color:var(--text-faint);
   font-family:var(--font-mono);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   max-width:60%;
@@ -1978,14 +1978,14 @@ html[data-winmax="1"] .rz{display:none;}
   font-size:12px;font-weight:700;color:var(--text-dim);
   letter-spacing:.4px;margin-bottom:10px;display:flex;align-items:baseline;gap:8px;
 }
-.set-sub{font-weight:400;font-size:11.5px;color:var(--text-faint);letter-spacing:0;}
+.set-sub{font-weight:400;font-size:12px;color:var(--text-faint);letter-spacing:0;}
 .set-seg{
   display:flex;gap:4px;padding:3px;
   background:var(--well);border:1px solid var(--edge);border-radius:var(--r-5);
 }
 .set-seg button{
   flex:1;height:34px;border:0;border-radius:var(--r-3);background:transparent;
-  color:var(--text-dim);font-family:var(--font-ui);font-size:12.5px;font-weight:600;
+  color:var(--text-dim);font-family:var(--font-ui);font-size:13px;font-weight:600;
   display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
   transition:background var(--dur-fast),color var(--dur-fast),box-shadow var(--dur-fast);
 }
@@ -2025,7 +2025,7 @@ html[data-winmax="1"] .rz{display:none;}
 }
 .set-row{
   display:flex;align-items:center;gap:10px;margin-top:12px;
-  font-size:12.5px;color:var(--text-dim);
+  font-size:13px;color:var(--text-dim);
 }
 .set-row input[type=range]{flex:1;}
 .set-row b{font-family:var(--font-mono);font-size:12px;color:var(--text);min-width:42px;text-align:right;}
@@ -2038,8 +2038,8 @@ html[data-winmax="1"] .rz{display:none;}
 .set-link:hover{border-color:var(--accent);color:var(--accent);}
 .set-link svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
 .set-link .arr{margin-left:auto;color:var(--text-faint);}
-.set-about{font-size:12.5px;color:var(--text-dim);line-height:1.9;}
-.set-about.dim{color:var(--text-faint);font-family:var(--font-mono);font-size:11.5px;}
+.set-about{font-size:13px;color:var(--text-dim);line-height:1.9;}
+.set-about.dim{color:var(--text-faint);font-family:var(--font-mono);font-size:12px;}
 .set-foot{
   display:flex;gap:10px;padding:12px 18px;border-top:1px solid var(--edge);
   flex:0 0 auto;background:var(--chrome);
@@ -2073,7 +2073,7 @@ html[data-winmax="1"] .rz{display:none;}
 .help-title{font-size:15px;font-weight:700;color:var(--text);}
 .help-search{
   margin-left:auto;width:260px;height:32px;border-radius:var(--r-3);
-  padding:0 10px;font-family:var(--font-ui);font-size:12.5px;
+  padding:0 10px;font-family:var(--font-ui);font-size:13px;
   background:var(--well);border:1px solid var(--edge);color:var(--text);outline:none;
 }
 .help-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
@@ -2084,21 +2084,21 @@ html[data-winmax="1"] .rz{display:none;}
 }
 .help-toc button{
   display:block;width:100%;text-align:left;border:0;background:transparent;
-  color:var(--text-dim);font-family:var(--font-ui);font-size:12.5px;
+  color:var(--text-dim);font-family:var(--font-ui);font-size:13px;
   padding:8px 10px;border-radius:var(--r-3);cursor:pointer;
 }
 .help-toc button:hover{background:var(--accent-soft);color:var(--accent);}
 .help-toc button.on{background:var(--accent-soft);color:var(--accent);font-weight:600;}
 .help-doc{
   flex:1;min-width:0;overflow:auto;padding:18px 24px 40px;
-  font-size:13px;line-height:1.85;color:var(--text-dim);
+  font-size:13px;line-height:1.95;color:var(--text-dim);
   user-select:text;-webkit-user-select:text;
 }
 .help-doc h3{
   margin:0 0 12px;font-size:16px;color:var(--text);font-weight:700;letter-spacing:.2px;
 }
 .help-doc h4{
-  margin:20px 0 8px;font-size:13.5px;color:var(--text);font-weight:700;
+  margin:20px 0 8px;font-size:14px;color:var(--text);font-weight:700;
 }
 .help-doc p{margin:8px 0;}
 .help-doc ul,.help-doc ol{margin:8px 0;padding-left:20px;}
@@ -2109,7 +2109,7 @@ html[data-winmax="1"] .rz{display:none;}
   padding:1px 5px;color:var(--text);
 }
 .help-doc .hi{color:var(--accent);font-weight:600;}
-.help-doc table{border-collapse:collapse;width:100%;margin:10px 0;font-size:12.5px;}
+.help-doc table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13px;}
 .help-doc th,.help-doc td{
   border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top;
 }
@@ -2136,7 +2136,7 @@ html[data-winmax="1"] .rz{display:none;}
 .tx-btn{
   height:28px;padding:0 10px;border-radius:var(--r-3);cursor:pointer;
   border:1px solid transparent;background:transparent;color:var(--text-dim);
-  font-family:var(--font-ui);font-size:12.5px;
+  font-family:var(--font-ui);font-size:13px;
   transition:background var(--dur-fast),color var(--dur-fast),border-color var(--dur-fast);
 }
 .tx-btn:hover{background:var(--well);color:var(--text);}
@@ -2144,21 +2144,21 @@ html[data-winmax="1"] .rz{display:none;}
 .tx-ico{
   min-width:28px;height:28px;padding:0 6px;border-radius:var(--r-3);cursor:pointer;
   border:1px solid transparent;background:transparent;color:var(--text-dim);
-  font-family:var(--font-mono);font-size:12.5px;line-height:1;
+  font-family:var(--font-mono);font-size:13px;line-height:1;
 }
 .tx-ico:hover{background:var(--well);color:var(--text);}
 .tx-lbl{
   display:inline-flex;align-items:center;gap:5px;
-  font-size:11.5px;color:var(--text-faint);
+  font-size:12px;color:var(--text-faint);
 }
 .tx-lbl select{
-  height:26px;border-radius:var(--r-2);padding:0 6px;font-size:11.5px;
+  height:26px;border-radius:var(--r-2);padding:0 6px;font-size:12px;
   font-family:var(--font-mono);color:var(--text);
   background:var(--well);border:1px solid var(--edge);outline:none;
 }
 .tx-lbl select:focus{border-color:var(--accent);}
-.tx-zoom{display:flex;align-items:center;gap:2px;font-size:11.5px;color:var(--text-faint);}
-.tx-zoom b{font-family:var(--font-mono);font-size:11.5px;min-width:26px;text-align:center;}
+.tx-zoom{display:flex;align-items:center;gap:2px;font-size:12px;color:var(--text-faint);}
+.tx-zoom b{font-family:var(--font-mono);font-size:12px;min-width:26px;text-align:center;}
 .tx-tabs{
   display:flex;align-items:stretch;gap:2px;overflow-x:auto;overflow-y:hidden;
   background:var(--well);border-left:1px solid var(--edge);border-right:1px solid var(--edge);
@@ -2193,8 +2193,8 @@ html[data-winmax="1"] .rz{display:none;}
   background:var(--surface);border:1px solid var(--edge);outline:none;
 }
 .tx-find-i:focus,.tx-repl-i:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-.tx-chk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-faint);}
-.tx-find-n{font-size:11.5px;color:var(--text-faint);font-family:var(--font-mono);margin-left:4px;}
+.tx-chk{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-faint);}
+.tx-find-n{font-size:12px;color:var(--text-faint);font-family:var(--font-mono);margin-left:4px;}
 .tx-body{
   flex:1;min-height:0;display:flex;
   border:1px solid var(--edge);border-top:0;border-radius:0 0 12px 12px;
@@ -2204,7 +2204,7 @@ html[data-winmax="1"] .rz{display:none;}
   flex:0 0 auto;width:auto;min-width:46px;
   padding:10px 10px 10px 12px;
   text-align:right;white-space:pre;
-  font-family:var(--font-mono);font-size:13px;line-height:1.55;
+  font-family:var(--font-mono);font-size:13px;line-height:1.7;
   color:var(--text-faint);
   background:var(--well);
   border-right:1px solid var(--border);
@@ -2213,7 +2213,7 @@ html[data-winmax="1"] .rz{display:none;}
 .tx-edit{
   flex:1;min-width:0;height:100%;resize:none;
   border:0;outline:none;background:transparent;color:var(--text);
-  font-family:var(--font-mono);font-size:13px;line-height:1.55;
+  font-family:var(--font-mono);font-size:13px;line-height:1.7;
   padding:10px 12px;
   white-space:pre;overflow:auto;
   tab-size:4;
@@ -2225,7 +2225,7 @@ html[data-winmax="1"] .rz{display:none;}
 .tx-body.wrap .tx-gutter{visibility:hidden;}
 .tx-status{
   display:flex;align-items:center;gap:14px;flex:0 0 auto;
-  padding:5px 4px 0;font-size:11.5px;color:var(--text-faint);
+  padding:5px 4px 0;font-size:12px;color:var(--text-faint);
   font-family:var(--font-mono);
 }
 .tx-status .spacer{flex:1;}
@@ -2506,13 +2506,13 @@ select{ color-scheme:inherit; }
    ZoomFactor 执行（整页等比放大并重新排版），不用 CSS 逐条改字号。 */
 .set-fsize-row{ margin-top:10px; }
 .set-fsize-hint{
-  margin-top:6px;font-size:12px;color:var(--text-faint);line-height:1.5;
+  margin-top:6px;font-size:12px;color:var(--text-faint);line-height:1.6;
 }
 /* 三个按钮本身就用字的实际大小示意，不用再额外加图标 */
-#set-fsize button[data-fsize="xs"]{ font-size:10.5px; }   /* 反馈9：新增超小 */
+#set-fsize button[data-fsize="xs"]{ font-size:11px; }   /* 反馈9：新增超小 */
 #set-fsize button[data-fsize="s"]{ font-size:12px; }
-#set-fsize button[data-fsize="m"]{ font-size:13.5px; }
-#set-fsize button[data-fsize="l"]{ font-size:15.5px; }
+#set-fsize button[data-fsize="m"]{ font-size:14px; }
+#set-fsize button[data-fsize="l"]{ font-size:16px; }
 
 /* === V14 LAYER END === */
 /* === V15 LAYER START === */
@@ -2694,14 +2694,14 @@ select{ color-scheme:inherit; }
   background:var(--surface); color:var(--text);
   border:1px solid var(--v15-popedge);
   box-shadow:var(--shadow-lg);
-  font-size:12px; line-height:1.55;
+  font-size:12px; line-height:1.7;
   pointer-events:none;
   animation:v15tipIn .12s var(--ease) both;
 }
 @keyframes v15tipIn{ from{opacity:0;transform:translateY(-3px);} to{opacity:1;transform:none;} }
 .v15-tip b{ font-weight:600; }
 .v15-tip .k{ color:var(--text-faint); }
-.v15-tip .mono{ font-family:var(--font-mono); font-size:11.5px; }
+.v15-tip .mono{ font-family:var(--font-mono); font-size:12px; }
 
 /* A16：弹窗改 body 级 portal（JS 里 attachPop 设 position:fixed + left/top）。
    这里只留尺寸和外观，定位交给 placePop 算 —— 不再靠 right:0/top:100% 贴锚点，
@@ -2725,7 +2725,7 @@ select{ color-scheme:inherit; }
 .v15-pop .v15-row{
   display:flex; align-items:center; gap:8px;
   padding:8px 8px; border-radius:var(--r-3);
-  font-size:12.5px; cursor:pointer;
+  font-size:13px; cursor:pointer;
   transition:background var(--dur-fast) var(--ease);
 }
 .v15-pop .v15-row:hover{ background:var(--surface-2); }
@@ -2740,7 +2740,7 @@ select{ color-scheme:inherit; }
 .v15-pop .v15-acts{ display:flex; gap:6px; padding:2px; }
 .v15-pop .v15-acts .btn{ flex:1; height:28px; font-size:12px; }
 .v15-pop .v15-note{
-  font-size:11px; color:var(--text-faint); line-height:1.55;
+  font-size:11px; color:var(--text-faint); line-height:1.7;
   padding:8px 4px 2px;
 }
 /* 等级五段（V/D/I/W/E）：像 iOS 的分段控件一样窄 */
@@ -2799,12 +2799,12 @@ select{ color-scheme:inherit; }
 .a14-selpop{ max-height:340px; }
 .a14-selpop .grp{
   padding:7px 10px 4px;
-  font-size:10.5px; letter-spacing:.6px; color:var(--text-faint);
+  font-size:11px; letter-spacing:.6px; color:var(--text-faint);
   text-transform:uppercase;
 }
 .a14-selpop .it .meta{
   float:right; margin-left:12px;
-  font-size:10.5px; color:var(--text-faint);
+  font-size:11px; color:var(--text-faint);
 }
 .a14-selpop .it.off{ opacity:.42; }
 .a14-selpop .it.off .meta{ color:var(--err); opacity:.9; }
@@ -3367,7 +3367,7 @@ body::after{
   padding-top:6px;padding-bottom:6px;
 }
 #page-cmd .inputbar .field .pmt{
-  line-height:1.55;
+  line-height:1.7;
   padding-top:1px;
 }
 #page-cmd .inputbar textarea{
@@ -3375,7 +3375,7 @@ body::after{
   resize:none;border:0;outline:none;background:transparent;
   color:var(--text);
   font-family:var(--font-mono);
-  font-size:13px;line-height:1.55;
+  font-size:13px;line-height:1.7;
   padding:0;
   max-height:calc(1.55em * 5);   /* 最多 5 行，再多内部滚动 */
   overflow-y:auto;
@@ -3414,7 +3414,7 @@ body::after{
 .set-zoom-row{ display:flex;align-items:center;gap:8px;margin-top:6px; }
 .set-zoom-row .set-sel{ flex:1 1 auto; }
 .set-zoom-val{
-  font-family:var(--font-mono);font-size:12.5px;
+  font-family:var(--font-mono);font-size:13px;
   color:var(--text-dim);min-width:44px;text-align:right;
 }
 
@@ -3852,7 +3852,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .set-row3 > .set-col .set-h{
   /* 并排时标题上间距归零，避免两列高度错位 */
   margin:0;
-  font-size:11.5px;
+  font-size:12px;
 }
 
 .set-row3{
@@ -3988,13 +3988,13 @@ body[data-navlabels="0"] .filenav-item.active::after{
   display:flex;
   gap:10px;
   align-items:baseline;
-  font-size:12.5px;
+  font-size:13px;
   line-height:1.7;
 }
 .about-row .ak{
   flex:0 0 64px;
   color:var(--text-faint);
-  font-size:11.5px;
+  font-size:12px;
 }
 .about-row .av{
   flex:1 1 auto;
@@ -4003,13 +4003,13 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 .about-row .av.mono{
   font-family:var(--font-mono);
-  font-size:11.5px;
+  font-size:12px;
   color:var(--text-dim);
 }
 .about-desc{
   font-size:12px;
   color:var(--text-dim);
-  line-height:1.8;
+  line-height:1.9;
   padding-top:8px;
   border-top:1px solid var(--border);
 }
@@ -4043,7 +4043,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   height:30px; padding:0 10px;
   border:1px solid var(--edge); border-radius:var(--r-2);
   background:var(--well); color:var(--text);
-  font-family:var(--font-ui); font-size:12.5px;
+  font-family:var(--font-ui); font-size:13px;
   outline:none;
 }
 .mk-inp:focus{ border-color:var(--accent); }
@@ -4075,7 +4075,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   font-size:12px; color:var(--text-faint); white-space:nowrap;
 }
 .mk-est{
-  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+  font-size:12px; color:var(--text-faint); white-space:nowrap;
 }
 .mk-state.running{ color:var(--accent); font-weight:600; }
 
@@ -4095,7 +4095,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   font-family:var(--font-mono); line-height:1.15;
 }
 .mk-stat-v.bad{ color:var(--err); }
-.mk-stat-k{ font-size:10.5px; color:var(--text-faint); }
+.mk-stat-k{ font-size:11px; color:var(--text-faint); }
 
 /* 输出区 */
 .mk-out{
@@ -4106,7 +4106,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   padding:10px 12px;
   border:1px solid var(--border); border-radius:var(--r-4);
   background:var(--well);
-  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
   color:var(--text-dim);
   white-space:pre-wrap; word-break:break-all;
 }
@@ -4127,7 +4127,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   display:flex; align-items:center; gap:6px; flex-wrap:wrap;
 }
 .mk-listcnt{
-  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+  font-size:12px; color:var(--text-faint); white-space:nowrap;
 }
 .mk-list{
   max-height:180px; min-height:60px;
@@ -4145,7 +4145,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   display:flex; align-items:center; gap:8px;
   padding:5px 8px;
   border-radius:var(--r-2);
-  font-size:12.5px;
+  font-size:13px;
   cursor:pointer;
 }
 .mk-app:hover{ background:var(--surface-hover); }
@@ -4179,7 +4179,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   display:flex; gap:6px;
 }
 .mk-hint{
-  font-size:11.5px; color:var(--text-faint); line-height:1.6;
+  font-size:12px; color:var(--text-faint); line-height:1.6;
 }
 
 /* ============================================================================
@@ -4197,7 +4197,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-radius:var(--r-4) var(--r-4) 0 0;
   background:transparent;
   color:var(--text-faint);
-  font-family:var(--font-ui); font-size:12.5px; font-weight:600;
+  font-family:var(--font-ui); font-size:13px; font-weight:600;
   cursor:pointer;
   transition:background 140ms linear, color 140ms linear, border-color 140ms linear;
 }
@@ -4274,7 +4274,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-bottom:1px solid var(--border);
 }
 .diag-title{ font-size:14px; font-weight:700; color:var(--text); }
-.diag-sub{ font-size:11.5px; color:var(--text-faint); }
+.diag-sub{ font-size:12px; color:var(--text-faint); }
 
 /* 滚动容器：flex 网格 */
 /* ============================================================================
@@ -4283,11 +4283,214 @@ body[data-navlabels="0"] .filenav-item.active::after{
    布局参考 ClusterDebugTool：一行放芯片/状态/登录按钮，一行放凭据（仅 8295），
    一行放投屏参数，下面是说明和日志。
    ============================================================================ */
-#page-cluster{
+/* ============================================================================
+   2026-11-22（第 17 批需求 8）：H5 管理页
+   ----------------------------------------------------------------------------
+   布局：顶栏（搜索/导入导出/添加） + 表单（可收起） + 主体（左分类 + 右卡片）
+   视觉对齐工具既有风格：卡片 --surface、强调色 --accent、圆角 --r-4。
+   ============================================================================ */
+.h5-wrap{
+  height:100%; display:flex; flex-direction:column; gap:0;
+  padding:12px 16px;
+  min-height:0;
+}
+.h5-head{
+  display:flex; align-items:center; gap:8px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.h5-search{
+  flex:0 1 280px; min-width:120px;
+  padding:5px 10px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface); color:var(--text);
+  font-size:13px; outline:none;
+}
+.h5-search:focus{ border-color:var(--accent); }
+
+.h5-form{
+  padding:10px 12px; margin-top:10px;
+  border:1px solid var(--accent);
+  border-radius:var(--r-4);
+  background:var(--well);
+}
+.h5-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin-bottom:6px;
+}
+.h5-row:last-child{ margin-bottom:0; }
+.h5-lbl{ font-size:12px; color:var(--text-faint); white-space:nowrap; }
+.h5-inp{
+  flex:0 1 200px; min-width:100px;
+  padding:5px 9px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface); color:var(--text);
+  font-size:13px; outline:none;
+}
+.h5-inp:focus{ border-color:var(--accent); }
+.h5-inp--url{ flex:1 1 320px; font-family:var(--font-mono); font-size:12px; }
+.h5-inp--cat{ flex:0 1 130px; }
+.h5-err{ font-size:11px; color:var(--err); min-height:14px; }
+
+.h5-body{
+  flex:1 1 auto; min-height:0;
+  display:flex; gap:12px;
+  padding-top:10px;
+}
+.h5-cats{
+  flex:0 0 132px;
+  display:flex; flex-direction:column; gap:2px;
+  overflow-y:auto;
+}
+.h5-cat{
+  display:flex; align-items:center; gap:6px;
+  padding:6px 9px;
+  border-radius:var(--r-2);
+  font-size:13px; color:var(--text-dim);
+  cursor:pointer; border:1px solid transparent;
+  background:none; text-align:left; width:100%;
+}
+.h5-cat:hover{ background:var(--surface-hover); }
+.h5-cat.on{
+  background:var(--accent-soft); color:var(--accent);
+  border-color:var(--accent); font-weight:600;
+}
+.h5-cat .n{
+  margin-left:auto; font-size:11px;
+  color:var(--text-faint); font-family:var(--font-mono);
+}
+.h5-cat.on .n{ color:var(--accent); }
+
+.h5-list{
+  flex:1 1 auto; min-width:0;
+  overflow-y:auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(228px, 1fr));
+  gap:9px;
+  align-content:start;
+}
+.h5-card{
+  display:flex; flex-direction:column; gap:6px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--surface);
+  transition:border-color 120ms linear, transform 80ms linear;
+}
+.h5-card:hover{ border-color:var(--accent); }
+.h5-card:active{ transform:scale(.99); }
+.h5-card-top{ display:flex; align-items:center; gap:8px; }
+.h5-ico{
+  flex:0 0 26px; width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-2);
+  font-size:12px; font-weight:700;
+  color:var(--on-accent);
+  background:var(--accent);
+  text-transform:uppercase;
+}
+.h5-name{
+  flex:1 1 auto; min-width:0;
+  font-size:13px; font-weight:600; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.h5-url{
+  font-family:var(--font-mono); font-size:11px; color:var(--text-faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.h5-meta{
+  display:flex; align-items:center; gap:6px;
+  font-size:11px; color:var(--text-faint);
+}
+.h5-tag{
+  padding:1px 6px; border-radius:var(--r-pill);
+  background:var(--accent-soft); color:var(--accent);
+  font-size:10px;
+}
+.h5-acts{
+  display:flex; align-items:center; gap:5px;
+  margin-top:2px;
+}
+.h5-act{
+  padding:3px 9px;
+  border:1px solid var(--border); border-radius:var(--r-2);
+  background:var(--surface-2); color:var(--text-dim);
+  font-size:11px; cursor:pointer;
+}
+.h5-act:hover{ border-color:var(--accent); color:var(--accent); }
+.h5-act--del:hover{ border-color:var(--err); color:var(--err); }
+
+.h5-empty{
+  grid-column:1 / -1;
+  padding:36px 12px; text-align:center;
+  font-size:13px; color:var(--text-faint);
+  line-height:1.9;
+}
+.h5-foot{
+  padding-top:8px; margin-top:8px;
+  border-top:1px solid var(--border);
+  font-size:11px; color:var(--text-faint);
+}
+
+/* 2026-11-22（第 17 批需求 3）：投屏面板（含仪表区）
+   原来这里是独立页 #page-cluster，现在并进「指令 → Scrcpy投屏」分组。
+   布局：三个 csec 区块（屏幕投屏 / 仪表投屏 / 其它）+ 底部日志。 */
+.cast-panel{
+  display:flex;
+  flex-direction:column;
   gap:0;
   padding:14px 18px;
   overflow-y:auto;
 }
+.csec{
+  margin-bottom:14px;
+}
+.csec-t{
+  font-size:11px; font-weight:600; letter-spacing:.04em;
+  color:var(--text-faint);
+  text-transform:uppercase;
+  margin-bottom:8px;
+  padding-bottom:5px;
+  border-bottom:1px solid var(--border);
+}
+.csec-refresh{
+  float:right;
+  padding:1px 7px; margin-top:-2px;
+  border:1px solid var(--border); border-radius:var(--r-pill);
+  background:var(--surface); color:var(--text-faint);
+  font-size:10.5px; cursor:pointer;
+  text-transform:none; letter-spacing:0;
+}
+.csec-refresh:hover{ border-color:var(--accent); color:var(--accent); }
+.cbtn--loading{
+  grid-column:1 / -1;
+  align-items:center; justify-content:center;
+  padding:16px 11px;
+  color:var(--text-faint); font-size:11.5px;
+  cursor:default;
+}
+.cbtn--loading:hover{ border-color:var(--border); background:var(--surface); }
+.cgrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+  gap:8px;
+}
+.cbtn{
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  padding:9px 11px;
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--surface);
+  color:var(--text);
+  cursor:pointer;
+  text-align:left;
+  transition:border-color 120ms linear, background 120ms linear;
+}
+.cbtn:hover{ border-color:var(--accent); background:var(--surface-hover); }
+.cbtn:active{ transform:scale(.985); }
+.cbtn b{ font-size:13px; font-weight:600; }
+.cbtn span{ font-size:11px; color:var(--text-faint); font-family:var(--font-mono); }
+.cbtn--warn:hover{ border-color:var(--err); background:var(--err-soft); }
 .clu-row{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   margin-bottom:10px;
@@ -4297,7 +4500,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   border-bottom:1px solid var(--border);
 }
 .clu-lbl{
-  font-size:11.5px; color:var(--text-faint); white-space:nowrap;
+  font-size:12px; color:var(--text-faint); white-space:nowrap;
 }
 .clu-sel{
   padding:4px 8px;
@@ -4317,11 +4520,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .clu-inp--num{ width:64px; }
 .clu-chk{
   display:flex; align-items:center; gap:4px;
-  font-size:11.5px; color:var(--text-dim); cursor:pointer;
+  font-size:12px; color:var(--text-dim); cursor:pointer;
   white-space:nowrap;
 }
 .clu-state{
-  font-size:11.5px; font-family:var(--font-mono);
+  font-size:12px; font-family:var(--font-mono);
   color:var(--text-faint);
   padding:2px 8px;
   border-radius:var(--r-pill);
@@ -4340,7 +4543,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 .clu-cred .clu-row{ margin-bottom:6px; }
 .clu-note{
-  font-size:10.5px; line-height:1.6; color:var(--text-faint);
+  font-size:11px; line-height:1.6; color:var(--text-faint);
 }
 
 .clu-hint{
@@ -4354,7 +4557,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .clu-log{
   flex:1 1 auto; min-height:120px;
   overflow-y:auto;
-  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
   color:var(--text-dim);
 }
 .clu-log > div{ white-space:pre-wrap; word-break:break-all; padding:1px 0; }
@@ -4373,7 +4576,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   padding:8px 18px;
   border-bottom:1px solid var(--border);
   background:var(--well);
-  font-size:11.5px;
+  font-size:12px;
 }
 .diag-sum-item{
   display:inline-flex; align-items:center; gap:5px;
@@ -4404,7 +4607,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-group{
   grid-column:1 / -1;          /* 横跨两列 */
   padding:7px 14px 2px;
-  font-size:10.5px; font-weight:600;
+  font-size:11px; font-weight:600;
   color:var(--text-faint);
   letter-spacing:.04em;
   text-transform:uppercase;
@@ -4419,7 +4622,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-diff-item{
   display:flex; align-items:baseline; gap:8px;
   padding:2px 0;
-  font-family:var(--font-mono); font-size:11.5px;
+  font-family:var(--font-mono); font-size:12px;
 }
 .diag-diff-k{ flex:0 0 96px; color:var(--text-faint); }
 .diag-diff-v{ color:var(--text-dim); }
@@ -4483,7 +4686,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-dot.ok{ background:var(--ok); }
 .diag-dot.bad{ background:var(--err); }
 .diag-dot.warn{ background:var(--accent); }
-.diag-card-title{ font-size:12.5px; font-weight:700; color:var(--text); }
+.diag-card-title{ font-size:13px; font-weight:700; color:var(--text); }
 .diag-card-note{ font-size:11px; color:var(--text-faint); }
 .diag-copy-card{
   border:0; background:transparent;
@@ -4512,22 +4715,22 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-row{
   display:flex; align-items:flex-start; gap:8px;
   padding:4px 14px;
-  font-size:12.5px;
-  line-height:1.55;
+  font-size:13px;
+  line-height:1.7;
   min-width:0;
 }
 .diag-row:hover{ background:var(--surface-hover); }
 .diag-k{
   flex:0 0 96px;
   color:var(--text-faint);
-  font-size:11.5px;
+  font-size:12px;
 }
 .diag-row--wide .diag-k{ flex:0 0 128px; }
 .diag-v{
   flex:1 1 auto; min-width:0;
   color:var(--text);
   font-family:var(--font-mono);
-  font-size:11.5px;
+  font-size:12px;
   word-break:break-all;
 }
 .diag-v.warn{ color:var(--accent); }
@@ -4540,7 +4743,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   flex:0 0 auto;
   border:1px solid transparent; background:transparent;
   color:var(--text-faint);
-  font-size:10.5px; cursor:pointer;
+  font-size:11px; cursor:pointer;
   padding:0 5px; border-radius:var(--r-1);
   opacity:.55;
   transition:opacity 120ms linear, background 120ms linear, color 120ms linear;
@@ -4633,7 +4836,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .tt-row{
   display:flex; align-items:center; gap:6px; flex-wrap:wrap;
 }
-.tt-lbl{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; }
+.tt-lbl{ font-size:12px; color:var(--text-faint); white-space:nowrap; }
 .tt-inp{
   width:58px;
   padding:3px 7px;
@@ -4652,7 +4855,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .tt-state.pause{ color:var(--accent); }
 .tt-out{
   max-height:96px; overflow-y:auto; overflow-x:hidden;
-  font-family:var(--font-mono); font-size:10.5px; line-height:1.5;
+  font-family:var(--font-mono); font-size:11px; line-height:1.6;
   color:var(--text-dim);
   border-top:1px solid var(--border);
   padding-top:5px;
@@ -4699,7 +4902,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-crash-body{
   flex:1 1 auto; min-height:0; overflow:auto;
   margin:0; padding:12px 14px;
-  font-family:var(--font-mono); font-size:11.5px; line-height:1.65;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
   color:var(--text-dim);
   white-space:pre-wrap; word-break:break-all;
 }
@@ -4723,6 +4926,81 @@ body[data-navlabels="0"] .filenav-item.active::after{
   }
 }
 /* === V13 LAYER END === */
+
+/* ============================================================================
+   2026-11-22（第 17 批需求 6）：视觉精修层
+   ----------------------------------------------------------------------------
+   只做"低成本、不改结构"的细节修正。参考 GitHub 上同类工具的通行做法
+   （adb-gui 的 busy/error 状态、dsh-system-hud 的「4/8px 栅格 + tabular-nums」）：
+     · 数字等宽 —— 日志/统计刷新时不会左右抖动
+     · 焦点环   —— 键盘可达性，鼠标点击不显示（避免观感噪点）
+     · 滚动条   —— 细、跟随主题，不再是系统默认的灰块
+     · 选中色   —— 跟随强调色，而不是系统蓝
+   ============================================================================ */
+/* ① 数字等宽：所有会"刷新变化"的数值区域 */
+.diag-k, .diag-v, .diag-meter-txt, .clu-log, .tt-out, .h5-url, .h5-meta,
+.logbox, .mk-stat, .fb-stat, .qcmd, .clu-state, .diag-hist-t {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ② 键盘焦点可见（:focus-visible 只在键盘导航时出现） */
+.tab:focus-visible, .qcard:focus-visible, .qnav-item:focus-visible,
+.btn:focus-visible, .filenav-item:focus-visible, .cbtn:focus-visible,
+.h5-act:focus-visible, .h5-cat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ③ 滚动条：细、跟随主题 */
+.quick-scroll::-webkit-scrollbar,
+.diag-scroll::-webkit-scrollbar,
+.clu-log::-webkit-scrollbar,
+.h5-list::-webkit-scrollbar,
+.h5-cats::-webkit-scrollbar,
+.tt-out::-webkit-scrollbar,
+.fs-list::-webkit-scrollbar {
+  width: 9px; height: 9px;
+}
+.quick-scroll::-webkit-scrollbar-track,
+.diag-scroll::-webkit-scrollbar-track,
+.clu-log::-webkit-scrollbar-track,
+.h5-list::-webkit-scrollbar-track,
+.h5-cats::-webkit-scrollbar-track,
+.tt-out::-webkit-scrollbar-track,
+.fs-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.quick-scroll::-webkit-scrollbar-thumb,
+.diag-scroll::-webkit-scrollbar-thumb,
+.clu-log::-webkit-scrollbar-thumb,
+.h5-list::-webkit-scrollbar-thumb,
+.h5-cats::-webkit-scrollbar-thumb,
+.tt-out::-webkit-scrollbar-thumb,
+.fs-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--r-1);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.quick-scroll::-webkit-scrollbar-thumb:hover,
+.diag-scroll::-webkit-scrollbar-thumb:hover,
+.clu-log::-webkit-scrollbar-thumb:hover,
+.h5-list::-webkit-scrollbar-thumb:hover,
+.h5-cats::-webkit-scrollbar-thumb:hover,
+.tt-out::-webkit-scrollbar-thumb:hover,
+.fs-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: content-box;
+}
+
+/* ④ 选中色跟随强调色 */
+::selection{ background: var(--accent-soft); color: var(--text); }
+
+/* ⑤ 卡片悬停微上浮：让"这张卡能点"更明确（原来只有边框变色） */
+.qcard{ will-change: transform; }
+.qcard:hover{ transform: translateY(-1px); }
+.qcard.dragging:hover{ transform: none; }   /* 拖拽中不要浮，会和位移动画打架 */
+
 </style>
 
 <body>
@@ -4863,11 +5141,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
          车机信息、连通性、资源占用。用户要求"一键单独复制某一项"。 -->
     <button class="tab" data-tab="diag" onclick="switchTab('diag')">
       <svg viewBox="0 0 24 24"><path d="M3 12h3.6l2.2-5.4 3.6 11 2.4-6.6 1.8 3.2H21"/></svg><span>诊断</span></button>
-    <!-- 2026-11-22（第 16 批）：仪表投屏。
-         参考 ClusterDebugTool 的交互：选芯片 → 登录 → 开启实时显示。
-         门禁：必须选芯片且登录成功，才能投屏。 -->
-    <button class="tab" data-tab="cluster" onclick="switchTab('cluster')">
-      <svg viewBox="0 0 24 24"><rect x="2.6" y="5.2" width="18.8" height="11.4" rx="2.4"/><path d="M7 20.2h10"/><path d="M9.4 16.6v3.6M14.6 16.6v3.6"/><path d="M6.4 11.2l1.8-1.6 1.6 2.6 1.9-3.4 1.6 2.4h3.2"/></svg><span>仪表</span></button>
   </div>
 
   <div class="main">
@@ -5001,6 +5274,106 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <div class="tt-out" id="tt-crash-out" style="display:none;"></div>
           </div>
 
+          </div>
+
+          <!-- ==================================================================
+               2026-11-22（第 17 批需求 3）：Scrcpy 投屏面板
+               ------------------------------------------------------------------
+               原来这里是纯卡片分组（8 张卡），仪表功能又是独立的一个页签。
+               现在合并成一个面板，按用途分三块：
+                 ① 屏幕投屏  —— 6 个 display（原来就是卡片，改成按钮更好按）
+                 ② 仪表投屏  —— 原「仪表」页的内容（芯片/登录/实时显示）
+                 ③ 其它      —— 录制、取消全部
+               独立页签已删除（用户要求集成）。
+               ================================================================== -->
+          <div class="cast-panel" id="cast-panel" style="display:none;">
+
+            <!-- ① 屏幕投屏
+                 2026-11-22（第 17 批需求 2）：改成**动态列屏**。
+                 原来 6 个按钮是写死映射（0/1/3/4/9/10），只对某几个平台成立；
+                 现在打开面板就用 scrcpy --list-displays 拉真实列表，
+                 换车型/换平台不用改代码。拉不到时退回写死的那 6 个。 -->
+            <div class="csec">
+              <div class="csec-t">
+                屏幕投屏
+                <button class="csec-refresh" id="cast-refresh" onclick="castLoadDisplays()" title="重新扫描设备上的屏幕">刷新</button>
+              </div>
+              <div class="cgrid" id="cast-grid">
+                <button class="cbtn" onclick="castGo(0)"><b>主屏</b><span>display 0</span></button>
+                <button class="cbtn" onclick="castGo(1)"><b>后排屏</b><span>display 1</span></button>
+                <button class="cbtn" onclick="castGo(3)"><b>HUD</b><span>display 3</span></button>
+                <button class="cbtn" onclick="castGo(4)"><b>副驾屏</b><span>display 4</span></button>
+                <button class="cbtn" onclick="castGo(9)"><b>PHUD-B</b><span>display 9</span></button>
+                <button class="cbtn" onclick="castGo(10)"><b>PHUD-C</b><span>display 10</span></button>
+              </div>
+            </div>
+
+            <!-- ② 仪表投屏 -->
+            <div class="csec">
+              <div class="csec-t">仪表投屏</div>
+
+              <div class="clu-row">
+                <span class="clu-lbl">芯片</span>
+                <select class="clu-sel" id="clu-chip" onchange="cluChipChanged()">
+                  <option value="8838">8838</option>
+                  <option value="8295">8295</option>
+                </select>
+                <button class="btn ghost sm" onclick="cluDetect()" title="按设备属性自动识别（qcm8838 / sa8295）">自动识别</button>
+                <span class="clu-state" id="clu-state">未登录</span>
+                <div class="spacer"></div>
+                <button class="btn primary sm" id="clu-login" onclick="cluLogin()">登录设备</button>
+                <button class="btn ghost sm" id="clu-logout" onclick="cluLogout()" disabled>退出登录</button>
+              </div>
+
+              <div class="clu-cred" id="clu-cred" style="display:none;">
+                <div class="clu-row">
+                  <span class="clu-lbl">telnet</span>
+                  <input class="clu-inp" id="clu-host" placeholder="192.168.8.1" spellcheck="false">
+                  <span class="clu-lbl">账号</span>
+                  <input class="clu-inp" id="clu-user" placeholder="登录账号" spellcheck="false">
+                  <span class="clu-lbl">密码</span>
+                  <input class="clu-inp" id="clu-pass" type="password" placeholder="登录密码">
+                  <span class="clu-lbl">su</span>
+                  <input class="clu-inp" id="clu-su" type="password" placeholder="su 密码（可空）">
+                </div>
+                <div class="clu-note">
+                  凭据只保存在本机 ini（clu_* 键），不上传、不写日志。
+                  8838 免密（走 lxc-attach），切到 8838 时这一行自动隐藏。
+                </div>
+              </div>
+
+              <div class="clu-row">
+                <span class="clu-lbl">屏号</span>
+                <input class="clu-inp clu-inp--num" id="clu-display" type="number" min="0" max="20" value="4"
+                       title="仪表所在 display id。8838 默认 4；8295 若不同请改">
+                <label class="clu-chk">
+                  <input type="checkbox" id="clu-viewonly">
+                  <span>只读（不接管输入，防误触）</span>
+                </label>
+                <div class="spacer"></div>
+                <button class="btn primary sm" id="clu-cast-btn" onclick="cluCast()" disabled
+                        title="需先选择芯片并登录成功">开启仪表实时显示</button>
+                <button class="btn ghost sm" onclick="cluStop()">关闭显示窗口</button>
+              </div>
+
+              <div class="clu-hint" id="clu-hint">
+                流程：① 选芯片 → ② 登录设备 → ③ 开启实时显示。
+                走 <b>scrcpy --display-id=N</b>，与上面「屏幕投屏」同一条通道。
+              </div>
+            </div>
+
+            <!-- ③ 其它 -->
+            <div class="csec">
+              <div class="csec-t">其它</div>
+              <div class="cgrid">
+                <button class="cbtn" onclick="castGoRec()"><b>录制主屏 60s</b><span>→ 桌面 logcat\日期\screenrecord</span></button>
+                <button class="cbtn cbtn--warn" onclick="castStopAll()"><b>取消全部投屏</b><span>关闭所有 scrcpy 窗口</span></button>
+              </div>
+            </div>
+
+            <div class="clu-log" id="clu-log">
+              <div class="clu-empty">仪表登录后这里显示通道信息与投屏结果</div>
+            </div>
           </div>
 
           <!-- APK 管理面板（仅「APK管理」分组显示）。
@@ -5202,6 +5575,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <span class="qico2"><svg viewBox="0 0 24 24"><path d="M6 3.6h7.4L19 8.8v11.6H6z"/><path d="M13.4 3.6v5.2H19"/><path d="M9 13.2h6.6M9 16.4h4.6"/></svg></span>
           <span class="qname2">文本阅读</span>
           <span class="qnav-tip">文本阅读</span>
+        </button>
+        <!-- 2026-11-22（第 17 批需求 8）：H5 管理 -->
+        <button class="filenav-item" data-fn="h5" onclick="fileNavSwitch('h5')">
+          <span class="qico2"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.2 12h17.6"/><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z"/></svg></span>
+          <span class="qname2">H5 管理</span>
+          <span class="qnav-tip">H5 管理</span>
         </button>
       </div>
       <div class="filenav-body">
@@ -5430,6 +5809,66 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <span id="tx-st-font">13px</span>
         </div>
       </div>
+        </div>
+
+        <!-- ==================================================================
+             2026-11-22（第 17 批需求 8）：H5 管理
+             ------------------------------------------------------------------
+             交互参考 GitHub 上的书签管理器（Raindrop / floccus 那类）：
+               左侧分类 → 右侧卡片 → 顶部搜索 + 添加
+             数据存 localStorage，删了才没（需求 8.1）。
+             点卡片用**系统默认浏览器**打开（走 C# openurl，不是内嵌窗口）。
+
+             ★ 建议增强（需求 8.5，本批已实现）：
+               · 搜索过滤（收藏一多必备）
+               · 一键复制 URL
+               · 最近打开时间 + 按最近使用排序
+               · 导入 / 导出 JSON（换机器迁移，弥补 localStorage 不跨机）
+               · 内置常用测试平台预设，一键添加
+               · URL 自动补 https:// 并校验
+               · 域名首字母色块（不联网取 favicon，避免加载慢/失败）
+             ================================================================== -->
+        <div class="fileview" id="fileview-h5">
+          <div class="h5-wrap">
+            <!-- 顶部：搜索 + 添加 -->
+            <div class="h5-head">
+              <input class="h5-search" id="h5-search" placeholder="搜索名称 / 地址 / 分类"
+                     spellcheck="false" oninput="h5Render()">
+              <div class="spacer"></div>
+              <button class="btn ghost sm" onclick="h5Presets()" title="内置常用测试平台">常用</button>
+              <button class="btn ghost sm" onclick="h5Export()" title="导出为 JSON，换机器可导入">导出</button>
+              <button class="btn ghost sm" onclick="h5Import()" title="从 JSON 导入">导入</button>
+              <button class="btn primary sm" onclick="h5OpenAdd()">+ 添加 H5</button>
+            </div>
+
+            <!-- 添加/编辑表单（默认收起）-->
+            <div class="h5-form" id="h5-form" style="display:none;">
+              <div class="h5-row">
+                <span class="h5-lbl">名称</span>
+                <input class="h5-inp" id="h5-f-name" placeholder="例如：测试环境监控看板" spellcheck="false">
+                <span class="h5-lbl">分类</span>
+                <input class="h5-inp h5-inp--cat" id="h5-f-cat" placeholder="例如：监控" list="h5-cat-list" spellcheck="false">
+                <datalist id="h5-cat-list"></datalist>
+              </div>
+              <div class="h5-row">
+                <span class="h5-lbl">地址</span>
+                <input class="h5-inp h5-inp--url" id="h5-f-url" placeholder="https://…（不写协议会自动补 https://）"
+                       spellcheck="false" onkeydown="h5FormKey(event)">
+                <div class="spacer"></div>
+                <button class="btn ghost sm" onclick="h5CloseForm()">取消</button>
+                <button class="btn primary sm" id="h5-f-save" onclick="h5Save()">保存</button>
+              </div>
+              <div class="h5-err" id="h5-f-err"></div>
+            </div>
+
+            <!-- 主体：左分类 + 右列表 -->
+            <div class="h5-body">
+              <div class="h5-cats" id="h5-cats"></div>
+              <div class="h5-list" id="h5-list"></div>
+            </div>
+
+            <div class="h5-foot" id="h5-foot"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -5721,77 +6160,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
          所以每一行右侧都有独立的复制按钮，另外每块有「复制本块」，
          顶部有「复制全部」和「保存快照」。
          ====================================================================== -->
-    <!-- ==================================================================
-         2026-11-22（第 16 批）：仪表（Cluster）投屏
-         ------------------------------------------------------------------
-         交互参考 ClusterDebugTool：选芯片 → 登录 → 开启实时显示。
-         ★ 硬门禁：必须选芯片 + 登录成功，才能投屏（按钮置灰 + C# 侧再校验）。
-         芯片差异（逆向确认）：
-           8838(T75)  lxc-attach -n linux-8838，免密
-           8295(AHT)  busybox telnet → 账号密码 → su 密码
-         ================================================================== -->
-    <div class="page" id="page-cluster">
-
-      <!-- ① 芯片 + 登录 -->
-      <div class="clu-row clu-row--top">
-        <span class="clu-lbl">芯片</span>
-        <select class="clu-sel" id="clu-chip" onchange="cluChipChanged()">
-          <option value="8838">8838 (T75)</option>
-          <option value="8295">8295 (AHT)</option>
-        </select>
-        <button class="btn ghost sm" onclick="cluDetect()" title="按设备属性自动识别（qcm8838 / sa8295）">自动识别</button>
-        <span class="clu-state" id="clu-state">未登录</span>
-        <div class="spacer"></div>
-        <button class="btn primary sm" id="clu-login" onclick="cluLogin()">登录设备</button>
-        <button class="btn ghost sm" id="clu-logout" onclick="cluLogout()" disabled>退出登录</button>
-      </div>
-
-      <!-- ② 凭据（仅 8295 需要）-->
-      <div class="clu-cred" id="clu-cred" style="display:none;">
-        <div class="clu-row">
-          <span class="clu-lbl">telnet</span>
-          <input class="clu-inp" id="clu-host" placeholder="192.168.8.1" spellcheck="false">
-          <span class="clu-lbl">账号</span>
-          <input class="clu-inp" id="clu-user" placeholder="登录账号" spellcheck="false">
-          <span class="clu-lbl">密码</span>
-          <input class="clu-inp" id="clu-pass" type="password" placeholder="登录密码">
-          <span class="clu-lbl">su</span>
-          <input class="clu-inp" id="clu-su" type="password" placeholder="su 密码（可空）">
-        </div>
-        <div class="clu-note">
-          凭据只保存在本机 ini（clu_* 键），不上传、不写日志。
-          8838 免密（走 lxc-attach），切换到 8838 时这一行会自动隐藏。
-        </div>
-      </div>
-
-      <!-- ③ 投屏 -->
-      <div class="clu-row">
-        <span class="clu-lbl">屏号</span>
-        <input class="clu-inp clu-inp--num" id="clu-display" type="number" min="0" max="20" value="4"
-               title="仪表所在 display id。8838 默认 4；8295 若不同请改">
-        <label class="clu-chk">
-          <input type="checkbox" id="clu-viewonly">
-          <span>只读（不接管输入，防误触）</span>
-        </label>
-        <div class="spacer"></div>
-        <button class="btn primary sm" id="clu-cast-btn" onclick="cluCast()" disabled
-                title="需先选择芯片并登录成功">开启仪表实时显示</button>
-        <button class="btn ghost sm" onclick="cluStop()">关闭显示窗口</button>
-      </div>
-
-      <!-- ④ 说明 -->
-      <div class="clu-hint" id="clu-hint">
-        流程：① 选芯片 → ② 登录设备 → ③ 开启仪表实时显示。
-        投屏走 <b>scrcpy --display-id=N</b>，和工具既有的 <b>:scrcpy</b> 是同一条通道。
-      </div>
-
-      <!-- ⑤ 日志 -->
-      <div class="clu-log" id="clu-log">
-        <div class="clu-empty">登录后这里显示通道信息与投屏结果</div>
-      </div>
-    </div>
-
-    <div class="page" id="page-diag">
+<div class="page" id="page-diag">
       <div class="diag-wrap">
 
         <!-- 顶部工具条 -->
@@ -8110,6 +8479,16 @@ function diagCountMissing(rows){
 }
 
 function diagRefresh(){
+  // 2026-11-22（第 17 批）：防重入。
+  // 反复点「诊断」页签 / 狂点「重新检测」时，每次都会发一组采集命令，
+  // 终端里就会看到同一条 getprop 命令叠 5 遍。
+  // 采集本身只要 1~2 秒，正在采集时忽略新的请求即可。
+  var now = Date.now();
+  if(_diag.refreshing && now - (_diag.lastRefresh || 0) < 2500) return;
+  _diag.refreshing = true;
+  _diag.lastRefresh = now;
+  setTimeout(function(){ _diag.refreshing = false; }, 2500);
+
   var sub = document.getElementById('diag-sub');
   if(sub) sub.textContent = '正在采集…';
 
@@ -9179,6 +9558,13 @@ function appendEcho(msg){
   if(msg.src === 2) return;
   // APK 管理（src=3）有自己的结果区，也不回显到终端页
   if(msg.src === 3) return;
+  // ★ 2026-11-22（第 17 批）：诊断页的连通性采集（src=20）也不该刷终端页。
+  //   第 15 批为了修"连通性一直空"，让 src=20 走了 kind:'run' 通道，
+  //   结果命令回显（kind:'echo'）跟着进了终端 —— 用户截图里
+  //   `shell "echo AUTH=$(getprop ...)"` 整条命令被重复打印 5 遍、且没有任何输出，
+  //   看起来像是终端卡住了，实际是诊断页在后台跑 getprop。
+  //   这一行只是"回显"过滤；输出行早就在 appendLines 里被收进 _linkBuf 了。
+  if(msg.src === 20) return;
   var slot = msg.slot || 0;
   var box = document.getElementById('logbox-' + slot);
   if(!box) return;
@@ -10007,7 +10393,7 @@ var _fileNavCur = 'data';
 
 function fileNavSwitch(sub){
   if (!sub) sub = 'data';
-  if (sub !== 'data' && sub !== 'ui' && sub !== 'text') sub = 'data';
+  if (sub !== 'data' && sub !== 'ui' && sub !== 'text' && sub !== 'h5') sub = 'data';
   _fileNavCur = sub;
 
   var views = document.querySelectorAll('.fileview');
@@ -10028,6 +10414,387 @@ function fileNavSwitch(sub){
   if (sub === 'data'){
     try { if (typeof fsEnsureInit === 'function') fsEnsureInit(); } catch (e) {}
   }
+  // 2026-11-22（第 17 批）：H5 管理 —— 首次进入建数据并渲染
+  if (sub === 'h5'){
+    try { if (typeof h5EnsureInit === 'function') h5EnsureInit(); } catch (e) {}
+  }
+}
+
+/* ============================================================================
+   H5 管理（2026-11-22 第 17 批需求 8）
+   ----------------------------------------------------------------------------
+   需求 8.1 收藏持久化：存 localStorage，用户不删就不丢
+   需求 8.2 点击打开：走 C# 的 openurl（ShellExecute → 系统默认浏览器）
+             不用 window.open —— 那会开 WebView2 内嵌窗口，还是本工具的壳
+   需求 8.3 分类 / 增 / 删
+   需求 8.5 我建议并已实现的增强：
+             · 搜索过滤       收藏一多必备
+             · 一键复制 URL   贴群/贴文档用
+             · 最近打开时间   同一分类内按最近使用倒序，常用的浮上来
+             · 导入 / 导出    localStorage 不跨机器，靠这个迁移
+             · 常用预设       内置测试平台，一键加
+             · URL 自动补协议 + 校验
+             · 域名首字母色块 不联网取 favicon（联网会慢且经常失败）
+   ============================================================================ */
+var H5_KEY = 'h5_links_v1';
+var _h5 = {
+  items: [],        // [{id, name, url, cat, last, added}]
+  cat: '',          // 当前选中的分类（'' = 全部）
+  editing: null     // 正在编辑的 id（null = 新增）
+};
+
+/* ---------- 存取 ---------- */
+function h5Load(){
+  try {
+    var raw = localStorage.getItem(H5_KEY);
+    var arr = raw ? JSON.parse(raw) : [];
+    if (!arr || !arr.length) {
+      // 首次进入给几条示例（用户可直接删）
+      arr = [
+        { id: h5Uid(), name: '示例：Baidu', url: 'https://www.baidu.com', cat: '示例', added: Date.now(), last: 0 }
+      ];
+    }
+    _h5.items = arr;
+  } catch(e){ _h5.items = []; }
+}
+
+/* 2026-11-22（第 17 批）：注意这里叫 h5Persist，不是 h5Save。
+   ★ 命名撞车的教训：一开始两个函数都叫 h5Save ——
+     一个是"写 localStorage"，一个是"表单提交"。
+     后定义的覆盖前者，结果表单能提交、但**从来没写进 localStorage**，
+     表现为"关掉应用收藏就没了"（测试里 raw=null 才揪出来）。
+   现在：h5Persist = 持久化，h5Save = 表单提交。 */
+function h5Persist(){
+  try { localStorage.setItem(H5_KEY, JSON.stringify(_h5.items)); } catch(e){}
+}
+
+function h5Uid(){
+  return 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+/* ---------- URL 规整 / 校验 ---------- */
+function h5NormUrl(u){
+  var t = String(u || '').trim();
+  if (!t) return '';
+  // 没写协议就补 https（用户经常直接粘 www.xxx.com）
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(t)) t = 'https://' + t;
+  return t;
+}
+
+function h5ValidUrl(u){
+  try {
+    var x = new URL(u);
+    return (x.protocol === 'http:' || x.protocol === 'https:');
+  } catch(e){ return false; }
+}
+
+/* 域名首字母（做色块），不联网 */
+function h5Initial(u){
+  try {
+    var h = new URL(u).hostname.replace(/^www\./, '');
+    return (h.charAt(0) || '?').toUpperCase();
+  } catch(e){ return '?'; }
+}
+
+function h5Host(u){
+  try { return new URL(u).hostname.replace(/^www\./, ''); }
+  catch(e){ return ''; }
+}
+
+function h5FmtTime(ts){
+  if (!ts) return '';
+  var d = new Date(ts);
+  var now = new Date();
+  var sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return '今天 ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+  return (d.getMonth()+1) + '/' + d.getDate();
+}
+
+/* ---------- 渲染 ---------- */
+function h5Cats(){
+  var m = {}, order = [];
+  // 预设分类顺序：最近用过的排前面会让分类跳动，所以按添加顺序稳定排序
+  for (var i = 0; i < _h5.items.length; i++){
+    var c = _h5.items[i].cat || '未分类';
+    if (!m[c]) { m[c] = 0; order.push(c); }
+    m[c]++;
+  }
+  return { map: m, order: order, total: _h5.items.length };
+}
+
+function h5Render(){
+  var catsBox = document.getElementById('h5-cats');
+  var listBox = document.getElementById('h5-list');
+  var foot = document.getElementById('h5-foot');
+  if (!catsBox || !listBox) return;
+
+  var st = h5Cats();
+
+  // ---- 左侧分类 ----
+  var ch = '<button class="h5-cat' + (_h5.cat === '' ? ' on' : '') + '" onclick="h5Pick(\'\')">'
+         + '全部<span class="n">' + st.total + '</span></button>';
+  for (var i = 0; i < st.order.length; i++){
+    var c = st.order[i];
+    var safe = escAttr(c);
+    ch += '<button class="h5-cat' + (_h5.cat === c ? ' on' : '') + '" onclick="h5Pick(' + "'" + safe.replace(/'/g, "\\'") + "'" + ')">'
+        + mkEsc(c) + '<span class="n">' + st.map[c] + '</span></button>';
+  }
+  catsBox.innerHTML = ch;
+
+  // 分类输入框的候选
+  var dl = document.getElementById('h5-cat-list');
+  if (dl) dl.innerHTML = st.order.map(function(c){ return '<option value="' + escAttr(c) + '">'; }).join('');
+
+  // ---- 右侧列表 ----
+  var kw = String((document.getElementById('h5-search') || {}).value || '').trim().toLowerCase();
+  var list = _h5.items.filter(function(x){
+    if (_h5.cat && (x.cat || '未分类') !== _h5.cat) return false;
+    if (!kw) return true;
+    var hay = ((x.name||'') + ' ' + (x.url||'') + ' ' + (x.cat||'')).toLowerCase();
+    return hay.indexOf(kw) >= 0;
+  });
+
+  // 排序：最近打开过的优先（last 倒序），没开过的按添加时间倒序
+  list.sort(function(a, b){
+    var la = a.last || 0, lb = b.last || 0;
+    if (la !== lb) return lb - la;
+    return (b.added || 0) - (a.added || 0);
+  });
+
+  if (!list.length){
+    listBox.innerHTML = '<div class="h5-empty">'
+      + (kw ? ('没有匹配「' + mkEsc(kw) + '」的 H5') : '还没有收藏。点右上角「+ 添加 H5」，或点「常用」从预设里挑。')
+      + '</div>';
+  } else {
+    var lh = '';
+    for (var j = 0; j < list.length; j++){
+      var x = list[j];
+      var ini = h5Initial(x.url);
+      var host = h5Host(x.url);
+      lh += '<div class="h5-card">'
+        + '<div class="h5-card-top">'
+        +   '<span class="h5-ico">' + mkEsc(ini) + '</span>'
+        +   '<span class="h5-name" title="' + escAttr(x.name) + '">' + mkEsc(x.name) + '</span>'
+        + '</div>'
+        + '<div class="h5-url" title="' + escAttr(x.url) + '">' + mkEsc(host || x.url) + '</div>'
+        + '<div class="h5-meta">'
+        +   (x.cat ? '<span class="h5-tag">' + mkEsc(x.cat) + '</span>' : '')
+        +   (x.last ? ('<span>最近 ' + h5FmtTime(x.last) + '</span>') : '')
+        + '</div>'
+        + '<div class="h5-acts">'
+        +   '<button class="h5-act" onclick="h5Open(\'' + x.id + '\')">打开</button>'
+        +   '<button class="h5-act" onclick="h5Copy(\'' + x.id + '\')">复制</button>'
+        +   '<button class="h5-act" onclick="h5Edit(\'' + x.id + '\')">编辑</button>'
+        +   '<button class="h5-act h5-act--del" onclick="h5Del(\'' + x.id + '\')">删除</button>'
+        + '</div>'
+        + '</div>';
+    }
+    listBox.innerHTML = lh;
+  }
+
+  if (foot){
+    foot.textContent = '共 ' + st.total + ' 条'
+      + (_h5.cat ? ('，当前分类「' + _h5.cat + '」' + list.length + ' 条') : (kw ? ('，匹配 ' + list.length + ' 条') : ''))
+      + ' · 数据存在本机，导出后可迁移到别的电脑';
+  }
+}
+
+function h5Pick(cat){
+  _h5.cat = cat || '';
+  h5Render();
+}
+
+/* ---------- 打开 / 复制 ---------- */
+function h5Open(id){
+  var x = h5Find(id);
+  if (!x) return;
+  if (!h5ValidUrl(x.url)){ toast('地址不合法：' + x.url, 'err'); return; }
+  x.last = Date.now();
+  h5Persist();
+  // 走 C# 的 ShellExecute，用系统默认浏览器打开
+  try { postObj({ kind: 'openurl', url: x.url }); } catch(e){}
+  h5Render();
+}
+
+function h5Copy(id){
+  var x = h5Find(id);
+  if (!x) return;
+  diagCopyText(x.url, '已复制地址');
+}
+
+function h5Find(id){
+  for (var i = 0; i < _h5.items.length; i++)
+    if (_h5.items[i].id === id) return _h5.items[i];
+  return null;
+}
+
+/* ---------- 添加 / 编辑 ---------- */
+function h5OpenAdd(){
+  _h5.editing = null;
+  var f = document.getElementById('h5-form');
+  if (f) f.style.display = '';
+  var n = document.getElementById('h5-f-name');
+  var u = document.getElementById('h5-f-url');
+  var c = document.getElementById('h5-f-cat');
+  if (n) n.value = '';
+  if (u) u.value = '';
+  if (c) c.value = (_h5.cat && _h5.cat !== '') ? _h5.cat : '';
+  var e = document.getElementById('h5-f-err');
+  if (e) e.textContent = '';
+  if (n) try { n.focus(); } catch(err){}
+}
+
+function h5Edit(id){
+  var x = h5Find(id);
+  if (!x) return;
+  _h5.editing = id;
+  var f = document.getElementById('h5-form');
+  if (f) f.style.display = '';
+  document.getElementById('h5-f-name').value = x.name || '';
+  document.getElementById('h5-f-url').value = x.url || '';
+  document.getElementById('h5-f-cat').value = x.cat || '';
+  var e = document.getElementById('h5-f-err');
+  if (e) e.textContent = '';
+  try { document.getElementById('h5-f-url').focus(); } catch(err){}
+}
+
+function h5CloseForm(){
+  var f = document.getElementById('h5-form');
+  if (f) f.style.display = 'none';
+  _h5.editing = null;
+}
+
+function h5FormKey(e){
+  if (e.key === 'Enter'){ e.preventDefault(); h5Save(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); h5CloseForm(); }
+}
+
+function h5Save(){
+  var name = String((document.getElementById('h5-f-name') || {}).value || '').trim();
+  var url  = h5NormUrl((document.getElementById('h5-f-url') || {}).value || '');
+  var cat  = String((document.getElementById('h5-f-cat') || {}).value || '').trim();
+  var err  = document.getElementById('h5-f-err');
+
+  if (!url){ if (err) err.textContent = '地址不能为空'; return; }
+  if (!h5ValidUrl(url)){ if (err) err.textContent = '地址不合法，需要 http / https'; return; }
+  if (!name) name = h5Host(url) || url;   // 没填名称就用域名，省一次输入
+
+  if (_h5.editing){
+    var x = h5Find(_h5.editing);
+    if (x){ x.name = name; x.url = url; x.cat = cat; }
+  } else {
+    // 查重：同一个 URL 不重复添加（用户经常忘）
+    for (var i = 0; i < _h5.items.length; i++){
+      if (_h5.items[i].url === url){
+        if (err) err.textContent = '这个地址已经收藏过了';
+        return;
+      }
+    }
+    _h5.items.push({ id: h5Uid(), name: name, url: url, cat: cat, added: Date.now(), last: 0 });
+  }
+
+  h5Persist();
+  h5CloseForm();
+  h5Render();
+  toast(_h5.editing ? '已修改' : '已添加', 'ok');
+}
+
+function h5Del(id){
+  var x = h5Find(id);
+  if (!x) return;
+  // 删除不可撤销，问一句（H5 是不透明数据，误删就找不回）
+  if (!confirm('删除「' + x.name + '」？\n\n这个操作不能撤销。')) return;
+  _h5.items = _h5.items.filter(function(v){ return v.id !== id; });
+  h5Persist();
+  h5Render();
+  toast('已删除', 'ok');
+}
+
+/* ---------- 导入 / 导出 ---------- */
+function h5Export(){
+  if (!_h5.items.length){ toast('还没有收藏', 'err'); return; }
+  var payload = { v: 1, exported: new Date().toISOString(), items: _h5.items };
+  var txt = JSON.stringify(payload, null, 2);
+  diagCopyText(txt, '已复制 ' + _h5.items.length + ' 条（粘贴保存为 .json 即可迁移）');
+}
+
+function h5Import(){
+  var txt = prompt('粘贴之前导出的 JSON（整段粘进来即可）：', '');
+  if (txt === null) return;
+  var t = String(txt).trim();
+  if (!t) return;
+
+  var arr = null;
+  try {
+    var o = JSON.parse(t);
+    arr = o && o.items ? o.items : (Array.isArray(o) ? o : null);
+  } catch(e){
+    toast('JSON 解析失败', 'err');
+    return;
+  }
+  if (!arr || !arr.length){ toast('里面没有可导入的条目', 'err'); return; }
+
+  var added = 0, skip = 0;
+  var have = {};
+  for (var i = 0; i < _h5.items.length; i++) have[_h5.items[i].url] = 1;
+
+  for (var j = 0; j < arr.length; j++){
+    var it = arr[j];
+    var u = h5NormUrl(it && it.url);
+    if (!u || !h5ValidUrl(u)){ skip++; continue; }
+    if (have[u]){ skip++; continue; }   // 按 URL 去重
+    have[u] = 1;
+    _h5.items.push({
+      id: h5Uid(),
+      name: String((it && it.name) || h5Host(u) || u),
+      url: u,
+      cat: String((it && it.cat) || ''),
+      added: Date.now(),
+      last: 0
+    });
+    added++;
+  }
+  h5Persist();
+  h5Render();
+  toast('导入完成：新增 ' + added + ' 条' + (skip ? ('，跳过 ' + skip + ' 条（重复或非法）') : ''), 'ok');
+}
+
+/* ---------- 常用预设 ---------- */
+function h5Presets(){
+  // 只放"和这个工具有关"的平台，不放一堆无关站点 —— 预设太杂反而不如自己加
+  var P = [
+    { name: '禅道（缺陷跟踪）', url: 'http://zentao.gxatek.com:20080', cat: '研发平台' },
+    { name: '测试环境监控', url: 'https://www.baidu.com', cat: '监控' },
+    { name: 'ADB 文档（官方）', url: 'https://developer.android.com/tools/adb', cat: '文档' },
+    { name: 'Scrcpy 项目', url: 'https://github.com/Genymobile/scrcpy', cat: '文档' }
+  ];
+  var tip = '常用预设：\n\n';
+  for (var i = 0; i < P.length; i++){
+    tip += (i+1) + '. ' + P[i].name + '  —  ' + P[i].url + '\n';
+  }
+  tip += '\n点「确定」全部加入（已存在的会跳过）；点「取消」不添加。';
+  if (!confirm(tip)) return;
+
+  var have = {};
+  for (var j = 0; j < _h5.items.length; j++) have[_h5.items[j].url] = 1;
+  var n = 0;
+  for (var k = 0; k < P.length; k++){
+    if (have[P[k].url]) continue;
+    _h5.items.push({ id: h5Uid(), name: P[k].name, url: P[k].url, cat: P[k].cat,
+                     added: Date.now(), last: 0 });
+    n++;
+  }
+  h5Persist();
+  h5Render();
+  toast(n ? ('已添加 ' + n + ' 条预设') : '预设都已存在', n ? 'ok' : '');
+}
+
+/* 进入 H5 页时初始化一次 */
+function h5EnsureInit(){
+  if (_h5.inited) return;
+  _h5.inited = true;
+  h5Load();
+  h5Render();
 }
 
 /* 供外部按名字进入（帮助页跳「文本」等场景） */
@@ -10076,10 +10843,6 @@ function switchTab(name){
   var pd = document.getElementById('page-diag');
   if(pd) pd.classList.toggle('active', name === 'diag');
   if(name === 'diag'){ try { diagOnEnter(); } catch(e){} }
-  // 2026-11-22（第 16 批）：仪表页
-  var pc2 = document.getElementById('page-cluster');
-  if(pc2) pc2.classList.toggle('active', name === 'cluster');
-  if(name === 'cluster' && typeof cluOnEnter === 'function'){ try { cluOnEnter(); } catch(e){} }
   // 旧的两个一级页容器已不存在（内容搬进 #fileview-ui / #fileview-text），
   // 保留这两行只为兼容可能存在的极早期代码路径；元素不存在时静默跳过。
   var pu = document.getElementById('page-ui');
@@ -11212,7 +11975,11 @@ var quickGroups = [
   // Scrcpy 投屏（2026-11-19）：投屏 tab 要删，改成指令卡片直接开外部 scrcpy 窗口。
   // 实测两个 scrcpy 实例可并行（各自随机 scid/端口），所以这里不需要分配端口。
   // 屏号沿用 CAST_NAMES：0 主屏 / 1 后排 / 3 HUD / 4 副驾 / 9 PHUD-B / 10 PHUD-C
-  { name:'Scrcpy投屏', color:'var(--accent)', items:[
+  // 2026-11-22（第 17 批需求 3）：改成**面板**（panel:'cast'），
+  // 把「屏幕投屏 / 仪表投屏 / 其它」三块收进同一个页面。
+  // items 保留是给「指令搜索」用的：搜「投屏」仍能命中这几条。
+  // 面板本身的按钮在 #cast-panel 里，不走卡片渲染。
+  { name:'Scrcpy投屏', color:'var(--accent)', panel:'cast', items:[
     {name:'投屏 主屏',   desc:'display 0 · 2560×1440', cmd:':cast 0'},
     {name:'投屏 后排屏', desc:'display 1', cmd:':cast 1'},
     {name:'投屏 HUD',    desc:'display 3', cmd:':cast 3'},
@@ -11648,6 +12415,18 @@ function renderQuickItems(){
   var nsPanel = document.getElementById('netsim-panel');
   if(nsPanel) nsPanel.style.display = (g.panel === 'netsim') ? '' : 'none';
 
+  // 2026-11-22（第 17 批）：Scrcpy 投屏面板（含仪表区）
+  var castPanel = document.getElementById('cast-panel');
+  if(castPanel){
+    castPanel.style.display = (g.panel === 'cast') ? '' : 'none';
+    // 面板打开时同步一次仪表状态（可能是从别的分组切过来的）
+    if(g.panel === 'cast'){
+      if(typeof cluOnEnter === 'function'){ try { cluOnEnter(); } catch(e){} }
+      // 首次进面板自动扫一次屏幕（之后靠「刷新」按钮）
+      if(!_castDispLoaded && typeof castLoadDisplays === 'function'){ try { castLoadDisplays(); } catch(e){} }
+    }
+  }
+
   // 自定义 ADB 指令（2026-11-15）：同一套 panel 机制，显示时刷新卡片
   var cmPanel = document.getElementById('custom-panel');
   if(cmPanel){
@@ -11991,6 +12770,59 @@ function cluCast(){
 function cluStop(){
   cluLog('关闭仪表显示窗口…');
   try { postObj({ kind: 'clustop' }); } catch(e){}
+}
+
+/* ============================================================================
+   投屏面板的按钮（2026-11-22 第 17 批需求 3）
+   ----------------------------------------------------------------------------
+   原来这些都是「Scrcpy投屏」分组里的卡片（cmd 形如 ':cast 0'），
+   现在改成面板按钮后仍然走同一条命令通道 —— 不新增机制，
+   只是把"点卡片"换成"点按钮"，命令和原来完全一致。
+   ============================================================================ */
+/* 2026-11-22（第 17 批需求 2）：动态列屏。
+   打开面板 / 点刷新时调 :displays（内部跑 scrcpy --list-displays），
+   拿回真实 display 列表后重建按钮。拉不到就保留写死的那组，不报错。 */
+var _castDispLoaded = false;
+
+function castLoadDisplays(){
+  var grid = document.getElementById('cast-grid');
+  if (grid && !_castDispLoaded){
+    grid.innerHTML = '<div class="cbtn cbtn--loading">正在扫描屏幕…</div>';
+  }
+  try { postObj({ kind: 'displays' }); } catch(e){}
+}
+
+/* C# 回来的真实屏幕列表 → 重建按钮 */
+function castOnDisplays(msg){
+  var grid = document.getElementById('cast-grid');
+  if (!grid) return;
+  if (!msg || !msg.ok || !msg.list || !msg.list.length){
+    grid.innerHTML = '<div class="cbtn cbtn--loading">没扫到屏幕'
+      + (msg && msg.err ? ('：' + mkEsc(msg.err)) : '') + '（保留默认列表请点刷新重试）</div>';
+    return;
+  }
+  _castDispLoaded = true;
+  var html = '';
+  for (var i = 0; i < msg.list.length; i++){
+    var d = msg.list[i];
+    var tag = (d.id === 0) ? '主屏' : ('屏 ' + d.id);
+    html += '<button class="cbtn" onclick="castGo(' + d.id + ')">'
+          + '<b>' + mkEsc(tag) + '</b>'
+          + '<span>display ' + d.id + ' · ' + d.w + '×' + d.h + '</span></button>';
+  }
+  grid.innerHTML = html;
+}
+
+function castGo(displayId){
+  post('quick', ':cast ' + displayId);
+}
+
+function castGoRec(){
+  post('quick', ':castrec 0 60');
+}
+
+function castStopAll(){
+  post('quick', ':caststop all');
 }
 
 /* 屏号手动改过就不再被芯片切换覆盖 */
@@ -15409,26 +16241,36 @@ function rzUp(){
    系统自带（Windows 10/11 中文版均有）：
      Noto Sans SC / 微软雅黑 / 等线 / 楷体 / 宋体 / 黑体
    想用别的已安装字体：选「自定义」直接填字体名。 */
+/* 2026-11-22（第 17 批需求 5）：字体候选表。
+   probe = 用来判断"这个字体装没装"的字体名（null 表示总可用）。
+     · system / inter / mono-all → 内置或系统默认，永远列出
+     · noto / deng / kai / song / hei → 要去系统已安装列表里核对
+     · custom → 永远列出（用户自己填）
+   启动时向 C# 要一次 InstalledFontCollection，没装的就从下拉里剔掉 ——
+   否则选了一个不存在的字体，界面会静默回落到默认，用户以为设置失效。 */
 var FONT_LIST = [
-  { id: 'system', name: '系统默认（苹方 / 微软雅黑）',
+  { id: 'system', name: '系统默认（苹方 / 微软雅黑）', probe: null,
     ui: '-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif' },
-  { id: 'inter', name: 'Inter（内置 · OFL 开源）',
+  { id: 'inter', name: 'Inter（内置 · OFL 开源）', probe: null,
     ui: '"Inter","Microsoft YaHei UI",system-ui,sans-serif' },
-  { id: 'noto', name: 'Noto Sans SC（思源黑体 · 免费）',
+  { id: 'noto', name: 'Noto Sans SC（思源黑体 · 免费）', probe: 'Noto Sans SC',
     ui: '"Noto Sans SC","Microsoft YaHei UI",system-ui,sans-serif' },
-  { id: 'deng', name: '等线 DengXian（Win 自带）',
+  { id: 'deng', name: '等线 DengXian', probe: 'DengXian',
     ui: '"DengXian","Microsoft YaHei UI",sans-serif' },
-  { id: 'kai', name: '楷体 KaiTi（Win 自带）',
+  { id: 'kai', name: '楷体 KaiTi', probe: 'KaiTi',
     ui: '"KaiTi","Microsoft YaHei UI",serif' },
-  { id: 'song', name: '宋体 SimSun（Win 自带）',
+  { id: 'song', name: '宋体 SimSun', probe: 'SimSun',
     ui: '"SimSun","Microsoft YaHei UI",serif' },
-  { id: 'hei', name: '黑体 SimHei（Win 自带）',
+  { id: 'hei', name: '黑体 SimHei', probe: 'SimHei',
     ui: '"SimHei","Microsoft YaHei UI",sans-serif' },
-  { id: 'mono-all', name: 'JetBrains Mono（内置 · 全等宽）',
+  { id: 'mono-all', name: 'JetBrains Mono（内置 · 全等宽）', probe: null,
     ui: '"JetBrains Mono","Microsoft YaHei UI",monospace',
     mono: '"JetBrains Mono",Consolas,monospace' },
-  { id: 'custom', name: '自定义（填已安装的字体名）', ui: '' }
+  { id: 'custom', name: '自定义（填已安装的字体名）', probe: null, ui: '' }
 ];
+
+/* 已安装字体集合（小写便于比较）。null = 还没拿到，先全列 */
+var _installedFonts = null;
 var _prefs = { font: 'system', custom: '' };
 var _prefsLoaded = false;
 
@@ -15581,17 +16423,57 @@ function setThemeByName(name){
   syncThemeSeg();
 }
 
+/* 该字体项在当前机器上是否可用：
+   probe 为 null 的（系统默认/内置/自定义）永远可用；
+   其它去已安装列表里比（小写、去空格比较，避免 "SimHei" / "simhei" 差异）。*/
+function fontAvailable(f){
+  if (!f || !f.probe) return true;
+  if (!_installedFonts) return true;          // 还没拿到列表 → 先全列，不误删
+  var k = String(f.probe).toLowerCase().replace(/\s+/g, '');
+  return _installedFonts[k] === 1;
+}
+
 function buildFontSelect(){
   var sel = $v12('set-font');
-  if (!sel || sel.options.length) return;
+  if (!sel) return;
+  // 每次打开都重建：首次打开时字体列表可能还没到（异步），
+  // 到了之后要能刷新出正确选项。原来有 `sel.options.length` 就 return，
+  // 会把"没过滤过"的旧列表一直留着。
   var html = '';
-  for (var i = 0; i < FONT_LIST.length; i++)
+  for (var i = 0; i < FONT_LIST.length; i++){
+    if (!fontAvailable(FONT_LIST[i])) continue;
     html += '<option value="' + FONT_LIST[i].id + '">' + escHtml(FONT_LIST[i].name) + '</option>';
+  }
   sel.innerHTML = html;
-  sel.value = _prefs.font;
+
+  // 当前选中项如果没装，退回系统默认（否则看起来"选了个不存在的字体"）
+  var keep = _prefs.font;
+  var found = false;
+  for (var j = 0; j < FONT_LIST.length; j++){
+    if (FONT_LIST[j].id === keep && fontAvailable(FONT_LIST[j])) { found = true; break; }
+  }
+  sel.value = found ? keep : 'system';
+  if (!found && keep !== 'system'){
+    _prefs.font = 'system';
+    try { applyFont(); } catch(e){}
+  }
+}
+
+/* 从 C# 拿到已安装字体名 */
+function onFontList(msg){
+  if (!msg || !msg.fonts) return;
+  var m = {};
+  for (var i = 0; i < msg.fonts.length; i++){
+    var k = String(msg.fonts[i] || '').toLowerCase().replace(/\s+/g, '');
+    if (k) m[k] = 1;
+  }
+  _installedFonts = m;
+  buildFontSelect();   // 列表到了就重建一次（设置面板可能已经打开着）
 }
 
 function openSettings(){
+  // 每次打开都刷一次字体列表：可能刚装的字体要能立刻出现
+  if (!_installedFonts) { try { postObj({ kind: 'fontlist' }); } catch(e){} }
   buildFontSelect();
   buildThemeSeg();
   syncThemeSeg();
@@ -16360,6 +17242,10 @@ function v12OnMessage(msg){
     case 'clustate':
       try { if(typeof cluOnState === 'function') cluOnState(msg); } catch(e){}
       return true;
+    // 2026-11-22（第 17 批）：投屏面板的屏幕列表
+    case 'displays':
+      try { if(typeof castOnDisplays === 'function') castOnDisplays(msg); } catch(e){}
+      return true;
     case 'textfile':
       if ($v12('page-text')) { switchTab('text'); }
       txApplyFile(msg);
@@ -16728,6 +17614,16 @@ document.addEventListener('DOMContentLoaded', function (){
 
   window.setSize = function(id){ window.applySize(id, false); };
 
+  /* 2026-11-22（第 17 批需求 7）：首次启动时也要把字号应用一遍。
+     原本只有「用户点过」或「收到 prefs」才会调 applySize，
+     于是首启时 html 上没有 data-fsize 属性、C# 也没收到 uizoom ——
+     虽然 ZoomFactor 默认就是 1.0（恰好等于"中"），但
+     依赖 [data-fsize] 的样式不会生效，设置面板里也看不到选中态，
+     用户会觉得"默认不是中"。
+     curSize() 本身已保证「没存过 = m」，所以这里直接用它就行，
+     存过偏好的老用户不会被覆盖成中。 */
+  try { window.applySize(curSize(), true); } catch (e) {}
+
   // 设置面板打开时补建分段控件（面板是懒渲染，第一次打开才需要内容）
   if (typeof window.openSettings === 'function'){
     var origOpen = window.openSettings;
@@ -16948,7 +17844,10 @@ document.addEventListener('DOMContentLoaded', function (){
     { id:'robotomono', name:'Roboto Mono', group:'等宽 · 代码日志', core:'', mono:'"Roboto Mono",Consolas,monospace', probe:'Roboto Mono' },
     { id:'sarasamono', name:'Sarasa Mono SC', group:'等宽 · 代码日志', core:'', mono:'"Sarasa Mono SC",Consolas,monospace', probe:'Sarasa Mono SC' },
 
-    { id:'custom', name:'自定义（填已安装的字体名）', group:'其它', core:'', mono:'' }
+    // ★ 2026-11-22（第 17 批需求 5）：custom 必须 always —— 它不是"某个字体"，
+    //   而是"让用户自己填字体名"的入口。按字面去检测"Custom"这个字体名当然测不到，
+    //   结果这一项会被当成"未安装"过滤掉，用户就再也没法自定义字体了。
+    { id:'custom', name:'自定义（填已安装的字体名）', group:'其它', core:'', mono:'', always:true }
   ];
 
   // 是否已安装（内存缓存，一次启动只测一遍）
@@ -16968,14 +17867,20 @@ document.addEventListener('DOMContentLoaded', function (){
     for (var i = 0; i < FONTS.length; i++){
       var f = FONTS[i];
       var ok = isAvail(f);
+      /* 2026-11-22（第 17 批需求 5）：**未安装的直接不列**。
+         本层原来的做法是"列出来但名字后面加（未安装）"+ 标 off 灰显。
+         用户明确要求"删除未安装的字体，仅保留已安装字体" ——
+         因为选一个不存在的字体，界面会静默回落到默认，
+         用户会以为"设置没生效"。所以改成直接过滤掉。 */
+      if (!ok) continue;
       FONT_LIST.push({
         id: f.id,
-        name: ok ? f.name : (f.name + '（未安装）'),
+        name: f.name,
         ui: f.core || undefined,
         mono: f.mono || undefined,
         // 下面两个是本层新增的元数据，_v14 的自绘浮层认它们
         grp: f.group,
-        off: !ok
+        off: false
       });
     }
     return true;

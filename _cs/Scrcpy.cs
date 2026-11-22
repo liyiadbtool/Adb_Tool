@@ -529,6 +529,86 @@ namespace AdbLogExport
             return LaunchCore(displayId, name, null, 0, false, out err);
         }
 
+        /// <summary>
+        /// 2026-11-22（第 17 批需求 2）：动态列出设备上的 display。
+        ///
+        /// 为什么需要它：原来 :cast 的屏号是**写死映射**（主屏0/后排1/HUD3/副屏4/
+        /// PHUD-B9/PHUD-C10），这套映射只对某几个平台成立。换车型/换平台后
+        /// 仪表可能是别的 id，用户只能猜。
+        ///
+        /// scrcpy 2.0+ 支持 `--list-displays`，输出形如：
+        ///     [server] INFO: List of displays:
+        ///         --display-id=0    (1600x900)
+        /// 逆向的 InstrumentMirror 也正是用 `--display-id=(\d+)\s+\((\d+)x(\d+)\)`
+        /// 这个正则解析的（两边口径一致）。
+        ///
+        /// 返回 list 里每项是 { id, w, h }。
+        /// </summary>
+        internal static List<int[]> ListDisplays(out string err)
+        {
+            err = "";
+            List<int[]> list = new List<int[]>();
+
+            string ver = "", le = "";
+            string exe = Locate(out ver, out le);
+            if (exe.Length == 0) { err = (le.Length > 0 ? le : "找不到 scrcpy"); return list; }
+
+            string serial = (!string.IsNullOrEmpty(App.SERIAL) && App.SERIAL_OK) ? App.SERIAL : App.DEVID;
+
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = exe;
+                psi.Arguments = (string.IsNullOrEmpty(serial) ? "" : ("-s " + serial + " "))
+                              + "--list-displays";
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+
+                using (Process p = new Process())
+                {
+                    p.StartInfo = psi;
+                    try { p.Start(); }
+                    catch (Exception ex) { err = "无法运行 scrcpy：" + ex.Message; return list; }
+
+                    // scrcpy 把 INFO 打到 stderr，两边都要读（不读会堵死管道）
+                    string o = "", e2 = "";
+                    try { o = p.StandardOutput.ReadToEnd(); } catch { }
+                    try { e2 = p.StandardError.ReadToEnd(); } catch { }
+
+                    if (!p.WaitForExit(15000))
+                    {
+                        try { p.Kill(); } catch { }
+                        err = "列屏超时（scrcpy 没在 15 秒内返回）";
+                        return list;
+                    }
+
+                    string all = (o ?? "") + "\n" + (e2 ?? "");
+                    // 与逆向工具同一个正则
+                    System.Text.RegularExpressions.MatchCollection ms =
+                        System.Text.RegularExpressions.Regex.Matches(
+                            all, @"--display-id=(\d+)\s+\((\d+)x(\d+)\)");
+                    for (int i = 0; i < ms.Count; i++)
+                    {
+                        int id, w, h;
+                        if (!int.TryParse(ms[i].Groups[1].Value, out id)) continue;
+                        int.TryParse(ms[i].Groups[2].Value, out w);
+                        int.TryParse(ms[i].Groups[3].Value, out h);
+                        list.Add(new int[] { id, w, h });
+                    }
+
+                    if (list.Count == 0)
+                        err = "scrcpy 没有返回任何 display（版本太老？需要 2.0+）";
+                }
+            }
+            catch (Exception ex)
+            {
+                err = "列屏失败：" + ex.Message;
+            }
+            return list;
+        }
+
         private static bool LaunchCore(int displayId, string name, string recFile,
                                        int recSeconds, bool control, out string err)
         {

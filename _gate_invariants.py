@@ -359,7 +359,7 @@ A35_ADDS = {
 # 新增 id：整页一组（page-monkey + mk-* 全套控件与统计字段）
 A36_ADDS = {
     "kinds": set(["monkeycfg", "fbdeploydone", "diaglocal", "diagcar", "diagsample", "diagadbused",
-                      "autolog", "autostate", "heaplist", "clustate"]),
+                      "autolog", "autostate", "heaplist", "clustate", "displays"]),
     "onclicks": set(["mkSetType", "mkSetVerbose", "mkStart", "mkStop",
                      "mkClear", "mkListPkgs", "mkOpenLogDir",
                      # 2026-11-22 需求 B：崩溃详情弹层 + 报告导出
@@ -390,7 +390,11 @@ A36_ADDS = {
                      "diagJumpTo", "diagDiffHist",
                      "qcardClick", "qcardClickAt",
                      # 2026-11-22 第 16 批：仪表投屏
-                     "cluLogin", "cluLogout", "cluDetect", "cluCast", "cluStop"]),
+                     "cluLogin", "cluLogout", "cluDetect", "cluCast", "cluStop",
+                     # 2026-11-22 第 17 批：投屏面板 + H5 管理
+                     "castGo", "castGoRec", "castStopAll", "castLoadDisplays",
+                     "h5OpenAdd", "h5Edit", "h5Save", "h5Del", "h5CloseForm",
+                     "h5Open", "h5Copy", "h5Pick", "h5Export", "h5Import", "h5Presets"]),
     "ids": set(["page-monkey",
                 "mk-pkg", "mk-minutes", "mk-throttle", "mk-count", "mk-seed",
                 "mk-type", "mk-verbose",
@@ -438,7 +442,12 @@ A36_ADDS = {
                 # 2026-11-22 第 16 批：仪表页
                 "page-cluster", "clu-chip", "clu-state", "clu-login", "clu-logout",
                 "clu-cred", "clu-host", "clu-user", "clu-pass", "clu-su",
-                "clu-display", "clu-viewonly", "clu-cast-btn", "clu-hint", "clu-log"]),
+                "clu-display", "clu-viewonly", "clu-cast-btn", "clu-hint", "clu-log",
+                # 2026-11-22 第 17 批：投屏面板 + H5 管理页
+                "cast-panel", "cast-grid", "cast-refresh",
+                "fileview-h5", "h5-search", "h5-form", "h5-f-name", "h5-f-url",
+                "h5-f-cat", "h5-cat-list", "h5-f-err", "h5-f-save",
+                "h5-cats", "h5-list", "h5-foot"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

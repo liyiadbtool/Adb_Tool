@@ -71,7 +71,7 @@ namespace AdbLogExport
         internal static readonly ChipProfile[] CHIPS = new ChipProfile[]
         {
             new ChipProfile {
-                Key = "8838", Label = "8838 (T75)",
+                Key = "8838", Label = "8838",
                 IsTelnet = false,
                 LxcName = "linux-8838",
                 DefaultHost = "",
@@ -79,7 +79,7 @@ namespace AdbLogExport
                 DefaultDisplay = 4
             },
             new ChipProfile {
-                Key = "8295", Label = "8295 (AHT)",
+                Key = "8295", Label = "8295",
                 IsTelnet = true,
                 LxcName = "",
                 DefaultHost = "192.168.8.1",   // 逆向字符串里出现的默认地址
@@ -449,6 +449,37 @@ namespace AdbLogExport
                 else { int nn; if (int.TryParse(x, out nn)) id = nn; }
             }
             ClusterCast(id, view);
+        }
+
+        // :displays —— 动态列屏幕上所有 display（scrcpy --list-displays）
+        internal static void DoListDisplays()
+        {
+            if (!RequireDevice("")) return;
+
+            Info("列出屏幕（scrcpy --list-displays）…");
+            string err = "";
+            var list = Scrcpy.ListDisplays(out err);
+
+            if (list.Count == 0)
+            {
+                Fail(err.Length > 0 ? err : "没有列出任何屏幕");
+                Hint("可用 `:cast <屏号>` 直接试某个屏号");
+                return;
+            }
+
+            Blank();
+            Ok("找到 " + list.Count + " 块屏：");
+            for (int i = 0; i < list.Count; i++)
+            {
+                int[] d = list[i];
+                // 常见屏号的语义提示（仅作参考，真值以实际为准）
+                string guess = "";
+                if (d[0] == 0) guess = "（通常是主屏 / 中控）";
+                else if (d[0] == 4) guess = "（常见于仪表 / 副驾屏）";
+                Hint("  display " + d[0] + "   " + d[1] + "x" + d[2] + "  " + guess);
+            }
+            Blank();
+            Hint("投屏：:cast <屏号>    仪表：:clogin <芯片> 后再 :ccast <屏号>");
         }
 
         // ==================== ini 存取（凭据只落本机）====================

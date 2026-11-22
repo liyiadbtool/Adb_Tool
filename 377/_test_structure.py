@@ -82,9 +82,9 @@ JS = r"""
       // 前三个的顺序仍然冻结，只在尾部追加，不影响既有习惯。
       // 2026-11-22（第 11 批需求）：末尾再追加「诊断」页。
       // 顺序仍然冻结在前，只在尾部追加，不影响既有习惯。
-      // 2026-11-22（第 16 批）：末尾追加「仪表」页签（Cluster 投屏）
-      ok('页签顺序为 指令→终端→文件→Monkey→诊断→仪表',
-         order.join(',') === 'quick,cmd,file,monkey,diag,cluster', order.join(','));
+      // 2026-11-22（第 17 批）：仪表页签已删除（并入「指令 → Scrcpy投屏」面板）
+      ok('页签顺序为 指令→终端→文件→Monkey→诊断',
+         order.join(',') === 'quick,cmd,file,monkey,diag', order.join(','));
       ok('第一个页签文字是「指令」', tabs[0].textContent.trim() === '指令', tabs[0].textContent);
       ok('第二个页签文字是「终端」', tabs[1].textContent.trim() === '终端', tabs[1].textContent);
       ok('第三个页签文字是「文件」', tabs[2].textContent.trim() === '文件',
@@ -94,8 +94,8 @@ JS = r"""
         ok('fileview-' + FILEVIEWS[fv] + ' 存在',
            !!document.getElementById('fileview-' + FILEVIEWS[fv]));
       }
-      ok('文件页导航有 3 个分组',
-         document.querySelectorAll('.filenav-item').length === 3,
+      ok('文件页导航有 4 个分组（数据/UI/文本/H5）',
+         document.querySelectorAll('.filenav-item').length  === 4,
          document.querySelectorAll('.filenav-item').length);
       ok('文件页默认显示「数据互传」',
          document.getElementById('fileview-data')

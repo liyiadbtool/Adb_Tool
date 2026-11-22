@@ -2375,6 +2375,102 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-22（第 17 批需求 5）：把系统**已安装**的字体名回给页面。
+                // 页面上的 FONT_LIST 是写死的候选（宋体/楷体/等线/Noto…），
+                // 但换台机器 / 精简版 Windows 可能根本没装其中几个 ——
+                // 选中一个不存在的字体，界面会静默回落到默认字体，用户以为"设置没生效"。
+                // 这里用 System.Drawing 的 InstalledFontCollection 拿真实列表。
+                case "fontlist":
+                    {
+                        StringBuilder fb = new StringBuilder();
+                        fb.Append("{\"kind\":\"fontlist\",\"fonts\":[");
+                        bool firstF = true;
+                        try
+                        {
+                            using (System.Drawing.Text.InstalledFontCollection fc =
+                                   new System.Drawing.Text.InstalledFontCollection())
+                            {
+                                foreach (System.Drawing.FontFamily ff in fc.Families)
+                                {
+                                    if (!firstF) fb.Append(',');
+                                    firstF = false;
+                                    fb.Append(Json(ff.Name));
+                                }
+                            }
+                        }
+                        catch { }
+                        fb.Append("]}");
+                        PushOnUi(fb.ToString());
+                    }
+                    break;
+
+                // 2026-11-22（第 17 批需求 8.2）：用**系统默认浏览器**打开 URL。
+                // 为什么不让页面直接 window.open：
+                //   WebView2 里 window.open 会开一个内嵌窗口（还是本工具的壳），
+                //   而用户要的是"点收藏用常用浏览器打开"，那必须走 ShellExecute。
+                case "openurl":
+                    {
+                        string u = GetField(json, "url");
+                        if (string.IsNullOrEmpty(u))
+                        {
+                            PostToast(false, "URL 为空");
+                            break;
+                        }
+                        // 只放行 http/https —— 防止 file:// 或 javascript: 之类被塞进来
+                        string low = u.ToLowerInvariant();
+                        if (low.StartsWith("http://") || low.StartsWith("https://"))
+                        {
+                            try
+                            {
+                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                                {
+                                    FileName = u,
+                                    UseShellExecute = true
+                                });
+                                PushOnUi("{\"kind\":\"toast\",\"ok\":true,\"text\":"
+                                       + Json("已在浏览器打开") + "}");
+                            }
+                            catch (Exception ex)
+                            {
+                                PostToast(false, "打开失败：" + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            PostToast(false, "只支持 http / https 链接");
+                        }
+                    }
+                    break;
+
+                // 2026-11-22（第 17 批需求 2）：动态列屏（投屏面板的"刷新"）。
+                // 放后台线程：scrcpy --list-displays 要 push server 并等回包，1~3 秒。
+                case "displays":
+                    {
+                        Thread thD2 = new Thread(delegate()
+                        {
+                            string derr = "";
+                            var dl = new List<int[]>();
+                            try { dl = Scrcpy.ListDisplays(out derr); } catch (Exception ex) { derr = ex.Message; }
+
+                            StringBuilder db = new StringBuilder();
+                            db.Append("{\"kind\":\"displays\",\"ok\":").Append(dl.Count > 0 ? "true" : "false")
+                              .Append(",\"err\":").Append(Json(derr == null ? "" : derr))
+                              .Append(",\"list\":[");
+                            for (int i = 0; i < dl.Count; i++)
+                            {
+                                if (i > 0) db.Append(',');
+                                db.Append("{\"id\":").Append(dl[i][0])
+                                  .Append(",\"w\":").Append(dl[i][1])
+                                  .Append(",\"h\":").Append(dl[i][2]).Append('}');
+                            }
+                            db.Append("]}");
+                            PushOnUi(db.ToString());
+                        });
+                        thD2.IsBackground = true;
+                        thD2.Start();
+                    }
+                    break;
+
                 case "prefsave":
                     // 字体 / 字号 / 动效：和 accent 一样是不透明串，C# 只存取不解析
                     App.PREFS = GetField(json, "data");
