@@ -5776,9 +5776,19 @@ function mkRunNextInQueue(){
     cmd = cmd.replace('--running-minutes-placeholder', String(cnt));
     modeName = 'monkey';
   } else if(_mkEnv.uiautomator){
+    // 2026-11-22：白名单/黑名单是 monkey 专属参数，降级引擎无法保证只在这些包里跑。
+    // 必须明确告知，否则用户会以为"我勾了白名单，怎么跑到别的应用去了"。
+    if(_mk.scope !== 'single'){
+      mkLog('⚠ 当前设备没有 monkey，降级引擎**不支持白名单/黑名单**，'
+            + '本次只在 ' + pkg + ' 上遍历', 'anr');
+    }
     cmd = mkBuildUiautomatorCmd(cnt, thr);
     modeName = 'uiautomator';
   } else {
+    if(_mk.scope !== 'single'){
+      mkLog('⚠ 当前设备只有 input 兜底，**不支持白名单/黑名单**，'
+            + '本次只在 ' + pkg + ' 上遍历', 'anr');
+    }
     cmd = mkBuildInputCmd(cnt, thr);
     modeName = 'input';
   }
