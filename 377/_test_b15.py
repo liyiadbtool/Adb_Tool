@@ -280,17 +280,17 @@ function runAll(){
   changed[7].v = '446.9 GB（剩余 100.0 GB）';   // 存储 C: 变了
   diagOnLocal({ok:true, adb:'C:\\x\\adb.exe', adbsrc:'系统 PATH', rows:changed});
 
+  /* 2026-11-23（第 20 批 S3）：快照历史**界面已删**（用户要求），
+     #diag-rows-hist 不存在了。这里改成只验数据侧：
+     对比逻辑（diagDiffHist）仍能跑，结果落在 _diag.diff 上。 */
   _diag.diff = null;
-  diagRenderHist();
-  var histBox = document.getElementById('diag-rows-hist');
-  ok('历史里有"对比"按钮', histBox.textContent.indexOf('对比') >= 0,
-     histBox.textContent.slice(0,60));
+  diagRenderHist();               // 找不到容器时静默返回，不报错
+  ok('历史界面已删（容器不存在）', !document.getElementById('diag-rows-hist'));
 
   diagDiffHist(0);
-  ok('对比后产生结果', !!_diag.diff, typeof _diag.diff);
-  var dtext = histBox.textContent;
-  ok('对比显示"项变化"', dtext.indexOf('项变化') >= 0, dtext.slice(0,100));
-  ok('对比列出了变化的字段（存储 C:）', dtext.indexOf('存储 C:') >= 0, dtext.slice(0,150));
+  ok('对比后产生结果（数据侧仍可用）', !!_diag.diff, typeof _diag.diff);
+  var dtext = JSON.stringify(_diag.diff || {});
+  ok('对比结果含差异项', dtext.length > 2, dtext.slice(0,100));
 
   /* 无变化场景 */
   diagSaveSnapshot();

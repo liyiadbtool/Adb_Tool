@@ -111,8 +111,9 @@ function runAll(){
   ok('★ 整行是 button 且 onclick 投屏',
      document.querySelector('#cast-grid .crow').tagName === 'BUTTON'
      && /castGo/.test(document.querySelector('#cast-grid .crow').getAttribute('onclick') || ''));
+  // 第 20 批：行结构改成"图标 + 文本块"，选择器从 .crow b 变成 .crow-txt b
   ok('★ 名称不被压成竖排（white-space:nowrap）',
-     /\.crow b\{[^}]*white-space:nowrap/.test(css));
+     /\.crow-txt b\{[^}]*white-space:nowrap/.test(css));
 
   /* A4/A5/A6 已删的入口 */
   ok('★ 无刷新按钮', !document.getElementById('cast-refresh'));
@@ -125,9 +126,10 @@ function runAll(){
   ok('★ pageIn 的位移已删除', !/@keyframes pageIn/.test(css));
   ok('★ 无 translateY(4px) 的页面动画',
      !/\.page\{[^}]*translateY/.test(css));
-  ok('★ diag-scroll 用 Grid 自适应',
-     /\.diag-scroll\{[^}]*grid-template-columns:repeat\(auto-fit/.test(css),
-     'grid auto-fit');
+  // 第 20 批：auto-fit 会因 15px 滚动条在阈值处跳列，改成**固定两列**
+  ok('★ diag-scroll 用固定两列 Grid',
+     /\.diag-scroll\{[^}]*grid-template-columns:repeat\(2,/.test(css),
+     'grid repeat(2)');
   // 只查**属性声明**，注释里提到这个词不算（注释是在解释历史）
   ok('★ diag-card 不再用 calc(50% - 6px)',
      !/width\s*:\s*calc\(50% ?- ?6px\)/.test(css));
@@ -179,7 +181,10 @@ function runAll(){
   ok('★ 空状态没有分组块', document.querySelectorAll('.h5-group').length === 0);
 
   // C2 添加分组
-  h5AddGroup();   // prompt 桩返回「监控」
+  // 第 20 批：改成自绘弹窗，不再走 prompt 桩
+  h5AddGroup();
+  document.getElementById('h5g-name').value = '监控';
+  h5AddGroupCommit();
   ok('★ 添加分组成功', _h5.groups.length === 1, _h5.groups.length);
   ok('分组名正确', _h5.groups[0].name === '监控', _h5.groups[0].name);
   h5Render();

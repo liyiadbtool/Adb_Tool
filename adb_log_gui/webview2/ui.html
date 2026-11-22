@@ -1,5 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-accent="blue">
+<!-- 2026-11-23（第 20 批 D3）：data-fsize="m" 是**静态兜底**。
+     原来根标签上没有这个属性，全靠 JS 启动后写入；
+     一旦 JS 那一步没跑到（竞态/异常），页面就停在"无属性"状态，
+     依赖 [data-fsize] 的样式不生效，用户看到的就是偏小。
+     现在写死在 HTML 上：即使 JS 全挂，默认也是「中」。 -->
+<html lang="zh-CN" data-theme="dark" data-accent="blue" data-fsize="m">
 <head>
 <meta charset="utf-8">
 <title>adb_Tool</title>
@@ -4470,45 +4475,70 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .cbtn--warn:hover{ border-color:var(--err); background:var(--err-soft); }
 
 /* ============================================================================
-   2026-11-22（第 19 批 A3）：屏幕投屏的每一行 = **一个按钮**，点即投屏
+   2026-11-23（第 20 批 S1）：屏幕投屏 = **快捷指令卡片**视觉
    ----------------------------------------------------------------------------
-   第 18 批是「行里塞 [投][录] 两个小按钮」，实测两个问题：
-     · 按钮太挤，名称被压成竖排（截图里"主 屏"）
-     · 双按钮语义重复（整行本来就能表达"点这里投屏"）
-   现在整行可点，hover 高亮，和文件页 / H5 列表的行交互保持一致。
+   用户要求"按快捷指令的样式实现"。对齐 .qcard 的关键特征：
+     · 深色卡片（--card）+ 细边框（--edge）+ 大圆角（--r-md）
+     · 左上播放图标 + 标题 + 灰色副标题（分辨率）
+     · hover 抬升 2px + 强调色边框 + 阴影
+   布局用网格自动排（两/三列），6 块屏不再拉成一长条。
    ============================================================================ */
-.clist{
-  display:flex; flex-direction:column; gap:6px;
+.cgrid2{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(168px, 1fr));
+  gap:9px;
 }
 .crow{
-  display:flex; align-items:center; gap:10px;
+  display:flex; align-items:flex-start; gap:9px;
   width:100%;
-  padding:9px 12px;
-  border:1px solid var(--border); border-radius:var(--r-2);
-  background:var(--surface);
+  padding:13px 14px;
+  border:1px solid var(--edge); border-radius:var(--r-md);
+  background:var(--card);
+  box-shadow:var(--shadow-card);
   color:var(--text);
   font-family:inherit;
   text-align:left;
   cursor:pointer;
-  transition:border-color 120ms linear, background 120ms linear;
+  transition:transform 160ms cubic-bezier(.2,.8,.2,1),
+             box-shadow 120ms linear,
+             border-color 120ms linear;
 }
-.crow:hover{ border-color:var(--accent); background:var(--surface-hover); }
-.crow:active{ transform:scale(.995); }
-.crow b{
+.crow:hover{
+  border-color:var(--accent);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-card-hover), 0 0 0 3px var(--accent-soft);
+}
+.crow:active{ transform:translateY(-1px) scale(.995); }
+
+/* 左上播放图标（和指令卡片的 .qico 同款观感） */
+.crow-ico{
   flex:0 0 auto;
-  white-space:nowrap;              /* ★ 名称绝不换行（第 18 批就是这里被压成竖排） */
+  width:20px; height:20px; margin-top:1px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-2);
+  background:var(--accent-soft);
+  color:var(--accent);
+  font-size:9px; line-height:1;
+}
+/* 文本块：标题在上、副标题在下 */
+.crow-txt{
+  flex:1 1 auto; min-width:0;
+  display:flex; flex-direction:column; gap:3px;
+}
+.crow-txt b{
   font-size:13px; font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .crow-sub{
-  flex:1 1 auto; min-width:0;
-  text-align:right;
   font-size:11px; color:var(--text-faint); font-family:var(--font-mono);
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-/* 未检测到的屏：只把副标题调淡，**按钮仍然可点**（用户明确要求不置灰） */
-.crow--miss .crow-sub{ opacity:.6; }
+/* 未检测到的屏：图标转灰、副标题调淡，**按钮仍然可点** */
+.crow--miss .crow-ico{ background:var(--surface-2); color:var(--text-faint); }
+.crow--miss .crow-sub{ opacity:.7; }
 /* 短暂占用态（防同一屏重复拉流） */
 .crow--busy{ opacity:.5; cursor:default; }
+.crow--busy:hover{ transform:none; }
 .clu-row{
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   margin-bottom:10px;
@@ -4660,17 +4690,25 @@ body[data-navlabels="0"] .filenav-item.active::after{
        **没有断点跳变**，也不依赖任何百分比计算。
      配合第 19 批把 .page 的位移动画改成淡入，几何变化归零。 */
   scrollbar-gutter:stable;
-  contain:layout;                  /* 内部重排不影响外部 */
+  /* ★ 2026-11-23（第 20 批 S5）：overflow-y 用 scroll 而不是 auto。
+     auto 时"有没有滚动条"取决于内容高度，滚动条一出现/消失就吃掉 15px，
+     卡片宽度跟着变 → 用户看到的"偶发缩一下"。
+     scroll 让滚动条**永远占位**，宽度恒定，从根上消除这个跳变。 */
+  overflow-y:scroll;
   padding:14px 18px 24px;
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));
+  /* ★ 固定两列（不用 auto-fit）。
+     auto-fit + minmax(340px,1fr) 会在窗口宽度跨过 340 的整数倍时**突然变列数**，
+     而 15px 的滚动条宽度刚好能把宽度推过阈值 —— 这就是"偶发"的来源。
+     固定两列后，只有 900px 这个明确的点会变单列，中间任何宽度都不跳。 */
+  grid-template-columns:repeat(2, minmax(0,1fr));
   gap:12px;
   align-content:start;
-  /* ★ 必须加 align-items:start：Grid 默认 stretch，会让同一行的卡片
-     被拉伸到"行高"，而行高由最高的那个决定 —— 反过来当容器高度受限时，
-     卡片会被压扁（实测 scrollH=346 / clientH=90，内容被裁掉）。
-     start 让每张卡片按自身内容高度，谁也不影响谁。 */
-  align-items:start;
+  align-items:start;   /* 卡片按自身内容高度，不被行高拉伸/压扁 */
+}
+/* 窄窗口才降单列（只有一个明确断点，远离常见窗口宽度） */
+@media (max-width: 900px){
+  .diag-scroll{ grid-template-columns:1fr; }
 }
 
 /* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
@@ -5092,6 +5130,85 @@ body[data-navlabels="0"] .filenav-item.active::after{
   text-transform:none;   /* 原来只有 .qcat 写了 uppercase，对中文无效，删掉 */
 }
 
+/* ---- 2026-11-23（第 20 批 S6）：H5 添加分组弹窗（仿 .apk-mgr）---- */
+.h5g-mask{
+  position:fixed; inset:0; z-index:96;
+  background:var(--scrim);                 /* 主题变量 → 深/浅/护眼自动适配 */
+  display:flex; align-items:center; justify-content:center;
+}
+.h5g-box{
+  width:400px; max-width:calc(100vw - 48px);
+  background:var(--surface);
+  border:1px solid var(--border-strong);
+  border-radius:var(--r-4);
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.h5g-head{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:600; color:var(--text);
+}
+.h5g-head .x{
+  margin-left:auto; width:24px; height:24px;
+  border:none; border-radius:var(--r-2); background:none;
+  color:var(--text-faint); font-size:16px; line-height:1; cursor:pointer;
+}
+.h5g-head .x:hover{ background:var(--surface-2); color:var(--text); }
+.h5g-body{ padding:14px; }
+.h5g-lbl{ display:block; font-size:11.5px; color:var(--text-faint); margin-bottom:6px; }
+.h5g-inp{ width:100%; box-sizing:border-box; }
+.h5g-err{ min-height:16px; font-size:11px; color:var(--err); margin-top:5px; }
+.h5g-foot{
+  display:flex; justify-content:flex-end; gap:8px;
+  padding:11px 14px;
+  border-top:1px solid var(--border);
+  background:var(--surface-2);
+}
+
+/* ---- H5 分组折叠（第 20 批 D2）---- */
+.h5-caret-btn{
+  flex:0 0 auto;
+  width:18px; height:18px; padding:0;
+  display:flex; align-items:center; justify-content:center;
+  border:none; background:none; cursor:pointer;
+  color:var(--text-faint);
+}
+.h5-caret-btn:hover{ color:var(--text); }
+.h5-caret{
+  width:11px; height:11px;
+  transition:transform 140ms linear;
+}
+.h5-ghead--folded .h5-caret{ transform:rotate(-90deg); }
+.h5-gname{ cursor:pointer; }
+.h5-gname:hover{ color:var(--accent); }
+/* 链接和名称都可点开浏览器 */
+.h5-url{ cursor:pointer; }
+.h5-url:hover{ color:var(--accent); text-decoration:underline; }
+.h5-name{ cursor:pointer; }
+.h5-name:hover{ color:var(--accent); }
+
+/* ---- 2026-11-23（第 20 批 S2）：资源占用左右分栏 ---- */
+.res-cols{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0 18px;
+}
+@media (max-width: 760px){
+  .res-cols{ grid-template-columns:1fr; }
+}
+.res-col{ min-width:0; }
+/* 左栏加一条细竖线，视线容易分左右 */
+.res-col + .res-col{
+  border-left:1px solid var(--border);
+  padding-left:18px;
+}
+@media (max-width: 760px){
+  .res-col + .res-col{ border-left:0; padding-left:0; border-top:1px solid var(--border); padding-top:10px; margin-top:4px; }
+}
+.res-col .diag-group:first-child{ padding-top:2px; }
+
 /* ---- A4 圆角：面板/卡片统一 --r-4（.diag-card 原来是 --r-5）---- */
 .diag-card{ border-radius:var(--r-4); }
 
@@ -5422,19 +5539,34 @@ body[data-navlabels="0"] .filenav-item.active::after{
                  ================================================================== -->
             <div class="csec">
               <div class="csec-t">屏幕投屏</div>
-              <div class="clist" id="cast-grid">
+              <!-- 2026-11-23（第 20 批 S1）：改成**快捷指令卡片**样式。
+                   结构对齐 .qcard：左上播放图标 + 标题 + 副标题（分辨率），
+                   网格两/三列自动排，hover 抬升 + 强调色边框。 -->
+              <div class="cgrid2" id="cast-grid">
                 <button class="crow" data-cast="0"  onclick="castGo(0)">
-                  <b>主屏</b><span class="crow-sub">display 0</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>主屏</b><span class="crow-sub">display 0</span></span>
+                </button>
                 <button class="crow" data-cast="1"  onclick="castGo(1)">
-                  <b>后排屏</b><span class="crow-sub">display 1</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>后排屏</b><span class="crow-sub">display 1</span></span>
+                </button>
                 <button class="crow" data-cast="3"  onclick="castGo(3)">
-                  <b>HUD</b><span class="crow-sub">display 3</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>HUD</b><span class="crow-sub">display 3</span></span>
+                </button>
                 <button class="crow" data-cast="4"  onclick="castGo(4)">
-                  <b>副驾屏</b><span class="crow-sub">display 4</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>副驾屏</b><span class="crow-sub">display 4</span></span>
+                </button>
                 <button class="crow" data-cast="9"  onclick="castGo(9)">
-                  <b>PHUD-B</b><span class="crow-sub">display 9</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>PHUD-B</b><span class="crow-sub">display 9</span></span>
+                </button>
                 <button class="crow" data-cast="10" onclick="castGo(10)">
-                  <b>PHUD-C</b><span class="crow-sub">display 10</span></button>
+                  <span class="crow-ico">▶</span>
+                  <span class="crow-txt"><b>PHUD-C</b><span class="crow-sub">display 10</span></span>
+                </button>
               </div>
             </div>
 
@@ -6350,19 +6482,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
           </section>
 
           <!-- 快照历史 -->
-          <section class="diag-card" id="diag-card-hist">
-            <header class="diag-card-head" onclick="diagToggleCard('hist')">
-              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-              <span class="diag-dot"></span>
-              <span class="diag-card-title">快照历史</span>
-              <span class="diag-card-note" id="diag-hist-note"></span>
-              <div class="spacer"></div>
-              <button class="diag-copy-card" onclick="event.stopPropagation();diagClearHistory()" title="清空历史">清空</button>
-            </header>
-            <div class="diag-rows" id="diag-rows-hist">
-              <div class="diag-empty">还没有快照。点顶部「保存快照」记录当前环境。</div>
-            </div>
-          </section>
+          <!-- 2026-11-23（第 20 批 S3）：快照历史**界面已删**。
+               按用户要求（方案 B）只删界面，`histPush()` 的记录逻辑保留 ——
+               数据仍在 _diag.hist 里，以后要加回来直接补渲染即可。 -->
 
         </div>
       </div>
@@ -6371,6 +6493,33 @@ body[data-navlabels="0"] .filenav-item.active::after{
   </div>
 </div>
 
+
+<!-- ======================================================================
+     2026-11-23（第 20 批 S6）：H5「添加分组」弹窗
+     ----------------------------------------------------------------------
+     为什么自绘而不是用原生 prompt：
+       原生 prompt 的配色由浏览器给，深色/护眼主题下是刺眼的白框，
+       和 APK 管理弹窗（--scrim 遮罩 + --surface 卡片）完全是两种观感。
+     结构照搬 .apk-mgr：fixed inset:0 + 居中 + 主题变量 → 三主题自动适配。
+     ====================================================================== -->
+<div class="h5g-mask" id="h5g-mask" style="display:none;" onclick="h5AddGroupMask(event)">
+  <div class="h5g-box">
+    <div class="h5g-head">
+      <span>添加分组</span>
+      <button class="x" onclick="h5AddGroupClose()" title="关闭">×</button>
+    </div>
+    <div class="h5g-body">
+      <label class="h5g-lbl" for="h5g-name">分组名称</label>
+      <input class="inp h5g-inp" id="h5g-name" placeholder="如：监控 / 文档 / 研发平台"
+             spellcheck="false" onkeydown="h5AddGroupKey(event)">
+      <div class="h5g-err" id="h5g-err"></div>
+    </div>
+    <div class="h5g-foot">
+      <button class="btn ghost" onclick="h5AddGroupClose()">取消</button>
+      <button class="btn primary" onclick="h5AddGroupCommit()">确定</button>
+    </div>
+  </div>
+</div>
 
 <!-- ======================================================================
      2026-11-22（第 14 批需求 1.11）：HeapDump 进程选择浮层
@@ -9438,6 +9587,9 @@ function diagSaveSnapshot(){
 }
 
 function diagRenderHist(){
+  /* 2026-11-23（第 20 批 S3）：界面已删，这个渲染函数成了空转。
+     保留函数本身（diagSaveSnapshot 等还在调它），但直接返回 ——
+     数据侧 histPush/_diag.hist 完全不动，以后恢复界面只需重写这里。 */
   var box = document.getElementById('diag-rows-hist');
   var note = document.getElementById('diag-hist-note');
   if(!box) return;
@@ -9700,6 +9852,10 @@ function appendEcho(msg){
   if(msg.src === 2) return;
   // APK 管理（src=3）有自己的结果区，也不回显到终端页
   if(msg.src === 3) return;
+  // ★ 2026-11-23（第 20 批 D1）：**白名单** —— 只有 src=0（终端自己敲的）才回显。
+  //   原来是黑名单（排除 1/2/3/20），Fastbot 检测（src=10）等照样漏进来。
+  if (msg.src !== 0 && msg.src !== undefined) return;
+
   // ★ 2026-11-22（第 17 批）：诊断页的连通性采集（src=20）也不该刷终端页。
   //   第 15 批为了修"连通性一直空"，让 src=20 走了 kind:'run' 通道，
   //   结果命令回显（kind:'echo'）跟着进了终端 —— 用户截图里
@@ -10020,17 +10176,27 @@ function appendLines(items){
       if (!apkItems) apkItems = [];
       apkItems.push(it);
     } else if (it.src === 20){
-      /* ★ 2026-11-22（第 15 批）：诊断页连通性（src=20）。
-         之前这里没有特判，src=20 的行会落到下面的 groups 分支
-         → **直接渲染到终端页**，同时 _diag._linkBuf 收不到东西
-         → diagOnLink 拿到的永远是空数组 → 连通性全显示 —。
-         现在：只收进缓冲区，不渲染到终端（它本来就该显示在诊断页）。 */
+      /* 诊断页连通性（src=20）：只收进缓冲区，不渲染到终端。 */
       try { (_diag._linkBuf = _diag._linkBuf || []).push(it.text || ''); } catch(e){}
-    } else {
+    } else if (it.src === 0 || it.src === undefined){
+      /* ★ 2026-11-23（第 20 批 D1）：**白名单**。
+         只有 src=0（终端输入框自己敲的命令）才进终端页。
+         历史上这里是"黑名单"——只排除 1/2/3/20，其余一律进终端，
+         于是每加一个功能就漏一个：
+           · src=10 Fastbot 部署检测 → 命令回显+输出刷到终端
+           · 车机/本机等自动采集    → 表格刷到终端
+         用户看到的"终端里冒出别的页面的数据"就是这么来的。
+         现在反过来：不认识的 src 一律不进终端。 */
       var s = it.slot || 0;
       if (!groups) groups = {};
       if (!groups[s]) groups[s] = [];
       groups[s].push(it);
+    } else {
+      /* 其它 src（4/5/6/7/8/9/10/11/12/13/14/15…）的批量行：
+         复用单行处理器，让它们照旧进各自的缓冲区（诊断/Fastbot/Monkey/APK），
+         但**绝不进终端页**。
+         这样批量与单行两条路径的 src 分派终于一致了。 */
+      try { appendLine({ kind:'line', src: it.src, text: it.text, slot: 0 }); } catch(e){}
     }
   }
 
@@ -10606,10 +10772,11 @@ function renderRes(){
 
   var host = _top5.host;
   var car = _top5.car;
-  var html = '';
+  // 2026-11-23（第 20 批 S2）：左本机 / 右车机，两栏并排
+  var html = '<div class="res-cols">';
 
-  // ---- 本机 ----
-  html += '<div class="diag-group">本机</div>';
+  // ---- 左栏：本机 ----
+  html += '<div class="res-col"><div class="diag-group">本机</div>';
   if (host && host.ok){
     html += resRow('剩余 CPU', host.freeCpu, '%');
     html += resRow('剩余内存', host.freeMem, ' GB');
@@ -10625,8 +10792,10 @@ function renderRes(){
     html += resRow('剩余内存', null);
   }
 
-  // ---- 车机 ----
-  html += '<div class="diag-group">车机</div>';
+  html += '</div>';   // 结束左栏（.res-col）
+
+  // ---- 右栏：车机 ----
+  html += '<div class="res-col"><div class="diag-group">车机</div>';
   if (car && car.ok){
     html += resRow('剩余 CPU', car.freeCpu, '%');
     html += resRow('剩余内存', car.memFree, ' GB');
@@ -10642,6 +10811,8 @@ function renderRes(){
     html += resRow('剩余内存', null);
   }
 
+  html += '</div>';   // 结束右栏（.res-col）
+  html += '</div>';   // 结束 .res-cols
   box.innerHTML = html;
 }
 
@@ -10736,6 +10907,25 @@ function h5Host(u){
 }
 
 /* ---------- 渲染 ---------- */
+/* 2026-11-23（第 20 批 D2）：分组折叠状态，存 localStorage。
+   和诊断卡折叠同一套思路 —— 同类交互给同样的记忆行为。 */
+var H5_FOLD_KEY = 'h5_folded_v1';
+var _h5fold = null;
+
+function h5FoldMap(){
+  if (_h5fold) return _h5fold;
+  try { _h5fold = JSON.parse(localStorage.getItem(H5_FOLD_KEY) || '{}') || {}; }
+  catch(e){ _h5fold = {}; }
+  return _h5fold;
+}
+
+function h5ToggleGroup(gid){
+  var m = h5FoldMap();
+  m[gid] = !m[gid];
+  try { localStorage.setItem(H5_FOLD_KEY, JSON.stringify(m)); } catch(e){}
+  h5Render();
+}
+
 function h5Render(){
   var body = document.getElementById('h5-body');
   var hint = document.getElementById('h5-bar-hint');
@@ -10757,25 +10947,35 @@ function h5Render(){
 
     html += '<div class="h5-group">';
 
-    // 分组头
-    html += '<div class="h5-ghead">'
-          +   '<span class="h5-gname">' + mkEsc(g.name) + '</span>'
+    // 分组头：2026-11-23（第 20 批 D2）加折叠箭头，点组名区域即可收起/展开
+    var folded = !!h5FoldMap()[gid];
+    html += '<div class="h5-ghead' + (folded ? ' h5-ghead--folded' : '') + '">'
+          +   '<button class="h5-caret-btn" onclick="h5ToggleGroup(\'' + gid + '\')" '
+          +     'title="' + (folded ? '展开' : '收起') + '">'
+          +     '<svg class="h5-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+          +       'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+          +       '<path d="M6 9l6 6 6-6"/></svg>'
+          +   '</button>'
+          +   '<span class="h5-gname" onclick="h5ToggleGroup(\'' + gid + '\')">' + mkEsc(g.name) + '</span>'
           +   '<span class="h5-gcount">' + (g.items || []).length + '</span>'
           +   '<div class="spacer"></div>'
           +   '<button class="mini-btn" onclick="h5StartAdd(\'' + gid + '\')">+ 添加</button>'
           +   '<button class="mini-btn h5-del" onclick="h5DelGroup(\'' + gid + '\')" title="删除分组">×</button>'
           + '</div>';
 
-    // 条目
-    html += '<div class="h5-gitems">';
+    // 条目（折叠时不渲染）
+    html += '<div class="h5-gitems"' + (folded ? ' style="display:none"' : '') + '>';
     if (!(g.items || []).length){
       html += '<div class="h5-gempty">这个分组还没有 H5</div>';
     }
     for (var j = 0; j < (g.items || []).length; j++){
       var it = g.items[j];
       html += '<div class="h5-item">'
-            +   '<span class="h5-name" title="' + escAttr(it.name) + '">' + mkEsc(it.name) + '</span>'
-            +   '<span class="h5-url" title="' + escAttr(it.url) + '">' + mkEsc(it.url) + '</span>'
+            +   '<span class="h5-name" title="' + escAttr(it.name) + '" '
+            +     'onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">' + mkEsc(it.name) + '</span>'
+            // 2026-11-23（第 20 批 S7）：链接本身也可点，直接开浏览器
+            +   '<span class="h5-url" title="' + escAttr(it.url) + '" '
+            +     'onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">' + mkEsc(it.url) + '</span>'
             +   '<div class="h5-acts">'
             +     '<button class="mini-btn" onclick="h5Open(\'' + gid + '\',\'' + it.id + '\')">打开</button>'
             +     '<button class="mini-btn" onclick="h5Copy(\'' + gid + '\',\'' + it.id + '\')">复制</button>'
@@ -10810,17 +11010,54 @@ function h5Render(){
 }
 
 /* ---------- 分组操作 ---------- */
+/* 2026-11-23（第 20 批 S6）：添加分组改成**自绘弹窗**。
+   原来用原生 prompt() —— 那个样式由浏览器决定，深色主题下是刺眼的白框，
+   和 APK 管理弹窗完全是两种观感。现在复用 APK 弹窗那套结构：
+     position:fixed + var(--scrim) 遮罩 + 居中卡片 + 主题变量
+   → 三种主题（深/浅/护眼）自动适配，不需要写三份样式。 */
 function h5AddGroup(){
-  var name = prompt('新分组名称：', '');
-  if (name === null) return;
-  name = String(name).trim();
-  if (!name) { toast('分组名不能为空', 'err'); return; }
+  var mask = document.getElementById('h5g-mask');
+  var inp  = document.getElementById('h5g-name');
+  var err  = document.getElementById('h5g-err');
+  if (!mask) return;
+  if (inp) inp.value = '';
+  if (err) err.textContent = '';
+  mask.style.display = 'flex';
+  if (inp) setTimeout(function(){ try { inp.focus(); } catch(e){} }, 30);
+}
 
+function h5AddGroupClose(){
+  var mask = document.getElementById('h5g-mask');
+  if (mask) mask.style.display = 'none';
+}
+
+/* 点遮罩空白处关闭（点卡片内部不关）—— 独立函数而不是内联 if，
+   内联 if 会被不变量脚本当成"绑定了一个叫 if 的函数"。 */
+function h5AddGroupMask(e){
+  if (e && e.target === e.currentTarget) h5AddGroupClose();
+}
+
+function h5AddGroupKey(e){
+  if (e.key === 'Enter'){ e.preventDefault(); h5AddGroupCommit(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); h5AddGroupClose(); }
+}
+
+function h5AddGroupCommit(){
+  var inp = document.getElementById('h5g-name');
+  var err = document.getElementById('h5g-err');
+  var name = String((inp || {}).value || '').trim();
+
+  if (!name){ if (err) err.textContent = '分组名不能为空'; if (inp) try{ inp.focus(); }catch(e){} return; }
   for (var i = 0; i < _h5.groups.length; i++){
-    if (_h5.groups[i].name === name){ toast('已有同名分组', 'err'); return; }
+    if (_h5.groups[i].name === name){
+      if (err) err.textContent = '已有同名分组';
+      return;
+    }
   }
+
   _h5.groups.push({ id: h5Uid(), name: name, items: [] });
   h5Persist();
+  h5AddGroupClose();
   h5Render();
   toast('已添加分组：' + name, 'ok');
 }
@@ -13044,8 +13281,10 @@ function castOnDisplays(msg){
       var b = document.createElement('button');
       b.className = 'crow crow--extra';
       b.setAttribute('data-cast', String(d.id));
-      b.innerHTML = '<b>' + mkEsc('屏 ' + d.id) + '</b>'
-                  + '<span class="crow-sub">display ' + d.id + ' · ' + d.w + '×' + d.h + '</span>';
+      // 与默认行保持同一结构（图标 + 文本块），否则追加出来的卡片会"没图标"
+      b.innerHTML = '<span class="crow-ico">▶</span>'
+                  + '<span class="crow-txt"><b>' + mkEsc('屏 ' + d.id) + '</b>'
+                  + '<span class="crow-sub">display ' + d.id + ' · ' + d.w + '×' + d.h + '</span></span>';
       b.onclick = (function(did){ return function(){ castGo(did); }; })(d.id);
       grid.appendChild(b);
     }
@@ -17842,9 +18081,16 @@ document.addEventListener('DOMContentLoaded', function (){
 
   window.applySize = function(id, silent){
     if (!SIZES[id]) id = 'm';
+    /* ★ 2026-11-23（第 20 批 D3）：幂等短路。
+       原来每次调用都 post('uizoom')，而 WebView2 的 ZoomFactor 赋值会触发
+       一次整页重排 —— boot() 和 prefsApply() 各调一次，等于启动时抖两下。
+       值没变就不再发。 */
+    var changed = ((typeof _prefs === 'object' && _prefs) ? _prefs.size : undefined) !== id;
     if (typeof _prefs === 'object' && _prefs) _prefs.size = id;
     document.documentElement.setAttribute('data-fsize', id);
-    try { post('uizoom', String(SIZES[id].z)); } catch (e) {}
+    if (changed || !silent){
+      try { post('uizoom', String(SIZES[id].z)); } catch (e) {}
+    }
     syncSizeSeg();
     if (!silent){
       try { prefsSave(); } catch (e) {}
@@ -17928,7 +18174,24 @@ document.addEventListener('DOMContentLoaded', function (){
     syncScheme();
     var pv = document.getElementById('set-font-preview');
     if (pv) pv.textContent = A14_PREVIEW;
-    // 首帧就把缩放打上去：prefs 还没到时按「中」，到了 prefsApply 会再校一次
+
+    /* ★ 2026-11-23（第 20 批 D3）：首次启动就把「中」**落盘**到 ini。
+       原来只发一条 uizoom 给 C#，自己在页面里不写 prefs ——
+       于是 ini 里 prefs 永远没有 size 字段，每次启动都靠代码兜底。
+       一旦兜底链路某处失效（竞态、异常、属性没写上），
+       用户看到的就是"不是中"。
+       现在：没有 size 就显式 applySize('m') + prefsSave()，
+       ini 里从此有一个明确的 size=m，后续只做"读回来应用"。 */
+    var noSize = !(typeof _prefs === 'object' && _prefs && _prefs.size);
+    if (noSize){
+      try { window.applySize('m', true); } catch(e){}
+      try { prefsSave(); } catch(e){}
+    } else {
+      // 已有偏好：按它应用（此时 changed 为 false 的情况不会重复发 uizoom）
+      try { window.applySize(curSize(), true); } catch(e){}
+    }
+
+    // 首帧兜底：确保 C# 侧 ZoomFactor 一定是当前档位（幂等，值没变 C# 也不会抖）
     try { post('uizoom', String(SIZES[curSize()].z)); } catch (e) {}
   }
   if (document.readyState === 'loading')

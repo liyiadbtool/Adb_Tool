@@ -54,9 +54,12 @@ setTimeout(function(){
   /* ---- 2. 五块区域齐全 ---- */
   // 2026-11-22（第 15 批）：link 并入「连接状态」卡，不再是独立 section。
   // 改为验证"承载连通性行的容器"仍在（它在 adb 卡内部）。
-  ['adb','pc','car','res','hist'].forEach(function(s){
+  // 2026-11-23（第 20 批 S3）：hist 卡**界面已删**（用户要求），
+  //  数据侧 histPush 仍保留。所以这里只校验前四张。
+  ['adb','pc','car','res'].forEach(function(s){
     ok('卡片存在：'+s, !!document.getElementById('diag-card-'+s));
   });
+  ok('快照历史卡已删（界面）', !document.getElementById('diag-card-hist'));
   ok('连通性已并入连接状态卡', !!document.getElementById('diag-rows-link'));
   ok('旧的独立连通性卡已移除', !document.getElementById('diag-card-link'));
 
@@ -231,8 +234,10 @@ setTimeout(function(){
     ok('快照不含实时采样字段',
        !snap.pc['本工具 CPU'], JSON.stringify(snap.pc));
   }
-  ok('历史条目已渲染',
-     document.querySelectorAll('.diag-hist-item').length===1);
+  // 2026-11-23（第 20 批 S3）：界面已删，改验证"数据仍在但没渲染"
+  ok('历史记录仍在数据层', _diag.hist.length === 1, _diag.hist.length);
+  ok('历史界面已删（无渲染节点）',
+     document.querySelectorAll('.diag-hist-item').length === 0);
 
   diagClearHistory();
   ok('清空后历史为 0', _diag.hist.length===0);

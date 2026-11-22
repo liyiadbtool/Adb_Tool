@@ -396,6 +396,8 @@ A36_ADDS = {
                      # 第 19 批：H5 改成分组容器（旧的那批函数已删）
                      "h5AddGroup", "h5DelGroup", "h5StartAdd", "h5CancelAdd",
                      "h5CommitAdd", "h5DelItem",
+                     # 第 20 批：折叠 + 自绘弹窗
+                     "h5ToggleGroup", "h5AddGroupClose", "h5AddGroupCommit", "h5AddGroupMask",
                      "h5Open", "h5Copy",
                      # 2026-11-22 第 18 批：录屏 + H5 简化 + APK 刷新
                      "castRec", "cluCastRec", "h5Add", "apkReload"]),
@@ -455,7 +457,9 @@ A36_ADDS = {
                 # 2026-11-22 第 18 批
                 "clu-rec-btn", "h5-f-add",
                 # 2026-11-22 第 19 批：H5 分组容器
-                "h5-body", "h5-bar-hint", "h5-new-name", "h5-new-url"]),
+                "h5-body", "h5-bar-hint", "h5-new-name", "h5-new-url",
+                # 2026-11-23 第 20 批：添加分组弹窗
+                "h5g-mask", "h5g-name", "h5g-err"]),
 }
 
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。

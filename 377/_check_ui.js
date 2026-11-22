@@ -46,6 +46,10 @@ var DYNAMIC_IDS = ['toast', 'fs-modal',
   // `var pu = getElementById('page-ui'); if(pu) ...` 的兼容分支，
   // 元素不存在时静默跳过 —— 这是刻意保留的旧路径兼容，不是漏写 id。
   'page-ui', 'page-text',
+  // 2026-11-23（第 20 批 S3）：快照历史的**界面已删**（用户要求）,
+  // 但 diagRenderHist 里保留判空后静默返回的兼容分支（数据侧 histPush 仍在记录）,
+  // 属于刻意保留，不是漏写 id。
+  'diag-rows-hist', 'diag-hist-note',
   // 2026-11-22（第 8 批需求6/10）：用户要求删除设置里的字体预览卡片
   // （Adb_Tool 12345 ABCdef），「关于」也改成弹层不再有 #build-stamp。
   // 但 JS 里仍有 `if (pv) pv.style.fontFamily=...` 这类**判空后静默跳过**的写法，
