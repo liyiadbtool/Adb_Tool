@@ -1191,6 +1191,22 @@ namespace AdbLogExport
         // v8.0：改 internal 供 GUI 入口复用。
         // GUI 不重写任何命令语义，只把同样的输入交给这一个函数 —— 这是"完全保留
         // 现有能力"的唯一可靠做法：命令行和界面走的是同一条 Dispatch 管道。
+
+        /* 2026-11-24（A3）：纯打印/纯本地命令的"无标记"成功。
+           Dispatch 契约是"入口先当失败"，只有显式成功才转 true；
+           但 60+ 个前缀命令里有十几处只打印（帮助、列表、pwd、跳转说明），
+           既不打 √ 也不打 ×，于是永远标红。
+           这里在**调用方**做一次收口，而不是改十几个 handler：
+             没有 × (FAIL_N==0) 且 没有 √ (OK_N==0) 且 仍未成功 → 视为成功。
+           风险：真失败但只用 Warn/Hint 表达的分支会被误判成功 —— 已确认现有
+           handler 里参数缺失/设备离线都用 Fail()，所以实际面很小。 */
+        internal static void DispatchChecked(string line)
+        {
+            OK_N = 0; FAIL_N = 0;
+            Dispatch(line);
+            if (!CMD_OK && FAIL_N == 0 && OK_N == 0) CMD_OK = true;
+        }
+
         internal static void Dispatch(string line)
         {
             // 【bug 修复·重要】入口先把"上一条是否成功"置为失败。

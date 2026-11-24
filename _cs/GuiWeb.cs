@@ -3722,7 +3722,7 @@ namespace AdbLogExport.Gui
                 try
                 {
                     App.OK_N = 0; App.FAIL_N = 0;
-                    App.Dispatch(cmd);
+                    App.DispatchChecked(cmd);
                     ok = App.CMD_OK;
                     // 语义优先：有 √ 且无 × 就是成功，不受最后一条子命令退出码影响
                     if (!ok && App.FAIL_N == 0 && App.OK_N > 0) ok = true;
