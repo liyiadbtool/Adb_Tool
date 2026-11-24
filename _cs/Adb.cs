@@ -247,14 +247,43 @@ namespace AdbLogExport
         }
 
         // 收集模式：需要解析输出时用（cd / ls / devices / root / probe / 发送）
+        /* 2026-11-24（B3）：按命令类型给超时，不再一律 30 秒。
+           30 秒对"下发即返回"的命令足够，但 push/pull/install/bugreport/logcat -f
+           这类搬运型命令经常跑几十秒到几分钟，超时会被 kill 并只拿到半截输出，
+           上层若只看输出就会把半截数据当完整结果。 */
+        private static int TimeoutFor(List<string> argv)
+        {
+            if (argv == null || argv.Count == 0) return CALL_TIMEOUT_MS;
+            string sub = "";
+            for (int i = 0; i < argv.Count; i++)
+            {
+                string a = (argv[i] ?? "").ToLowerInvariant();
+                if (a == "-s") { i++; continue; }          // 跳过序列号
+                sub = a; break;
+            }
+            if (sub == "push" || sub == "pull" || sub == "install" || sub == "uninstall") return 180000;
+            if (sub == "bugreport" || sub == "backup" || sub == "restore") return 600000;
+            if (sub == "shell" && argv.Count > 1)
+            {
+                string body = (argv[argv.Count - 1] ?? "").ToLowerInvariant();
+                if (body.Contains("logcat")) return 600000;      // logcat -f / -d 大缓冲
+                if (body.Contains("bugreport")) return 600000;
+                if (body.Contains("dumpsys")) return 60000;       // meminfo 全量偏慢
+                if (body.Contains("screencap") || body.Contains("screenrecord")) return 120000;
+                if (body.Contains("am force-stop") || body.Contains("pm ")) return 60000;
+            }
+            return CALL_TIMEOUT_MS;
+        }
+
         internal static int AdbCall(List<string> argv, out string stdout, out string stderr)
         {
             bool to = false;
-            int rc = RunRaw(argv, CALL_TIMEOUT_MS, out stdout, out stderr, out to, false);
+            int ms = TimeoutFor(argv);
+            int rc = RunRaw(argv, ms, out stdout, out stderr, out to, false);
             if (to)
             {
                 stderr = ((stderr == null) ? "" : stderr)
-                       + "\n[超时] adb 在 " + (CALL_TIMEOUT_MS / 1000) + " 秒内没有返回";
+                       + "\n[超时] adb 在 " + (ms / 1000) + " 秒内没有返回";
                 rc = 124;
             }
             return rc;
