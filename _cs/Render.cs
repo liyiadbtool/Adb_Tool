@@ -126,8 +126,11 @@ namespace AdbLogExport
         // 原因：这类命令内部串了多条 adb（dumpsys | grep 等），最后一条的退出码
         //       非 0（grep 没匹配到就返回 1）就被判定失败，与真实结果无关。
         // 处置：只要打过 √ 且没有任何 ×，就认为这条命令是成功的。
-        internal static int OK_N = 0;
-        internal static int FAIL_N = 0;
+        // 2026-11-24（A1）：必须和 CMD_OK 一样按线程隔离。
+        // 三槽并行时后台线程也会打 √/×，全局计数会让 A 命令读到 B 的失败数，
+        // 表现就是"明明成功却标红 / 明明失败却标绿"，且随并行度增加更明显。
+        [System.ThreadStatic] internal static int OK_N = 0;
+        [System.ThreadStatic] internal static int FAIL_N = 0;
 
         internal static void Ok(string msg)
         {

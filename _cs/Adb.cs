@@ -175,6 +175,15 @@ namespace AdbLogExport
 
                 if (!quiet)
                 {
+                    /* 2026-11-24（B1）：覆盖前先收尸。
+                       同槽再起一条命令时，旧进程的引用会被直接冲掉 ——
+                       那条命令继续跑、继续往输出队列写，但"停止"永远杀不到它。
+                       这里先杀掉同槽残留，保证任何时刻一个槽只有一条在跑。 */
+                    Process prev = RUNNING_SLOTS[slot];
+                    if (prev != null)
+                    {
+                        try { if (!prev.HasExited) prev.Kill(); } catch { }
+                    }
                     RUNNING = p;
                     RUNNING_SLOTS[slot] = p;
                     WaitHintStart();

@@ -114,7 +114,10 @@ namespace AdbLogExport
                 }
 
                 string so = ""; string se = "";
-                AdbCall(new List<string> { "connect", target }, out so, out se);
+                // 2026-11-24（B2）：必须用 quiet 版本。
+                // AdbCall 会写 RUNNING_SLOTS[slot]，心跳每 15 秒一次，
+                // 可能覆盖主命令的进程引用 → 用户点"停止"杀的是心跳、主命令还在跑。
+                AdbCallQuiet(new List<string> { "connect", target }, out so, out se);
                 // 结果下一拍用 devices 判定，这里不重复查询（省一次 adb 往返）
             }
             catch (Exception ex) { AdbLogExport.Gui.GuiEntry.Dump("wadb-beat", ex); }
