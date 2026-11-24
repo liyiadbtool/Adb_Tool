@@ -1200,11 +1200,21 @@ namespace AdbLogExport
              没有 × (FAIL_N==0) 且 没有 √ (OK_N==0) 且 仍未成功 → 视为成功。
            风险：真失败但只用 Warn/Hint 表达的分支会被误判成功 —— 已确认现有
            handler 里参数缺失/设备离线都用 Fail()，所以实际面很小。 */
+        // 本条命令的耗时（ms），由 GUI 在调用前写入，供"静默成功"判断是否值得提示
+        internal static long LAST_MS = 0;
+
         internal static void DispatchChecked(string line)
         {
             OK_N = 0; FAIL_N = 0;
+            var swD = System.Diagnostics.Stopwatch.StartNew();
             Dispatch(line);
-            if (!CMD_OK && FAIL_N == 0 && OK_N == 0) CMD_OK = true;
+            LAST_MS = swD.ElapsedMilliseconds;
+            if (!CMD_OK && FAIL_N == 0 && OK_N == 0)
+            {
+                CMD_OK = true;
+                // 2026-11-24：静默成功补一行总账（仅耗时命令，快命令保持安静）
+                if (LAST_MS > 300) Ok("命令执行完成（" + LAST_MS + " ms）");
+            }
         }
 
         internal static void Dispatch(string line)

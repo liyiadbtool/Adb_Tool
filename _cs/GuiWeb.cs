@@ -3644,7 +3644,11 @@ namespace AdbLogExport.Gui
             if (slot < 0) slot = 0;
             if (slot >= MAX_SLOT) slot = MAX_SLOT - 1;
 
-            if (_busy[slot])
+            /* 2026-11-24：长驻命令（monkey / logcat -f / scrcpy）走独立通道：
+               不参与 0/1/2 槽的 busy 互斥，用户可以在其它槽继续发命令。 */
+            bool persistCmd = IsPersistentCmd(raw);
+            if (persistCmd) { slot = 0; }      // 槽位仅用于输出路由
+            if (!persistCmd && _busy[slot])
             {
                 // 需求9·兜底：前端已有互斥，正常到不了这里；但若竞态漏网
                 // 绝不能静默丢弃，否则前端占位行会永久"执行中"、互斥锁永不释放。
@@ -3710,13 +3714,14 @@ namespace AdbLogExport.Gui
             PushEcho(cmd, slot);
             PushBegin(slot);
 
-            _busy[slot] = true;
+            if (!persistCmd) _busy[slot] = true;
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
 
             _worker[slot] = new Thread(new ThreadStart(delegate()
             {
                 // 需求1：标记当前 worker 线程的槽位，GuiSink 据此给输出行打槽位标记
                 App.CUR_SLOT = slot;
+                App.PERSIST_CHANNEL = persistCmd;   // 长驻命令只记独立引用，不占槽位表
 
                 bool ok = true;
                 try
@@ -3794,6 +3799,18 @@ namespace AdbLogExport.Gui
         {
             try { PushOnUi("{\"kind\":\"begin\",\"slot\":" + slot + "}"); }
             catch { }
+        }
+
+        /// <summary>是否为长驻命令（会持续运行到用户停止）。</summary>
+        private static bool IsPersistentCmd(string raw)
+        {
+            string t = (raw ?? "").ToLowerInvariant();
+            if (t.Length == 0) return false;
+            return t.Contains("com.android.commands.monkey")
+                || t.Contains("monkey ")
+                || t.Contains("logcat -f")
+                || t.Contains("scrcpy-server")
+                || t.Contains("app_process");
         }
 
         private void PushEnd(bool ok, long ms, int slot)

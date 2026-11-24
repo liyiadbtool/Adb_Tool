@@ -30,6 +30,14 @@ namespace AdbLogExport
         // 另一槽还在跑的进程就此"失联"（点停止没反应），而新的命令又会覆盖它
         // （点停止杀掉的是别人）。两个槽各记一份才谈得上并行。
         internal static Process RUNNING = null;
+
+        /* 2026-11-24（长驻命令独立槽位）：
+           monkey / logcat -f / scrcpy-server 这类命令会持续输出几分钟到几小时，
+           原来占用普通槽位 → _busy[slot] 一直为真 → 用户在这个槽发任何命令都被
+           "忙"挡掉（终端一片空白，看起来像 adb 挂了）；而且同槽重发会被 B1 杀掉。
+           现在给它们一个**独立通道**：不占 0/1/2 号槽，用户随时可以继续操作。 */
+        internal static Process PERSIST_RUNNING = null;
+        [System.ThreadStatic] internal static bool PERSIST_CHANNEL = false;
         internal static readonly Process[] RUNNING_SLOTS = new Process[SLOT_COUNT];
 
         private static int CurSlotSafe()
@@ -173,7 +181,14 @@ namespace AdbLogExport
 
                 try { p.StandardInput.Close(); } catch { }   // 让 adb 立刻读到 EOF
 
-                if (!quiet)
+                if (PERSIST_CHANNEL)
+                {
+                    // 长驻命令：只记独立引用，不碰槽位表，也不影响 _busy
+                    Process prevP = PERSIST_RUNNING;
+                    if (prevP != null) { try { if (!prevP.HasExited) prevP.Kill(); } catch { } }
+                    PERSIST_RUNNING = p;
+                }
+                else if (!quiet)
                 {
                     /* 2026-11-24（B1）：覆盖前先收尸。
                        同槽再起一条命令时，旧进程的引用会被直接冲掉 ——
@@ -239,7 +254,8 @@ namespace AdbLogExport
                     {
                         WaitHintStop();
                         // 只清自己那一格：别的槽还在跑，不能替它把引用抹掉
-                        if (RUNNING_SLOTS[slot] == p) RUNNING_SLOTS[slot] = null;
+                        if (PERSIST_RUNNING == p) PERSIST_RUNNING = null;
+                        if (slot >= 0 && slot < SLOT_COUNT && RUNNING_SLOTS[slot] == p) RUNNING_SLOTS[slot] = null;
                         if (RUNNING == p) RUNNING = null;
                     }
                 }
