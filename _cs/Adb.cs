@@ -280,6 +280,23 @@ namespace AdbLogExport
             bool to = false;
             int ms = TimeoutFor(argv);
             int rc = RunRaw(argv, ms, out stdout, out stderr, out to, false);
+
+            /* 2026-11-24（A4）：管道命令的退出码不可信。
+               `dumpsys package X | grep versionName` 里 grep 无匹配返回 1，
+               但主命令是成功的、数据也已输出。这里只在**管道命令 + 有输出 +
+               stderr 为空**三条同时成立时把 rc 归零，避免把失败伪装成成功。
+               注意：不做任何额外进程/IO，纯字符串判断，不影响执行速度。 */
+            if (rc != 0 && !to && (stdout ?? "").Trim().Length > 0
+                && (stderr ?? "").Trim().Length == 0)
+            {
+                bool pipe = false;
+                for (int i = 0; i < argv.Count; i++)
+                {
+                    string a = argv[i] ?? "";
+                    if (a.IndexOf('|') >= 0) { pipe = true; break; }
+                }
+                if (pipe) rc = 0;
+            }
             if (to)
             {
                 stderr = ((stderr == null) ? "" : stderr)
