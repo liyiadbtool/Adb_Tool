@@ -1013,13 +1013,13 @@
     },
     {
       "id": "ui.glass",
-      "desc": "Liquid Glass 玻璃层：body::before 四团光雾 52s 漂移作为 living backdrop；顶栏/侧栏/页签胶囊用 backdrop-filter 玻璃 + 顶部镜面 rim；卡片半透明面 + 落地投影 + hover 抬升（卡片不用 blur，性能护栏）；弹窗 pop-in；reduced-motion / reduced-transparency 全退化",
+      "desc": "Liquid Glass 玻璃层：body::before 四团光雾静态渐变作为 backdrop（2026-11-23 为性能移除 52s 无限漂移）；顶栏/侧栏/页签胶囊用 backdrop-filter 玻璃 + 顶部镜面 rim；卡片半透明面 + 落地投影 + hover 抬升（卡片不用 blur，性能护栏）；弹窗 pop-in；reduced-motion / reduced-transparency 全退化",
       "anchors": [
         {
           "file": "adb_log_gui/webview2/ui.html",
           "has": [
             "GLASS LAYER START",
-            "animation:bgDrift",
+            "body::before",
             "--chrome-solid",
             "--shadow-card",
             "prefers-reduced-transparency",

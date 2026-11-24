@@ -29,6 +29,7 @@ namespace AdbLogExport
 {
     internal static class Scrcpy
     {
+        private static bool _castHinted;
         internal const string IniKey = "scrcpy";
 
         internal const int LvIni = 1;
@@ -632,6 +633,11 @@ namespace AdbLogExport
             // ---- A16：画质 / 性能参数（原来一个都没传，全靠 scrcpy 默认值）----
             // 车机屏常见 1920x720 / 2560x1440，按原生尺寸编码压力大，降边最有效；
             // 30fps 是"够看清"的性价比点，60 留给高刷屏；16M 码率保证文字不糊。
+            /* 2026-11-24：明确指定 h264。
+               实测这台车机默认可能协商到 h265，而 Windows 侧 d3d11va 解 h265
+               的首帧初始化明显更慢（冷启动一次约 4~5 秒黑窗）。h264 兼容性最好，
+               文字清晰度也够（16M 码率）。 */
+            a.Append(" --video-codec=h264");
             a.Append(" --max-size=1600");
             a.Append(" --max-fps=60");
             a.Append(" --video-bit-rate=16M");
@@ -648,6 +654,20 @@ namespace AdbLogExport
                 a.Append(" --record=\"").Append(recFile).Append("\"");
                 a.Append(" --time-limit=").Append(recSeconds);
             }
+
+            /* 2026-11-24：首次投屏给用户明确预期。
+               实测冷启动时 Windows 侧 d3d11va 解码器初始化 4~5 秒，
+               这段时间窗口全黑（scrcpy 先建窗、后初始化渲染器），
+               容易被当成卡死；第二次起约 1 秒。 */
+            try
+            {
+                if (!_castHinted)
+                {
+                    _castHinted = true;
+                    App.Info("正在初始化投屏（首次约 3~5 秒，属显卡解码器冷启动），之后会明显变快");
+                }
+            }
+            catch { }
 
             ProcessStartInfo psi = new ProcessStartInfo();
             psi.FileName = exe;

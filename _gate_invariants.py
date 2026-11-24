@@ -101,6 +101,7 @@ A9_ADDS = {
         # 自定义 ADB 指令
         "openCustomMgr", "closeCustomMgr", "cmBackdrop", "cmNew", "cmSave",
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
+        "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
     ]),
     "ids": set([
         # 9 色强调色
@@ -109,6 +110,7 @@ A9_ADDS = {
         "custom-panel", "custom-mgr", "cm-grid", "cm-list", "cm-name",
         "cm-desc", "cm-steps", "cm-err",
         "qsplit",                      # 2026-11-21：导航分隔条
+        "clu-skip",                    # 2026-11-23：跳过登录直接投屏
     ]),
 }
 # A12 追加轮（2026-11-15 第二轮）：自绘标题栏 / 设置抽屉 / 文本页 / 帮助 / 文件页增强。
@@ -130,6 +132,8 @@ A12_ADDS = {
         "txToggleWrap", "txZoom", "txUndoRedo", "txSyncCaret", "txSelect", "txClose",
         # 2026-11-21：配置文件（设置页两个按钮）
         "cfgExport", "cfgImport",
+        # 2026-11-23：仪表投屏 —— 从 ClusterDebugTool 导入通道配置
+        "cluImport",
         # 文件页
         "fsSwapSides", "fsColDown", "fsColReset",
         # 结果图空态
@@ -419,7 +423,7 @@ A36_ADDS = {
                 "mk-subtabs", "mk-sub-native", "mk-sub-fastbot",
                 "fb-status", "fb-hint", "fb-deploy-btn", "fb-cfg",
                 "fb-minutes", "fb-throttle", "fb-agent",
-                "fb-bugreport", "fb-keep-model", "fb-outdir",
+                "fb-bugreport", "fb-keep-model", "fb-outdir", "fb-seg", "fb-autoclean", "fb-snap", "wadb-code", "wadb-pair",
                 "fb-start", "fb-stop", "fb-est", "fb-state",
                 "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
                 "fastbot-out",

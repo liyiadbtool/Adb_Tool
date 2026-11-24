@@ -351,6 +351,43 @@ namespace AdbLogExport.Gui
             System.Runtime.InteropServices.LayoutKind.Sequential)]
         private struct POINTAPI { public int X; public int Y; }
 
+        // 2026-11-23：跨屏最大化要用"窗口所在显示器"的矩形
+        [System.Runtime.InteropServices.StructLayout(
+            System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        private const int MONITOR_DEFAULTTONEAREST = 2;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, int flags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [System.Runtime.InteropServices.StructLayout(
+            System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public int dwFlags;
+        }
+
+        private static bool GetMonitorInfoRect(IntPtr hMon, out RECT mon)
+        {
+            mon = new RECT();
+            try
+            {
+                MONITORINFO mi = new MONITORINFO();
+                mi.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(MONITORINFO));
+                if (!GetMonitorInfo(hMon, ref mi)) return false;
+                mon = mi.rcMonitor;
+                return true;
+            }
+            catch { return false; }
+        }
+
         [System.Runtime.InteropServices.StructLayout(
             System.Runtime.InteropServices.LayoutKind.Sequential)]
         private struct MINMAXINFO
@@ -638,6 +675,110 @@ namespace AdbLogExport.Gui
             // 不再存在"先缩小再放大"的中间态，从根上不可能出现小窗口。
             RefreshSane();
             EnsureSaneBounds();
+            // 先强行给一个合法尺寸，再让 FitToScreen 只在"屏幕装不下"时收窄。
+            // 这一步挡住一切历史脏尺寸（曾出现 300px 宽 → 只剩导航条）。
+            MinimumSize = new Size(820, 560);
+            if (Width < 820 || Height < 560) Size = new Size(1100, 760);
+            FitToScreen();            // 扩展屏（可能比 1100x760 小）再适配
+
+            // ===== 自测：跨屏最大化（ADBTOOL_WINTEST=1 时自动跑一次并写日志）=====
+            // 为什么要有：这个 bug 我改了很多轮都没对，因为**从没在真实多屏上跑过**。
+            // 现在让程序自己去第二块屏最大化，把几何写进日志，用数据判定对错。
+            try
+            {
+                if (Environment.GetEnvironmentVariable("ADBTOOL_WINTEST") == "1")
+                {
+                    var scr = Screen.AllScreens;
+                    GuiEntry.Dump("自测-屏幕清单", new Exception(
+                        "共 " + scr.Length + " 块屏： " + string.Join(" | ",
+                            Array.ConvertAll(scr, x => (x.Primary ? "主屏" : "副屏") + x.Bounds + " 工作区" + x.WorkingArea))));
+
+                    if (scr.Length > 1)
+                    {
+                        Screen other = null;
+                        for (int i = 0; i < scr.Length; i++) if (!scr[i].Primary) { other = scr[i]; break; }
+                        if (other != null)
+                        {
+                            WindowState = FormWindowState.Normal;
+                            Location = new Point(other.WorkingArea.Left + 60, other.WorkingArea.Top + 60);
+                            Size = new Size(1000, 700);
+                            var t = new System.Windows.Forms.Timer();
+                            t.Interval = 1200;
+                            t.Tick += delegate(object a, EventArgs b)
+                            {
+                                t.Stop(); t.Dispose();
+                                try { WindowState = FormWindowState.Maximized; } catch { }
+                                var t2 = new System.Windows.Forms.Timer();
+                                t2.Interval = 1200;
+                                t2.Tick += delegate(object c, EventArgs d)
+                                {
+                                    t2.Stop(); t2.Dispose();
+                                    IntPtr hm = MonitorFromWindow(Handle, MONITOR_DEFAULTTONEAREST);
+                                    RECT mr; GetMonitorInfoRect(hm, out mr);
+                                    GuiEntry.Dump("自测-最大化结果", new Exception(
+                                        "WindowState=" + WindowState + " Bounds=" + Bounds
+                                        + " 显示器=" + mr.Left + "," + mr.Top + "-" + mr.Right + "," + mr.Bottom
+                                        + " 目标副屏=" + other.Bounds));
+                                    try { Application.Exit(); } catch { }
+                                };
+                                t2.Start();
+                            };
+                            t.Start();
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // 2026-11-23：把最终生效的几何写进日志，便于一眼确认"窗口到底多宽"。
+            try
+            {
+                GuiEntry.Dump("启动窗口几何", new Exception(
+                    "Bounds=" + Bounds.Width + "x" + Bounds.Height + "@" + Left + "," + Top
+                    + "  Min=" + MinimumSize.Width + "x" + MinimumSize.Height
+                    + "  屏=" + Screen.FromPoint(Cursor.Position).Bounds
+                    + "  工作区=" + Screen.FromPoint(Cursor.Position).WorkingArea));
+            }
+            catch { }
+            ClampToScreen();          // 再保证位置在可见区
+        }
+
+        /// <summary>适配扩展屏 / 小屏 / 竖屏（2026-11-23）。
+        /// 现象：程序在主屏上开得好好的，拖到扩展屏（或直接被系统放到扩展屏）后
+        /// 内容被右侧裁掉 —— 因为 ClientSize 写死 1100x760、MinimumSize 820x560，
+        /// 而扩展屏可能只有 800~1024 宽。这里按当前屏工作区收紧尺寸和下限。
+        /// </summary>
+        private void FitToScreen()
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                // 2026-11-23：启动时若已是最大化就不要再动它（否则会"还原成小窗"）
+                // 用 FromHandle 在扩展屏（负坐标）上会拿到上一次残留位置算出的
+                // 工作区，窗口被摆到屏幕外，只剩导航栏一条露出来（用户截图现象）。
+                if (WindowState != FormWindowState.Normal) return;
+                Rectangle wa = Screen.FromPoint(Cursor.Position).WorkingArea;
+
+                int wantW = Math.Min(1100, Math.Max(520, wa.Width - 40));
+                int wantH = Math.Min(760, Math.Max(420, wa.Height - 40));
+
+                // 2026-11-23（根因修复）：**不要再改 MinimumSize**。
+                // 之前这里把下限按屏宽缩过，一旦某次 wa 取错（负数/异常屏），
+                // 下限就被永久改小，窗口被拖成 300px 宽也能成立 ——
+                // 用户看到的就是"只剩一条导航，右边全黑"。
+                // 下限恒为 820x560；屏幕更小时宁可窗口比屏宽，也不要让界面塌掉。
+                MinimumSize = new Size(820, 560);
+
+                if (Width < 820) Width = 820;
+                if (Height < 560) Height = 560;
+                if (Width > wa.Width || Height > wa.Height)
+                    Size = new Size(wantW, wantH);
+
+                Location = new Point(wa.Left + Math.Max(0, (wa.Width - Width) / 2),
+                                     wa.Top + Math.Max(0, (wa.Height - Height) / 2));
+                RefreshSane();
+            }
+            catch { }
         }
 
         // 最大化尺寸实时算：不用 MaximizedBounds。
@@ -650,15 +791,13 @@ namespace AdbLogExport.Gui
             {
                 if (m.Msg == WM_GETMINMAXINFO)
                 {
-                    Rectangle wa = Screen.FromHandle(Handle).WorkingArea;
+                    /* 2026-11-23 最终处置：**不再自己算最大化几何**。
+                       前几轮我们手工设置 ptMaxPosition / ptMaxSize，在跨屏时反复
+                       出错（绝对坐标 vs 相对显示器、句柄缓存判错屏），而且和
+                       ClampToScreen 互相打架。这些都属于"和系统抢活干"。
+                       现在只约束最小尺寸，位置/大小全部交给 Windows 原生处理 ——
+                       系统对多显示器最大化的实现本来就是对的。 */
                     MINMAXINFO mmi = (MINMAXINFO)m.GetLParam(typeof(MINMAXINFO));
-                    mmi.ptMaxPosition.X = wa.Left;
-                    mmi.ptMaxPosition.Y = wa.Top;
-                    mmi.ptMaxSize.X = wa.Width;
-                    mmi.ptMaxSize.Y = wa.Height;
-                    // A16：开合不再改窗口尺寸，跟踪下限恢复成真实 MinimumSize。
-                    // 这一条同时是"不可能再出现小窗口"的系统级保险：即使有人
-                    // （或某个残留的 SetWindowPos）想把窗口缩得更小，系统也会夹住。
                     mmi.ptMinTrackSize.X = MinimumSize.Width;
                     mmi.ptMinTrackSize.Y = MinimumSize.Height;
                     System.Runtime.InteropServices.Marshal.StructureToPtr(
@@ -682,6 +821,7 @@ namespace AdbLogExport.Gui
                                 if (_closing) return;       // A17：正在关就别再拉尺寸
                                 RefreshSane();
                                 EnsureSaneBounds();
+                                ClampToScreen();
                                 // 从最小化恢复：把收起动效留下的 scale/opacity 复位
                                 try
                                 {
@@ -702,6 +842,7 @@ namespace AdbLogExport.Gui
                 if (m.Msg == WM_EXITSIZEMOVE)
                 {
                     _inSizeMove = false;
+                    ClampToScreen();
                     // 拖完再统一收尾：重设圆角 + 同步最大化状态（拖动中不做，省得卡）
                     ApplyWindowCorner();
                     PushWinState();
@@ -756,6 +897,47 @@ namespace AdbLogExport.Gui
             ApplyWindowCorner();
         }
 
+        /// <summary>把窗口钳回当前屏幕工作区（2026-11-23）。
+        /// 现象：最大化/还原后窗口跑到屏幕左侧之外，标题栏左边和内容被切掉，
+        /// 用户看到的就是"全屏显示不全"。原因是多显示器/DPI 切换后 Location
+        /// 可能落在负坐标，而我们只兜了尺寸、没兜位置。</summary>
+        private void ClampToScreen()
+        {
+            try
+            {
+                if (IsDisposed || !IsHandleCreated) return;
+                if (WindowState != FormWindowState.Normal) return;
+
+                /* 2026-11-23（关键）：钳位**只能在本显示器内微调**，绝不能跨屏搬动。
+                   之前用 Screen.FromHandle(Handle)：最大化过渡帧里句柄常被判定在
+                   原来的笔记本屏上，于是"把扩展屏上的窗口搬回笔记本"，用户看到的
+                   就是"点全屏→跳回笔记本且变小"。改成 MonitorFromWindow 取窗口
+                   真正所在的屏，并且只在它自己的工作区内收边。 */
+                IntPtr hm = MonitorFromWindow(Handle, MONITOR_DEFAULTTONEAREST);
+                RECT mr;
+                Rectangle wa;
+                if (GetMonitorInfoRect(hm, out mr))
+                    wa = Rectangle.FromLTRB(mr.Left, mr.Top, mr.Right, mr.Bottom);
+                else
+                    wa = Screen.FromHandle(Handle).WorkingArea;
+
+                // 已经在工作区内就什么都不做（避免无谓的 Location 写入引发抖动）
+                if (wa.Contains(new Rectangle(Left, Top, Math.Min(Width, 1), Math.Min(Height, 1)))
+                    && Left + Width <= wa.Right && Top + Height <= wa.Bottom)
+                    return;
+
+                int x = Left, y = Top, w = Width, h = Height;
+                bool mover = false;
+                if (x + w <= wa.Left + 40) { x = wa.Left; mover = true; }      // 整窗在左侧外面
+                if (x < wa.Left) { x = wa.Left; mover = true; }
+                if (y < wa.Top) { y = wa.Top; mover = true; }
+                if (x + w > wa.Right) { x = Math.Max(wa.Left, wa.Right - w); mover = true; }
+                if (y + h > wa.Bottom) { y = Math.Max(wa.Top, wa.Bottom - h); mover = true; }
+                if (mover) Location = new Point(x, y);
+            }
+            catch { }
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
@@ -769,6 +951,9 @@ namespace AdbLogExport.Gui
                 PushWinState();
                 _lastPushW = Width; _lastPushH = Height;
             }
+
+            // 2026-11-23：这里不再调用 ClampToScreen。
+            // 它会在最大化过渡帧把窗口搬回"它以为的屏"，正是"点全屏跳回笔记本"的元凶。
 
             int now = Environment.TickCount;
             if (_inSizeMove && now - _lastCornerTick < 80) return;
@@ -1362,8 +1547,13 @@ namespace AdbLogExport.Gui
                              页面第一帧就是正确尺寸，不存在后续跳变。 */
                     try
                     {
+                        // 2026-11-23：缩放只认 prefs，且限制在合理区间。
+                        // 实测若 ZoomFactor 变成 2~3，1100px 窗口只剩几百 CSS px，
+                        // 视觉上就是"左边一列导航 + 右边一条黑"（用户反复报的现象）。
                         double z0 = PrefsZoom(App.PREFS);
-                        if (z0 > 0) _web.ZoomFactor = z0;
+                        if (z0 < 0.6) z0 = 1.0;
+                        if (z0 > 1.6) z0 = 1.6;
+                        _web.ZoomFactor = z0;
                     }
                     catch { }
 
@@ -1478,6 +1668,42 @@ namespace AdbLogExport.Gui
                             "(function(){ var d=document.documentElement; " +
                             "d.setAttribute('data-theme','" + thm + "'); " + jsAcc + " })();");
                     }
+
+                    // 2026-11-23：布局自检。用户反馈"只有左边一条，右侧全黑"，
+                    // 但窗口/屏幕/导航宽度从代码上看都对不上，需要真实数值定位。
+                    // 启动 2.5 秒后把关键盒模型与缩放写进日志（%TEMP%\adb_tool_*.log）。
+                    try
+                    {
+                        var tmr = new System.Windows.Forms.Timer();
+                        tmr.Interval = 2500;
+                        tmr.Tick += delegate(object s2, EventArgs e2)
+                        {
+                            tmr.Stop(); tmr.Dispose();
+                            try
+                            {
+                                _web.CoreWebView2.ExecuteScriptAsync(
+                                    "(function(){var q=function(x){var el=document.querySelector(x);" +
+                                    "if(!el)return x+'=null';var r=el.getBoundingClientRect();" +
+                                    "return x+'='+Math.round(r.width)+'x'+Math.round(r.height)+'@'+Math.round(r.left)+','+Math.round(r.top);};" +
+                                    "return [q('.quick-wrap'),q('.quick-nav'),q('.quick-body'),q('.quick-grid')," +
+                                    "'vw='+innerWidth+'x'+innerHeight," +
+                                    "'zoom='+(document.body.style.zoom||'-')," +
+                                    "'dpr='+devicePixelRatio].join(' | ');})()")
+                                .ContinueWith(t =>
+                                {
+                                    try
+                                    {
+                                        string v = t.Result ?? "";
+                                        GuiEntry.Dump("UI 布局自检", new Exception(v));
+                                    }
+                                    catch { }
+                                });
+                            }
+                            catch { }
+                        };
+                        tmr.Start();
+                    }
+                    catch { }
 
                     // 防止 WebView2 缓存旧版 ui.html：file:// 内容改动后
                     // 不刷新会一直显示上一次的界面（用户看到蓝色图标就是缓存）。
@@ -2074,9 +2300,10 @@ namespace AdbLogExport.Gui
                             {
                                 string local = Path.Combine(fbDir, j);
                                 if (!File.Exists(local)) { sb.Append("缺文件 " + j + "; "); fail++; continue; }
-                                if (RunAdbRaw("push \"" + local + "\" \"/sdcard/" + j + "\""))
+                                string jerr;
+                                if (RunAdbRawEx("push \"" + local + "\" \"/sdcard/" + j + "\"", out jerr))
                                     done++;
-                                else { fail++; sb.Append("推送失败 " + j + "; "); }
+                                else { fail++; sb.Append("推送失败 " + j + (jerr.Length > 0 ? "（" + jerr + "）" : "") + "; "); }
                             }
 
                             // ---- 2. native so（按 ABI 子目录）----
@@ -2090,10 +2317,34 @@ namespace AdbLogExport.Gui
                             {
                                 // 先建目录，再 push（PushFile 不会自动建父目录）
                                 RunAdbRaw("shell mkdir -p /data/local/tmp/" + abi);
-                                if (RunAdbRaw("push \"" + soLocal + "\" \"/data/local/tmp/" + abi + "/libfastbot_native.so\""))
+                                string serr;
+                                if (RunAdbRawEx("push \"" + soLocal + "\" \"/data/local/tmp/" + abi + "/libfastbot_native.so\"", out serr))
                                     done++;
-                                else { fail++; sb.Append("native 库推送失败; "); }
+                                else { fail++; sb.Append("native 库推送失败" + (serr.Length > 0 ? "（" + serr + "）" : "") + "; "); }
                             }
+
+                            /* 2026-11-23：**清掉其它 ABI 的旧 so**。
+                               实测事故：设备上留着旧 jar 时代的 libfastbot_native.so，
+                               换上新的 monkeyq.jar 后启动直接 UnsatisfiedLinkError
+                               （JNI 符号对不上），页面只显示"启动失败"，
+                               用户完全看不出是"库与 jar 版本不匹配"。
+                               现在每次部署都先删掉别的架构目录，再校验本架构 so 的 md5。 */
+                            try
+                            {
+                                string[] otherAbis = { "arm64-v8a", "armeabi-v7a", "x86", "x86_64" };
+                                string d1;
+                                foreach (string oa in otherAbis)
+                                    if (oa != abi) RunAdbRawEx("shell rm -rf /data/local/tmp/" + oa, out d1);
+
+                                string soMd5Local = Md5Of(soLocal);
+                                string devMd5 = RunAdbRawExOut("shell md5sum /data/local/tmp/" + abi + "/libfastbot_native.so");
+                                if (devMd5.IndexOf(soMd5Local, StringComparison.OrdinalIgnoreCase) < 0)
+                                {
+                                    fail++;
+                                    sb.Append("原生库校验不一致（设备上的 so 与 jar 不同源）; ");
+                                }
+                            }
+                            catch { }
 
                             string text = fail == 0
                                 ? ("部署完成（" + done + " 个文件，架构 " + abi + "）")
@@ -2484,6 +2735,34 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-23：跳过登录（投屏本来就不需要 telnet，登录只是通道自检）
+                case "cluskip":
+                    {
+                        App.CLU_SKIP = GetField(json, "on") == "1";
+                        App.SaveClusterIni("clu_skip", App.CLU_SKIP ? "1" : "0");
+                        PushClusterState(App.CLU_SKIP ? "已开启：跳过登录直接投屏" : "已关闭：需要先登录",
+                                         "ok", null);
+                    }
+                    break;
+
+                // 2026-11-23：从 ClusterDebugTool 的 config_*.json 导入通道配置。
+                // 值来自用户本地文件，我们只取键、只写本机 ini，不回显、不进日志。
+                case "cluimport":
+                    {
+                        string file = "";
+                        using (OpenFileDialog dlg = new OpenFileDialog())
+                        {
+                            dlg.Title = "选择 ClusterDebugTool 的通道配置（config_aht.json / config_t75.json）";
+                            dlg.Filter = "配置文件 (*.json)|*.json|所有文件 (*.*)|*.*";
+                            if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                            file = dlg.FileName;
+                        }
+                        int n = 0;
+                        string msg = App.ImportFromTool(file, out n);
+                        PushClusterState(msg, n > 0 ? "ok" : "bad", null);
+                    }
+                    break;
+
                 case "clulogout":
                     try { App.ClusterLogout(); } catch { }
                     PushClusterState(null, null, null);
@@ -2711,6 +2990,98 @@ namespace AdbLogExport.Gui
                 // 用 WebView2 的 ZoomFactor 而不是逐条改 CSS 字号：
                 // 整页等比放大并重新排版，标题栏/卡片/输出区一起跟随，
                 // 也不会出现"某个组件忘了改"的半吊子效果。
+                // 2026-11-23：页面未捕获异常落到宿主日志（页面看不到控制台）
+                // 2026-11-24：把设备上**系统产出的**报告整目录拉回本地。
+                // 背景：页面自己只记录"它看到的崩溃"，而 ANR / tombstone / Fastbot 的
+                // Logcat_*.log 都是系统写在 /sdcard/fb_ 里的，页面根本拿不到 ——
+                // 所以用户点「导出报告」只得到一个空表，却能看到设备上有 ANR 文件。
+                // 这里直接把整个输出目录（含 Anr_* 子目录）pull 下来。
+                // 2026-11-24：快照即时落盘。页面内存里的快照一旦关工具就没了，
+                // 长跑过夜时这很致命 —— 现在每抓一次就追加写本地文件，工具重启也不丢。
+                // 2026-11-24：跑完自动汇总 snapshot.log → CSV + 折线图（无第三方依赖）
+                case "snapsummary":
+                    {
+                        try { BuildSnapshotSummary(); }
+                        catch (Exception ex) { GuiEntry.Dump("snapsummary", ex); }
+                    }
+                    break;
+
+                // 2026-11-24：ANR/崩溃时的日志片段落盘（每次一个文件，便于逐次对照）
+                case "logdump":
+                    {
+                        try
+                        {
+                            string body = GetField(json, "data");
+                            string kind2 = GetField(json, "kind"); if (string.IsNullOrEmpty(kind2)) kind2 = "LOG";
+                            if (string.IsNullOrEmpty(body)) break;
+                            string dir2 = System.IO.Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                                "logcat", DateTime.Now.ToString("yyyy-MM-dd"), "events");
+                            System.IO.Directory.CreateDirectory(dir2);
+                            string fp = System.IO.Path.Combine(dir2,
+                                kind2 + "_" + DateTime.Now.ToString("HHmmss") + ".log");
+                            System.IO.File.WriteAllText(fp, body, System.Text.Encoding.UTF8);
+                            // 在总表里记一笔，方便知道哪个时间点抓过
+                            try
+                            {
+                                System.IO.File.AppendAllText(
+                                    System.IO.Path.Combine(System.IO.Path.GetDirectoryName(dir2), "snapshot.log"),
+                                    "[" + DateTime.Now.ToString("HH:mm:ss") + "] 日志片段已存：" + System.IO.Path.GetFileName(fp) + "\r\n",
+                                    System.Text.Encoding.UTF8);
+                            }
+                            catch { }
+                        }
+                        catch { }
+                    }
+                    break;
+
+                case "snapappend":
+                    {
+                        try
+                        {
+                            string snapTxt = GetField(json, "data");
+                            if (string.IsNullOrEmpty(snapTxt)) break;
+                            string dir = System.IO.Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                                "logcat", DateTime.Now.ToString("yyyy-MM-dd"));
+                            System.IO.Directory.CreateDirectory(dir);
+                            System.IO.File.AppendAllText(
+                                System.IO.Path.Combine(dir, "snapshot.log"),
+                                "[" + DateTime.Now.ToString("HH:mm:ss") + "] " + snapTxt + "\r\n",
+                                System.Text.Encoding.UTF8);
+                        }
+                        catch { }
+                    }
+                    break;
+
+                case "fbpull":
+                    {
+                        try
+                        {
+                            string dir = GetField(json, "data");
+                            if (string.IsNullOrEmpty(dir)) { PostToast(false, "没有可拉取的目录"); break; }
+                            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                            string dest = System.IO.Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                                "logcat", DateTime.Now.ToString("yyyy-MM-dd"), "fb_" + stamp);
+                            try { System.IO.Directory.CreateDirectory(dest); } catch { }
+                            string err2;
+                            bool okp = RunAdbRawEx("pull \"" + dir + "\" \"" + dest + "\"", out err2);
+                            PortToastAndOpen(okp, okp
+                                ? ("报告已拉取到：" + dest)
+                                : ("拉取失败：" + (err2.Length > 0 ? err2 : "见日志")), dest);
+                        }
+                        catch (Exception ex) { PostToast(false, "拉取异常：" + ex.Message); }
+                    }
+                    break;
+
+                case "jslog":
+                    {
+                        string jm = GetField(json, "data");
+                        try { GuiEntry.Dump("页面 JS 异常", new Exception(jm)); } catch { }
+                    }
+                    break;
+
                 case "uizoom":
                     {
                         string zs = GetField(json, "data");
@@ -2907,7 +3278,7 @@ namespace AdbLogExport.Gui
 
                 // ---------------- 无线 adb ----------------
                 case "wadb":
-                    RunWadbJob(GetField(json, "act"), GetField(json, "host"));
+                    RunWadbJob(GetField(json, "act"), GetField(json, "host"), GetField(json, "code"));
                     break;
             }
         }
@@ -3348,7 +3719,14 @@ namespace AdbLogExport.Gui
                 App.CUR_SLOT = slot;
 
                 bool ok = true;
-                try { App.Dispatch(cmd); ok = App.CMD_OK; }
+                try
+                {
+                    App.OK_N = 0; App.FAIL_N = 0;
+                    App.Dispatch(cmd);
+                    ok = App.CMD_OK;
+                    // 语义优先：有 √ 且无 × 就是成功，不受最后一条子命令退出码影响
+                    if (!ok && App.FAIL_N == 0 && App.OK_N > 0) ok = true;
+                }
                 catch (Exception ex)
                 {
                     ok = false;
@@ -3611,7 +3989,8 @@ namespace AdbLogExport.Gui
                   .Append(",\"chip\":").Append(Json(App.CLU_CHIP == null ? "" : App.CLU_CHIP))
                   .Append(",\"err\":").Append(Json(App.CLU_ERR == null ? "" : App.CLU_ERR))
                   .Append(",\"host\":").Append(Json(App.ReadClusterIni("clu_host", "")))
-                  .Append(",\"user\":").Append(Json(App.ReadClusterIni("clu_user", "")));
+                  .Append(",\"user\":").Append(Json(App.ReadClusterIni("clu_user", "")))
+                  .Append(",\"skip\":").Append(App.CLU_SKIP ? "true" : "false");
                 if (!string.IsNullOrEmpty(text))
                 {
                     sb.Append(",\"text\":").Append(Json(text));
@@ -3628,6 +4007,158 @@ namespace AdbLogExport.Gui
         // 2026-11-22：Fastbot 部署结果回传。
         // 单独一条 kind=fbdeploydone，而不是复用 toast —— 页面要根据 ok 更新
         // 部署状态徽标和按钮，需要结构化字段，不只是提示文案。
+        /// <summary>提示用户并打开文件夹（拉取报告后用）。</summary>
+        /// <summary>把 snapshot.log 解析成 CSV + 一个纯 SVG 折线图（离线可看）。</summary>
+        private void BuildSnapshotSummary()
+        {
+            string dir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "logcat", DateTime.Now.ToString("yyyy-MM-dd"));
+            string src = System.IO.Path.Combine(dir, "snapshot.log");
+            if (!System.IO.File.Exists(src)) { PostToast(false, "还没有快照数据"); return; }
+
+            string[] lines = System.IO.File.ReadAllLines(src, System.Text.Encoding.UTF8);
+            var times = new List<string>();
+            var memMB = new List<int>();
+            var load1 = new List<double>();
+            var topName = new List<string>();
+            var topCpu = new List<int>();
+
+            int curMem = -1; double curLoad = -1; string curTop = ""; int curCpu = -1; string curT = "";
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string ln = lines[i];
+                if (ln.StartsWith("["))
+                {
+                    // 新的一段开始：先把上一条收掉
+                    if (curT.Length > 0) { times.Add(curT); memMB.Add(curMem); load1.Add(curLoad); topName.Add(curTop); topCpu.Add(curCpu); }
+                    int rb = ln.IndexOf(']');
+                    curT = rb > 1 ? ln.Substring(1, rb - 1) : "";
+                    curMem = -1; curLoad = -1; curTop = ""; curCpu = -1;
+                    continue;
+                }
+                string t2 = ln.Trim();
+                if (t2.Length == 0 || t2.StartsWith("=====") || t2.StartsWith("---")) continue;
+                if (t2.StartsWith("MemAvailable"))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(t2, @"(\d+)");
+                    if (m.Success) curMem = (int)(long.Parse(m.Groups[1].Value) / 1024);
+                    continue;
+                }
+                if (System.Text.RegularExpressions.Regex.IsMatch(t2, @"^\d+\.\d+\s+\d+\.\d+"))
+                {
+                    double lv; if (double.TryParse(t2.Split(' ')[0], out lv)) curLoad = lv;
+                    continue;
+                }
+                var pm = System.Text.RegularExpressions.Regex.Match(t2, @"^(\d+)%\s+(\S+)");
+                if (pm.Success && curTop.Length == 0)
+                {
+                    int cpu; if (int.TryParse(pm.Groups[1].Value, out cpu)) curCpu = cpu;
+                    curTop = pm.Groups[2].Value;
+                }
+            }
+            if (curT.Length > 0) { times.Add(curT); memMB.Add(curMem); load1.Add(curLoad); topName.Add(curTop); topCpu.Add(curCpu); }
+            if (times.Count == 0) { PostToast(false, "快照里没有可用数据"); return; }
+
+            // CSV
+            var csv = new StringBuilder();
+            csv.AppendLine("时间,可用内存MB,负载1分钟,CPU最高进程,其占用%");
+            for (int i = 0; i < times.Count; i++)
+                csv.AppendLine(string.Join(",", new string[] {
+                    times[i], memMB[i].ToString(), load1[i].ToString("0.00"),
+                    topName[i], topCpu[i].ToString() }));
+            string csvPath = System.IO.Path.Combine(dir, "summary.csv");
+            System.IO.File.WriteAllText(csvPath, csv.ToString(), System.Text.Encoding.UTF8);
+
+            // 折线图（SVG，纯文本，双击即可看）
+            int W = 900, H = 360, pad = 44;
+            int maxMem = 1; for (int i = 0; i < memMB.Count; i++) if (memMB[i] > maxMem) maxMem = memMB[i];
+            int maxCpu = 1; for (int i = 0; i < topCpu.Count; i++) if (topCpu[i] > maxCpu) maxCpu = topCpu[i];
+            var svg = new StringBuilder();
+            svg.Append("<html><meta charset='utf-8'><body style='background:#111;color:#ddd;font:13px sans-serif'>");
+            svg.Append("<h3>内存 / CPU 快照曲线（" + times.Count + " 个采样点）</h3>");
+            svg.Append("<svg width='" + W + "' height='" + H + "' style='background:#1b1b1b;border:1px solid #333'>");
+            svg.Append("<text x='8' y='16' fill='#8ab4f8'>可用内存(MB)</text>");
+            svg.Append("<text x='" + (W - 120) + "' y='16' fill='#f28b82'>最高进程CPU(%)</text>");
+            Func<int, int, int, int> px = delegate(int i, int n, int mx)
+            {
+                if (n <= 1) return pad;
+                return pad + (int)((double)i * (W - pad * 2) / (n - 1));
+            };
+            Func<int, int, int> pyMem = delegate(int v, int mx) { return H - pad - (int)((double)v * (H - pad * 2) / Math.Max(1, mx)); };
+            Func<int, int, int> pyCpu = delegate(int v, int mx) { return H - pad - (int)((double)v * (H - pad * 2) / Math.Max(1, mx)); };
+            svg.Append("<polyline fill='none' stroke='#8ab4f8' stroke-width='2' points='");
+            for (int i = 0; i < memMB.Count; i++) svg.Append(px(i, memMB.Count, 0) + "," + pyMem(memMB[i], maxMem) + " ");
+            svg.Append("'/>");
+            svg.Append("<polyline fill='none' stroke='#f28b82' stroke-width='2' points='");
+            for (int i = 0; i < topCpu.Count; i++) svg.Append(px(i, topCpu.Count, 0) + "," + pyCpu(topCpu[i], maxCpu) + " ");
+            svg.Append("'/></svg>");
+            svg.Append("<p>数据文件：" + csvPath + "</p></body></html>");
+            string htmlPath = System.IO.Path.Combine(dir, "summary.html");
+            System.IO.File.WriteAllText(htmlPath, svg.ToString(), System.Text.Encoding.UTF8);
+
+            PostToast(true, "汇总完成：" + dir);
+            try { System.Diagnostics.Process.Start(htmlPath); } catch { }
+        }
+
+        private void PortToastAndOpen(bool ok, string msg, string folder)
+        {
+            try { PostToast(ok, msg); } catch { }
+            try
+            {
+                if (ok && System.IO.Directory.Exists(folder))
+                    System.Diagnostics.Process.Start("explorer.exe", "\"" + folder + "\"");
+            }
+            catch { }
+        }
+
+        /// <summary>返回命令的 stdout（RunAdbRawEx 只给 stderr）。</summary>
+        private static string RunAdbRawExOut(string adbArgs)
+        {
+            try
+            {
+                string adb = App.ADB;
+                if (string.IsNullOrEmpty(adb)) adb = "adb";
+                string serial = App.SERIAL;
+                string full = "\"" + adb + "\"";
+                if (!string.IsNullOrEmpty(serial)) full += " -s " + serial;
+                full += " " + adbArgs;
+
+                var psi = new ProcessStartInfo();
+                psi.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                psi.Arguments = "/s /c \"" + full + "\"";
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                using (var p = Process.Start(psi))
+                {
+                    string o = p.StandardOutput.ReadToEnd();
+                    p.StandardError.ReadToEnd();
+                    if (!p.WaitForExit(30000)) { try { p.Kill(); } catch { } }
+                    return o ?? "";
+                }
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>本地文件 MD5（小写十六进制）。</summary>
+        private static string Md5Of(string path)
+        {
+            try
+            {
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                using (var fs = System.IO.File.OpenRead(path))
+                {
+                    byte[] h = md5.ComputeHash(fs);
+                    var sb = new StringBuilder();
+                    for (int i = 0; i < h.Length; i++) sb.Append(h[i].ToString("x2"));
+                    return sb.ToString();
+                }
+            }
+            catch { return ""; }
+        }
+
         private void PostDeployResult(bool ok, string text)
         {
             try
@@ -3645,6 +4176,25 @@ namespace AdbLogExport.Gui
         // 部署是两个大文件传输，把过程打到终端页反而干扰用户。
         private static bool RunAdbRaw(string adbArgs)
         {
+            string err;
+            return RunAdbRawEx(adbArgs, out err);
+        }
+
+        /// <summary>
+        /// 跑一条 adb 命令，返回是否成功，并把 adb 的报错带出来。
+        ///
+        /// 2026-11-23 重写，修两个真问题：
+        ///  1) 原来先 ReadToEnd(StandardError) 再读 StandardOutput —— 两个管道
+        ///     都是阻塞读，谁先写满谁就把对方卡死；adb push 的进度条是写 stderr 的，
+        ///     大文件时会一直读不完，最后 60 秒超时、表现为"部署失败"。
+        ///     现在两个流都异步读，再等退出。
+        ///  2) 原来只返回 bool，失败时调用方只能说"推送失败 xxx.jar"，
+        ///     用户完全不知道是设备没连、路径没权限还是 adb 找不到。
+        ///     现在返回 stderr 文本，失败原因会显示在页面上。
+        /// </summary>
+        private static bool RunAdbRawEx(string adbArgs, out string errText)
+        {
+            errText = "";
             try
             {
                 string adb = App.ADB;
@@ -3666,13 +4216,32 @@ namespace AdbLogExport.Gui
 
                 using (var p = Process.Start(psi))
                 {
-                    string err = p.StandardError.ReadToEnd();
-                    p.StandardOutput.ReadToEnd();
-                    if (!p.WaitForExit(60000)) { try { p.Kill(); } catch { } return false; }
+                    var outBuf = new StringBuilder();
+                    var errBuf = new StringBuilder();
+                    p.OutputDataReceived += delegate(object o, DataReceivedEventArgs e)
+                    { if (e.Data != null) { lock (outBuf) outBuf.AppendLine(e.Data); } };
+                    p.ErrorDataReceived += delegate(object o, DataReceivedEventArgs e)
+                    { if (e.Data != null) { lock (errBuf) errBuf.AppendLine(e.Data); } };
+                    p.BeginOutputReadLine();
+                    p.BeginErrorReadLine();
+
+                    if (!p.WaitForExit(60000))
+                    {
+                        try { p.Kill(); } catch { }
+                        errText = "超时 60 秒";
+                        return false;
+                    }
+                    p.WaitForExit();      // 确保异步读取收尾
+                    string e2 = errBuf.ToString().Trim();
+                    if (e2.Length > 0) errText = e2;
                     return p.ExitCode == 0;
                 }
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                errText = ex.Message;
+                return false;
+            }
         }
 
         // 2026-11-22：读 ini 的单键值（SaveIniKey 只写不读，这里补读）。
@@ -5137,7 +5706,7 @@ namespace AdbLogExport.Gui
         // ---------------- 无线 adb ----------------
         // 连接要跑 adb tcpip（会让 adbd 重启）+ 等设备回来 + connect + 校验，
         // 全程可能 10 秒，必须放后台线程 —— 在 UI 线程上做窗口会直接卡住。
-        private void RunWadbJob(string act, string host)
+        private void RunWadbJob(string act, string host, string code)
         {
             Thread th = new Thread(new ThreadStart(delegate()
             {
@@ -5146,7 +5715,13 @@ namespace AdbLogExport.Gui
                 string err = "";
                 try
                 {
-                    if (act == "disconnect")
+                    if (act == "pair")
+                    {
+                        try { Console.WriteLine(); Console.WriteLine("  无线调试：正在配对（Android 11+）…"); } catch { }
+                        ok = App.WadbPair(host, code, out err);
+                        if (!ok) { try { Console.WriteLine("  × " + err); } catch { } }
+                    }
+                    else if (act == "disconnect")
                     {
                         try { Console.WriteLine(); Console.WriteLine("  无线调试：正在断开 …"); } catch { }
                         ok = App.WadbDisconnect(host, out err);

@@ -262,6 +262,9 @@ namespace AdbLogExport
 
             // 1) 程序自己目录（绿色版常把 adb.exe 放旁边）
             try { cands.Add(Path.Combine(ExeDir(), "adb.exe")); } catch { }
+            // 2026-11-23：绿色包自带 platform-tools\adb.exe —— 解压即用，
+            // 不要求目标机器装过 Android SDK（原先只找 exe 同级，包里放子目录就找不到）。
+            try { cands.Add(Path.Combine(Path.Combine(ExeDir(), "platform-tools"), "adb.exe")); } catch { }
             // 2) 环境变量里的 SDK
             string[] envs = { "ANDROID_HOME", "ANDROID_SDK_ROOT", "ANDROID_SDK_HOME" };
             for (int i = 0; i < envs.Length; i++)

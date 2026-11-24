@@ -194,6 +194,13 @@ copy /y "%~dp0WebView2Loader.dll"                   "%DIST%\internal\" >nul
 copy /y "%~dp0adb_log_export.ini"                   "%DIST%\internal\" >nul
 copy /y "%~dp0cmds.ini"                             "%DIST%\internal\" >nul
 copy /y "%~dp0webview2\ui.html"                     "%DIST%\internal\" >nul
+rem [2026-11-23] Inline the icon into ui.html before copying it to dist.
+rem   Why: the page is loaded over file://, where <img src="..ico"> fails in
+rem   WebView2 (broken image). inline_icon.py bakes the ico into a base64
+rem   background-image inside ui.html, so swapping adb_Tool.ico only needs a rebuild.
+rem   Python is optional: if it is missing we keep the previously inlined icon.
+where python >nul 2>nul && python "%~dp0inline_icon.py" >nul 2>nul
+
 rem [2026-11-15] Window icon: TrySetCatIcon reads adb_Tool.ico next to the exe.
 rem The /win32icon embedded resource only covers taskbar / Alt+Tab. Ship both.
 copy /y "%~dp0adb_Tool.ico"                         "%DIST%\internal\" >nul
@@ -212,6 +219,14 @@ rem
 rem   Result: dist drops from ~113 MB to ~12 MB.
 
 rem [2026-11-22] Fastbot runtime bundle: 3 jars + native .so per ABI.
+rem [2026-11-23] Bundle platform-tools (adb.exe + dlls) so the package is self-contained:/r/nrem   a machine without Android SDK can still push files / cast / deploy Fastbot.
+if exist "%~dp0..\platform-tools\adb.exe" (
+    xcopy /e /i /y /q "%~dp0..\platform-tools" "%DIST%\platform-tools" >nul 2>&1
+    echo Platform-tools bundle: copied to dist\platform-tools
+) else (
+    echo [WARN] platform-tools\adb.exe not found - package will rely on system adb
+)
+
 rem C# looks for it at <exe dir>\fastbot\ (GuiWeb.cs case "fbdeploy").
 rem ~8.6 MB total. Shipped inside the package so users need no setup:
 rem they just click "one-click deploy" and the files get pushed to the device.

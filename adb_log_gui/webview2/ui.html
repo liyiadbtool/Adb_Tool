@@ -1238,7 +1238,10 @@ input:disabled,select:disabled,textarea:disabled{
 .cast-thumb{ border-radius:var(--r-sm); }
 
 /* ---- 动效：≤300ms、可中断、只动 transform/opacity/颜色；来源相关展开 ---- */
-.toast,.apk-mgr-box,.fs-modal-box,.qsearch-pop{
+/* 2026-11-23：只留小浮层（toast / 搜索建议）的入场动画。
+   apk-mgr-box、fs-modal-box 是覆盖大半个窗口的面板，给它们做
+   transform+opacity 入场 = 每帧重绘一大片，打开时明显卡一下。 */
+.toast,.qsearch-pop{
   animation:apple-in var(--dur) var(--ease) both;
 }
 @keyframes apple-in{ from{ opacity:0;transform:translateY(6px) scale(.985); }
@@ -1588,7 +1591,8 @@ body::before{
     radial-gradient(34% 36% at 80% 10%, var(--blob-2), transparent 64%),
     radial-gradient(42% 40% at 70% 84%, var(--blob-3), transparent 66%),
     radial-gradient(30% 32% at 16% 80%, var(--blob-4), transparent 66%);
-  animation:bgDrift 52s var(--ease-soft) infinite alternate;
+  /* 2026-11-23：背景渐变漂移是**无限循环**动画，等于让 WebView 永远在重绘。
+     空闲时也在耗 GPU，切页时更容易掉帧。改为静态渐变。 */
   will-change:transform;
 }
 @keyframes bgDrift{
@@ -1711,7 +1715,7 @@ textarea:focus,select:focus{
 .cm-box,.fs-modal-box{
   background:var(--chrome-solid);
   box-shadow:var(--shadow-modal);
-  animation:glassPop .26s var(--ease-spring) both;
+  /* 2026-11-23：弹窗改为瞬时出现（glassPop 带 scale，重绘成本高） */
 }
 @keyframes glassPop{
   from{opacity:0;transform:scale(.965) translateY(8px);}
@@ -1732,7 +1736,16 @@ textarea:focus,select:focus{
    淡化到透明再出现不会有任何几何变化，是零风险的做法。
    注意：这条和下面 .page.active 的那条重复定义已合并到这里。
    ============================================================================ */
-.page{animation:pageFade .16s ease both;}
+/* 2026-11-23：删掉整页淡入动画。
+   这是"切 tab 卡一下"的直接原因：.page 上加 animation 意味着每次
+   display:none → flex 都会跑一遍 160ms 的 opacity 动画，而 WebView2 里
+   给一棵几百节点的子树做透明度动画，等于每帧整页重绘（没有独立合成层）。
+   用户体感就是"点一下，先顿一下才出来"。切换本身应该是瞬时的。 */
+/* 2026-11-23：这里只保留"去掉动画"，不再加 contain。
+   实测 contain:layout 会让 .page 变成独立格式化上下文，最大化时
+   内部 flex 子项不再跟着窗口重排，右侧内容被裁掉（"放到最大显示不全"）。
+   动画的卡顿已经靠删除 animation 解决，不需要 contain 了。 */
+.page{}
 @keyframes pageFade{
   from{opacity:0;}
   to{opacity:1;}
@@ -1897,7 +1910,7 @@ html[data-winmax="1"] .rz{display:none;}
   position:fixed;inset:0;z-index:130;
   background:var(--scrim);
   display:flex;align-items:center;justify-content:center;
-  animation:heapFade .16s linear both;
+  /* 2026-11-23：全屏遮罩不做淡入，只保留 panel 的 heapRise */
 }
 @keyframes heapFade{from{opacity:0;}to{opacity:1;}}
 .heap-panel{
@@ -1909,7 +1922,7 @@ html[data-winmax="1"] .rz{display:none;}
   border-radius:var(--r-6);
   box-shadow:var(--shadow-modal);
   overflow:hidden;
-  animation:heapRise .22s var(--ease-spring) both;
+  /* 2026-11-23：堆转储面板瞬时出现，不做缩放淡入 */
 }
 @keyframes heapRise{from{transform:translateY(10px) scale(.98);opacity:.5;}to{transform:none;opacity:1;}}
 
@@ -1986,7 +1999,8 @@ html[data-winmax="1"] .rz{display:none;}
   position:fixed;inset:0;z-index:120;
   background:var(--scrim);
   display:flex;justify-content:flex-end;
-  animation:setFade .18s var(--ease-soft) both;
+  /* 2026-11-23：去掉整屏淡入。fixed 全屏遮罩做 opacity 动画 = 每次开关都整窗重绘，
+     观感就是"点设置，先顿一下"。抽屉本身的 set-panel 滑入保留（它只占右侧一条）。 */
 }
 @keyframes setFade{from{opacity:0;}to{opacity:1;}}
 .set-panel{
@@ -1995,7 +2009,7 @@ html[data-winmax="1"] .rz{display:none;}
   background:var(--chrome-solid);
   border-left:1px solid var(--edge);
   box-shadow:var(--shadow-modal);
-  animation:setSlide .26s var(--ease-spring) both;
+  /* 2026-11-23：设置抽屉瞬时出现（原 26ms 滑入带动整列重绘） */
 }
 @keyframes setSlide{from{transform:translateX(28px);opacity:.4;}to{transform:none;opacity:1;}}
 .set-head{
@@ -2088,7 +2102,7 @@ html[data-winmax="1"] .rz{display:none;}
 .help-mask{
   position:fixed;inset:0;z-index:130;background:var(--scrim);
   display:flex;align-items:center;justify-content:center;
-  animation:setFade .16s var(--ease-soft) both;
+  /* 2026-11-23：同上，遮罩淡入会让整窗重绘；help-box 自己的玻璃弹出动画保留 */
 }
 .help-box{
   width:var(--help-w);max-width:calc(100vw - 48px);
@@ -2098,7 +2112,7 @@ html[data-winmax="1"] .rz{display:none;}
   border:1px solid var(--edge);border-radius:var(--r-6);
   box-shadow:var(--shadow-modal);
   overflow:hidden;
-  animation:glassPop .24s var(--ease-spring) both;
+  /* 2026-11-23：帮助框瞬时出现 */
 }
 .help-head{
   display:flex;align-items:center;gap:12px;
@@ -2151,7 +2165,7 @@ html[data-winmax="1"] .rz{display:none;}
 .help-doc .cmd-t{color:var(--text);font-weight:600;}
 .help-doc .cmd-d{color:var(--text-faint);}
 .help-doc .sec{display:none;}
-.help-doc .sec.on{display:block;animation:pageFade .16s ease both;}
+.help-doc .sec.on{display:block;}   /* 2026-11-23：章节切换不做整块淡入 */
 
 /* ---------------- §6 文本编辑器 ---------------- */
 #page-text{display:none;}
@@ -2494,10 +2508,10 @@ body.col-resizing *{cursor:col-resize !important;}
    原来写死 15px / 18px，标题栏高 42px 时明显偏小。
    改成从 --tb-h 派生：42px 高 → 约 23px，和标题栏文字（13~14px）成比例。 */
 .tb-logo{ margin-right:2px; }
-.tb-logo svg{
+.tb-logo .appmark-img{
   width:calc(var(--tb-h) * .54);
   height:calc(var(--tb-h) * .54);
-  display:block;
+  display:block;background-size:contain;background-repeat:no-repeat;background-position:center;
 }
 
 /* ---------------- §3 启动动画：最新图标 + 跟随强调色（需求 1） ----------------
@@ -3140,6 +3154,7 @@ body::after{
    ------------------------------------------------------------------------- */
 .appmark{ color:var(--mark-fg); }
 .splash .appmark{ color:var(--accent); }
+.splash .cat .appmark-img{ width:96px; height:96px; display:block;background-size:contain;background-repeat:no-repeat;background-position:center; }
 /* A19（回退）：标题栏图标 = 中性黑白灰品牌标记（--mark-fg，不跟强调色）；
    只有启动层图标跟随强调色。上一版把标题栏也改成 var(--accent) 是误判——
    用户要的是 dock/标题栏保持中性品牌图、仅启动层跟色。 */
@@ -4077,8 +4092,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-wrap{
   flex:1; min-height:0;
   display:flex; flex-direction:column;
-  gap:10px; padding:12px 14px 14px;
-  overflow:hidden;
+  gap:10px; padding:12px 14px 18px;
+  /* 2026-11-23：原来是 overflow:hidden，窗口一矮下面的"输出框/开始遍历"就永远看不到，
+     也没有滚动条可拉。改成纵向可滚：整页内容（部署状态 → 应用清单 → 参数 →
+     输出区）一起滚，用户能看到底部。
+     注意子项都是 flex:0 0 auto，所以不会被压扁；横向仍隐藏，避免出现横向滚动条。 */
+  overflow-y:auto; overflow-x:hidden;
 }
 .mk-panel{
   flex:0 0 auto;
@@ -4156,7 +4175,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 输出区 */
 .mk-out{
-  flex:1 1 auto; min-height:0;
+  /* 2026-11-23：外层 .mk-wrap 变成可滚之后，输出框不能再 flex:1 撑满 ——
+     那会让它在滚动容器里恒等于剩余空间，用户永远滚不到底部内容。
+     改成固定最小高度 + 自适应：内容多时自己滚，内容少时不占位。 */
+  flex:0 0 auto; min-height:120px; max-height:320px;
   /* 2026-11-22：纵向滚、横向禁。原来 overflow:auto 两向都滚，
      输出区里一条长行就会顶出横向滚动条（同左导航那个 bug 的成因）。 */
   overflow-y:auto; overflow-x:hidden;
@@ -4932,7 +4954,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
    ============================================================================ */
 .tt-row2{
   display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* 2026-11-23：不要写死 2 列 + 媒体查询断点。
+     125% 缩放的 1080p 屏，WebView 的 CSS 视口只有 ~880px，
+     会命中 max-width:980 那条把两列压成一列 —— 用户看到的就是"上下堆叠"。
+     改成 auto-fit：空间够就并排，真不够才换行，与 DPI/缩放无关。 */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap:10px;
   /* ★ 2026-11-22（第 15 批）：和 .vr-panel 的 margin 对齐。
      上一版这里写的是 padding:0，注释却说"对齐"—— 自相矛盾，
@@ -4941,9 +4967,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
      .vr-panel 是 margin:0 20px 12px，所以这里也必须是 margin 左右 20px。 */
   margin:6px 20px 0;
 }
-@media (max-width: 980px){
-  .tt-row2{ grid-template-columns:1fr; }
-}
+/* 2026-11-23：断点删除 —— auto-fit 已按容器实际宽度决定列数，
+   再用 max-width 去压列数只会让高 DPI 屏误判成一列。 */
 
 .tt-box{
   min-width:0;                    /* 关键：否则 grid 子项会被内容撑破 */
@@ -5442,7 +5467,13 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .qcard{ will-change: transform; }
 .qcard.dragging:hover{ transform: none; }   /* 拖拽中不要浮，会和位移动画打架 */
 
+
+/*APPICON:BEGIN*/
+/* 由 inline_icon.py 自动生成，勿手改。源文件：adb_log_gui/adb_Tool.ico（256×256） */
+.appmark-img{background-image:url("data:image/png;base64,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");}
+/*APPICON:END*/
 </style>
+
 
 <body>
 <!-- 加载过渡层：中控屏终端标识（与 adb_Tool.ico / 顶栏同源） -->
@@ -5476,10 +5507,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 <div class="splash" id="splash">
   <div class="cat">
-    <svg class="appmark" viewBox="0 0 100 100" aria-hidden="true">
-      <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#appmark-bg)"/>
-      <use href="#appmark-glyph"/>
-    </svg>
+    <!-- 2026-11-23：图标走"构建期内联"。
+         页面是 file:// 加载，<img src="adb_Tool.ico"> 取不到文件（实测裂图），
+         所以由 inline_icon.py 把 ico 转成 base64 写进主样式块（同一个 style 标签内），
+         这里用 background-image 显示 —— 不依赖文件读取，换 ico 只需重跑脚本。 -->
+    <span class="appmark-img" aria-hidden="true"></span>
   </div>
   <div class="tip" id="splash-tip">正在连接设备 …</div>
 </div>
@@ -5492,10 +5524,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
   <div class="titlebar" id="titlebar">
     <div class="tb-drag" onmousedown="tbDrag(event)" ondblclick="tbMax()">
       <span class="tb-logo" aria-hidden="true" title="Adb_Tool">
-        <svg class="appmark" viewBox="0 0 100 100">
-          <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#appmark-bg)"/>
-          <use href="#appmark-glyph"/>
-        </svg>
+        <span class="appmark-img" aria-hidden="true"></span>
       </span>
       <span class="tb-sub" id="tb-sub"></span>
     </div>
@@ -5514,10 +5543,14 @@ body[data-navlabels="0"] .filenav-item.active::after{
       <div class="wadb-pop" id="wadb-pop" style="display:none;" onclick="event.stopPropagation()">
         <input id="wadb-host" placeholder="设备 IP，如 192.168.1.7" autocomplete="off"
                onkeydown="onWadbKey(event)">
+        <!-- 2026-11-24（P7）：Android 11+ 需要先用配对码配对，再连接（两个端口不同） -->
+        <input id="wadb-code" placeholder="配对码（Android 11+：「使用配对码配对」里的 6 位数字）" autocomplete="off"
+               onkeydown="onWadbCodeKey(event)">
         <div class="wadb-tip" id="wadb-tip">留空则自动取设备 IP，默认端口 5555</div>
         <div class="wadb-acts">
           <button class="btn primary" id="wadb-connect" onclick="wadbConnect()">连接</button>
           <button class="btn" id="wadb-disconnect" onclick="wadbDisconnect()">断开</button>
+          <button class="btn" id="wadb-pair" onclick="wadbPair()" title="配对地址填 ip:配对端口，配对码填 6 位数">配对</button>
         </div>
       </div>
     </div>
@@ -5793,6 +5826,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
                 <span class="clu-state" id="clu-state">未登录</span>
                 <div class="spacer"></div>
                 <button class="btn primary sm" id="clu-login" onclick="cluLogin()">登录设备</button>
+                <button class="btn ghost sm" onclick="cluImport()"
+                        title="读本机 ClusterDebugTool 的 config_aht.json 导入通道配置（只写本机 ini）">导入通道配置</button>
                 <button class="btn ghost sm" id="clu-logout" onclick="cluLogout()" disabled>退出登录</button>
               </div>
 
@@ -5815,11 +5850,16 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
               <div class="clu-row">
                 <span class="clu-lbl">屏号</span>
-                <input class="clu-inp clu-inp--num" id="clu-display" type="number" min="0" max="20" value="4"
-                       title="仪表所在 display id。8838 默认 4；8295 若不同请改">
+                <input class="clu-inp clu-inp--num" id="clu-display" type="number" min="0" max="20" value="2"
+                       title="仪表所在 display id。默认 2（1920×480 长条屏）；不同车机请改">
                 <label class="clu-chk">
                   <input type="checkbox" id="clu-viewonly">
                   <span>只读（不接管输入，防误触）</span>
+                </label>
+                <!-- 2026-11-23：投屏走 adb，登录只是通道自检，允许跳过 -->
+                <label class="clu-chk" title="scrcpy 取画面走 adb 通道，与 telnet 登录无关">
+                  <input type="checkbox" id="clu-skip" onchange="cluToggleSkip(this.checked)">
+                  <span>跳过登录直接投屏</span>
                 </label>
                 <div class="spacer"></div>
                 <button class="btn primary sm" id="clu-cast-btn" onclick="cluCast()" disabled
@@ -6540,6 +6580,16 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <label class="mk-chk" title="保留 /sdcard/fastbot_[包名].fbm，下次跑得更快">
               <input type="checkbox" id="fb-keep-model" checked> 保留遍历模型</label>
             <span class="mk-lbl">输出目录</span>
+            <span class="mk-lbl">快照</span>
+            <input class="mk-inp" id="fb-snap" type="number" min="0" max="120" value="10"
+                   placeholder="分钟（0=关）" title="每隔多少分钟抓一次 CPU/内存快照，用于定位变卡的时间点" style="width:110px">
+            <!-- 2026-11-24：内存吃紧时自动清理并续跑（长跑用） -->
+            <label class="mk-chk" title="系统可用内存低于阈值时，force-stop 被测应用 + 清缓存，然后自动开下一轮">
+              <input type="checkbox" id="fb-autoclean"> 内存满自动清理续跑
+            </label>
+            <span class="mk-lbl">每轮</span>
+            <input class="mk-inp" id="fb-seg" type="number" min="0" max="720" value="0"
+                   placeholder="分钟（0=不分段）" title="跑满这么多分钟自动停，避免越跑越卡" style="width:130px">
             <input class="mk-inp" id="fb-outdir" placeholder="留空则用默认 /sdcard/" spellcheck="false">
           </div>
           <div class="mk-row mk-actions">
@@ -6998,6 +7048,24 @@ body[data-navlabels="0"] .filenav-item.active::after{
 <!-- V12:SETTINGS END -->
 
 <script>
+/* 2026-11-23：把页面里的 JS 异常送到宿主日志。
+   用户反复看到"只剩导航、右边全黑"——最可能是渲染途中抛异常、DOM 只建了一半。
+   之前异常只留在 DevTools 控制台，我们完全看不到，只能靠猜（已经猜错四轮）。
+   现在任何未捕获异常都会写进 dist\log\gui_error.log，一次定位。 */
+window.onerror = function(msg, src, line, col, err){
+  try {
+    var t = (err && err.stack) ? err.stack : (msg + ' @' + line + ':' + col);
+    postObj({ kind:'jslog', data: String(t).slice(0, 900) });
+  } catch(e){}
+  return false;
+};
+window.addEventListener('unhandledrejection', function(ev){
+  try {
+    var r = ev && ev.reason ? (ev.reason.stack || ev.reason) : 'unknown';
+    postObj({ kind:'jslog', data: 'unhandledrejection: ' + String(r).slice(0, 900) });
+  } catch(e){}
+});
+
 /* 命令历史（2026-11-19 重做，对齐 Win11 命令窗口的手感）
    原来的问题：
      1) 只存在内存里 —— 关掉工具/刷新页面就清空，用起来"只有一条"
@@ -8503,11 +8571,36 @@ function fbOnCheckDone(){
 }
 
 /* ---------- 一键部署 ---------- */
+/* 2026-11-23：部署链是 页面 → C# 查 ABI(src=11) → 页面收到 end → 再发 fbdeploy。
+   中间任何一环没回消息，页面就会永远停在"部署中…"（用户看到的现象）。
+   加看门狗：25 秒没有任何进展就判超时、恢复按钮，并提示去看输出区日志——
+   宁可报超时，也不要留一个永远转不动的状态。 */
+var _fbDeployWatch = null;
+
+function fbDeployWatchdogStart(){
+  fbDeployWatchdogStop();
+  var t0 = Date.now();
+  _fbDeployWatch = setInterval(function(){
+    if(Date.now() - t0 < 25000) return;
+    fbDeployWatchdogStop();
+    if(_fb.deployed) return;
+    fbSetStatus('部署超时', 'bad');
+    fbLog('✗ 部署超过 25 秒没有回音：查 ABI 或推送可能卡住了', 'crash');
+    fbLog('  看下方输出区有没有 adb 报错；也可先点「重新检测」再试一次', '');
+    var b = document.getElementById('fb-deploy-btn');
+    if(b) b.disabled = false;
+  }, 1000);
+}
+function fbDeployWatchdogStop(){
+  if(_fbDeployWatch){ clearInterval(_fbDeployWatch); _fbDeployWatch = null; }
+}
+
 function fbDeploy(){
   var btn = document.getElementById('fb-deploy-btn');
   if(btn) btn.disabled = true;
   fbSetStatus('部署中…', 'warn');
   fbLog('▶ 开始部署 Fastbot…', 'ok');
+  fbDeployWatchdogStart();
 
   // 先查 ABI，再按架构决定推哪个 so
   try { post('run', 'shell getprop ro.product.cpu.abi', 11); } catch(e){
@@ -8540,6 +8633,7 @@ function fbOnAbiGot(abi){
 }
 
 function fbOnDeployResult(msg){
+  fbDeployWatchdogStop();
   var btn = document.getElementById('fb-deploy-btn');
   if(btn) btn.disabled = false;
   if(msg && msg.ok){
@@ -8573,6 +8667,18 @@ function fbBuildCmd(){
   var thr = parseInt((document.getElementById('fb-throttle')||{}).value, 10) || 300;
   var outdir = ((document.getElementById('fb-outdir')||{}).value || '').trim();
 
+  /* 2026-11-23：**必须显式给输出目录**，否则 Fastbot 用"所有包名拼接"当目录名：
+       /sdcard/fastbot-<pkg1>-<pkg2>-...-<pkgN>
+     包名一多，单个路径分量超过 255 字节，mkdirs 直接失败 →
+       IllegalStateException: Cannot mkdirs at file ...
+     表现就是"勾到第 8 个包就停"。这不是包数上限，是路径长度上限。
+     这里统一换成一个短目录（带时间戳，便于区分批次）。 */
+  if(!outdir){
+    var d = new Date(), z = function(n){ return (n<10?'0':'')+n; };
+    outdir = '/sdcard/fb_' + (''+d.getFullYear()).slice(2) + z(d.getMonth()+1) + z(d.getDate())
+           + '_' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds());
+  }
+
   var cp = '/sdcard/monkeyq.jar:/sdcard/framework.jar:/sdcard/fastbot-thirdpart.jar';
   var parts = [
     'CLASSPATH=' + cp,
@@ -8591,6 +8697,180 @@ function fbBuildCmd(){
   if(outdir) parts.push('--output-directory', outdir);
   parts.push('-v', '-v');
   return parts.join(' ');
+}
+
+/* ---------- 运行看门狗（2026-11-23）----------
+   背景：Fastbot 实测 ~20 次/秒，连续跑十几小时会把应用内存泄漏放大成 ANR，
+   还会把 /sdcard 写满（模型文件 + --bugreport 的几百 MB）。原来没有任何保护，
+   跑一夜的结局可能是"数据全废且没人知道为什么"。
+   做法：跑起来后每 60 秒采一次内存/存储，超过阈值就自动停止并写清楚原因。 */
+var _fbWdTimer = null;
+var _fbWdLast = { mem:0, freeMB:0 };
+
+function fbWatchdogStart(){
+  fbWatchdogStop();
+  if(!_fb.running) return;
+  _fbWdTimer = setInterval(function(){
+    if(!_fb.running) { fbWatchdogStop(); return; }
+    try {
+      post('run', 'shell "grep MemAvailable /proc/meminfo; df /sdcard | tail -1"', 33, 0);
+    } catch(e){}
+  }, 60000);
+}
+/* 2026-11-24：内存吃紧 → 自动清理 → 续跑。
+   为什么需要：Fastbot 长跑的最大故障模式是"应用内存只增不减"，
+   12 小时下来系统可用内存掉到 2 GB 以下，整机卡顿且后续数据不可信。
+   与其让人盯着，不如到阈值就主动做一轮清理：
+     ① am force-stop 所有被测包（真正释放内存，压后台不够）
+     ② pm trim-caches 清系统缓存
+     ③ 等 5 秒让系统回收，再自动开下一轮
+   防死循环：单轮最多自动清理 5 次，超了就彻底停并提示人工介入。 */
+var _fbAutoCleanMax = 5;
+var _fbAutoCleanN = 0;
+
+function fbAutoCleanAndResume(memMB){
+  if(_fbAutoCleanN >= _fbAutoCleanMax){
+    fbLog('⚠ 已自动清理 ' + _fbAutoCleanN + ' 次，内存仍不足（' + memMB + ' MB），停止并等待人工处理', 'crash');
+    fbStop();
+    return;
+  }
+  _fbAutoCleanN++;
+
+  var pkgs = fbGetPkgs() || [];
+  fbLog('🧹 可用内存 ' + memMB + ' MB → 开始清理（第 ' + _fbAutoCleanN + '/' + _fbAutoCleanMax + ' 次）', 'warn');
+
+  var cmds = [];
+  for(var i=0;i<pkgs.length;i++) cmds.push('am force-stop ' + pkgs[i]);
+  cmds.push('pm trim-caches 2000M');
+  var cmd = cmds.join('; ');
+
+  try { post('run', 'shell "' + cmd + '"', 34, 0); } catch(e){}
+
+  // 先停当前轮，5 秒后重开（保留模型文件，续跑不用重新学习）
+  try { fbStop(); } catch(e){}
+  fbLog('  已 force-stop ' + pkgs.length + ' 个被测包 + 清缓存，5 秒后自动继续', '');
+  setTimeout(function(){
+    try { fbLog('▶ 清理完成，自动开始下一轮', 'ok'); _fb.autoResume = true; fbStart(); } catch(e){}
+  }, 5000);
+}
+
+/* 2026-11-24：ANR / 崩溃时自动抓 CPU 快照。
+   为什么：ANR 文件只说明"输入分发超时"，看不出是谁把 CPU 抢光了
+   （昨天那次是 adigostore 占 98%）。把 top 前 15 + 内存摘要一起存档，
+   事后能直接回答"当时谁在跑"。 */
+_fb.cpuSnaps = _fb.cpuSnaps || [];
+
+function fbCpuSnapshot(reason){
+  try {
+    _fb._snapReason = reason + ' @ ' + new Date().toLocaleTimeString('zh-CN');
+    post('run', 'shell "top -b -n 1 -o %CPU | head -18; echo ---MEM---; grep -E \'MemAvailable|SwapFree\' /proc/meminfo; cat /proc/loadavg"', 35, 0);
+  } catch(e){}
+}
+
+/* 周期性快照：每 N 分钟抓一次 CPU/内存，和 ANR 触发的快照一起写进报告。
+   价值：没有崩溃时也能画出"从几点开始变卡"的曲线（昨天那次 ANR 之前
+   已经卡了多久，没有任何数据能回答）。 */
+/* 2026-11-24：ANR / 崩溃时把**这一段的 logcat** 也存下来。
+   为什么：ANR 文件只有摘要 + 主线程栈，没有"事发前后发生了什么"；
+   而 logcat 的环形缓冲区在长跑时早就被冲掉了，事后根本捞不回来。
+   抓取策略：主缓冲区最近 2000 行 + crash 缓冲区全量（覆盖 native 崩溃）。 */
+function fbLogDump(kind){
+  try {
+    _fb._dumpKind = kind;
+    post('run', 'shell "logcat -d -v time -t 2000; echo ---CRASHBUF---; logcat -b crash -d -v time 2>/dev/null"', 36, 0);
+  } catch(e){}
+}
+
+var _fbSnapTimer = null;
+function fbSnapStart(){
+  fbSnapStop();
+  var iv = parseInt((document.getElementById('fb-snap')||{}).value, 10);
+  if(isNaN(iv) || iv <= 0) return;         // 0 = 关闭
+  if(iv < 2) iv = 2;
+  _fbSnapTimer = setInterval(function(){
+    if(!_fb.running){ fbSnapStop(); return; }
+    fbCpuSnapshot('周期');
+  }, iv * 60000);
+}
+function fbSnapStop(){
+  if(_fbSnapTimer){ clearInterval(_fbSnapTimer); _fbSnapTimer = null; }
+}
+
+var _fbSegTimer = null;
+function fbSegmentStart(){
+  fbSegmentStop();
+  fbSnapStop();
+  var seg = parseInt((document.getElementById('fb-seg')||{}).value, 10) || 0;
+  if(seg <= 0) return;
+  _fbSegTimer = setInterval(function(){
+    if(!_fb.running){ fbSegmentStop(); return; }
+    if((Date.now() - _fb.t0) / 60000 >= seg){
+      fbSegmentStop();
+      fbLog('⏱ 分段到点（' + seg + ' 分钟），本轮自动停止', 'ok');
+      fbLog('  建议：force-stop 被测应用清内存，再从「开始」继续下一轮', '');
+      try { fbStop(); } catch(e){}
+    }
+  }, 20000);
+}
+function fbSegmentStop(){
+  if(_fbSegTimer){ clearInterval(_fbSegTimer); _fbSegTimer = null; }
+}
+
+function fbWatchdogStop(){
+  if(_fbWdTimer){ clearInterval(_fbWdTimer); _fbWdTimer = null; }
+}
+
+function fbParseMemKB(txt){
+  // MemAvailable:   1234567 kB  → 返回 MB（系统可用）
+  var m = /MemAvailable:[ ]*([0-9]+)/.exec(txt || '');
+  return m ? Math.round(parseInt(m[1], 10) / 1024) : 0;
+}
+function fbParseFreeMB(txt){
+  // df 最后一列 Use%，取 Available(KB) 列不好数，直接用 Use%
+  var m = /([0-9]{1,3})%\s*\/[^\n]*$/.exec((txt||'').trim());
+  return m ? parseInt(m[1], 10) : -1;
+}
+
+function fbOnLogDump(txt){
+  if(!txt) return;
+  var kind = _fb._dumpKind || 'LOG';
+  try { post('logdump', txt, 0, 0, { kind: kind }); } catch(e){}
+  try { fbLog('  📄 已抓取 ' + kind + ' 日志片段（' + Math.round(txt.length/1024) + ' KB）', ''); } catch(e){}
+}
+
+function fbOnCpuSnapshot(txt){
+  if(!txt) return;
+  var head = _fb._snapReason || '采样';
+  _fb.cpuSnaps.push('===== CPU 快照：' + head + ' =====\n' + txt);
+  // 即时落盘：桌面\logcat\<日期>\snapshot.log（工具关掉/电脑重启也不丢）
+  try { post('snapappend', '===== ' + head + ' =====\n' + txt, 0, 0); } catch(e){}
+  try { fbLog('  📸 已抓取 CPU 快照（' + head + '）', ''); } catch(e){}
+}
+
+function fbWatchdogSample(txt){
+  if(!txt || !_fb.running) return;
+  var memKB = fbParseMemKB(txt);
+  var usePct = fbParseFreeMB(txt);
+  if(memKB > 0) _fbWdLast.mem = memKB;
+  if(usePct >= 0) _fbWdLast.freeMB = usePct;
+
+  // 阈值：内存 1.2 GB（车机应用常见上限 1.5~2 GB）或 /sdcard 使用率 90%
+  if(memKB > 0 && memKB < 800){
+    var auto = document.getElementById('fb-autoclean');
+    if(auto && auto.checked){
+      fbAutoCleanAndResume(memKB);
+      return;
+    }
+    fbLog('⚠ 看门狗：系统可用内存仅 ' + memKB + ' MB，继续跑只会越跑越卡，自动停止', 'crash');
+    fbLog('  建议：force-stop 被测应用或重启车机后再开新一轮', '');
+    fbStop();
+    return;
+  }
+  if(usePct >= 90){
+    fbLog('⚠ 看门狗：/sdcard 已用 ' + usePct + '%，继续跑会产生无效数据，自动停止', 'crash');
+    fbStop();
+    return;
+  }
 }
 
 /* ---------- 开始 / 停止 ---------- */
@@ -8613,6 +8893,8 @@ function fbStart(){
   var min = parseInt((document.getElementById('fb-minutes')||{}).value, 10) || 30;
 
   _fb.running = true;
+  if(_fb.autoResume !== true) _fbAutoCleanN = 0;   // 手动开始才重置计数
+  _fb.autoResume = false;
   _fb.t0 = Date.now();
   _fb.crash = 0; _fb.anr = 0; _fb.acts = 0; _fb.coverage = '';
   _fb.crashes = []; _fb.seenSig = {};
@@ -8632,6 +8914,9 @@ function fbStart(){
   fbLog('  Agent：' + _fb.agent + '，时长 ' + min + ' 分钟，间隔 ' + _fb.throttle, '');
   fbLog('  命令：' + cmd, 'cmd');
 
+  fbWatchdogStart();          // 跑起来后每分钟查一次内存/存储
+  fbSegmentStart();           // 分段：跑满设定分钟自动停
+  fbSnapStart();              // 周期快照（每 N 分钟）
   try { post('run', cmd, 13); } catch(e){
     fbLog('✗ 下发失败：' + e, 'crash');
     fbEnd();
@@ -8653,6 +8938,10 @@ function fbTick(){
 }
 
 function fbStop(){
+  fbWatchdogStop();   // 停就要停干净，别留着定时器继续打 adb
+  // 2026-11-24：停下来就汇总 snapshot.log → CSV + 折线图
+  try { if((_fb.cpuSnaps||[]).length) post('snapsummary', '', 0, 0); } catch(e){}
+  fbSegmentStop();
   if(!_fb.running) return;
   try { post('stop'); } catch(e) {}
   fbLog('⏸ 已请求停止', 'anr');
@@ -8731,6 +9020,8 @@ function fbOnOut(text){
     _fb.anr++;
     fbSetStat('fb-st-anr', _fb.anr);
     fbLog(t, 'anr');
+    fbCpuSnapshot('ANR');
+    fbLogDump('ANR');
     return;
   }
   // 结束标志
@@ -8803,9 +9094,11 @@ function fbExport(){
     var c = _fb.crashes[i];
     rows.push([i+1, c.pkg||'', c.msg||'', (c.stack||[]).slice(0,3).join(' | ')].map(mkCsvCell).join(','));
   }
+  var snapSec = (_fb.cpuSnaps || []).join('\n\n');
   var full = _fb.crashes.map(function(c, i){
     return '===== 崩溃 #' + (i+1) + ' =====\n' + (c.pkg||'') + '\n' + (c.msg||'') + '\n' + (c.stack||[]).join('\n');
   }).join('\n\n');
+  if(snapSec) full += '\n\n' + snapSec;
 
   try {
     post('mkreport', '\ufeff' + rows.join('\r\n'), 0, 0, { full: full, pkg: pkg });
@@ -9991,6 +10284,21 @@ function onMessage(ev){
           fbOnCheckDone();
         } catch(e){}
       }
+      if(msg.src === 36 && typeof fbOnLogDump === 'function'){
+        try { var db2 = _fb._dumpBuf || []; _fb._dumpBuf = []; fbOnLogDump(db2.join('\n')); } catch(e){}
+      }
+      if(msg.src === 35 && typeof fbOnCpuSnapshot === 'function'){
+        try {
+          var sb2 = _fb._snapBuf || []; _fb._snapBuf = [];
+          fbOnCpuSnapshot(sb2.join('\n'));
+        } catch(e){}
+      }
+      if(msg.src === 33 && typeof fbWatchdogSample === 'function'){
+        try {
+          var wb = _fb._wdBuf || []; _fb._wdBuf = [];
+          fbWatchdogSample(wb.join('\n'));
+        } catch(e){}
+      }
       if(msg.src === 11 && typeof fbOnAbiGot === 'function'){
         try {
           var ab = _fb._abiBuf || []; _fb._abiBuf = [];
@@ -10132,6 +10440,17 @@ function appendLine(msg){
   // src=10：部署检测（OK:/NO:/ABI= 三行结果）
   if(msg.src === 10){
     try { (_fb._chkBuf = _fb._chkBuf || []).push(msg.text || ''); } catch(e){}
+    return;
+  }
+  // src=36：ANR / 崩溃时的日志片段
+  if(msg.src === 36){ try { (_fb._dumpBuf = _fb._dumpBuf || []).push(msg.text || ''); } catch(e){} return; }
+  // src=35：CPU 快照（ANR / 崩溃时抓）
+  if(msg.src === 35){ try { (_fb._snapBuf = _fb._snapBuf || []).push(msg.text || ''); } catch(e){} return; }
+  // src=34：自动清理（force-stop / trim-caches）的输出，只记日志
+  if(msg.src === 34){ try { fbLog('  ' + (msg.text||''), ''); } catch(e){} return; }
+  // src=33：运行看门狗采样（内存 / 存储 / 进程）
+  if(msg.src === 33){
+    try { (_fb._wdBuf = _fb._wdBuf || []).push(msg.text || ''); } catch(e){}
     return;
   }
   // src=11：查设备 ABI（部署第一步）
@@ -14445,7 +14764,8 @@ function cluChipChanged(){
 
 /* 刷新门禁：登录成功才启用投屏按钮 */
 function cluUpdateGate(){
-  var ok = _clu.logged && _clu.chipLogged === _clu.chip && !_clu.busy;
+  // 2026-11-23：勾了跳过登录就不再要求已登录（投屏本身只需要 adb）
+  var ok = ((_clu.logged && _clu.chipLogged === _clu.chip) || _clu.skip) && !_clu.busy;
 
   var btn = cluEl('clu-cast-btn');
   if(btn){
@@ -14453,6 +14773,16 @@ function cluUpdateGate(){
     btn.title = ok ? '开启仪表实时显示' : '需先选择芯片并登录成功';
   }
 
+}
+
+function cluToggleSkip(on){
+  _clu.skip = !!on;
+  try { postObj({ kind: 'cluskip', on: on ? '1' : '0' }); } catch(e){}
+  cluUpdateGate();
+}
+
+function cluImport(){
+  try { postObj({ kind: 'cluimport' }); } catch(e){}
 }
 
 function cluSetState(text, cls){
@@ -14491,6 +14821,9 @@ function cluOnState(msg){
 
   var sel = cluEl('clu-chip');
   if(sel && msg.chip) sel.value = msg.chip;
+  _clu.skip = !!msg.skip;
+  var sk = cluEl('clu-skip');
+  if(sk) sk.checked = !!msg.skip;
   var cred = cluEl('clu-cred');
   if(cred) cred.style.display = (msg.chip === '8295') ? '' : 'none';
 
@@ -17215,6 +17548,21 @@ function wadbConnect(){
   setWadbTip('正在切到 TCP 模式，adbd 会重启，USB 会瞬断 1~3 秒…');
   postObj({kind:'wadb', act:'connect', host:host});
 }
+function onWadbCodeKey(ev){
+  if(ev.key === 'Enter'){ ev.preventDefault(); wadbPair(); }
+}
+function wadbPair(){
+  if(_wadbBusy) return;
+  var h = document.getElementById('wadb-host');
+  var c = document.getElementById('wadb-code');
+  var host = h ? (h.value || '').replace(/^\s+|\s+$/g,'') : '';
+  var code = c ? (c.value || '').replace(/\s/g,'') : '';
+  if(!host || host.indexOf(':') < 0){ setWadbTip('请填「ip:配对端口」，例如 192.168.1.7:37000'); return; }
+  if(code.length < 4){ setWadbTip('请填车机上显示的配对码'); return; }
+  setWadbBusy(true, '配对中…');
+  setWadbTip('正在配对（配对码有时效，尽快操作）…');
+  postObj({kind:'wadb', act:'pair', host:host, code:code});
+}
 function wadbDisconnect(){
   if(_wadbBusy) return;
   setWadbBusy(true, '断开中…');
@@ -19690,7 +20038,17 @@ document.addEventListener('DOMContentLoaded', function (){
     return -1;
   }
 
+  /* 2026-11-23：整页翻转动画默认关闭。
+     它是"切 tab 卡一下"的**主因**（比 .page 的淡入更重）：
+       · 整个页面跑 360ms 的 rotateY + translateX + scale
+       · 动画前还有一次强制回流（void offsetWidth）
+       · 挂 will-change:transform,opacity，等于让整棵子树常驻合成层
+     切换页签是高频操作，为 360ms 的观感付出明显卡顿不值得。
+     保留函数体（以后想做成可开关的偏好再打开），这里直接早退。 */
+  var ENABLE_PAGE_FLIP = false;
+
   function flipTo(name){
+    if (!ENABLE_PAGE_FLIP) return;
     var page = $('page-' + name);
     if (!page) return;
     var cur = (document.querySelector('.tabs .tab.active') || {}).dataset;

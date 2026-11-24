@@ -121,8 +121,17 @@ namespace AdbLogExport
         }
 
         // ==================== 二、语义提示 ====================
+        // 2026-11-23：按"语义结果"计数，用于纠正退出码误判。
+        // 现象：:mapinfo 明明把版本/路径/PID 都打出来了，结果却是红色"失败"。
+        // 原因：这类命令内部串了多条 adb（dumpsys | grep 等），最后一条的退出码
+        //       非 0（grep 没匹配到就返回 1）就被判定失败，与真实结果无关。
+        // 处置：只要打过 √ 且没有任何 ×，就认为这条命令是成功的。
+        internal static int OK_N = 0;
+        internal static int FAIL_N = 0;
+
         internal static void Ok(string msg)
         {
+            OK_N++;
             Use(COL_OK);
             Console.WriteLine("  \u221A " + msg); // √
             UseDefault();
@@ -130,6 +139,7 @@ namespace AdbLogExport
 
         internal static void Fail(string msg)
         {
+            FAIL_N++;
             Use(COL_ERR);
             Console.WriteLine("  \u00D7 " + msg); // ×
             UseDefault();

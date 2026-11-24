@@ -76,7 +76,7 @@ namespace AdbLogExport
                 LxcName = "linux-8838",
                 DefaultHost = "",
                 DetectKeys = new string[] { "qcm8838", "8838" },
-                DefaultDisplay = 4
+                DefaultDisplay = 2
             },
             new ChipProfile {
                 Key = "8295", Label = "8295",
@@ -84,7 +84,7 @@ namespace AdbLogExport
                 LxcName = "",
                 DefaultHost = "192.168.8.1",   // 逆向字符串里出现的默认地址
                 DetectKeys = new string[] { "sa8295", "8295" },
-                DefaultDisplay = 4
+                DefaultDisplay = 2
             }
         };
 
@@ -108,6 +108,12 @@ namespace AdbLogExport
         internal static string CLU_CHIP = "";      // 已登录的芯片 key
         internal static bool CLU_LOGGED = false;   // 是否登录成功
         internal static string CLU_ERR = "";       // 上次失败原因（给页面显示）
+
+        // 2026-11-23：允许"跳过登录直接投屏"。
+        // 依据（本文件开头也写了）：scrcpy 取画面走 adb 通道，与 telnet/lxc 登录无关；
+        // 登录只是流程门禁 + 通道连通性自检。8295 的 telnet 凭据拿不到时，
+        // 用户仍然可以投屏 —— 这时候把门禁做成可选，比让人卡在登录页合理。
+        internal static bool CLU_SKIP = false;
 
         // ==================== R4：芯片自动识别 ====================
         //
@@ -389,6 +395,73 @@ namespace AdbLogExport
         }
 
         // ==================== 退出登录 ====================
+        /// <summary>
+        /// 从 ClusterDebugTool 的 config_*.json 导入 telnet 通道配置。
+        ///
+        /// 为什么不在代码里写死账号密码：那种东西属于内部资料，硬编码进源码既不合规
+        /// 也无法换环境。这里只负责"按已知键名取出来写进本机 ini"，值从用户的文件来，
+        /// 全程不回显、不打日志、不进 git（ini 已在 .gitignore）。
+        ///
+        /// 已知键名（逆向得到）：telnet_host / telnet_username / telnet_password / su_password
+        /// 兼容大小写与常见变体（user/username、pass/password、su/su_password）。
+        /// </summary>
+        internal static string ImportFromTool(string jsonPath, out int cluCount)
+        {
+            cluCount = 0;
+            try
+            {
+                if (string.IsNullOrEmpty(jsonPath) || !System.IO.File.Exists(jsonPath))
+                    return "文件不存在：" + jsonPath;
+
+                string txt = System.IO.File.ReadAllText(jsonPath, Encoding.UTF8);
+
+                string host = PickJson(txt, "telnet_host");
+                string user = PickJson(txt, "telnet_username", "telnet_user", "username");
+                string pass = PickJson(txt, "telnet_password", "telnet_pass", "password");
+                string sup  = PickJson(txt, "su_password", "su_pass", "supassword", "root_password");
+
+                if (host.Length == 0 && user.Length == 0 && pass.Length == 0 && sup.Length == 0)
+                    return "没找到 telnet_host / username / password / su_password 字段（确认选的是 config_aht.json？）";
+
+                if (host.Length > 0) { SaveClusterIni("clu_host", host); cluCount++; }
+                if (user.Length > 0) { SaveClusterIni("clu_user", user); cluCount++; }
+                if (pass.Length > 0) { SaveClusterIni("clu_pass", pass); cluCount++; }
+                if (sup.Length  > 0) { SaveClusterIni("clu_su",   sup);  cluCount++; }
+
+                // 只报"导入了几个字段"，绝不回显值
+                return "已导入 " + cluCount + " 个字段（host/user/pass/su 里成功的那些）";
+            }
+            catch (Exception ex)
+            {
+                return "导入失败：" + ex.Message;
+            }
+        }
+
+        /// <summary>按若干候选键名从扁平 JSON 里取第一个非空字符串值（不引 JSON 库）。</summary>
+        private static string PickJson(string js, params string[] keys)
+        {
+            foreach (string k in keys)
+            {
+                int i = js.IndexOf("\"" + k + "\"", StringComparison.OrdinalIgnoreCase);
+                if (i < 0) continue;
+                i = js.IndexOf(':', i);
+                if (i < 0) continue;
+                i++;
+                while (i < js.Length && char.IsWhiteSpace(js[i])) i++;
+                if (i >= js.Length || js[i] != '"') continue;
+                i++;
+                StringBuilder sb = new StringBuilder();
+                for (; i < js.Length && js[i] != '"'; i++)
+                {
+                    if (js[i] == '\\' && i + 1 < js.Length) { i++; sb.Append(js[i]); }
+                    else sb.Append(js[i]);
+                }
+                string v = sb.ToString().Trim();
+                if (v.Length > 0) return v;
+            }
+            return "";
+        }
+
         internal static void ClusterLogout()
         {
             string was = CLU_CHIP;
@@ -405,15 +478,97 @@ namespace AdbLogExport
         // ★ 用户明确要求的交互：必须**选芯片 + 登录成功**才能投。
         //   这里在 C# 侧再做一道校验 —— 页面上按钮虽然会置灰，
         //   但脚本/快捷键仍可能绕过前端，服务端必须自己拦。
+        /// <summary>跑一条 adb shell 命令并返回 stdout（失败返回空串）。</summary>
+        private static string Sh(string shellCmd)
+        {
+            try
+            {
+                string adb = App.ADB;
+                if (string.IsNullOrEmpty(adb)) adb = "adb";
+                var psi = new System.Diagnostics.ProcessStartInfo();
+                psi.FileName = adb;
+                psi.Arguments = (string.IsNullOrEmpty(App.SERIAL) ? "" : ("-s " + App.SERIAL + " "))
+                               + " shell " + shellCmd;
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                using (var pr = System.Diagnostics.Process.Start(psi))
+                {
+                    string o = pr.StandardOutput.ReadToEnd();
+                    pr.StandardError.ReadToEnd();
+                    if (!pr.WaitForExit(15000)) { try { pr.Kill(); } catch { } }
+                    return o ?? "";
+                }
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>当前设备真实存在的 display id 列表（dumpsys display 解析）。</summary>
+        internal static List<int> AvailableDisplays()
+        {
+            var list = new List<int>();
+            try
+            {
+                string outp = Sh("dumpsys display | grep -oE 'mDisplayId=[0-9]+' | sort -u");
+                if (string.IsNullOrEmpty(outp)) return list;
+                foreach (string line in outp.Split('\n'))
+                {
+                    int eq = line.IndexOf('=');
+                    if (eq < 0) continue;
+                    int id;
+                    if (int.TryParse(line.Substring(eq + 1).Trim(), out id) && !list.Contains(id))
+                        list.Add(id);
+                }
+                list.Sort();
+            }
+            catch { }
+            return list;
+        }
+
+        /// <summary>每个屏的高度（width x height 里的 height），用于挑"长条仪表屏"。</summary>
+        internal static Dictionary<int, int> DisplaySizes()
+        {
+            var map = new Dictionary<int, int>();
+            try
+            {
+                string outp = Sh("dumpsys display | grep -E 'DisplayDeviceInfo' | head -8");
+                if (string.IsNullOrEmpty(outp)) return map;
+                int idx = 0;
+                foreach (string line in outp.Split('\n'))
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*x\s*(\d+)");
+                    if (m.Success)
+                    {
+                        int h;
+                        if (int.TryParse(m.Groups[2].Value, out h)) map[idx] = h;
+                        idx++;
+                    }
+                }
+            }
+            catch { }
+            return map;
+        }
+
         internal static void ClusterCast(int displayId, bool viewOnly)
         {
-            if (!CLU_LOGGED || CLU_CHIP.Length == 0)
+            // 勾了"跳过登录"就只校验芯片；登录不是投屏的技术前提
+            bool skipped = CLU_SKIP;
+            if (!skipped && (!CLU_LOGGED || CLU_CHIP.Length == 0))
             {
                 Fail("请先选择芯片并登录，再开启仪表实时显示");
                 Hint("流程：① 选芯片（8838 / 8295）→ ② 点「登录设备」→ ③ 开显示");
+                Hint("8295 没有 telnet 口令时，可勾选「跳过登录直接投屏」");
                 return;
             }
             ChipProfile p = FindChip(CLU_CHIP);
+            if (p == null && skipped)
+            {
+                // 跳过登录时芯片可能没选：退回按当前设备识别
+                string det = DetectChip();
+                p = FindChip(det);
+                if (p != null) CLU_CHIP = p.Key;
+            }
             if (p == null)
             {
                 Fail("登录状态异常，请重新登录");
@@ -422,6 +577,27 @@ namespace AdbLogExport
             }
 
             if (displayId < 0) displayId = p.DefaultDisplay;
+
+            // 2026-11-23：投不出画面的头号原因是**屏号不存在**。
+            // 默认值 4 来自逆向时的台架，换一台车机可能只有 0~3（实测 b09acfa2
+            // 就是 0:2560x1440 中控 / 1:2880x1620 / 2:1920x480 长条 / 3:800x480）。
+            // 这里先查真实存在的屏：目标不在就自动挑一个"像仪表"的（高度 < 600 的长条屏），
+            // 并把可用清单打出来，避免用户对着"投不出来"干瞪眼。
+            var ids = AvailableDisplays();
+            if (ids.Count > 0 && !ids.Contains(displayId))
+            {
+                int pick = -1, pickH = 0;
+                var tops = DisplaySizes();
+                foreach (var kv in tops)
+                {
+                    if (kv.Value < 600 || kv.Value > 4000) continue;   // 长条屏优先
+                    if (pick < 0 || kv.Value > pickH) { pick = kv.Key; pickH = kv.Value; }
+                }
+                if (pick < 0) pick = ids[0];
+                Warn("屏号 " + displayId + " 在当前设备上不存在，自动改用 " + pick);
+                Hint("可用屏号：" + string.Join(", ", ids.ToArray()));
+                displayId = pick;
+            }
 
             Info("开启仪表实时显示（" + p.Label + "）");
             Info("  屏号：" + displayId + (viewOnly ? "  只读（不接管输入）" : "  可点击"));
