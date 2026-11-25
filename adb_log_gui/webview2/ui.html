@@ -5531,9 +5531,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 
 /* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
-.qgear{opacity:0;margin-left:auto;font-size:13px;color:var(--text-dim);cursor:pointer;transition:opacity .12s ease;}
+.qgear{opacity:0;margin-left:auto;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:15px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
 .qcard:hover .qgear{opacity:1;}
-.qgear:hover{color:var(--accent);}
+.qgear:hover{color:var(--accent);background:var(--surface-2);}
+.qgear.set{opacity:.95;color:var(--ok);}
+.qgear.set::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--ok);}
 </style>
 
 
@@ -10309,7 +10311,8 @@ function onMessage(ev){
   if(typeof v12OnMessage === 'function' && v12OnMessage(msg)) return;
   switch(msg.kind){
     case 'outpathdir': var _p=document.getElementById('op-path'); if(_p) _p.value=msg.data||''; break;
-    case 'outpathlist': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
+    case 'outpathlist': try{ _opPaths = msg.data ? JSON.parse(msg.data) : {}; if(typeof renderQuickItems==='function') renderQuickItems(); }catch(e){} break;
+    case 'outpathlist_': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
     case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
     case 'line': appendLine(msg); break;
     case 'lines': appendLines(msg.items); break;   // 批量帧（性能优化）
@@ -13811,15 +13814,15 @@ function bindSplit(sp){
 var quickGroups = [
   { name:'指令执行', color:'var(--accent)', items:[
     // ---- 采集与导出 ----
-    {name:'一键截图', desc:'无感知截屏保存到桌面 logcat', cmd:':shot', cat:'采集导出'},
-    {name:'一键截图并立即打开', desc:'截图后立即用系统看图打开', cmd:':shotopen', cat:'采集导出'},
-    {name:'一键录屏', desc:'截帧录屏保存到桌面 logcat（约3fps）', cmd:':rec', toggle:true, progress:true, cat:'采集导出'},
+    {name:'一键截图', desc:'无感知截屏保存到桌面 logcat', cmd:':shot', exp:true, cat:'采集导出'},
+    {name:'一键截图并立即打开', desc:'截图后立即用系统看图打开', cmd:':shotopen', exp:true, cat:'采集导出'},
+    {name:'一键录屏', desc:'截帧录屏保存到桌面 logcat（约3fps）', cmd:':rec', toggle:true, progress:true, exp:true, cat:'采集导出'},
     // 「导出APK」已挪到「APK管理」分组（2026-11-13）：那里的对象是"选中的应用"，
     // 而不是"当前前台"。命令本身（:apk）仍然可用，只是不再占一张卡片。
-    {name:'Android日志导出', desc:'pull /log/android_log 到桌面logcat文件', cmd:':dlog', progress:true, cat:'采集导出'},
-    {name:'导出ANR日志', desc:'pull /data/anr 到桌面logcat文件', cmd:':anrlog', progress:true, cat:'采集导出'},
-    {name:'导出crash日志', desc:'pull /data/system/dropbox 到桌面logcat', cmd:':dropboxlog', progress:true, cat:'采集导出'},
-    {name:'PCM导出', desc:'工程模式→日志设置→audio→使能开关', cmd:':pcm', progress:true, cat:'采集导出'},
+    {name:'Android日志导出', desc:'pull /log/android_log 到桌面logcat文件', cmd:':dlog', progress:true, exp:true, cat:'采集导出'},
+    {name:'导出ANR日志', desc:'pull /data/anr 到桌面logcat文件', cmd:':anrlog', progress:true, exp:true, cat:'采集导出'},
+    {name:'导出crash日志', desc:'pull /data/system/dropbox 到桌面logcat', cmd:':dropboxlog', progress:true, exp:true, cat:'采集导出'},
+    {name:'PCM导出', desc:'工程模式→日志设置→audio→使能开关', cmd:':pcm', progress:true, exp:true, cat:'采集导出'},
     {name:'HCI导出', desc:'导出btsnoop到桌面logcat文件', cmd:'hci', progress:true, cat:'采集导出'},
     // 注意：carplay / hicar 相关卡片已移到独立的「手车互联」分组（2026-11-12 需求1）
     // ---- 开关与调试 ----
@@ -13884,7 +13887,7 @@ var quickGroups = [
     {name:'关闭坐标', desc:'pointer_location = 0，关闭触摸坐标', cmd:'stxyoff', cat:'显示与信息'},
     {name:'开启触控点', desc:'show_touches = 1，点击处显示白点', cmd:'sttoucheson', cat:'显示与信息'},
     {name:'关闭触控点', desc:'show_touches = 0', cmd:'sttouchesoff', cat:'显示与信息'},
-    {name:'导出 QNX 日志', desc:'/share/log → 桌面logcat\日期\qnx', cmd:':qnxlog', progress:true, cat:'显示与信息'},
+    {name:'导出 QNX 日志', desc:'/share/log → 桌面logcat\日期\qnx', cmd:':qnxlog', progress:true, exp:true, cat:'显示与信息'},
     {name:'查看VIN', desc:'读 persist.sys.vehicle.vin', cmd:'stvin', cat:'显示与信息'},
     {name:'网络状态-ping', desc:'ping 公网 5 个包（car_net 实测）', cmd:'stping', cat:'显示与信息'},
     {name:'网络状态-IP', desc:'读 wlan0 地址（car_net 实测）', cmd:'stip', cat:'显示与信息'},
@@ -13931,12 +13934,12 @@ var quickGroups = [
     {name:'删除代理', desc:'依次删 http_proxy / host / port，逐条回执', cmd:':proxydel', cat:'后台入口'},
     // ---- 日志导出 ----
     // 三条都落到 桌面\logcat\<今天>\<分类>，与 :dlog / :anr / :dropbox 同一套落点规则
-    {name:'导出支付宝日志', desc:'applog → 桌面logcat\\日期\\alipay', cmd:':wsalipay', progress:true, cat:'日志导出'},
-    {name:'导出微信小程序日志', desc:'xlog → 桌面logcat\\日期\\wmpf（两个路径自动选可用的）', cmd:':wswmpf', progress:true, cat:'日志导出'},
-    {name:'导出车载微信日志', desc:'log + autowechat → 桌面logcat\\日期\\wxmsg', cmd:':wswx', progress:true, cat:'日志导出'},
+    {name:'导出支付宝日志', desc:'applog → 桌面logcat\\日期\\alipay', cmd:':wsalipay', progress:true, exp:true, cat:'日志导出'},
+    {name:'导出微信小程序日志', desc:'xlog → 桌面logcat\\日期\\wmpf（两个路径自动选可用的）', cmd:':wswmpf', progress:true, exp:true, cat:'日志导出'},
+    {name:'导出车载微信日志', desc:'log + autowechat → 桌面logcat\\日期\\wxmsg', cmd:':wswx', progress:true, exp:true, cat:'日志导出'},
     // ---- 星河云埋点 ----
     // 打开 = 两个 setprop + reboot + 等上线（最多60s）+ privacy_enabled + 读设备标识
-    {name:'打开星河云埋点', desc:'两个setprop → 重启 → 等上线(≤60s) → 开隐私 → 读ID', cmd:':sxlog', progress:true, cat:'星河云埋点'},
+    {name:'打开星河云埋点', desc:'两个setprop → 重启 → 等上线(≤60s) → 开隐私 → 读ID', cmd:':sxlog', progress:true, exp:true, cat:'星河云埋点'},
     {name:'查询星河云埋点设置', desc:'读 privacy_enabled / datacenter.debug / log.privacy', cmd:':sxlog get', cat:'星河云埋点'},
     {name:'设置星河云埋点true', desc:'privacy_enabled=true（写后自动回读确认）', cmd:':sxlog set', cat:'星河云埋点'},
     {name:'查询设备ID', desc:'navi.did / android_id / navi.uuid', cmd:':wsdevid', cat:'星河云埋点'},
@@ -13991,7 +13994,7 @@ var quickGroups = [
     {name:'CarPlay认证-开启', desc:'setprop CERT true（设完自动回读确认）', cmd:':carplaycert on', cat:'CarPlay 认证'},
     {name:'CarPlay认证-关闭', desc:'setprop CERT false（设完自动回读确认）', cmd:':carplaycert off', cat:'CarPlay 认证'},
     // ---- CarPlay 采集与开关 ----
-    {name:'导出carplay音频文件', desc:'pull /data/carplay/records 到logcat文件', cmd:':carplay', progress:true, cat:'CarPlay 调试'},
+    {name:'导出carplay音频文件', desc:'pull /data/carplay/records 到logcat文件', cmd:':carplay', progress:true, exp:true, cat:'CarPlay 调试'},
     {name:'打开carplay音频', desc:'setprop record.audio input/output', cmd:':carplayon', cat:'CarPlay 调试'},
     // ---- HiCar ----
     {name:'清除HiCar历史设备', desc:'hdc bm clean -d（清后需重新配对手机）', cmd:':hicarclear', cat:'HiCar'},
@@ -14020,12 +14023,12 @@ var quickGroups = [
      desc:'root → remount → 对 /vendor/lib(64) 全部 .so 求 md5 → /data/md5.txt',
      cmd:':md5so', progress:true, cat:'拾音日志'},
     {name:'导出拾音日志', desc:'pull /data/md5.txt → 桌面logcat\\日期\\audiohal',
-     cmd:':md5pull', progress:true, cat:'拾音日志'},
+     cmd:':md5pull', progress:true, exp:true, cat:'拾音日志'},
     {name:'创建dump',
      desc:'mkdir /data/misc/audio/audioserver/audiotrack 并 chmod 777（回读权限）',
      cmd:':audiodump', progress:true, cat:'音频 dump'},
     {name:'导出dump', desc:'root → remount → pull /data/misc/audio/audioserver',
-     cmd:':audiodumppull', progress:true, cat:'音频 dump'}
+     cmd:':audiodumppull', progress:true, exp:true, cat:'音频 dump'}
   ]},
   // 问题6：语音助手挪到「指令执行」下面（原来排在最后一位）。
   // 语音是这个工具最常用的场景，放最后每次都要往下找。
@@ -14100,7 +14103,7 @@ var quickGroups = [
     {name:'导出微信小程序日志', desc:'xlog → 桌面logcat\\日期\\wmpf（两个路径自动选可用的）',
      cmd:':wswmpf', progress:true, cat:'日志导出'},
     {name:'导出高德日志', desc:'pull /data/misc/bllog → 桌面logcat\\日期\\amap（需 root）',
-     cmd:':gmqtlog', progress:true, cat:'日志导出'},
+     cmd:':gmqtlog', progress:true, exp:true, cat:'日志导出'},
     // 2026-11-22（第 14 批需求 1.11）：heapdump 做成通用工具（不局限地图）。
     // cmd 用特殊标记，runQuick 里拦截后打开浮层而不是发命令。
     {name:'抓 Java 堆（heapdump）',
@@ -14673,7 +14676,7 @@ function renderQuickItems(){
     html += '<div class="'+cls+'" data-j="'+j+'" onclick="qcardClick(event,'+j+')">'
       + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
       + '<span class="qname" title="'+escAttr(it.name)+'">'+escHtml(it.name)+'</span>'
-      + '<span class="qgear" title="设置导出路径" onclick="event.stopPropagation();qcardOutPath('+j+')">⚙</span>'
+      + (it.exp ? '<span class="qgear'+(opHas(it.cmd)?' set':'')+'" title="设置导出路径" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();qcardOutPath('+j+')">⚙</span>' : '')
       + (it.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
       + '</div>'
       + '<div class="qcmd" title="'+escAttr(sub)+'">'+escHtml(sub)+'</div>'
@@ -15277,6 +15280,10 @@ function qcardInputKey(e, j){
    这里是第二道防线：万一浏览器对 pointer capture 后的 click 目标
    处理有差异，也不会误执行。 */
 function qcardClick(e, j){
+  if(e && e.target && e.target.closest && e.target.closest('.qgear')) return;
+  if(e && _mdX >= 0 && (Math.abs(e.clientX-_mdX)+Math.abs(e.clientY-_mdY)) > 6){ _mdX=-1; return; }
+  if(Date.now() < _suppressClickUntil) return;
+
   var t = e && e.target;
   if(t && t.closest && t.closest('input,textarea,select')) return;
   runQuick(j);
@@ -22316,6 +22323,19 @@ function qcardOutPath(j){
 function browseOutPath(){
   var el=document.getElementById('op-path');
   postObj({kind:'pickdir', path: el ? el.value : ''});
+}
+
+// 2026-11-25：拖拽卡片会触发一次合成 click —— 用"按下到抬起的位移"否决；
+// 同时给设置弹窗、齿轮提供抑制窗。
+var _mdX=-1,_mdY=-1,_suppressClickUntil=0;
+document.addEventListener('mousedown',function(e){_mdX=e.clientX;_mdY=e.clientY;},true);
+
+// 2026-11-25：导出路径快照（卡片渲染时判断是否已设置，避免每卡一次请求）
+var _opPaths = {};
+function opHas(cmd){
+  if(!cmd) return false;
+  var id = String(cmd).replace(/^:/,'').split(' ')[0].toLowerCase();
+  return !!(id && _opPaths[id]);
 }
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，
