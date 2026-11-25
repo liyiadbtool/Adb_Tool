@@ -428,6 +428,54 @@ namespace AdbLogExport
                     .Replace("${pkg}", "");
         }
 
+        /* 2026-11-25：导出路径的命令行入口（UI 未就绪前的最小可用方式）
+             :outpath                 列出所有设置
+             :outpath apk             查看 apk 的设置
+             :outpath apk D://导出     设置
+             :outpath apk -           清除（恢复默认） */
+        internal static void DoOutPath(string arg)
+        {
+            string a = (arg ?? "").Trim();
+            if (a.Length == 0)
+            {
+                var map = ExportPaths();
+                if (map.Count == 0) { Info("还没有自定义导出路径，全部使用默认：桌面\\logcat\\<日期>\\<类型>"); return; }
+                Console.WriteLine();
+                foreach (var kv in map) Console.WriteLine("  " + kv.Key + "  ->  " + kv.Value);
+                Hint("设置：:outpath apk D:////导出    清除：:outpath apk -");
+                OkLocal();
+                return;
+            }
+            string[] parts = a.Split(new char[] { ' ' }, 2);
+            string id = parts[0].Trim().TrimStart(':').ToLowerInvariant();
+            if (parts.Length == 1)
+            {
+                string cur = GetExportPath(id);
+                Info(cur.Length == 0 ? (id + " 使用默认路径") : (id + "  ->  " + cur));
+                OkLocal();
+                return;
+            }
+            string path = parts[1].Trim();
+            if (path == "-" || path.Length == 0)
+            {
+                SetExportPath(id, "");
+                Ok(id + " 已恢复默认路径");
+                return;
+            }
+            SetExportPath(id, path);
+            // 立即校验一次，别让用户以为设置成功其实不可写
+            try
+            {
+                string test = ExpandOutVars(path, "");
+                Directory.CreateDirectory(test);
+                Ok(id + " 导出路径已设置：" + test);
+            }
+            catch (Exception ex)
+            {
+                Warn("路径已记录，但当前不可用（导出时会回退默认）：" + ex.Message);
+            }
+        }
+
         /// <summary>唯一的取目录入口：自定义与默认二选一，绝不两者都写。</summary>
         internal static string OutDirFor(string cmdId, string kind)
         {
