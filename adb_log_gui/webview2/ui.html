@@ -5517,6 +5517,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 原生页容器同样允许纵向滚动，窗口矮时能看到底部按钮与统计 */
 #mk-sub-native .mk-wrap{overflow-y:auto !important;overflow-x:hidden !important;padding-bottom:18px !important;}
+
+/* 2026-11-25：卡片标题单行省略（上一轮选择器写错成 .qcard-t/.t，真实类名是 .qname） */
+.qcard .qname,.cm-card .qname{
+  display:block !important;min-width:0 !important;
+  white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
+}
 </style>
 
 
