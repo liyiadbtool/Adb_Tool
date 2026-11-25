@@ -22333,9 +22333,12 @@ document.addEventListener('mousedown',function(e){_mdX=e.clientX;_mdY=e.clientY;
 // 2026-11-25：导出路径快照（卡片渲染时判断是否已设置，避免每卡一次请求）
 var _opPaths = {};
 function opHas(cmd){
-  if(!cmd) return false;
-  var id = String(cmd).replace(/^:/,'').split(' ')[0].toLowerCase();
-  return !!(id && _opPaths[id]);
+  try{
+    if(!cmd) return false;
+    var id = String(cmd).replace(/^:/,'').split(' ')[0].toLowerCase();
+    var m = _opPaths || {};          // 首屏渲染时 _opPaths 可能还没初始化
+    return !!(id && m[id]);
+  }catch(e){ return false; }
 }
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，

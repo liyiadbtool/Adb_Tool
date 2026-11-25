@@ -1138,7 +1138,8 @@ BEHAVIOR = r"""
       qprobe.style.cssText = 'position:absolute;left:-9999px;top:0;width:120px;';
       document.body.appendChild(qprobe);
       var qn = qprobe.querySelector('.qname');
-      ok('T13 卡片名仍允许换行（不误伤）', css(qn, 'whiteSpace') === 'normal', css(qn, 'whiteSpace'));
+      // 2026-11-25：需求变更 —— 卡片名改为单行省略（超长显示 ...），不再允许换行
+      ok('T13 卡片名单行省略（不换行）', css(qn, 'whiteSpace') === 'nowrap', css(qn, 'whiteSpace'));
       probe.parentNode.removeChild(probe);
       qprobe.parentNode.removeChild(qprobe);
 
