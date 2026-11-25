@@ -191,8 +191,9 @@ setTimeout(function(){
         var hs = document.querySelectorAll('.set-body .set-h');
         var order = [];
         for (var q = 0; q < hs.length; q++) order.push(hs[q].textContent.trim());
+        // 2026-11-25：新增「导出路径」一节（放在末尾），顺序断言随之调整
         ok('需求12 布局顺序：外观在前、工具在后',
-           order[0] === '主题' && order[order.length-1] === '工具',
+           order[0] === '主题' && order[order.length-1] === '导出路径' && order.indexOf('工具') > 0,
            order.join(' / '));
 
         ok('无运行时错误', window.__E.length === 0, window.__E.join('; '));

@@ -6930,12 +6930,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
            ====================================================================== -->
 
       <!-- 1. 主题（去「背景与文字明暗」，按钮收小） -->
-      <!-- 2026-11-25：导出路径集中配置（从指令页移入设置） -->
-      <section class="set-sec">
-        <div class="set-h">导出路径</div>
-        <button class="btn ghost sm" onclick="closeSettings();openOutPath('')">设置导出路径…</button>
-      </section>
-
       <section class="set-sec">
         <div class="set-h">主题</div>
         <div class="set-seg set-seg-compact" id="set-theme"></div>
@@ -7043,6 +7037,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <span>关于 Adb_Tool</span>
           <span class="arr">›</span>
         </button>
+      </section>
+
+      <!-- 2026-11-25：导出路径集中配置（从指令页移入设置） -->
+      <section class="set-sec">
+        <div class="set-h">导出路径</div>
+        <button class="btn ghost sm" onclick="closeSettings();openOutPath('')">设置导出路径…</button>
       </section>
     </div>
     <!-- 2026-11-22（第 8 批需求11）：底部「关闭应用 / 完成」按钮已删除。
