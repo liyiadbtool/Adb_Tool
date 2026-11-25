@@ -4312,8 +4312,60 @@ namespace AdbLogExport.Gui
         ///     用户完全不知道是设备没连、路径没权限还是 adb 找不到。
         ///     现在返回 stderr 文本，失败原因会显示在页面上。
         /// </summary>
-        private static bool RunAdbRawEx(string adbArgs, out string errText)
+        
+        /// <summary>按空格切分，支持双引号包裹（引号内的空格不切）。解析异常返回 null → 调用方回退 cmd 路径。</summary>
+        private static List<string> SplitArgs(string s)
         {
+            if (s == null) return null;
+            List<string> outp = new List<string>();
+            StringBuilder cur = new StringBuilder();
+            bool inQ = false;
+            for (int k = 0; k < s.Length; k++)
+            {
+                char c = s[k];
+                if (c == '"') { inQ = !inQ; continue; }
+                if (!inQ && (c == ' ' || c == '\t'))
+                {
+                    if (cur.Length > 0) { outp.Add(cur.ToString()); cur.Length = 0; }
+                    continue;
+                }
+                cur.Append(c);
+            }
+            if (inQ) return null;                       // 引号不配对
+            if (cur.Length > 0) outp.Add(cur.ToString());
+            return outp;
+        }
+
+private static bool RunAdbRawEx(string adbArgs, out string errText)
+        {
+            errText = "";
+
+            /* 2026-11-25（B5-2）：不含 shell 元字符的命令，直接走 AdbCall（CreateProcess）。
+               省掉 cmd.exe 那一层（实测每条约 20~40ms），且参数不需要我们自己拼引号。
+               含 > < | & ^ % 的命令仍走 cmd —— 那些是 shell 语义，CreateProcess 表达不了。 */
+            bool needShell = false;
+            foreach (char ch in (adbArgs ?? ""))
+            {
+                if (ch == '>' || ch == '<' || ch == '|' || ch == '&' || ch == '^' || ch == '%')
+                { needShell = true; break; }
+            }
+            if (!needShell)
+            {
+                List<string> argv = SplitArgs(adbArgs);
+                if (argv != null && argv.Count > 0 && argv[0].ToLowerInvariant() == "adb")
+                    argv.RemoveAt(0);
+                if (argv != null && argv.Count > 0 && argv[0] == "-s") { argv = null; }   // 调用方自带 -s，交给老路径
+                if (argv != null && argv.Count > 0)
+                {
+                    string o2 = "", e2 = "";
+                    int rc2 = App.AdbCall(argv, out o2, out e2);
+                    if (rc2 == 0) return true;
+                    errText = ((e2 ?? "") + (o2 ?? "")).Trim();
+                    if (errText.Length == 0) errText = "命令失败（rc=" + rc2 + "）";
+                    return false;
+                }
+            }
+
             errText = "";
             try
             {
