@@ -353,7 +353,107 @@ namespace AdbLogExport
         // 目录在这里**即时创建**：调用方拿到路径就直接写文件，
         // 如果目录不存在，重定向（`> path`）会直接失败。
         // CreateDirectory 对已存在的目录是幂等的，反复调用无害。
+        /* ===== 2026-11-25：指令级自定义导出路径 =====
+           规则（用户确认的 A 方案，严格互斥）：
+             设了自定义 → 只写自定义目录，默认目录**完全不碰**（连目录都不建）
+             没设       → 只写默认目录
+             自定义不可写 → 回退默认，只写一份
+           存储：%LOCALAPPDATA%\adb_Tool\export_paths.json  { "apk": "D:////导出" }
+           变量：${date} ${kind} ${serial} ${pkg} */
+        [System.ThreadStatic] internal static string CUR_EXPORT_ID = "";
+
+        private static Dictionary<string, string> _exportPaths = null;
+        private static string ExportPathsFile()
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "adb_Tool");
+            try { Directory.CreateDirectory(dir); } catch { }
+            return Path.Combine(dir, "export_paths.json");
+        }
+        private static Dictionary<string, string> ExportPaths()
+        {
+            if (_exportPaths != null) return _exportPaths;
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                string f = ExportPathsFile();
+                if (File.Exists(f))
+                {
+                    string txt = File.ReadAllText(f, Encoding.UTF8);
+                    // 极简解析：{"k":"v",...}，避免引入 json 依赖
+                    var ms = System.Text.RegularExpressions.Regex.Matches(txt, "\"([^\"]+)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+                    for (int i = 0; i < ms.Count; i++)
+                        map[ms[i].Groups[1].Value] = System.Text.RegularExpressions.Regex.Unescape(ms[i].Groups[2].Value);
+                }
+            }
+            catch { }
+            _exportPaths = map;
+            return map;
+        }
+        internal static void SetExportPath(string cmdId, string path)
+        {
+            var map = ExportPaths();
+            if (string.IsNullOrEmpty(path)) map.Remove(cmdId ?? "");
+            else map[cmdId] = path;
+            try
+            {
+                var sb = new StringBuilder("{");
+                bool first = true;
+                foreach (var kv in map)
+                {
+                    if (!first) sb.Append(",");
+                    first = false;
+                    sb.Append("\"").Append(kv.Key.Replace("\\", "\\\\").Replace("\"", "\\\""))
+                      .Append("\":\"").Append(kv.Value.Replace("\\", "\\\\").Replace("\"", "\\\""))
+                      .Append("\"");
+                }
+                sb.Append("}");
+                File.WriteAllText(ExportPathsFile(), sb.ToString(), Encoding.UTF8);
+            }
+            catch { }
+        }
+        internal static string GetExportPath(string cmdId)
+        {
+            if (string.IsNullOrEmpty(cmdId)) return "";
+            string v;
+            return ExportPaths().TryGetValue(cmdId, out v) ? (v ?? "") : "";
+        }
+        private static string ExpandOutVars(string p, string kind)
+        {
+            if (string.IsNullOrEmpty(p)) return p;
+            return p.Replace("${date}", DateTime.Now.ToString("yyyy-MM-dd"))
+                    .Replace("${kind}", OutKindFolder(kind))
+                    .Replace("${serial}", DEVID ?? "")
+                    .Replace("${pkg}", "");
+        }
+
+        /// <summary>唯一的取目录入口：自定义与默认二选一，绝不两者都写。</summary>
+        internal static string OutDirFor(string cmdId, string kind)
+        {
+            string custom = GetExportPath(cmdId);
+            if (!string.IsNullOrEmpty(custom))
+            {
+                string path = ExpandOutVars(custom.Trim(), kind);
+                try
+                {
+                    Directory.CreateDirectory(path);
+                    return path;                       // 用了自定义就不再碰默认目录
+                }
+                catch
+                {
+                    Warn("自定义导出路径不可用，已回退默认：" + path);
+                }
+            }
+            return DefaultOutDir(kind);
+        }
+
         internal static string OutDir(string kind)
+        {
+            return OutDirFor(CUR_EXPORT_ID, kind);
+        }
+
+        private static string DefaultOutDir(string kind)
         {
             string root = Path.Combine(DesktopPath(), "logcat");
 

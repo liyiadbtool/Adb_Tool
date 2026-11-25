@@ -891,6 +891,15 @@ namespace AdbLogExport
                 {
                     Fail("内部错误：" + ex.Message);
                     CMD_OK = false;
+            // 2026-11-25：记录本条指令 id，供 OutDir 决定用自定义还是默认导出目录
+            try
+            {
+                string t0 = (line ?? "").Trim();
+                if (t0.StartsWith(":")) t0 = t0.Substring(1);
+                int sp0 = t0.IndexOf(' ');
+                CUR_EXPORT_ID = (sp0 > 0 ? t0.Substring(0, sp0) : t0).Trim().ToLowerInvariant();
+            }
+            catch { }
                 }
 
                 if (sw != null)
