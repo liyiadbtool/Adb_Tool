@@ -496,7 +496,12 @@ namespace AdbLogExport
         /// <summary>唯一的取目录入口：自定义与默认二选一，绝不两者都写。</summary>
         internal static string OutDirFor(string cmdId, string kind)
         {
+            /* 2026-11-25：导出多在子线程执行，ThreadStatic 的 CUR_EXPORT_ID 会丢。
+               这里做两级查找：先按指令 id，再退回按 kind（apk / dlog / anr …）。
+               kind 是 handler 里写死的常量，任何线程都拿得到，因此不会退回默认目录。 */
             string custom = GetExportPath(cmdId);
+            if (string.IsNullOrEmpty(custom) && !string.IsNullOrEmpty(kind))
+                custom = GetExportPath(kind);
             if (!string.IsNullOrEmpty(custom))
             {
                 string path = ExpandOutVars(custom.Trim(), kind);
