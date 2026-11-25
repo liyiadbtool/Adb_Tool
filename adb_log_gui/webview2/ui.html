@@ -6089,10 +6089,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <div class="cm-grid" id="cm-grid"></div>
           </div>
 
-<div class="op-bar">
-            <button class="btn ghost sm" onclick="openOutPath()" title="为各导出指令设置独立目录">导出路径设置</button>
-          </div>
-          <div class="op-mask" id="op-backdrop" style="display:none" onmousedown="if(event.target===this)closeOutPath()"><div class="op-panel" id="op-panel">
+<div class="op-mask" id="op-backdrop" style="display:none" onmousedown="if(event.target===this)closeOutPath()"><div class="op-panel" id="op-panel">
             <div class="op-row">
               <span class="op-lbl">指令</span>
               <input class="mk-inp" id="op-id" placeholder="apk / dlog / shotopen …" spellcheck="false" style="width:150px">
@@ -6933,6 +6930,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
            ====================================================================== -->
 
       <!-- 1. 主题（去「背景与文字明暗」，按钮收小） -->
+      <!-- 2026-11-25：导出路径集中配置（从指令页移入设置） -->
+      <section class="set-sec">
+        <div class="set-h">导出路径</div>
+        <button class="btn ghost sm" onclick="closeSettings();openOutPath('')">设置导出路径…</button>
+      </section>
+
       <section class="set-sec">
         <div class="set-h">主题</div>
         <div class="set-seg set-seg-compact" id="set-theme"></div>
