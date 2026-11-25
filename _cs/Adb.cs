@@ -141,6 +141,7 @@ namespace AdbLogExport
         // USB 传输层时会**永久**挂住整个界面（见 Probe.cs 的说明）。
         // 0 = 不限制（保留给极端场景），ini 里 timeout_ms 可改。
         internal static int CALL_TIMEOUT_MS = 30000;
+        private static int TIMEOUT_STREAK = 0;   // 连续超时计数（B6 自愈）
 
         // 统一执行入口：异步读两个流，避免"先读 stdout 再读 stderr"的管道死锁
         // （子进程 stderr 写满 4K 而我们正阻塞在 stdout 上时就死锁）。
@@ -322,7 +323,32 @@ namespace AdbLogExport
                 stderr = ((stderr == null) ? "" : stderr)
                        + "\n[超时] adb 在 " + (ms / 1000) + " 秒内没有返回";
                 rc = 124;
+
+                /* 2026-11-25（B6）：连续两次超时 → 自动重启 adb 服务。
+                   只"报超时"不修复的话，server 握着一个失效的 USB 句柄时，
+                   之后每条命令都会超时，用户只能手动杀掉重开。
+                   这里在后台线程重启，避免阻塞当前调用栈。 */
+                if (++TIMEOUT_STREAK >= 2)
+                {
+                    TIMEOUT_STREAK = 0;
+                    try
+                    {
+                        Thread thFix = new Thread(new ThreadStart(delegate()
+                        {
+                            try
+                            {
+                                Rec.ResetServer(false);
+                                Warn("adb 连续超时，已自动重启 adb 服务");
+                            }
+                            catch { }
+                        }));
+                        thFix.IsBackground = true;
+                        thFix.Start();
+                    }
+                    catch { }
+                }
             }
+            else if (rc == 0) TIMEOUT_STREAK = 0;
             return rc;
         }
 
