@@ -2607,5 +2607,67 @@ namespace AdbLogExport
             if (w >= 40) { LSW = w; return; }
             LSW = LS_WIDTH;
         }
+
+        /* 2026-11-25（需求）：一键截图并立即打开。
+           跟现有截图同一目录（桌面\logcat\<日期>\screencap），用 exec-out 保证 PNG 字节
+           不被 shell 的换行转换破坏；写盘后等文件够大再打开，避免打开半张图。 */
+        internal static void DoShotOpen()
+        {
+            if (!RequireDevice("")) return;
+
+            string dir = OutDir("shot");
+            string name = "shot_" + DateTime.Now.ToString("HHmmss") + ".png";
+            string file = System.IO.Path.Combine(dir, name);
+
+            string so = "", se = "";
+            int rc = AdbCall(new List<string> { "exec-out", "screencap", "-p" }, out so, out se);
+
+            if (rc != 0)
+            {
+                Fail("截图失败：" + FirstLine((so + " " + se).Trim()));
+                return;
+            }
+
+            try
+            {
+                // exec-out 走的是文本通道，这里改用重定向写法更稳；上面若拿到二进制会失真，
+                // 所以优先用 cmd 重定向（AdbCmd 的本地执行路径已经处理了无黑窗）。
+                bool wrote = false;
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo();
+                    psi.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
+                    psi.Arguments = "/s /c \"" + ADB + "\" " +
+                        (string.IsNullOrEmpty(DEVID) ? "" : ("-s " + DEVID + " ")) +
+                        "exec-out screencap -p > \"" + file + "\"";
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    using (var pr = System.Diagnostics.Process.Start(psi)) { pr.WaitForExit(30000); wrote = pr.HasExited; }
+                }
+                catch { }
+
+                if (!wrote || !System.IO.File.Exists(file) || new System.IO.FileInfo(file).Length < 1024)
+                {
+                    Fail("截图文件未生成或过小：" + file);
+                    return;
+                }
+
+                Ok("已保存：" + file);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = file,
+                        UseShellExecute = true          // 系统默认看图程序
+                    });
+                    Ok("已打开截图");
+                }
+                catch (Exception ex2)
+                {
+                    Warn("文件已保存，但打开失败：" + ex2.Message);
+                }
+            }
+            catch (Exception ex) { Fail("截图异常：" + ex.Message); }
+        }
     }
 }

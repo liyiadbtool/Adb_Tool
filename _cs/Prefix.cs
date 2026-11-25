@@ -345,6 +345,7 @@ namespace AdbLogExport
             // :timeprep [:settime 时间] / :timerestore
             // :maptrad          切换繁体（会重启 Android 框架）
             // :heapdump [包名|PID]  抓 Java 堆（不传参数时用地图包）
+            if (n == "shotopen" || n == "shot2" || n == "截图打开") { DoShotOpen(); return; }
             if (n == "mapinfo" || n == "mapver") { DoMapInfo(); return; }
             if (n == "mapstop" || n == "mapkill") { DoMapStop(); return; }
             if (n == "mapclear" || n == "mapwipe") { DoMapClear(); return; }
