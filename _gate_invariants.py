@@ -102,7 +102,7 @@ A9_ADDS = {
         "openCustomMgr", "closeCustomMgr", "cmBackdrop", "cmNew", "cmSave",
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
         "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
-        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath",   # 2026-11-25：导出路径面板
+        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath", "browseOutPath", "outpathdir",   # 2026-11-25：导出路径面板
     ]),
     "ids": set([
         # 9 色强调色
@@ -120,7 +120,7 @@ A9_ADDS = {
 # 删除必须逐条写理由，不能因为"反正门禁会过"就悄悄抹掉功能。
 A12_ADDS = {
     # 2026-11-21：toast（C# 主动弹提示，配置文件导出/导入的结果反馈）
-    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast", "outpathlist"]),
+    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast", "outpathlist", "outpathdir"]),
     "onclicks": set([
         # 自绘标题栏
         "tbDrag", "tbMin", "tbMax", "tbClose", "appClose", "toggleSettings", "closeSettings",

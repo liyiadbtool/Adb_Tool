@@ -6092,6 +6092,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
               <input class="mk-inp" id="op-id" placeholder="apk / dlog / shotopen …" spellcheck="false" style="width:150px">
               <span class="op-lbl">路径</span>
               <input class="mk-inp" id="op-path" placeholder="留空并保存 = 恢复默认（桌面\logcat）" spellcheck="false" style="flex:1">
+              <button class="btn ghost sm" onclick="browseOutPath()">浏览…</button>
               <button class="btn primary sm" onclick="saveOutPath()">保存</button>
               <button class="btn ghost sm" onclick="closeOutPath()">关闭</button>
             </div>
@@ -10307,6 +10308,7 @@ function onMessage(ev){
   // v12：标题栏状态 / 偏好 / 文本编辑器消息先处理（返回 true = 已消费）
   if(typeof v12OnMessage === 'function' && v12OnMessage(msg)) return;
   switch(msg.kind){
+    case 'outpathdir': var _p=document.getElementById('op-path'); if(_p) _p.value=msg.data||''; break;
     case 'outpathlist': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
     case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
     case 'line': appendLine(msg); break;
@@ -22308,6 +22310,12 @@ function qcardOutPath(j){
     var id = it && it.cmd ? String(it.cmd).replace(/^:/,'').split(' ')[0] : '';
     openOutPath(id);
   }catch(e){ openOutPath(''); }
+}
+
+// 2026-11-25：导出路径的"浏览…"（C# 弹 FolderBrowserDialog，选完回推）
+function browseOutPath(){
+  var el=document.getElementById('op-path');
+  postObj({kind:'pickdir', path: el ? el.value : ''});
 }
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，

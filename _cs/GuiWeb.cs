@@ -1987,6 +1987,40 @@ namespace AdbLogExport.Gui
                 /* 2026-11-25：导出路径的前端接口（供卡片弹窗读写）
                    act=set  → data=指令id，path=路径（空=恢复默认）
                    act=list → 返回所有已设置项 */
+                /* 2026-11-25：选目录（导出路径的"浏览…"）。FolderBrowserDialog 必须在
+                   STA 线程，这里单开一个 STA 线程弹窗，选完把路径回推给页面。 */
+                case "pickdir":
+                    {
+                        try
+                        {
+                            string init = GetField(json, "path");
+                            Thread thPick = new Thread(new ThreadStart(delegate()
+                            {
+                                string picked = "";
+                                try
+                                {
+                                    using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
+                                    {
+                                        dlg.Description = "选择导出目录";
+                                        dlg.ShowNewFolderButton = true;
+                                        if (!string.IsNullOrEmpty(init) && System.IO.Directory.Exists(init))
+                                            dlg.SelectedPath = init;
+                                        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                                            picked = dlg.SelectedPath;
+                                    }
+                                }
+                                catch (Exception ex) { GuiEntry.Dump("pickdir", ex); }
+                                if (!string.IsNullOrEmpty(picked))
+                                    PushOnUi("{\"kind\":\"outpathdir\",\"data\":" + Json(picked) + "}");
+                            }));
+                            thPick.SetApartmentState(ApartmentState.STA);
+                            thPick.IsBackground = true;
+                            thPick.Start();
+                        }
+                        catch (Exception ex) { GuiEntry.Dump("pickdir-start", ex); }
+                    }
+                    break;
+
                 case "outpath":
                     {
                         try
