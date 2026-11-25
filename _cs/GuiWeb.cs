@@ -3744,6 +3744,18 @@ namespace AdbLogExport.Gui
             if (!App.OfflineAllowed(headTok.ToLowerInvariant()) && App.DEVN == 0)
             {
                 bool alive = false;
+                /* 2026-11-25：缓存快判优先 —— 设备已被判定离线时立刻失败，0 毫秒。
+                   原来无论状态如何都先探测 1.2 秒，设备明明不在线也要白等。 */
+                if (App.DEVN == 0)
+                {
+                    _cmdSource[slot] = source;
+                    _lastCmd[slot] = cmd;
+                    PushEcho(cmd, slot);
+                    PushBegin(slot);
+                    App.Fail("设备不在线，命令未执行");
+                    PushEnd(false, 0, slot);
+                    return;
+                }
                 try { alive = App.Rec.WaitDevice(1200, false, false); } catch { }
                 if (!alive || App.DEVN == 0)
                 {

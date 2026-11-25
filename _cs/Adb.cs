@@ -277,6 +277,10 @@ namespace AdbLogExport
                 if (a == "-s") { i++; continue; }          // 跳过序列号
                 sub = a; break;
             }
+            /* 2026-11-25：设备离线时一律 3 秒超时。
+               离线状态下 adb 会阻塞到 transport 超时（可长达 30~60 秒），
+               表现为"命令一直在加载"。有 3 秒上限就能快速失败。 */
+            if (DEVID == null || DEVID.Length == 0 || DEVN == 0) return 3000;
             if (sub == "push" || sub == "pull" || sub == "install" || sub == "uninstall") return 180000;
             if (sub == "bugreport" || sub == "backup" || sub == "restore") return 600000;
             if (sub == "shell" && argv.Count > 1)
