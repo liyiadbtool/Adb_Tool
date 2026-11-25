@@ -1989,6 +1989,10 @@ namespace AdbLogExport.Gui
                     string ssraw = GetField(json, "slot");
                     int.TryParse(ssraw, out stopSlot);
                     StopWorker(stopSlot);
+                    // 2026-11-25：还要杀**设备侧**的长驻进程。
+                    // 只杀 PC 端 adb 客户端的话，设备上的 monkey/logcat -f 会继续跑
+                    // （昨天就是"界面显示已停止，车机上 monkey 又跑了 13 小时"）。
+                    try { KillDeviceSidePersistent(); } catch { }
                     break;
 
                 case "copy":
@@ -3799,6 +3803,34 @@ namespace AdbLogExport.Gui
         {
             try { PushOnUi("{\"kind\":\"begin\",\"slot\":" + slot + "}"); }
             catch { }
+        }
+
+        /* 2026-11-25：清掉设备侧的长驻进程。
+           根因确认：monkey 是以 `app_process ... &` 拉起的后台进程，
+           PC 端 adb 客户端退出不会让它结束 —— 于是"界面停了、车机还在点".
+           停止按钮必须同时管住两端，否则用户以为停了、实际在跑。 */
+        private void KillDeviceSidePersistent()
+        {
+            Thread th = new Thread(new ThreadStart(delegate()
+            {
+                try
+                {
+                    string o = "", e = "", cnt = "", e2 = "";
+                    App.AdbCallQuiet(new List<string> { "shell",
+                        "pkill -f com.android.commands.monkey; pkill -f 'logcat -f'" },
+                        out o, out e);
+                    // 复查一次，把真实结果告诉用户（不猜）
+                    App.AdbCallQuiet(new List<string> { "shell",
+                        "ps -A -o PID,NAME | grep -c 'commands.monkey'" },
+                        out cnt, out e2);
+                    int n = 0; int.TryParse((cnt ?? "").Trim(), out n);
+                    if (n > 0) { App.Warn("设备侧仍有 " + n + " 个 monkey 进程未退出（可能无权限杀）"); }
+                    else { App.Ok("设备侧长驻进程已清理"); }
+                }
+                catch (Exception ex) { GuiEntry.Dump("KillDeviceSidePersistent", ex); }
+            }));
+            th.IsBackground = true;
+            th.Start();
         }
 
         /// <summary>是否为长驻命令（会持续运行到用户停止）。</summary>
