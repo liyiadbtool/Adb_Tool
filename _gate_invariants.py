@@ -685,4 +685,22 @@ for n, r, d in rows:
     if r == "FAIL":
         sys.stdout.write("FAIL | %s | %s\n" % (n, d))
 sys.stdout.write("合计 %d 项，失败 %d 项 -> %s\n" % (len(rows), len(fails), OUT))
+
+# 2026-11-25（C6）：--update 时把"未登记新增"整理成可粘贴片段，减少手工翻基线
+if "--update" in sys.argv:
+    import re as _re
+    _ns = []
+    for _n, _r, _d in rows:
+        if _r == "FAIL":
+            _m = _re.search(r"未登记新增s?\s*\[([^\]]*)\]", _d or "")
+            if _m:
+                for _x in _re.findall(r"'([^']+)'", _m.group(1)):
+                    if _x not in _ns:
+                        _ns.append(_x)
+    if _ns:
+        sys.stdout.write("\n--update 需要补进基线（共 %d 个）：\n" % len(_ns))
+        for _i in range(0, len(_ns), 6):
+            sys.stdout.write('        ' + ", ".join('"%s"' % _k for _k in _ns[_i:_i+6]) + ",\n")
+    else:
+        sys.stdout.write("\n--update：没有需要补的基线项\n")
 sys.exit(1 if fails else 0)
