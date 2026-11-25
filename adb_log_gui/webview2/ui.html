@@ -13784,6 +13784,7 @@ var quickGroups = [
   { name:'指令执行', color:'var(--accent)', items:[
     // ---- 采集与导出 ----
     {name:'一键截图', desc:'无感知截屏保存到桌面 logcat', cmd:':shot', cat:'采集导出'},
+    {name:'一键截图并立即打开', desc:'截图后立即用系统看图打开', cmd:':shotopen', cat:'采集导出'},
     {name:'一键录屏', desc:'截帧录屏保存到桌面 logcat（约3fps）', cmd:':rec', toggle:true, progress:true, cat:'采集导出'},
     // 「导出APK」已挪到「APK管理」分组（2026-11-13）：那里的对象是"选中的应用"，
     // 而不是"当前前台"。命令本身（:apk）仍然可用，只是不再占一张卡片。
