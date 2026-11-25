@@ -441,9 +441,7 @@ body{
 .qinp:focus{ border-color:var(--accent); background:var(--well); }
 .qinp::placeholder{ color:var(--text-faint); }
 .qcard:hover{border-color:var(--border-strong);background:var(--surface-2);}
-/* 2026-11-25：去掉点击缩放（transform 触发整块重绘，像"页面缩一下"） */
-.qcard{transition:border-color .15s ease,background-color .15s ease,color .15s ease;}
-.qcard:active{border-color:var(--accent);background:var(--surface-2);}
+.qcard:active{transform:scale(.98);}
 .qcard .qhead{display:flex;align-items:center;gap:8px;margin-bottom:5px;min-width:0;}
 .qcard .qico{flex:0 0 auto;width:16px;height:16px;color:var(--text-faint);}
 .qcard .qico svg{width:16px;height:16px;display:block;}
@@ -471,7 +469,6 @@ body{
    让"正在执行"成为一个附加状态而不是替代外观。
    卡片禁用点击只在整个命令结束时解除（endRun → 移除 .running）。 */
 .qcard.running{border-color:var(--accent);background:var(--surface-2);}
-.qcard:not(.running) .qcmd::after{content:"";}
 .qcard.running .qname{color:var(--accent);}
 .qcard.running .qcmd::after{content:" · 执行中…";color:var(--accent);}
 .qcard.running:not(.toggle){pointer-events:none;}
