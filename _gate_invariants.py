@@ -102,7 +102,7 @@ A9_ADDS = {
         "openCustomMgr", "closeCustomMgr", "cmBackdrop", "cmNew", "cmSave",
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
         "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
-        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath", "browseOutPath", "opHas", "outpathdir",   # 2026-11-25：导出路径面板
+        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath", "browseOutPath", "opHas", "op-backdrop", "outpathdir",   # 2026-11-25：导出路径面板
     ]),
     "ids": set([
         # 9 色强调色
@@ -424,7 +424,7 @@ A36_ADDS = {
                 "mk-subtabs", "mk-sub-native", "mk-sub-fastbot",
                 "fb-status", "fb-hint", "fb-deploy-btn", "fb-cfg",
                 "fb-minutes", "fb-throttle", "fb-agent",
-                "fb-bugreport", "fb-keep-model", "fb-outdir", "fb-seg", "fb-autoclean", "fb-snap", "wadb-code", "wadb-pair", "op-panel", "op-id", "op-path", "op-list",
+                "fb-bugreport", "fb-keep-model", "fb-outdir", "fb-seg", "fb-autoclean", "fb-snap", "wadb-code", "wadb-pair", "op-panel", "op-id", "op-path", "op-list", "op-backdrop",
                 "fb-start", "fb-stop", "fb-est", "fb-state",
                 "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
                 "fastbot-out",

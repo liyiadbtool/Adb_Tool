@@ -5536,6 +5536,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .qgear:hover{color:var(--accent);background:var(--surface-2);}
 .qgear.set{opacity:.95;color:var(--ok);}
 .qgear.set::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--ok);}
+
+/* 2026-11-25：导出路径改成遮罩弹窗（原来是指令页内展开的面板） */
+.op-mask{position:fixed;inset:0;background:var(--scrim);z-index:90;display:flex;align-items:center;justify-content:center;}
+.op-mask .op-panel{width:min(560px,92vw);margin:0;background:var(--surface);border:1px solid var(--rim);border-radius:var(--r-4);padding:16px;box-shadow:var(--shadow-lg);}
 </style>
 
 
@@ -6088,7 +6092,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 <div class="op-bar">
             <button class="btn ghost sm" onclick="openOutPath()" title="为各导出指令设置独立目录">导出路径设置</button>
           </div>
-          <div class="op-panel" id="op-panel" style="display:none">
+          <div class="op-mask" id="op-backdrop" style="display:none" onmousedown="if(event.target===this)closeOutPath()"><div class="op-panel" id="op-panel">
             <div class="op-row">
               <span class="op-lbl">指令</span>
               <input class="mk-inp" id="op-id" placeholder="apk / dlog / shotopen …" spellcheck="false" style="width:150px">
@@ -6099,7 +6103,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
               <button class="btn ghost sm" onclick="closeOutPath()">关闭</button>
             </div>
             <div class="op-list" id="op-list"></div>
-          </div>
+          </div></div>
           <div class="quick-grid" id="quick-grid"></div>
           </div>
         </div>
@@ -22291,10 +22295,10 @@ document.addEventListener('DOMContentLoaded', function (){
 
 
 // 2026-11-25：导出路径设置面板（C 方案）。⚙ 图标（B 方案）复用同一函数。
-function openOutPath(id){var p=document.getElementById('op-panel');if(!p)return;p.style.display='block';
+function openOutPath(id){var p=document.getElementById('op-backdrop');if(!p)return;p.style.display='flex';
   if(id){var e=document.getElementById('op-id');if(e)e.value=id;}
   postObj({kind:'outpath',act:'list'});}
-function closeOutPath(){var p=document.getElementById('op-panel');if(p)p.style.display='none';}
+function closeOutPath(){var p=document.getElementById('op-backdrop');if(p)p.style.display='none';}
 function saveOutPath(){
   var id=(document.getElementById('op-id')||{}).value||'';
   var path=(document.getElementById('op-path')||{}).value||'';
