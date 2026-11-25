@@ -4320,7 +4320,15 @@ namespace AdbLogExport.Gui
                 string adb = App.ADB;
                 if (string.IsNullOrEmpty(adb)) adb = "adb";
 
-                string serial = App.SERIAL;
+                /* 2026-11-25（B5 第一步）：设备号解析对齐 BuildPsi。
+                   原来只认 ini 的 SERIAL：没填就不带 -s（多设备必报错），
+                   填了但设备已换（SERIAL_OK=false）则报 not found。 */
+                string sub0 = (adbArgs ?? "").TrimStart().Split(' ')[0].ToLowerInvariant();
+                bool isGlobal = (sub0 == "devices" || sub0 == "version" || sub0 == "connect"
+                    || sub0 == "disconnect" || sub0 == "pair" || sub0 == "mdns"
+                    || sub0 == "start-server" || sub0 == "kill-server");
+                string serial = isGlobal ? ""
+                    : ((!string.IsNullOrEmpty(App.SERIAL) && App.SERIAL_OK) ? App.SERIAL : App.DEVID);
                 string full = "\"" + adb + "\"";
                 if (!string.IsNullOrEmpty(serial))
                     full += " -s " + serial;
