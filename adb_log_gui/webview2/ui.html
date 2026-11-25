@@ -5529,6 +5529,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .op-lbl{font-size:12px;color:var(--text-dim);}
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
+
+/* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
+.qgear{opacity:0;margin-left:auto;font-size:13px;color:var(--text-dim);cursor:pointer;transition:opacity .12s ease;}
+.qcard:hover .qgear{opacity:1;}
+.qgear:hover{color:var(--accent);}
 </style>
 
 
@@ -14666,6 +14671,7 @@ function renderQuickItems(){
     html += '<div class="'+cls+'" data-j="'+j+'" onclick="qcardClick(event,'+j+')">'
       + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
       + '<span class="qname" title="'+escAttr(it.name)+'">'+escHtml(it.name)+'</span>'
+      + '<span class="qgear" title="设置导出路径" onclick="event.stopPropagation();qcardOutPath('+j+')">⚙</span>'
       + (it.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
       + '</div>'
       + '<div class="qcmd" title="'+escAttr(sub)+'">'+escHtml(sub)+'</div>'
@@ -22292,6 +22298,16 @@ function renderOutPathList(obj){
   var keys=Object.keys(obj||{});
   if(!keys.length){box.textContent='当前全部使用默认路径：桌面\\logcat\\<日期>\\<类型>';return;}
   box.innerHTML=keys.map(function(k){return '<div>'+k+' → '+(obj[k]||'')+'</div>';}).join('');
+}
+
+// 2026-11-25（B 方案）：卡片⚙ → 打开导出路径面板，并预填该卡片的指令名
+function qcardOutPath(j){
+  try{
+    var g = quickGroups[_quickIdx];
+    var it = g && g.items ? g.items[j] : null;
+    var id = it && it.cmd ? String(it.cmd).replace(/^:/,'').split(' ')[0] : '';
+    openOutPath(id);
+  }catch(e){ openOutPath(''); }
 }
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，

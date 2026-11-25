@@ -102,7 +102,7 @@ A9_ADDS = {
         "openCustomMgr", "closeCustomMgr", "cmBackdrop", "cmNew", "cmSave",
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
         "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
-        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist",   # 2026-11-25：导出路径面板
+        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath",   # 2026-11-25：导出路径面板
     ]),
     "ids": set([
         # 9 色强调色
