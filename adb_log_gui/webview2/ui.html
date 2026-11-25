@@ -5503,6 +5503,20 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 3. 投屏页"屏 2"卡片：只隐藏卡片，display 2 仍可用于仪表投屏 */
 .crow[data-cast="2"]{display:none !important;}   /* 屏2 卡片隐藏（display 2 仍可用于仪表投屏） */
+
+/* ==================== 2026-11-25 第 10 项：原生 Monkey 页与 Fastbot 对齐 ==================== */
+/* 原生 Monkey 是系统自带能力，无需部署 —— 若残留部署区则隐藏（Fastbot 专属） */
+#mk-sub-native .mk-deploy,#mk-sub-native #mk-deploy,#mk-sub-native [id*="deploy"]{display:none !important;}
+
+/* 统一底部结构：操作按钮 + 统计同一行（与 Fastbot 一致） */
+#mk-sub-native .mk-stats{
+  display:flex !important;align-items:center !important;gap:12px !important;
+  flex-wrap:wrap !important;margin-top:-2px !important;
+}
+#mk-sub-native .mk-out{flex:1 1 auto !important;min-height:120px !important;max-height:none !important;}
+
+/* 原生页容器同样允许纵向滚动，窗口矮时能看到底部按钮与统计 */
+#mk-sub-native .mk-wrap{overflow-y:auto !important;overflow-x:hidden !important;padding-bottom:18px !important;}
 </style>
 
 
