@@ -5523,6 +5523,12 @@ body[data-navlabels="0"] .filenav-item.active::after{
   display:block !important;min-width:0 !important;
   white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;
 }
+
+.op-bar{display:flex;justify-content:flex-end;margin:-2px 0 8px;}
+.op-panel{border:1px solid var(--rim);border-radius:var(--r-3);background:var(--surface);padding:10px;margin-bottom:10px;}
+.op-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.op-lbl{font-size:12px;color:var(--text-dim);}
+.op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 </style>
 
 
@@ -6072,7 +6078,21 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <div class="cm-grid" id="cm-grid"></div>
           </div>
 
-<div class="quick-grid" id="quick-grid"></div>
+<div class="op-bar">
+            <button class="btn ghost sm" onclick="openOutPath()" title="为各导出指令设置独立目录">导出路径设置</button>
+          </div>
+          <div class="op-panel" id="op-panel" style="display:none">
+            <div class="op-row">
+              <span class="op-lbl">指令</span>
+              <input class="mk-inp" id="op-id" placeholder="apk / dlog / shotopen …" spellcheck="false" style="width:150px">
+              <span class="op-lbl">路径</span>
+              <input class="mk-inp" id="op-path" placeholder="留空并保存 = 恢复默认（桌面\logcat）" spellcheck="false" style="flex:1">
+              <button class="btn primary sm" onclick="saveOutPath()">保存</button>
+              <button class="btn ghost sm" onclick="closeOutPath()">关闭</button>
+            </div>
+            <div class="op-list" id="op-list"></div>
+          </div>
+          <div class="quick-grid" id="quick-grid"></div>
           </div>
         </div>
       </div>
@@ -10282,6 +10302,7 @@ function onMessage(ev){
   // v12：标题栏状态 / 偏好 / 文本编辑器消息先处理（返回 true = 已消费）
   if(typeof v12OnMessage === 'function' && v12OnMessage(msg)) return;
   switch(msg.kind){
+    case 'outpathlist': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
     case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
     case 'line': appendLine(msg); break;
     case 'lines': appendLines(msg.items); break;   // 批量帧（性能优化）
@@ -22253,6 +22274,25 @@ document.addEventListener('DOMContentLoaded', function (){
   try { if(typeof diagLoadFold === 'function') diagLoadFold(); } catch(e) {}
 })();
 
+
+// 2026-11-25：导出路径设置面板（C 方案）。⚙ 图标（B 方案）复用同一函数。
+function openOutPath(id){var p=document.getElementById('op-panel');if(!p)return;p.style.display='block';
+  if(id){var e=document.getElementById('op-id');if(e)e.value=id;}
+  postObj({kind:'outpath',act:'list'});}
+function closeOutPath(){var p=document.getElementById('op-panel');if(p)p.style.display='none';}
+function saveOutPath(){
+  var id=(document.getElementById('op-id')||{}).value||'';
+  var path=(document.getElementById('op-path')||{}).value||'';
+  if(!id.trim()){toast('请填指令名，例如 apk','err');return;}
+  postObj({kind:'outpath',act:'set',id:id.trim(),path:path.trim()});
+  postObj({kind:'outpath',act:'list'});
+}
+function renderOutPathList(obj){
+  var box=document.getElementById('op-list');if(!box)return;
+  var keys=Object.keys(obj||{});
+  if(!keys.length){box.textContent='当前全部使用默认路径：桌面\\logcat\\<日期>\\<类型>';return;}
+  box.innerHTML=keys.map(function(k){return '<div>'+k+' → '+(obj[k]||'')+'</div>';}).join('');
+}
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，
      否则两个同名应用根本分不清谁是谁。 -->

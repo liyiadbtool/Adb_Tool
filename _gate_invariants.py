@@ -102,6 +102,7 @@ A9_ADDS = {
         "openCustomMgr", "closeCustomMgr", "cmBackdrop", "cmNew", "cmSave",
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
         "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
+        "openOutPath", "closeOutPath", "saveOutPath", "outpathlist",   # 2026-11-25：导出路径面板
     ]),
     "ids": set([
         # 9 色强调色
@@ -119,7 +120,7 @@ A9_ADDS = {
 # 删除必须逐条写理由，不能因为"反正门禁会过"就悄悄抹掉功能。
 A12_ADDS = {
     # 2026-11-21：toast（C# 主动弹提示，配置文件导出/导入的结果反馈）
-    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast"]),
+    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast", "outpathlist"]),
     "onclicks": set([
         # 自绘标题栏
         "tbDrag", "tbMin", "tbMax", "tbClose", "appClose", "toggleSettings", "closeSettings",
@@ -423,7 +424,7 @@ A36_ADDS = {
                 "mk-subtabs", "mk-sub-native", "mk-sub-fastbot",
                 "fb-status", "fb-hint", "fb-deploy-btn", "fb-cfg",
                 "fb-minutes", "fb-throttle", "fb-agent",
-                "fb-bugreport", "fb-keep-model", "fb-outdir", "fb-seg", "fb-autoclean", "fb-snap", "wadb-code", "wadb-pair",
+                "fb-bugreport", "fb-keep-model", "fb-outdir", "fb-seg", "fb-autoclean", "fb-snap", "wadb-code", "wadb-pair", "op-panel", "op-id", "op-path", "op-list",
                 "fb-start", "fb-stop", "fb-est", "fb-state",
                 "fb-st-crash", "fb-st-anr", "fb-st-cov", "fb-st-act", "fb-st-elapsed",
                 "fastbot-out",
