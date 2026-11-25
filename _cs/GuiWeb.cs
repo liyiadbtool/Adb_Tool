@@ -1984,6 +1984,31 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                /* 2026-11-25：导出路径的前端接口（供卡片弹窗读写）
+                   act=set  → data=指令id，path=路径（空=恢复默认）
+                   act=list → 返回所有已设置项 */
+                case "outpath":
+                    {
+                        try
+                        {
+                            string act2 = GetField(json, "act");
+                            string id2 = GetField(json, "id");
+                            string path2 = GetField(json, "path");
+                            if (act2 == "set")
+                            {
+                                App.SetExportPath((id2 ?? "").Trim().ToLowerInvariant(), (path2 ?? "").Trim());
+                                PushOnUi("{\"kind\":\"toast\",\"ok\":true,\"text\":\"导出路径已保存\"}");
+                            }
+                            else
+                            {
+                                string all = App.ExportPathsJson();
+                                PushOnUi("{\"kind\":\"outpathlist\",\"data\":" + Json(all) + "}");
+                            }
+                        }
+                        catch (Exception ex) { GuiEntry.Dump("outpath", ex); }
+                    }
+                    break;
+
                 case "stop":
                     int stopSlot = 0;
                     string ssraw = GetField(json, "slot");

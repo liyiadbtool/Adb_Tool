@@ -413,6 +413,23 @@ namespace AdbLogExport
             }
             catch { }
         }
+        /// <summary>给前端用的全量快照（JSON）。</summary>
+        internal static string ExportPathsJson()
+        {
+            var map = ExportPaths();
+            var sb = new StringBuilder("{");
+            bool first = true;
+            foreach (var kv in map)
+            {
+                if (!first) sb.Append(",");
+                first = false;
+                sb.Append("\"").Append(kv.Key.Replace("\\", "\\\\").Replace("\"", "\\\""))
+                  .Append("\":\"").Append(kv.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")).Append("\"");
+            }
+            sb.Append("}");
+            return sb.ToString();
+        }
+
         internal static string GetExportPath(string cmdId)
         {
             if (string.IsNullOrEmpty(cmdId)) return "";
