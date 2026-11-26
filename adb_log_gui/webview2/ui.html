@@ -22599,20 +22599,35 @@ function renderOutPathList(obj){
 /* 2026-11-26：齿轮改为事件委托。
    内联 onclick 在反复重渲染/冒泡被拦截时不稳，改为 document 捕获阶段统一处理：
    命中 .qgear 就拦下，直接打开导出路径弹窗，卡片点击不再参与。 */
-document.addEventListener('click', function(e){
+/* 2026-11-26（真因）：卡片的拖拽在 pointerdown 上调用 setPointerCapture(卡片)，
+   指针捕获后，后续 mousedown / mouseup / click 全部被重定向到 .qcard，
+   齿轮永远收不到 click —— 这就是"点齿轮没反应、点卡片正常"的原因
+   （见 ui.html 里 14600 行自带注释：指针捕获会把后续事件重定向到卡片）。
+
+   修法：在 **pointerdown 捕获阶段** 拦下 .qgear：
+   stopPropagation 让卡片的指针捕获根本不会发生，再直接打开弹窗。 */
+document.addEventListener('pointerdown', function(e){
   var g = e.target && e.target.closest ? e.target.closest('.qgear') : null;
   if (!g) return;
   e.stopPropagation();
   e.preventDefault();
   var j = parseInt(g.getAttribute('data-j'), 10);
   if (isNaN(j)) j = 0;
-  qcardOutPath(j);
+  _geeaDebug('pointerdown gear j=' + j);
+  var bk = document.getElementById('op-backdrop');
+  if (bk && getComputedStyle(bk).display !== 'none') return;
+  try { qcardOutPath(j); } catch (err) { _geeaDebug('ERR ' + (err && err.message)); }
 }, true);
 
-document.addEventListener('mousedown', function(e){
-  var g = e.target && e.target.closest ? e.target.closest('.qgear') : null;
-  if (g) { e.stopPropagation(); }
-}, true);
+var _geeaLast = '';
+function _geeaDebug(t){
+  _geeaLast = t;
+  try {
+    var sub = document.getElementById('tb-sub');
+    if (sub) sub.textContent = t;
+    document.title = 'adb_Tool · ' + t;
+  } catch (e) {}
+}
 
 function qcardOutPath(j){
   try{
