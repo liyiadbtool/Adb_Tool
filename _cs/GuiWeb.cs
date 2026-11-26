@@ -314,6 +314,8 @@ namespace AdbLogExport.Gui
 
         // 页面驱动的边缘缩放：记住按下瞬间的窗口矩形，之后只套"总位移"
         private bool _rzActive = false;
+        // 2026-11-26：D2 修复引入的死循环保护 —— Normal↔Maximized 切换会再次触发 OnResize
+        private bool _fixingMax = false;
         private string _rzDir = "";
         private Rectangle _rzRect = Rectangle.Empty;
 
@@ -981,8 +983,9 @@ namespace AdbLogExport.Gui
             /* 2026-11-26（D2）：最大化时窗口越界 → 底部输出条落到屏幕外。
                原因：MaximizedBounds 只在 OnLoad 算一次，换屏/任务栏变化/DPI 调整后失效。
                这里按当前状态补一次：正常态重算目标矩形，最大化态检查并纠正。 */
+            /* 只在正常态重算目标矩形。最大化态的越界纠正放到 WM_EXITSIZEMOVE
+               与显示设置变化事件里做 —— 在 OnResize 里切状态会自激（窗口上下闪）。 */
             if (WindowState == FormWindowState.Normal) UpdateMaximizedBounds();
-            else if (WindowState == FormWindowState.Maximized) EnsureInsideWorkingArea(false);
         }
 
         /* 纠正"最大化但超出工作区"：窗口 Bottom 超过 WorkingArea.Bottom 时，
@@ -996,12 +999,17 @@ namespace AdbLogExport.Gui
                 bool outOfArea = b.Bottom > wa.Bottom + 1 || b.Top < wa.Top - 1
                               || b.Right > wa.Right + 1 || b.Left < wa.Left - 1;
                 if (!outOfArea && !force) return;
+                if (_fixingMax) return;          // 防止 OnResize → 切状态 → OnResize 死循环
+                _fixingMax = true;
                 MaximizedBounds = wa;
                 if (WindowState == FormWindowState.Maximized)
                 {
                     WindowState = FormWindowState.Normal;
                     WindowState = FormWindowState.Maximized;
                 }
+                // 用 BeginInvoke 解锁，避开本帧内的重入（否则仍可能在同一消息循环里连切）
+                try { BeginInvoke((Action)delegate { _fixingMax = false; }); }
+                catch { _fixingMax = false; }
             }
             catch { }
         }

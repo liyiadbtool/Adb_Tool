@@ -14751,7 +14751,7 @@ function renderQuickItems(){
     html += '<div class="'+cls+'" data-j="'+j+'" onclick="qcardClick(event,'+j+')">'
       + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
       + '<span class="qname" title="'+escAttr(it.name||'')+'">'+escHtml(it.name||'')+'</span>'
-      + (it.exp ? '<span class="qgear'+(opHas(it.cmd)?' set':'')+'" title="设置导出路径" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();qcardOutPath('+j+')">⚙</span>' : '')
+      + (it.exp ? '<span class="qgear'+(opHas(it.cmd)?' set':'')+'" data-j="'+j+'" title="设置导出路径">⚙</span>' : '')
       + (it.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
       + '</div>'
       + '<div class="qcmd" title="'+escAttr(sub||'')+'">'+escHtml(sub||'')+'</div>'
@@ -22590,6 +22590,24 @@ function renderOutPathList(obj){
 }
 
 // 2026-11-25（B 方案）：卡片⚙ → 打开导出路径面板，并预填该卡片的指令名
+/* 2026-11-26：齿轮改为事件委托。
+   内联 onclick 在反复重渲染/冒泡被拦截时不稳，改为 document 捕获阶段统一处理：
+   命中 .qgear 就拦下，直接打开导出路径弹窗，卡片点击不再参与。 */
+document.addEventListener('click', function(e){
+  var g = e.target && e.target.closest ? e.target.closest('.qgear') : null;
+  if (!g) return;
+  e.stopPropagation();
+  e.preventDefault();
+  var j = parseInt(g.getAttribute('data-j'), 10);
+  if (isNaN(j)) j = 0;
+  qcardOutPath(j);
+}, true);
+
+document.addEventListener('mousedown', function(e){
+  var g = e.target && e.target.closest ? e.target.closest('.qgear') : null;
+  if (g) { e.stopPropagation(); }
+}, true);
+
 function qcardOutPath(j){
   try{
     var g = quickGroups[_quickIdx];
