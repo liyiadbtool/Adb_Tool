@@ -95,6 +95,7 @@ clientWidth 差 15~18px → gutter 问题；scrollHeight 明显变化 → 异步
 | D1 | 切页/开面板抖动（40 处 gutter + 异步填充） | 高 | 记录，未修 |
 | D2 | 最大化时底部输出条被遮挡（已确认：窗口越界，底部在屏幕外） | 高 | 记录，未修 |
 | D3 | 导出路径齿轮偏小 / 点击看似无响应（弹窗在 overflow 容器内） | 高 | 记录，未修 |
+| D4 | 文本阅读导入文件无反应（`#page-text` 已不存在，切换语句失效） | 中高 | 记录，未修 |
 
 ---
 
@@ -137,4 +138,52 @@ clientWidth 差 15~18px → gutter 问题；scrollHeight 明显变化 → 异步
 ```
 
 **优先级**：高（功能入口，用户直接感知）
+
+---
+
+## D4 文件页「文本阅读」导入文件无反应
+
+**现象**：文件 → 文本阅读 → 点「打开」，选完文件后界面没有变化。
+
+**前端链路**
+
+```js
+txOpen()  →  post('textopen','')                    // {kind:'textopen', data:''}
+回包 textfile → if ($v12('page-text')) switchTab('text');  // ← 该元素已不存在
+              → txApplyFile(msg)
+```
+
+**关键问题 1：`#page-text` 已不存在**
+
+第 7 批把 ui/text 合并进文件页（`#fileview-text`），旧容器 `#page-text` 已移除。
+`$v12('page-text')` 恒为 `null` → 那句 `switchTab('text')` **永远不会执行**。
+
+后果：如果用户当前不在「文本阅读」子视图，文件读进来了但页面不切过去，
+看起来就是“点了没反应”。
+
+**关键问题 2：后端对话框与读盘是两条独立路径**
+
+```
+RunTextOpen()  OpenFileDialog（UI 线程）
+   ↓ 确定
+new Thread → ReadTextFile() → PushRaw({kind:'textfile', ...})
+```
+
+对话框本身没有问题，但它是**模态**的；若窗口处于最大化越界状态（见 D2），
+对话框可能出现在屏幕外/窗口下方，用户会以为“没弹出来”。
+
+**关键问题 3：无错误反馈通道**
+
+失败分支只发 `{kind:'texterr'}` → `toast()`。若前端当时在别的页签，
+toast 可能被遮住或一闪而过。
+
+**建议修法**
+
+```
+① 回包处理改为：先 fileNavSwitch('text')（新入口），再 txApplyFile
+② 导入成功后自动切到「文本阅读」子视图并把焦点给编辑区
+③ 失败时除了 toast，同时在文本区显示一行红色提示
+```
+
+**优先级**：中高（功能不可达）
 
