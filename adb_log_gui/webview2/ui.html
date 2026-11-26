@@ -4732,6 +4732,16 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .diag-diff-arrow{ color:var(--text-faint); }
 .diag-diff-item.chg .diag-diff-v{ color:var(--accent); font-weight:600; }
 
+/* 2026-11-26（D1）：统一滚动条占位。此前全站只有 8 个容器设了 gutter，
+   其余 30+ 个没设，内容跨过阈值就横向挤 15px（切页/开面板时"缩一下"）。 */
+.mk-wrap, .set-body, .help-toc, .help-doc, .cm-body, .cm-list,
+.apk-mgr-list, .apk-out, .ns-out, .ui-wrap, .ui-resultbox,
+.heap-list, .tx-tabs {
+  scrollbar-gutter: stable;
+}
+
+/* 诊断页数据异步填充会让高度跳变；先占位，回来时不顶动下方卡片 */
+[id^="diag-rows-"]{ min-height: 168px; }
 .diag-scroll{
   flex:1 1 auto; min-height:0;
   overflow-y:auto; overflow-x:hidden;
