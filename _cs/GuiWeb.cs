@@ -4666,11 +4666,16 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                 return;
             }
 
+            // 2026-11-26：一并回传 mtime/size，供保存前做「外部已修改」比对
+            long mt = 0, sz = 0;
+            try { var fi = new FileInfo(path); mt = fi.LastWriteTimeUtc.Ticks; sz = fi.Length; } catch { }
             PushRaw("{\"kind\":\"textfile\",\"name\":" + Json(name)
                     + ",\"path\":" + Json(path)
                     + ",\"enc\":" + Json(enc)
                     + ",\"eol\":" + Json(eol)
                     + ",\"trunc\":" + (trunc ? "1" : "0")
+                    + ",\"mtime\":" + mt
+                    + ",\"size\":" + sz
                     + ",\"data\":" + Json(B64(text)) + "}");
         }
 
@@ -4705,6 +4710,25 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
 
             try
             {
+                /* 2026-11-26：保存前检查文件是否被外部改写（日志被追写是常见场景）。
+                   比对 mtime+size；不一致且页面未带 force 时，先问用户，不直接覆盖。 */
+                string force = GetField(json, "force");
+                string mtRaw = GetField(json, "mtime");
+                string szRaw = GetField(json, "size");
+                if (force != "1" && !string.IsNullOrEmpty(mtRaw) && File.Exists(path))
+                {
+                    long mt0 = 0, sz0 = 0, mt1 = 0, sz1 = 0;
+                    long.TryParse(mtRaw, out mt0); long.TryParse(szRaw, out sz0);
+                    try { var fi2 = new FileInfo(path); mt1 = fi2.LastWriteTimeUtc.Ticks; sz1 = fi2.Length; } catch { }
+                    if ((mt0 > 0 && mt1 != mt0) || (sz0 > 0 && sz1 != sz0))
+                    {
+                        PushRaw("{\"kind\":\"textstale\",\"path\":" + Json(path)
+                                + ",\"name\":" + Json(Path.GetFileName(path))
+                                + ",\"mtime\":" + mt1 + ",\"size\":" + sz1 + "}");
+                        return;
+                    }
+                }
+
                 string outText = text;
                 if (eol == "CRLF") outText = outText.Replace("\r\n", "\n").Replace("\n", "\r\n");
 

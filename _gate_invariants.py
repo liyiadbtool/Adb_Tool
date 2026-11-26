@@ -120,7 +120,7 @@ A9_ADDS = {
 # 删除必须逐条写理由，不能因为"反正门禁会过"就悄悄抹掉功能。
 A12_ADDS = {
     # 2026-11-21：toast（C# 主动弹提示，配置文件导出/导入的结果反馈）
-    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "toast", "outpathlist", "outpathdir"]),
+    "kinds": set(["winstate", "prefs", "textfile", "textsaved", "texterr", "textstale", "toast", "outpathlist", "outpathdir"]),
     "onclicks": set([
         # 自绘标题栏
         "tbDrag", "tbMin", "tbMax", "tbClose", "appClose", "toggleSettings", "closeSettings",
@@ -132,7 +132,7 @@ A12_ADDS = {
         "txReplaceOne", "txReplaceAll", "txGoto", "txSetEnc", "txSetEol",
         "txToggleWrap", "txZoom", "txUndoRedo", "txSyncCaret", "txSelect", "txClose",
         # 2026-11-26：导出路径（下拉选择/删除）
-        "outPathPick", "delOutPath", "txReopen",
+        "outPathPick", "delOutPath", "txReopen", "txConvertEnc", "txVisibleForceSave",
         # 2026-11-21：配置文件（设置页两个按钮）
         "cfgExport", "cfgImport",
         # 2026-11-23：仪表投屏 —— 从 ClusterDebugTool 导入通道配置
@@ -148,7 +148,7 @@ A12_ADDS = {
         "cf-mask", "cf-panel", "cf-title", "cf-text", "cf-sub", "cf-danger",
         "cf-ok", "cf-cancel",
         # 2026-11-26：导出路径弹窗重构（下拉选择 / 删除按钮 / 标题）
-        "op-title", "op-row-id", "op-sel", "op-del", "tx-reopen",
+        "op-title", "op-row-id", "op-sel", "op-del", "tx-reopen", "tx-convert",
         "set-mask", "set-theme", "set-font", "set-font-preview",
         "help-mask", "help-toc", "help-doc", "help-search",
         "page-text", "tx-tabs", "tx-find", "tx-find-i", "tx-repl-i", "tx-find-n",

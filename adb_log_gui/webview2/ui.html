@@ -6347,7 +6347,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <label class="tx-lbl">编码
             <select id="tx-enc" onchange="txSetEnc(this.value)">
               <option>UTF-8</option><option>UTF-8 BOM</option><option>GBK</option><option>UTF-16 LE</option>
-            </select><button class="tx-btn" id="tx-reopen" onclick="txReopen()" title="按当前选择的编码重新读取文件（不修改文件内容）">重读</button>
+            </select><button class="tx-btn" id="tx-reopen" onclick="txReopen()" title="按当前选择的编码重新读取文件（不修改文件内容）">重读</button><button class="tx-btn" id="tx-convert" onclick="txConvertEnc()" title="按当前选择的编码重写文件（会修改文件内容）">转为</button>
           </label>
           <label class="tx-lbl">换行
             <select id="tx-eol" onchange="txSetEol(this.value)">
@@ -7205,14 +7205,15 @@ function confirmBox(o){
   var ok = document.getElementById('cf-ok'), cancel = document.getElementById('cf-cancel');
   ok.textContent = o.okText || '确定';
   ok.className = o.okDanger ? 'btn danger sm' : 'btn primary sm';   // 复用既有 .btn.danger
-  function close(){ mask.style.display='none'; document.removeEventListener('keydown', onKey); }
+  function close(isOk){ mask.style.display='none'; document.removeEventListener('keydown', onKey);
+    if (!isOk && o.onCancel) { try { o.onCancel(); } catch(e){} } }
   function onKey(e){
-    if (e.key === 'Escape'){ e.preventDefault(); close(); }
+    if (e.key === 'Escape'){ e.preventDefault(); close(false); }
     else if (e.key === 'Enter'){ e.preventDefault(); ok.click(); }
   }
-  ok.onclick = function(){ close(); try { if (o.onOk) o.onOk(); } catch(err){} };
-  cancel.onclick = close;
-  mask.onmousedown = function(e){ if (e.target === mask) close(); };
+  ok.onclick = function(){ close(true); try { if (o.onOk) o.onOk(); } catch(err){} };
+  cancel.onclick = function(){ close(false); };
+  mask.onmousedown = function(e){ if (e.target === mask) close(false); };
   mask.style.display = 'flex';
   document.addEventListener('keydown', onKey);
   try { cancel.focus(); } catch(e){}
@@ -19328,6 +19329,33 @@ function txReopen(){
   post('textopen', '', undefined, undefined, { enc: enc, path: d.path, name: d.name });
 }
 
+/* 2026-11-26：外部已改但仍要覆盖（带 force=1，跳过服务端二次比对） */
+function txVisibleForceSave(){
+  var d = txDoc(); if (!d) return;
+  post('textsave', '', undefined, undefined, {
+    path: d.path, name: d.name, enc: d.enc, eol: d.eol,
+    mtime: d.mtime || 0, size: d.size || 0, force: '1',
+    data: b64enc(txEl().value)
+  });
+}
+
+/* 2026-11-26（对齐 Notepad++「转为 XX 编码」）：按当前选择的编码重写文件。
+   与「重读」的区别：重读只改显示，转码会真正改写文件字节，不可逆。 */
+function txConvertEnc(){
+  var d = txDoc();
+  if (!d || !d.path) { toast('请先打开一个本地文件', 'err'); return; }
+  var enc = (document.getElementById('tx-enc') || {}).value || 'UTF-8';
+  if (enc === d.enc) { toast('当前已是 ' + enc + '，无需转换', 'ok'); return; }
+  confirmBox({
+    title: '转换编码',
+    text: '把「' + d.name + '」从 ' + d.enc + ' 转为 ' + enc + ' 并写回文件？',
+    sub: '原编码的字节会被重写，转换后无法还原（建议先备份）。',
+    danger: '此操作会直接修改磁盘文件',
+    okText: '转换并保存', okDanger: true,
+    onOk: function(){ txSave(); }
+  });
+}
+
 function txOpen(){
   post('textopen', '');
 }
@@ -19339,6 +19367,8 @@ function txSave(asNew){
     name: d.name,
     enc: d.enc,
     eol: d.eol,
+    mtime: asNew ? '' : (d.mtime || 0),
+    size:  asNew ? '' : (d.size  || 0),
     data: b64enc(txEl().value)
   });
 }
@@ -19357,6 +19387,8 @@ function txApplyFile(msg){
   d.path = msg.path || '';
   d.enc = msg.enc || 'UTF-8';
   d.eol = msg.eol || 'CRLF';
+  d.mtime = msg.mtime || 0;
+  d.size  = msg.size  || 0;
   d.text = text;
   d.dirty = false;
   d.sel = [0, 0];
@@ -19707,6 +19739,25 @@ function v12OnMessage(msg){
       txApplyFile(msg);
       try { if (txEl()) txEl().focus(); } catch (e) {}
       return true;
+    case 'textstale':
+      /* 2026-11-26：文件在编辑期间被外部改写。默认不覆盖，先问。 */
+      (function(){
+        var nm = msg.name || '文件', pth = msg.path || '';
+        confirmBox({
+          title: '文件已被修改',
+          text: '「' + nm + '」在编辑期间被其他程序改写过。',
+          sub: '直接保存会覆盖外部写入的内容。',
+          okText: '仍然覆盖', okDanger: true,
+          onOk: function(){
+            var d = txDoc(); if (!d) return;
+            d.mtime = msg.mtime || 0; d.size = msg.size || 0;
+            txVisibleForceSave();
+          },
+          onCancel: function(){ /* 什么都不做，保持当前编辑内容 */ }
+        });
+      })();
+      return true;
+
     case 'textsaved':
       txSaved(msg);
       return true;
