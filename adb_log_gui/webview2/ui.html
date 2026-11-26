@@ -5531,8 +5531,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 
 /* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
-.qgear{opacity:0;margin-left:auto;flex:0 0 26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:17px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
+.qgear{opacity:.45;margin-left:auto;flex:0 0 26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:17px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
 .qcard:hover 
+.qcard:hover .qgear{opacity:1;}
 .qgear:hover{color:var(--accent);background:var(--surface-2);}
 .qgear.set{opacity:.95;color:var(--ok);}
 .qgear.set::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--ok);}
