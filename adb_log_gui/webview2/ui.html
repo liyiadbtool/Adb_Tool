@@ -22507,31 +22507,35 @@ function opExpItems(){
 }
 
 function openOutPath(id){
-  var p = document.getElementById('op-backdrop'); if(!p) return;
+  var p = document.getElementById('op-backdrop');
+  if (!p) { toast('弹窗元素缺失（请更新到最新版本）', 'err'); return; }
   _opMode = id ? 'lite' : 'full';
   _opId = id || '';
-  var rowId = document.getElementById('op-row-id');
-  var title = document.getElementById('op-title');
-  var sel = document.getElementById('op-sel');
-  if (_opMode === 'full'){
-    rowId.style.display = 'flex';
-    title.textContent = '设置导出路径';
-    var items = opExpItems();
-    var html = '';
-    for (var k = 0; k < items.length; k++)
-      html += '<option value="' + items[k].id + '">' + items[k].name + '（' + items[k].id + '）</option>';
-    sel.innerHTML = html;
-    if (items.length) sel.value = items[0].id;
-    _opId = sel.value;
-  } else {
-    rowId.style.display = 'none';
-    title.textContent = '设置导出路径';
-  }
-  var pathEl = document.getElementById('op-path');
-  if (pathEl) pathEl.value = '';
-  document.getElementById('op-list').textContent = '读取中…';
+  /* 2026-11-26：先显示，再填内容。原先内容填充在前，任何一处节点缺失
+     抛异常都会让弹窗永远不出现，表现就是"点齿轮没反应"（R5：不许一处抛错炸整块）。 */
   p.style.display = 'flex';
-  postObj({kind:'outpath', act:'list'});
+  try {
+    var rowId = document.getElementById('op-row-id');
+    var title = document.getElementById('op-title');
+    var sel = document.getElementById('op-sel');
+    if (title) title.textContent = '设置导出路径';
+    if (_opMode === 'full' && rowId && sel) {
+      rowId.style.display = 'flex';
+      var items = opExpItems(), html = '';
+      for (var k = 0; k < items.length; k++)
+        html += '<option value="' + items[k].id + '">' + items[k].name + '（' + items[k].id + '）</option>';
+      sel.innerHTML = html;
+      if (items.length) sel.value = items[0].id;
+      _opId = sel.value;
+    } else if (rowId) {
+      rowId.style.display = 'none';
+    }
+    var pathEl = document.getElementById('op-path');
+    if (pathEl) pathEl.value = '';
+    var listEl = document.getElementById('op-list');
+    if (listEl) listEl.textContent = '读取中…';
+  } catch (e) { }
+  try { postObj({kind:'outpath', act:'list'}); } catch (e) {}
 }
 
 function outPathPick(id){ _opId = id || ''; onOutPathList(_opCache); }
