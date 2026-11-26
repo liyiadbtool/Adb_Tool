@@ -248,7 +248,7 @@ namespace AdbLogExport
 
             // ---- 拉到桌面 ----
             string dir;
-            try { dir = OutDir("heapdump"); }
+            try { dir = OutDirFor("heapdump", "heapdump"); }
             catch { dir = Path.Combine(DesktopPath(), "logcat", "heapdump"); }
             try { Directory.CreateDirectory(dir); } catch { }
 

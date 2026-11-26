@@ -214,7 +214,7 @@ namespace AdbLogExport
             }
 
             // 落点：桌面\logcat\<今天>\APK（与原来的 :apk 一致）
-            string target = OutDir("APK");
+            string target = OutDirFor("APK", "APK");
             Echo("export-apk", pkg + "  " + paths.Count + " 个文件  →  " + target);
 
             int okCount = 0;

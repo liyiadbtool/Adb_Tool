@@ -233,7 +233,7 @@
           "file": "_cs/TaskCmds.cs",
           "has": [
             "DoShotSilent",
-            "OutDir(\"shot\")"
+            "OutDirFor(\"shot\", \"shot\")"
           ]
         },
         {

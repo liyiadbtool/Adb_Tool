@@ -240,9 +240,9 @@ namespace AdbLogExport.Gui
                 // 不带分类 = 只到日期层；再逐个补三个分类子目录。
                 // 走 App.OutDir 保证与 cmds.ini 里 $(out:xxx) 用的是同一套规则。
                 App.OutDir("");
-                App.OutDir("shot");
-                App.OutDir("rec");
-                App.OutDir("hci");
+                App.OutDirFor("shot", "shot");
+                App.OutDirFor("rec", "rec");
+                App.OutDirFor("hci", "hci");
             }
             catch { }
         }

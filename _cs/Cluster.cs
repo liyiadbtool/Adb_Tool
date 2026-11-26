@@ -377,7 +377,7 @@ namespace AdbLogExport
             if (sec > 1800) sec = 1800;
 
             // 复用与 :castrec 完全相同的一套：OutDir + LaunchRecord
-            string dir = OutDir("screenrecord");
+            string dir = OutDirFor("screenrecord", "screenrecord");
             string file = Path.Combine(dir, "cluster" + displayId + "_"
                           + DateTime.Now.ToString("HHmmss") + ".mp4");
 

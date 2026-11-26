@@ -167,7 +167,7 @@ namespace AdbLogExport
             }
 
             // 落点：桌面\logcat\<今天>\APK\  （目录由 OutDir 即时创建）
-            string target = OutDir("APK");
+            string target = OutDirFor("APK", "APK");
 
             Echo("export-apk", pkg + "  (" + apkPath + ")  →  " + target);
             Export(apkPath, LastSeg(apkPath), target);
@@ -217,7 +217,7 @@ namespace AdbLogExport
                 return;
             }
 
-            string target = OutDir("PCM");
+            string target = OutDirFor("PCM", "PCM");
             Echo("export-pcm", devPath + "  →  " + target);
             Export(devPath, LastSeg(devPath), target);
             if (CMD_OK) Ok("PCM 已导出到 " + target);
@@ -264,7 +264,7 @@ namespace AdbLogExport
                 return;
             }
 
-            string target = OutDir("carplay");
+            string target = OutDirFor("carplay", "carplay");
 
             Echo("export-carplay", devPath + "  →  " + target);
             Export(devPath, LastSeg(devPath), target);
@@ -427,7 +427,7 @@ namespace AdbLogExport
                 return;
             }
 
-            string target = OutDir("anr");
+            string target = OutDirFor("anr", "anr");
             Echo("export-anr", devPath + "  →  " + target);
             // forceZip=true：ANR 目录里常有几十个 txt，逐文件 pull 慢且容易中断
             Export(devPath, LastSeg(devPath), target, true);
@@ -460,7 +460,7 @@ namespace AdbLogExport
                 return;
             }
 
-            string target = OutDir("dropbox");
+            string target = OutDirFor("dropbox", "dropbox");
             Echo("export-dropbox", devPath + "  →  " + target);
             // dropbox 里是 data_app_crash / system_app_anr 这类小文件，数量多，强制打包
             Export(devPath, LastSeg(devPath), target, true);
@@ -905,7 +905,7 @@ namespace AdbLogExport
         {
             if (!RequireDevice("")) return;
 
-            string dir = OutDir("shot");
+            string dir = OutDirFor("shot", "shot");
             string file = Path.Combine(dir, "shot_" + DateTime.Now.ToString("HHmmss") + ".png");
 
             // 构造 argv：adb [-s serial] exec-out screencap -p
@@ -1070,7 +1070,7 @@ namespace AdbLogExport
             string a = (arg == null) ? "" : arg.Trim();
             if (a.Length > 0) { int.TryParse(a, out maxSec); if (maxSec < 1) maxSec = 0; }
 
-            string outDir = OutDir("rec");
+            string outDir = OutDirFor("rec", "rec");
             string ts = DateTime.Now.ToString("HHmmss");
             string frameDir = Path.Combine(Path.GetTempPath(), "adb_tool_rec_" + ts);
             string outMp4 = Path.Combine(outDir, "rec_" + ts + ".mp4");
@@ -1315,7 +1315,7 @@ namespace AdbLogExport
             if (!RequireDevice("")) return;
 
             string dev = "/data/data/com.alipay.arome.app/files/applog";
-            string target = OutDir("alipay");
+            string target = OutDirFor("alipay", "alipay");
 
             Echo("export", dev + "  →  " + target);
             CMD_OK = false;
@@ -1342,7 +1342,7 @@ namespace AdbLogExport
         {
             if (!RequireDevice("")) return;
 
-            string target = OutDir("wmpf");
+            string target = OutDirFor("wmpf", "wmpf");
             string[] remotes = new string[]
             {
                 "/sdcard/Android/data/com.tencent.wmpf/files/xlog",
@@ -1380,7 +1380,7 @@ namespace AdbLogExport
         {
             if (!RequireDevice("")) return;
 
-            string target = OutDir("wxmsg");
+            string target = OutDirFor("wxmsg", "wxmsg");
             string[] remotes = new string[]
             {
                 "/sdcard/Android/data/com.tencent.mm/files/log",
@@ -1608,7 +1608,7 @@ namespace AdbLogExport
             if (parts.Length > 1 && !int.TryParse(parts[1], out sec)) sec = 60;
             if (sec <= 0 || sec > 1800) { Fail("秒数范围 1~1800"); return; }
 
-            string dir = OutDir("screenrecord");
+            string dir = OutDirFor("screenrecord", "screenrecord");
             string file = Path.Combine(dir, "cast" + id + "_"
                           + DateTime.Now.ToString("HHmmss") + ".mp4");
 
@@ -1652,7 +1652,7 @@ namespace AdbLogExport
                 return;
             }
 
-            string dst = OutDir("qnx");
+            string dst = OutDirFor("qnx", "qnx");
             Echo("pull", src + "  →  " + dst);
 
             string o = "", e = "";
@@ -2400,7 +2400,7 @@ namespace AdbLogExport
             steps.Add(new string[] { "remount" });
             RunSteps("导出 dump 前准备（root / remount）", steps);
 
-            string dst = OutDir("audiodump");
+            string dst = OutDirFor("audiodump", "audiodump");
             Echo("pull", src + "  →  " + dst);
 
             string o = "", e = "";

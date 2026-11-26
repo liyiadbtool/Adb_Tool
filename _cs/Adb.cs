@@ -2697,7 +2697,7 @@ namespace AdbLogExport
                旧实现走"先把 PNG 当文本读一遍 + 再 cmd 重定向"，两头都不对：
                PNG 是二进制，文本通道会损坏；第二次重定向的引号又把路径切错。
                现在直接复用已验证可用的 DoShotSilent()，再取新增的那张图打开。 */
-            string dir = OutDir("shot");
+            string dir = OutDirFor("shot", "shot");
             DateTime t0 = DateTime.Now.AddSeconds(-2);
             var before = new System.Collections.Generic.HashSet<string>();
             try

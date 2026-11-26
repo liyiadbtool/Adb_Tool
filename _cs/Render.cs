@@ -1282,16 +1282,16 @@ namespace AdbLogExport
             STCheck("null kind 只到日期层", OutKindFolder(null) == "", OutKindFolder(null));
             // 路径形状：必须是 logcat\<yyyy-MM-dd>\<分类>，且日期是今天
             string pToday = OutDir("");
-            string pShot = OutDir("shot");
-            string pRec = OutDir("rec");
-            string pHci = OutDir("hci");
+            string pShot = OutDirFor("shot", "shot");
+            string pRec = OutDirFor("rec", "rec");
+            string pHci = OutDirFor("hci", "hci");
             string dDay = DateTime.Now.ToString("yyyy-MM-dd");
             STCheck("日期目录名用 yyyy-MM-dd", pToday.EndsWith("logcat\\" + dDay), pToday);
             STCheck("shot 落在 screencap 子目录", pShot.EndsWith(dDay + "\\screencap"), pShot);
             STCheck("rec 落在 screenrecord 子目录", pRec.EndsWith(dDay + "\\screenrecord"), pRec);
             STCheck("hci 落在 HCI 子目录", pHci.EndsWith(dDay + "\\HCI"), pHci);
             STCheck("三类目录互不相同", pShot != pRec && pRec != pHci && pShot != pHci, pShot);
-            STCheck("重复调用幂等", OutDir("shot") == pShot, OutDir("shot"));
+            STCheck("重复调用幂等", OutDirFor("shot", "shot") == pShot, OutDirFor("shot", "shot"));
 
             // ---- 车机信息九项（需求4）----
             // 只是常量表和解析逻辑的自检；真实取值需要在线设备。
