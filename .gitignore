@@ -46,3 +46,7 @@ desktop.ini
 # 2026-11-26（W-20/R10）：构建临时文件
 *.TMP
 *.tmp
+
+# 2026-11-26：内置 headless 浏览器（约 120MB，用 tools/get-headless.ps1 获取）
+tools/chrome-headless-shell/
+tools/browser-shim/

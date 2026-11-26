@@ -32,6 +32,14 @@
 约定：任何一项失败，退出码非 0；release.py 会据此拒绝打包。
 """
 import os
+
+# 2026-11-26：把 tools/browser-shim 放到 PATH 最前，其中的 msedge.exe 是
+# chrome-headless-shell 的副本。本机 Edge 无法无头运行，而 40+ 个测试脚本
+# 都硬编码了 msedge.exe，用垫片可以一次性解决，不必逐个改脚本。
+_shim = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "browser-shim")
+if os.path.isdir(_shim):
+    os.environ["PATH"] = _shim + os.pathsep + os.environ.get("PATH", "")
+
 import re
 import subprocess
 import sys
