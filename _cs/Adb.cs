@@ -296,6 +296,33 @@ namespace AdbLogExport
             return CALL_TIMEOUT_MS;
         }
 
+        /* 2026-11-26（W-03/R2 单一出口）：设备号该不该加的判定，全项目只此一处。
+           原来 BuildPsi 与 RunAdbRawEx 各写一份 isGlobal 白名单，
+           新增全局命令（如 track-devices）时只改一处，另一处会误带 -s 报错。 */
+        private static readonly string[] GLOBAL_SUBS = new string[] {
+            "devices", "version", "connect", "disconnect", "pair", "mdns",
+            "start-server", "kill-server", "track-devices", "wait-for-device"
+        };
+
+        internal static bool IsGlobalSub(string sub)
+        {
+            if (string.IsNullOrEmpty(sub)) return false;
+            string s0 = sub.Trim().ToLowerInvariant();
+            for (int i = 0; i < GLOBAL_SUBS.Length; i++)
+                if (GLOBAL_SUBS[i] == s0) return true;
+            return false;
+        }
+
+        /// <summary>本机所有 adb 调用共用的设备号决策：全局命令返回空，否则 SERIAL→DEVID。</summary>
+        internal static string PickSerialFor(string adbArgsOrSub)
+        {
+            string t = (adbArgsOrSub ?? "").TrimStart();
+            string sub = t.Split(' ')[0];
+            if (IsGlobalSub(sub)) return "";
+            return (!string.IsNullOrEmpty(SERIAL) && SERIAL_OK) ? SERIAL
+                 : ((!string.IsNullOrEmpty(DEVID)) ? DEVID : "");
+        }
+
         internal static int AdbCall(List<string> argv, out string stdout, out string stderr)
         {
             bool to = false;
