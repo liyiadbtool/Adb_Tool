@@ -18155,96 +18155,103 @@ function uiCompareRun(){
      用户以为"整图比过了"，实际右侧/下侧被切掉了 —— 这是最容易被忽略的假通过。 */
   var dw = di.naturalWidth, dh = di.naturalHeight;
   var rw = ri.naturalWidth, rh = ri.naturalHeight;
-  if (dw !== rw || dh !== rh){
-    var stillGo = true;
-    try {
-      stillGo = confirm('两张图尺寸不一致：\n'
-        + '设计图 ' + dw + '×' + dh + '\n'
-        + '实景图 ' + rw + '×' + rh + '\n\n'
-        + '将按较小的 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 区域比较，'
-        + '超出部分不参与比对。是否继续？');
-    } catch (e) { stillGo = true; }
-    if (!stillGo) return;
-    var dh2 = document.getElementById('ui-dim-hint');
-    if (dh2) dh2.textContent = '尺寸不一致：' + dw + '×' + dh + ' vs ' + rw + '×' + rh
-                             + '（按 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 比较）';
-  } else {
-    var dh3 = document.getElementById('ui-dim-hint');
-    if (dh3) dh3.textContent = '尺寸：' + dw + '×' + dh + '（一致）';
+  var _hintEl = document.getElementById('ui-dim-hint');
+  function _setHint(){
+    if (dw !== rw || dh !== rh){
+      if (_hintEl) _hintEl.textContent = '尺寸不一致：' + dw + '×' + dh + ' vs ' + rw + '×' + rh
+                                     + '（按 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 比较）';
+    } else {
+      if (_hintEl) _hintEl.textContent = '尺寸：' + dw + '×' + dh + '（一致）';
+    }
   }
-
-  var w = Math.min(di.naturalWidth, ri.naturalWidth);
-  var h = Math.min(di.naturalHeight, ri.naturalHeight);
-  var A, B;
-  try {
-    A = uiGrab(ri, w, h);        // 实景图作底
-    B = uiGrab(di, w, h);        // 设计图作比
-  } catch(err) {
-    // 投屏实时帧是 http://127.0.0.1 的跨域图，canvas 读像素会被浏览器拒绝。
-    toast('读图失败：' + (err && err.message ? err.message : '跨域限制') + '。请把截图保存为本地文件后「选择…」');
+  if (dw !== rw || dh !== rh){
+    /* 2026-11-26：改用统一确认弹窗（第 1 批遗留的最后一处原生 confirm） */
+    confirmBox({
+      title: '图片尺寸不一致',
+      text: '设计图 ' + dw + '×' + dh + '\n实景图 ' + rw + '×' + rh,
+      sub: '将按较小的 ' + Math.min(dw,rw) + '×' + Math.min(dh,rh) + ' 区域比较，超出部分不参与比对。',
+      okText: '继续比对',
+      onOk: function(){ _setHint(); _go(); }
+    });
     return;
   }
-  var diff = uiDiffPixels(A.data, B.data, thr, {
-    ignoreAA: ignoreAA, structOnly: structOnly, w: w, h: h
-  });
-  var out = document.createElement('canvas');
-  out.width = w; out.height = h;
-  var g = out.getContext('2d');
-  var od = g.createImageData(w, h);
-  for(var i=0;i<w*h;i++){
-    var p = i << 2;
-    var d;
-    if (structOnly){
-      var la = 0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2];
-      var lb = 0.299*B.data[p] + 0.587*B.data[p+1] + 0.114*B.data[p+2];
-      d = Math.abs(la - lb) * 3;
-    } else {
-      d = Math.abs(A.data[p]-B.data[p]) + Math.abs(A.data[p+1]-B.data[p+1]) + Math.abs(A.data[p+2]-B.data[p+2]);
-    }
-    od.data[p]   = A.data[p];
-    od.data[p+1] = A.data[p+1];
-    od.data[p+2] = A.data[p+2];
-    od.data[p+3] = 255;
+  _setHint();
 
-    if(mark && d > thr*3){
-      // 只有差异模式：底图压暗，差异点用高饱和色，一眼看清缺陷位置
-      if (onlyDiff){
-        od.data[p]   = 255;
-        od.data[p+1] = 40;
-        od.data[p+2] = 60;
-      } else {
-        od.data[p]   = Math.min(255, A.data[p] + 60);
-        od.data[p+1] = Math.round(A.data[p+1] * 0.35);
-        od.data[p+2] = Math.round(A.data[p+2] * 0.35);
-      }
-    } else if (onlyDiff){
-      // 非差异区在"只显示差异"模式下压成深灰，不影响判读
-      var gray = Math.round(0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2]);
-      gray = Math.round(gray * 0.18);
-      od.data[p] = gray; od.data[p+1] = gray; od.data[p+2] = gray;
+  function _go(){
+    var w = Math.min(di.naturalWidth, ri.naturalWidth);
+    var h = Math.min(di.naturalHeight, ri.naturalHeight);
+    var A, B;
+    try {
+      A = uiGrab(ri, w, h);        // 实景图作底
+      B = uiGrab(di, w, h);        // 设计图作比
+    } catch(err) {
+      // 投屏实时帧是 http://127.0.0.1 的跨域图，canvas 读像素会被浏览器拒绝。
+      toast('读图失败：' + (err && err.message ? err.message : '跨域限制') + '。请把截图保存为本地文件后「选择…」');
+      return;
     }
+    var diff = uiDiffPixels(A.data, B.data, thr, {
+      ignoreAA: ignoreAA, structOnly: structOnly, w: w, h: h
+    });
+    var out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    var g = out.getContext('2d');
+    var od = g.createImageData(w, h);
+    for(var i=0;i<w*h;i++){
+      var p = i << 2;
+      var d;
+      if (structOnly){
+        var la = 0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2];
+        var lb = 0.299*B.data[p] + 0.587*B.data[p+1] + 0.114*B.data[p+2];
+        d = Math.abs(la - lb) * 3;
+      } else {
+        d = Math.abs(A.data[p]-B.data[p]) + Math.abs(A.data[p+1]-B.data[p+1]) + Math.abs(A.data[p+2]-B.data[p+2]);
+      }
+      od.data[p]   = A.data[p];
+      od.data[p+1] = A.data[p+1];
+      od.data[p+2] = A.data[p+2];
+      od.data[p+3] = 255;
+
+      if(mark && d > thr*3){
+        // 只有差异模式：底图压暗，差异点用高饱和色，一眼看清缺陷位置
+        if (onlyDiff){
+          od.data[p]   = 255;
+          od.data[p+1] = 40;
+          od.data[p+2] = 60;
+        } else {
+          od.data[p]   = Math.min(255, A.data[p] + 60);
+          od.data[p+1] = Math.round(A.data[p+1] * 0.35);
+          od.data[p+2] = Math.round(A.data[p+2] * 0.35);
+        }
+      } else if (onlyDiff){
+        // 非差异区在"只显示差异"模式下压成深灰，不影响判读
+        var gray = Math.round(0.299*A.data[p] + 0.587*A.data[p+1] + 0.114*A.data[p+2]);
+        gray = Math.round(gray * 0.18);
+        od.data[p] = gray; od.data[p+1] = gray; od.data[p+2] = gray;
+      }
+    }
+    g.putImageData(od, 0, 0);
+    try { _uiResult = out.toDataURL('image/png'); }
+    catch(err){ toast('生成结果图失败（图片跨域）。请用本地文件重试'); return; }
+    var rim = document.getElementById('ui-result-img');
+    if(rim){ rim.src = _uiResult; rim.classList.add("has"); }
+    var rem = document.getElementById('ui-result-empty');
+    if(rem) rem.style.display = 'none';
+    var optTxt = [];
+    if (ignoreAA) optTxt.push('忽略抗锯齿');
+    if (onlyDiff) optTxt.push('只显示差异');
+    if (structOnly) optTxt.push('结构比对');
+    var rp = document.getElementById('ui-result-path');
+    if(rp) rp.value = '本页生成 · ' + w + '×' + h + ' · 差异 '
+                    + (diff.rate*100).toFixed(2) + '%'
+                    + (optTxt.length ? '（' + optTxt.join(' / ') + '）' : '')
+                    + ' · 可「打开结果图」导出 PNG';
+    var rb = document.getElementById('ui-resultbox');
+    if(rb) rb.scrollTop = 0;
+    toast('对比完成：' + w + '×' + h + '，差异像素 ' + diff.hit + '/'
+          + diff.total + '（' + (diff.rate*100).toFixed(2) + '%）'
+          + (optTxt.length ? ' · ' + optTxt.join(' / ') : ''));
   }
-  g.putImageData(od, 0, 0);
-  try { _uiResult = out.toDataURL('image/png'); }
-  catch(err){ toast('生成结果图失败（图片跨域）。请用本地文件重试'); return; }
-  var rim = document.getElementById('ui-result-img');
-  if(rim){ rim.src = _uiResult; rim.classList.add("has"); }
-  var rem = document.getElementById('ui-result-empty');
-  if(rem) rem.style.display = 'none';
-  var optTxt = [];
-  if (ignoreAA) optTxt.push('忽略抗锯齿');
-  if (onlyDiff) optTxt.push('只显示差异');
-  if (structOnly) optTxt.push('结构比对');
-  var rp = document.getElementById('ui-result-path');
-  if(rp) rp.value = '本页生成 · ' + w + '×' + h + ' · 差异 '
-                  + (diff.rate*100).toFixed(2) + '%'
-                  + (optTxt.length ? '（' + optTxt.join(' / ') + '）' : '')
-                  + ' · 可「打开结果图」导出 PNG';
-  var rb = document.getElementById('ui-resultbox');
-  if(rb) rb.scrollTop = 0;
-  toast('对比完成：' + w + '×' + h + '，差异像素 ' + diff.hit + '/'
-        + diff.total + '（' + (diff.rate*100).toFixed(2) + '%）'
-        + (optTxt.length ? ' · ' + optTxt.join(' / ') : ''));
+  _go();
 }
 
 function uiOpenResult(){
