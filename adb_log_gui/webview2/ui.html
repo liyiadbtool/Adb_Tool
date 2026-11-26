@@ -5540,6 +5540,14 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 2026-11-25：导出路径改成遮罩弹窗（原来是指令页内展开的面板） */
 .op-mask{position:fixed;inset:0;background:var(--scrim);z-index:90;display:flex;align-items:center;justify-content:center;}
+/* 2026-11-26：统一确认弹窗（替代原生 confirm，样式与页内弹层一致） */
+.cf-mask{position:fixed;inset:0;background:var(--scrim);z-index:200;display:flex;align-items:center;justify-content:center;}
+.cf-panel{width:min(420px,92vw);background:var(--surface);border:1px solid var(--rim);border-radius:var(--r-4);box-shadow:var(--shadow-lg);padding:16px 18px 14px;}
+.cf-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.cf-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;}
+.cf-sub{font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:6px;}
+.cf-danger{font-size:12px;color:var(--err,#ff453a);margin-top:8px;}
+.cf-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
 .op-mask .op-panel{width:min(560px,92vw);margin:0;background:var(--surface);border:1px solid var(--rim);border-radius:var(--r-4);padding:16px;box-shadow:var(--shadow-lg);}
 </style>
 
@@ -7192,6 +7200,35 @@ var draft = '';
 //   之所以要多带一个字段，是因为"从哪进来"和"输出该显示在哪"不一定相同：
 //   用户在指令页用键盘敲 r，命令是输入框进来的(0)，但输出应该显示在
 //   反馈区(1) —— 他看的是那一页。
+/* 2026-11-26：统一确认弹窗。替代原生 confirm —— 原生弹窗无法主题化，
+   标题固定为页面名，且同步阻塞渲染。
+   用法：confirmBox({title, text, sub, danger, okText, okDanger, onOk}) */
+function confirmBox(o){
+  o = o || {};
+  var mask = document.getElementById('cf-mask');
+  if (!mask) { if (o.onOk) o.onOk(); return; }
+  document.getElementById('cf-title').textContent = o.title || '确认';
+  document.getElementById('cf-text').textContent  = o.text  || '';
+  var sub = document.getElementById('cf-sub');
+  sub.textContent = o.sub || ''; sub.style.display = o.sub ? 'block' : 'none';
+  var dg = document.getElementById('cf-danger');
+  dg.textContent = o.danger || ''; dg.style.display = o.danger ? 'block' : 'none';
+  var ok = document.getElementById('cf-ok'), cancel = document.getElementById('cf-cancel');
+  ok.textContent = o.okText || '确定';
+  ok.className = o.okDanger ? 'btn danger sm' : 'btn primary sm';   // 复用既有 .btn.danger
+  function close(){ mask.style.display='none'; document.removeEventListener('keydown', onKey); }
+  function onKey(e){
+    if (e.key === 'Escape'){ e.preventDefault(); close(); }
+    else if (e.key === 'Enter'){ e.preventDefault(); ok.click(); }
+  }
+  ok.onclick = function(){ close(); try { if (o.onOk) o.onOk(); } catch(err){} };
+  cancel.onclick = close;
+  mask.onmousedown = function(e){ if (e.target === mask) close(); };
+  mask.style.display = 'flex';
+  document.addEventListener('keydown', onKey);
+  try { cancel.focus(); } catch(e){}
+}
+
 function post(kind, data, src, slot, extra){
   var o = { kind:kind, data:data||'' };
   if(src !== undefined && src !== null) o.src = src;
@@ -12909,15 +12946,19 @@ function h5DelGroup(gid){
   var g = h5FindGroup(gid);
   if (!g) return;
   var n = (g.items || []).length;
-  var msg = '删除分组「' + g.name + '」？';
-  if (n) msg += '\n\n里面的 ' + n + ' 条 H5 也会一起删掉。';
-  msg += '\n\n此操作不能撤销。';
-  if (!confirm(msg)) return;
-
-  _h5.groups = _h5.groups.filter(function(x){ return x.id !== gid; });
-  h5Persist();
-  h5Render();
-  toast('已删除分组', 'ok');
+  confirmBox({
+    title: '删除分组',
+    text: '确定删除「' + g.name + '」？',
+    sub: n ? '该分组内有 ' + n + ' 条 H5，会一并删除。' : '',
+    danger: '此操作不可撤销',
+    okText: '删除', okDanger: true,
+    onOk: function(){
+      _h5.groups = _h5.groups.filter(function(x){ return x.id !== gid; });
+      h5Persist();
+      h5Render();
+      toast('已删除分组', 'ok');
+    }
+  });
 }
 
 function h5FindGroup(gid){
@@ -12997,12 +13038,19 @@ function h5DelItem(gid, iid){
   var g = h5FindGroup(gid);
   var it = h5FindItem(gid, iid);
   if (!g || !it) return;
-  if (!confirm('删除「' + it.name + '」？\n\n此操作不能撤销。')) return;
+  confirmBox({
+    title: '删除 H5',
+    text: '确定删除「' + it.name + '」？',
+    danger: '此操作不可撤销',
+    okText: '删除', okDanger: true,
+    onOk: function(){
 
-  g.items = (g.items || []).filter(function(x){ return x.id !== iid; });
-  h5Persist();
-  h5Render();
-  toast('已删除', 'ok');
+    g.items = (g.items || []).filter(function(x){ return x.id !== iid; });
+    h5Persist();
+    h5Render();
+    toast('已删除', 'ok');
+    }
+  });
 }
 
 /* 进入页面时初始化一次 */
@@ -18390,13 +18438,20 @@ function cmDel(id){
   var d = customFind(id);
   if(!d) return;
   // 2026-11-22（第 18 批 A8）：措辞与 H5 删除统一
-  if(!confirm('删除「' + d.name + '」？\n\n此操作不能撤销。')) return;
-  var next = [];
-  for(var i=0;i<_customDefs.length;i++) if(_customDefs[i].id !== id) next.push(_customDefs[i]);
-  _customDefs = next;
-  customSaveDefs(); renderCustomCards(); renderCustomList();
-  if(_customEditId === id) cmNew();
-  toast('已删除');
+  confirmBox({
+    title: '删除指令',
+    text: '确定删除「' + d.name + '」？',
+    danger: '此操作不可撤销',
+    okText: '删除', okDanger: true,
+    onOk: function(){
+      var next = [];
+      for(var i=0;i<_customDefs.length;i++) if(_customDefs[i].id !== id) next.push(_customDefs[i]);
+      _customDefs = next;
+      customSaveDefs(); renderCustomCards(); renderCustomList();
+      if(_customEditId === id) cmNew();
+      toast('已删除');
+    }
+  });
 }
 function cmAddStep(t){
   if(!_customDraft) return;
@@ -18529,7 +18584,14 @@ function tbClose(){ post('winclose', ''); }
 function appClose(){
   // 设置里的「关闭应用」：有未保存的文本先问一句
   if (typeof txAnyDirty === 'function' && txAnyDirty()){
-    if (!confirm('文本页还有未保存的文件，确定要关闭应用吗？')) return;
+    confirmBox({
+      title: '关闭应用',
+      text: '文本页还有未保存的文件，确定要关闭应用吗？',
+      danger: '未保存的修改会丢失',
+      okText: '关闭', okDanger: true,
+      onOk: function(){ post('winclose', ''); }
+    });
+    return;
   }
   post('winclose', '');
 }
@@ -19170,12 +19232,24 @@ function txClose(ev, i){
   if (ev) ev.stopPropagation();
   var d = TX_DOCS[i];
   if (!d) return;
-  if (d.dirty && !confirm('「' + d.name + '」还有未保存的修改，仍然关闭吗？')) return;
-  TX_DOCS.splice(i, 1);
-  if (_txCur >= TX_DOCS.length) _txCur = TX_DOCS.length - 1;
-  if (!TX_DOCS.length) { txNew(); return; }
-  txRenderTabs();
-  txLoad();
+  function doClose(){
+    TX_DOCS.splice(i, 1);
+    if (_txCur >= TX_DOCS.length) _txCur = TX_DOCS.length - 1;
+    if (!TX_DOCS.length) { txNew(); return; }
+    txRenderTabs();
+    txLoad();
+  }
+  if (d.dirty){
+    confirmBox({
+      title: '关闭文件',
+      text: '「' + d.name + '」还有未保存的修改，仍然关闭吗？',
+      danger: '未保存的修改会丢失',
+      okText: '关闭', okDanger: true,
+      onOk: doClose
+    });
+    return;
+  }
+  doClose();
 }
 
 function txAnyDirty(){
@@ -22410,5 +22484,17 @@ function opHas(cmd){
   </div>
 </div>
 
+<div class="cf-mask" id="cf-mask" style="display:none">
+  <div class="cf-panel" id="cf-panel" onclick="event.stopPropagation()">
+    <div class="cf-title" id="cf-title"></div>
+    <div class="cf-text" id="cf-text"></div>
+    <div class="cf-sub" id="cf-sub"></div>
+    <div class="cf-danger" id="cf-danger"></div>
+    <div class="cf-btns">
+      <button class="btn ghost sm" id="cf-cancel">取消</button>
+      <button class="btn primary sm" id="cf-ok">确定</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
