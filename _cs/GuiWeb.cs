@@ -3758,7 +3758,11 @@ namespace AdbLogExport.Gui
                     PushEnd(false, 0, slot);
                     return;
                 }
-                try { alive = App.Rec.WaitDevice(1200, false, false); } catch { }
+                /* 2026-11-26（性能）：3 秒内刚有 adb 成功返回，就跳过 1.2 秒探测。
+                   原来每条命令都白等 1.2 秒，跑 50 条就是 60 秒。
+                   缓存依据是"真实成功过"，比单纯的 DEVN 计数更可靠。 */
+                bool fresh = (DateTime.Now - App.LAST_OK_TS).TotalSeconds < 3.0;
+                alive = fresh ? true : SafeProbe();
                 if (!alive || App.DEVN == 0)
                 {
                     _cmdSource[slot] = source;
@@ -4340,6 +4344,13 @@ namespace AdbLogExport.Gui
 
 // 2026-11-26（W-11-2/R8）：参数用 List 传，不拼字符串。
 // 路径里的空格/引号/& 由 CreateProcess 原样传递，避免手工加引号出错。
+        /* 2026-11-26：探测封装，异常一律视为不可用（不让探测本身抛出去） */
+        private static bool SafeProbe()
+        {
+            try { return App.Rec.WaitDevice(1200, false, false); }
+            catch { return false; }
+        }
+
 private static bool RunAdbArgv(List<string> argv, out string errText)
 {
     errText = "";

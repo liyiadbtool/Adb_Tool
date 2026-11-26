@@ -142,6 +142,7 @@ namespace AdbLogExport
         // 0 = 不限制（保留给极端场景），ini 里 timeout_ms 可改。
         internal static int CALL_TIMEOUT_MS = 30000;
         private static int TIMEOUT_STREAK = 0;   // 连续超时计数（B6 自愈）
+        internal static DateTime LAST_OK_TS = DateTime.MinValue;   // 最近一次 adb 成功时间（用于跳过探测）
 
         // 统一执行入口：异步读两个流，避免"先读 stdout 再读 stderr"的管道死锁
         // （子进程 stderr 写满 4K 而我们正阻塞在 stdout 上时就死锁）。
@@ -375,7 +376,7 @@ namespace AdbLogExport
                     catch { }
                 }
             }
-            else if (rc == 0) TIMEOUT_STREAK = 0;
+            else if (rc == 0) { TIMEOUT_STREAK = 0; LAST_OK_TS = DateTime.Now; }
             return rc;
         }
 
