@@ -4345,10 +4345,14 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             /* 2026-11-25（B5-2）：不含 shell 元字符的命令，直接走 AdbCall（CreateProcess）。
                省掉 cmd.exe 那一层（实测每条约 20~40ms），且参数不需要我们自己拼引号。
                含 > < | & ^ % 的命令仍走 cmd —— 那些是 shell 语义，CreateProcess 表达不了。 */
+            /* 2026-11-26（W-11/R9）：只有真正的 shell 语义才进外壳。
+               原来把 & ^ % 也算"必须走外壳"，结果是含 & 的路径被当命令拼接执行
+               —— 既是注入面，也容易把文件名切坏。
+               现在：> < | 走外壳；& ^ % 交给 argv 原样传递（CreateProcess 不做解释）。 */
             bool needShell = false;
             foreach (char ch in (adbArgs ?? ""))
             {
-                if (ch == '>' || ch == '<' || ch == '|' || ch == '&' || ch == '^' || ch == '%')
+                if (ch == '>' || ch == '<' || ch == '|')
                 { needShell = true; break; }
             }
             if (!needShell)
