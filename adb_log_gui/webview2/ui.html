@@ -4786,6 +4786,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 
 /* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
+/* 2026-11-26（D1）：卡片先占住高度，数据回来不改变整体高度 */
+.diag-card{ min-height: 216px; }
 .diag-card{
   /* 第 19 批：宽度交给 Grid 分配（原来 calc(50% - 6px) + 断点是跳变根源） */
   min-width:0;
@@ -9299,6 +9301,10 @@ function diagToggleCard(k){
 
 /* 进入诊断页：本机信息每次进都重采（很快），车机信息也重取 */
 function diagOnEnter(){
+  /* 2026-11-26（D1）：30 秒内已采过就只刷新汇总，不再重发采集。
+     从任务栏拉起再切过来时，避免"清空→重填"造成的跳动。 */
+  var fresh = _diag.lastRefresh && (Date.now() - _diag.lastRefresh < 30000);
+  if (fresh && _diag.health && Object.keys(_diag.health).length){ diagUpdateSum(); return; }
   diagRefresh();
 }
 
