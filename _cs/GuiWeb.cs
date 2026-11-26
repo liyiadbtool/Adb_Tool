@@ -4580,7 +4580,7 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             catch { return ""; }
         }
 
-        private const int TEXT_MAX = 2 * 1024 * 1024;   // 2MB：再大就不该用这个编辑器
+        private const int TEXT_MAX = 8 * 1024 * 1024;   // 2026-11-26：2MB → 8MB（日志常超 2MB），超出截断并置为只读
 
         private void RunTextOpen()
         {

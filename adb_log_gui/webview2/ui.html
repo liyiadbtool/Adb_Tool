@@ -4174,11 +4174,13 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .mk-stat-k{ font-size:11px; color:var(--text-faint); }
 
 /* 输出区 */
+/* 2026-11-26（D1 纵向）：异步填充的容器先占住高度，数据回来不再顶动下方 */
+.apk-out{ min-height: 150px; }
 .mk-out{
   /* 2026-11-23：外层 .mk-wrap 变成可滚之后，输出框不能再 flex:1 撑满 ——
      那会让它在滚动容器里恒等于剩余空间，用户永远滚不到底部内容。
      改成固定最小高度 + 自适应：内容多时自己滚，内容少时不占位。 */
-  flex:0 0 auto; min-height:120px; max-height:320px;
+  flex:0 0 auto; min-height:180px; max-height:320px;   /* 2026-11-26：120→180，减少异步填充时的高度跳变 */
   /* 2026-11-22：纵向滚、横向禁。原来 overflow:auto 两向都滚，
      输出区里一条长行就会顶出横向滚动条（同左导航那个 bug 的成因）。 */
   overflow-y:auto; overflow-x:hidden;
@@ -19381,6 +19383,7 @@ function txOpen(){
 function txSave(asNew){
   var d = txDoc();
   if (!d) return;
+  if (d.readonly){ toast('大文件已只读载入，不能保存（避免只写入片段）', 'err'); return; }
   post('textsave', '', undefined, undefined, {
     path: asNew ? '' : d.path,
     name: d.name,
@@ -19413,9 +19416,16 @@ function txApplyFile(msg){
   d.sel = [0, 0];
   txRenderTabs();
   txLoad();
-  if (msg.trunc === '1' || msg.trunc === 1)
-    toast('文件超过 2 MB，只载入了前 2 MB', 'err');
-  else
+  if (msg.trunc === '1' || msg.trunc === 1){
+    /* 2026-11-26：大文件只读载入前 8 MB。只读是防"截断内容被另存覆盖原文件"。 */
+    d.readonly = true;
+    var _ta1 = txEl(); if (_ta1) _ta1.readOnly = true;
+    toast('文件超过 8 MB，已只读载入前 8 MB（避免只保存了片段）', 'err');
+  } else {
+    d.readonly = false;
+    var _ta2 = txEl(); if (_ta2) _ta2.readOnly = false;
+  }
+  if (!(msg.trunc === '1' || msg.trunc === 1))
     toast('已打开 ' + d.name + '（' + d.enc + ' / ' + d.eol + '）', 'ok');
 }
 function txSaved(msg){
