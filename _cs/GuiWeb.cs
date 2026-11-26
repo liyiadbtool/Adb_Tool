@@ -3178,7 +3178,8 @@ namespace AdbLogExport.Gui
 
                 // ---------------- 文本编辑器（2026-11-15）----------------
                 case "textopen":
-                    RunTextOpen();
+                    // 2026-11-26：支持「按指定编码重新打开」——enc/path 都给了就不弹对话框
+                    RunTextOpen(GetField(json, "enc"), GetField(json, "path"), GetField(json, "name"));
                     break;
 
                 case "textsave":
@@ -4538,7 +4539,22 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
 
         private void RunTextOpen()
         {
+            RunTextOpen(null, null, null);
+        }
+
+        /* 2026-11-26（对齐 Notepad++「使用 XX 编码重新打开」）：
+           forcedEnc 非空 = 只改解码方式，不碰文件字节；path 非空 = 直接重读该文件。 */
+        private void RunTextOpen(string forcedEnc, string reopenPath, string reopenName)
+        {
             string path = "";
+            bool forced = !string.IsNullOrEmpty(forcedEnc) && !string.IsNullOrEmpty(reopenPath);
+            if (forced)
+            {
+                path = reopenPath;
+                Thread th0 = new Thread(new ThreadStart(delegate { ReadTextFile(path, forcedEnc); }));
+                th0.IsBackground = true; th0.Start();
+                return;
+            }
             try
             {
                 using (OpenFileDialog d = new OpenFileDialog())
@@ -4568,6 +4584,11 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
 
         private void ReadTextFile(string path)
         {
+            ReadTextFile(path, null);
+        }
+
+        private void ReadTextFile(string path, string forcedEnc)
+        {
             string name = "", enc = "UTF-8", eol = "CRLF", text = "";
             bool trunc = false;
             try
@@ -4588,7 +4609,28 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                     trunc = fs.Length > (long)TEXT_MAX;
                 }
 
-                if (all.Length >= 3 && all[0] == 0xEF && all[1] == 0xBB && all[2] == 0xBF)
+                if (!string.IsNullOrEmpty(forcedEnc))
+                {
+                    // 2026-11-26：用户显式指定编码，跳过自动探测（对齐 Notepad++ 的"使用 XX 编码"）
+                    string fe = forcedEnc.Trim().ToUpperInvariant();
+                    if (fe.StartsWith("UTF-16"))
+                    {
+                        enc = "UTF-16 LE";
+                        text = Encoding.Unicode.GetString(all);
+                    }
+                    else if (fe == "GBK")
+                    {
+                        enc = "GBK";
+                        text = Encoding.GetEncoding(936).GetString(all);
+                    }
+                    else
+                    {
+                        enc = fe == "UTF-8 BOM" ? "UTF-8 BOM" : "UTF-8";
+                        int skip = (all.Length >= 3 && all[0] == 0xEF && all[1] == 0xBB && all[2] == 0xBF) ? 3 : 0;
+                        text = new UTF8Encoding(false).GetString(all, skip, all.Length - skip);
+                    }
+                }
+                else if (all.Length >= 3 && all[0] == 0xEF && all[1] == 0xBB && all[2] == 0xBF)
                 {
                     enc = "UTF-8 BOM";
                     text = new UTF8Encoding(false).GetString(all, 3, all.Length - 3);

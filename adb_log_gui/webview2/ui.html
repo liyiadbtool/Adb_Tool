@@ -6347,7 +6347,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <label class="tx-lbl">编码
             <select id="tx-enc" onchange="txSetEnc(this.value)">
               <option>UTF-8</option><option>UTF-8 BOM</option><option>GBK</option><option>UTF-16 LE</option>
-            </select>
+            </select><button class="tx-btn" id="tx-reopen" onclick="txReopen()" title="按当前选择的编码重新读取文件（不修改文件内容）">重读</button>
           </label>
           <label class="tx-lbl">换行
             <select id="tx-eol" onchange="txSetEol(this.value)">
@@ -19319,6 +19319,15 @@ function txKey(ev){
   }
 }
 
+/* 2026-11-26（对齐 Notepad++「使用 XX 编码重新打开」）：
+   只改变解码方式，不写文件。用于"文件本来是 GBK，被当成 UTF-8 读成乱码"的场景。 */
+function txReopen(){
+  var d = txDoc();
+  if (!d || !d.path) { toast('请先打开一个本地文件', 'err'); return; }
+  var enc = (document.getElementById('tx-enc') || {}).value || 'UTF-8';
+  post('textopen', '', undefined, undefined, { enc: enc, path: d.path, name: d.name });
+}
+
 function txOpen(){
   post('textopen', '');
 }
@@ -19687,8 +19696,16 @@ function v12OnMessage(msg){
       try { if(typeof top5OnData === 'function') top5OnData(msg); } catch(e){}
       return true;
     case 'textfile':
-      if ($v12('page-text')) { switchTab('text'); }
+      /* 2026-11-26（D4）：#page-text 已并入文件页（#fileview-text）。
+         原来判断 $v12('page-text') 恒为 null，切换语句永远不执行，
+         用户选完文件后页面不动，看起来像"导入没反应"。 */
+      try {
+        var pf = document.getElementById('page-file');
+        if (pf && !pf.classList.contains('active')) switchTab('file');
+        if (typeof fileNavSwitch === 'function') fileNavSwitch('text');
+      } catch (e) {}
       txApplyFile(msg);
+      try { if (txEl()) txEl().focus(); } catch (e) {}
       return true;
     case 'textsaved':
       txSaved(msg);
