@@ -1,0 +1,253 @@
+/* ============================================================================
+   Agent 工作台 · 独有样式
+
+   【规则】
+   1. 颜色/圆角/间距/阴影**只用** gen/tokens.css 里的令牌，禁止硬编码色值。
+   2. 按钮一律用 gen/components.css 的 .btn（.primary / .ghost / .danger）。
+   3. 这里只写"主界面没有的结构"：任务卡、时间线、输入框、详情面板。
+
+   为什么输入框要自己写：主界面的输入框分散在 qinp / mk-inp / clu-inp 里，
+   各页面各一套，没有一个公共 .inp 可复用。这里用令牌新建一份。
+   ============================================================================ */
+
+/* ---------- 整体三栏 ---------- */
+.aw{
+  /* tokens.css 里 body 是 display:flex，所以根容器必须 flex:1 + 撑满，
+     否则 grid 的 1fr 只分到内容宽度（实测中间栏被压到 268px）。 */
+  flex:1 1 auto;
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-columns:220px minmax(0,1fr) 300px;
+  background:var(--bg);
+  color:var(--text);
+  overflow:hidden;
+}
+
+/* 窄窗降级：详情栏收起 */
+@media (max-width:940px){
+  .aw{ grid-template-columns:200px minmax(0,1fr); }
+  .aw-detail{ display:none; }
+}
+
+/* ---------- 左栏：任务列表 ---------- */
+.aw-side{
+  display:flex; flex-direction:column; min-height:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+}
+.aw-side-head{
+  flex:0 0 auto;
+  height:44px; padding:0 var(--space-3);
+  display:flex; align-items:center; gap:var(--space-2);
+  border-bottom:1px solid var(--border);
+}
+.aw-side-title{
+  font-size:12px; font-weight:600; color:var(--text-dim);
+  letter-spacing:.02em;
+}
+.aw-side-head .aw-btn-xs{
+  margin-left:auto;
+  width:24px; min-width:24px; height:24px; padding:0;
+  display:grid; place-items:center;
+  font-size:15px; line-height:1;
+}
+/* 列表：滚动条不占位（与主界面一致的策略） */
+.aw-task-list{
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  padding:var(--space-2);
+  scrollbar-width:none;
+}
+.aw-task-list::-webkit-scrollbar{ width:0; height:0; }
+
+.aw-task{
+  width:100%;
+  display:flex; flex-direction:column; gap:3px;
+  padding:var(--space-2) var(--space-3);
+  margin-bottom:2px;
+  border:1px solid transparent;
+  border-radius:var(--r-3);
+  background:transparent;
+  color:var(--text-dim);
+  font-family:var(--font-ui);
+  text-align:left;
+  cursor:pointer;
+  transition:background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
+}
+.aw-task:hover{ background:var(--surface-2); color:var(--text); }
+.aw-task.sel{
+  background:var(--accent-soft); color:var(--accent);
+  border-color:var(--accent);
+}
+.aw-task-name{
+  font-size:13px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.aw-task-meta{
+  font-size:11px; color:var(--text-faint); font-family:var(--font-mono);
+}
+
+/* ---------- 中栏 ---------- */
+.aw-main{
+  display:flex; flex-direction:column; min-height:0; min-width:0;
+}
+.aw-head{
+  flex:0 0 auto;
+  height:44px; padding:0 var(--space-4);
+  display:flex; align-items:center; gap:var(--space-3);
+  border-bottom:1px solid var(--border);
+}
+.aw-head-title{
+  font-size:14px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* 状态胶囊：颜色全部来自令牌（成功/失败/进行中） */
+.aw-state{
+  margin-left:auto; flex:0 0 auto;
+  padding:2px var(--space-2);
+  border-radius:var(--r-pill);
+  font-size:11px; font-weight:600;
+  border:1px solid var(--border);
+  color:var(--text-faint);
+}
+.aw-state[data-state="run"]{ color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+.aw-state[data-state="done"]{ color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+.aw-state[data-state="fail"]{ color:var(--err); border-color:var(--err); background:var(--err-soft); }
+
+/* 时间线：可滚，滚动条不占位 */
+.aw-timeline{
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden;
+  padding:var(--space-4);
+  display:flex; flex-direction:column; gap:var(--space-2);
+  scrollbar-width:none;
+}
+.aw-timeline::-webkit-scrollbar{ width:0; height:0; }
+
+/* ---------- 步骤卡 ---------- */
+.aw-step{
+  border:1px solid var(--border);
+  border-radius:var(--r-4);
+  background:var(--surface);
+  overflow:hidden;
+  transition:border-color var(--dur-fast);
+}
+.aw-step:hover{ border-color:var(--border-strong); }
+.aw-step.sel{ border-color:var(--accent); }
+
+.aw-step-head{
+  display:flex; align-items:center; gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);
+  cursor:pointer;
+  user-select:none;
+}
+/* 步骤状态圆点：进行中=强调色，完成=强调色，失败=红 */
+.aw-dot{
+  flex:0 0 auto;
+  width:8px; height:8px; border-radius:50%;
+  background:var(--text-faint);
+}
+.aw-step[data-st="run"] .aw-dot{ background:var(--accent); animation:awPulse 1.2s ease-in-out infinite; }
+.aw-step[data-st="done"] .aw-dot{ background:var(--accent); }
+.aw-step[data-st="fail"] .aw-dot{ background:var(--err); }
+@keyframes awPulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+
+.aw-step-name{
+  font-size:13px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.aw-step-tool{
+  flex:0 0 auto;
+  margin-left:auto;
+  font-family:var(--font-mono); font-size:11px;
+  color:var(--text-faint);
+  white-space:nowrap;
+}
+
+/* 折叠体：默认收起，展开显示输出 */
+.aw-step-body{
+  display:none;
+  border-top:1px solid var(--border);
+  padding:var(--space-2) var(--space-3);
+  background:var(--bg);
+}
+.aw-step.open .aw-step-body{ display:block; }
+
+.aw-out{
+  margin:0;
+  font-family:var(--font-mono); font-size:12px; line-height:1.7;
+  color:var(--text-dim);
+  white-space:pre-wrap; word-break:break-all; overflow-wrap:anywhere;
+  max-height:220px; overflow-y:auto;
+  scrollbar-width:thin;
+}
+.aw-out.fail{ color:var(--err); }
+
+/* 长输出：超过 220px 内部滚动（不撑破卡片） */
+.aw-step-body .aw-out{ scrollbar-gutter:stable; }
+
+/* ---------- 输入区 ---------- */
+.aw-composer{
+  flex:0 0 auto;
+  display:flex; align-items:flex-end; gap:var(--space-2);
+  padding:var(--space-3) var(--space-4);
+  border-top:1px solid var(--border);
+  background:var(--surface);
+}
+.aw-input{
+  flex:1 1 auto; min-width:0;
+  resize:none; border:1px solid var(--border);
+  border-radius:var(--r-3);
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-ui); font-size:13px; line-height:1.6;
+  padding:var(--space-2) var(--space-3);
+  max-height:120px;
+  overflow-y:auto;
+  transition:border-color var(--dur-fast);
+  scrollbar-width:thin;
+}
+.aw-input:focus{ outline:none; border-color:var(--accent); }
+.aw-input::placeholder{ color:var(--text-faint); }
+.aw-send{ flex:0 0 auto; height:34px; }
+
+/* ---------- 右栏：详情 ---------- */
+.aw-detail{
+  min-height:0;
+  overflow-y:auto;
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  padding:var(--space-3);
+  scrollbar-width:none;
+}
+.aw-detail::-webkit-scrollbar{ width:0; height:0; }
+.aw-detail-empty{
+  font-size:12px; color:var(--text-faint);
+  padding:var(--space-4) 0;
+  text-align:center;
+}
+.aw-detail-h{
+  font-size:12px; font-weight:600; color:var(--text-dim);
+  margin-bottom:var(--space-2);
+}
+.aw-kv{
+  display:flex; gap:var(--space-2);
+  padding:3px 0;
+  font-size:12px;
+  border-bottom:1px solid var(--border);
+}
+.aw-kv:last-child{ border-bottom:0; }
+.aw-kv .k{ flex:0 0 76px; color:var(--text-faint); }
+.aw-kv .v{
+  flex:1 1 auto; min-width:0;
+  font-family:var(--font-mono);
+  color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* 减少动效偏好：关掉脉冲 */
+@media (prefers-reduced-motion:reduce){
+  .aw-step[data-st="run"] .aw-dot{ animation:none; }
+  .aw-task, .aw-step, .aw-input{ transition:none; }
+}

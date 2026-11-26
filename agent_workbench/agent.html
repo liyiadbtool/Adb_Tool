@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!-- ==========================================================================
+     Agent 工作台 · 骨架（阶段一：假数据，不接后端）
+
+     目录隔离
+     ---------
+     本文件与其依赖全部位于 agent_workbench\，**不进** adb_log_gui\webview2\。
+     主应用源码目录里多一个文件，就会被 build_gui.bat 打进 dist 发布包 ——
+     那是污染。嵌入阶段（阶段三）才把 4 个文件复制到 dist\internal\。
+
+     样式来源
+     --------
+     gen\tokens.css        ← 脚本从 ui.html 抽取（令牌/主题/强调色矩阵）
+     gen\components.css    ← 脚本从 ui.html 抽取（.btn / .set-seg）
+     agent.css             ← 本页独有：任务卡/时间线/输入框（**只用令牌**）
+
+     注意：主界面没有通用 .inp / .card 组件，所以这里的卡片与输入框是新建的，
+     但每一处颜色/圆角/间距都取自令牌，视觉与主界面一致。
+     ========================================================================== -->
+<html lang="zh-CN" data-theme="dark" data-accent="blue" data-fsize="m">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent 工作台</title>
+
+<link rel="stylesheet" href="gen/tokens.css">
+<link rel="stylesheet" href="gen/components.css">
+<link rel="stylesheet" href="agent.css">
+</head>
+
+<body>
+
+<div class="aw">
+
+  <!-- ============ 左：任务列表 ============ -->
+  <aside class="aw-side">
+    <div class="aw-side-head">
+      <span class="aw-side-title">任务</span>
+      <button class="btn ghost aw-btn-xs" id="aw-new" title="新建任务">+</button>
+    </div>
+    <div class="aw-task-list" id="aw-tasks"><!-- JS 填充 --></div>
+  </aside>
+
+  <!-- ============ 中：执行时间线 ============ -->
+  <main class="aw-main">
+
+    <header class="aw-head">
+      <span class="aw-head-title" id="aw-title">选择一个任务</span>
+      <span class="aw-state" id="aw-state" data-state="idle">空闲</span>
+    </header>
+
+    <!-- 执行步骤（多步骤 + 工具调用） -->
+    <div class="aw-timeline" id="aw-timeline"><!-- JS 填充 --></div>
+
+    <!-- 输入区 -->
+    <footer class="aw-composer">
+      <textarea class="aw-input" id="aw-input" rows="1"
+                placeholder="描述任务，Enter 发送，Shift+Enter 换行"></textarea>
+      <button class="btn primary aw-send" id="aw-send" title="发送">发送</button>
+    </footer>
+
+  </main>
+
+  <!-- ============ 右：步骤详情 ============ -->
+  <aside class="aw-detail" id="aw-detail">
+    <div class="aw-detail-empty">点左侧任一步骤查看详情</div>
+  </aside>
+
+</div>
+
+<script src="agent.js"></script>
+</body>
+</html>

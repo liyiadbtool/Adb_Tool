@@ -1,0 +1,159 @@
+/* ============================================================================
+   ⚠ 自动生成，请勿手改
+   来源   : adb_log_gui/webview2/ui.html
+   生成   : python tools/extract_tokens.py
+   源 md5 : 4284363c48d5ce2c766b36bec1b27399
+   内容   : 令牌定义 258 次 / 主题 3 套 / 强调色规则 48 条
+   改设计令牌请改 ui.html，然后重跑脚本。
+   ============================================================================ */
+
+:root[data-theme="dark"] {
+  
+  --bg:#000000; --surface:#1c1c1e; --surface-2:#2c2c2e;
+  --border:rgba(84,84,88,.60); --border-strong:rgba(235,235,245,.30);
+  --text:#f5f5f7; --text-dim:rgba(235,235,245,.72); --text-faint:rgba(235,235,245,.54);
+  --accent:#0a84ff; --accent-soft:rgba(10,132,255,.16);
+  --ok:#30d158; --ok-soft:rgba(48,209,88,.16);
+  --err:#ff453a; --err-soft:rgba(255,69,58,.14); --err-soft-hover:rgba(255,69,58,.24);
+  --on-accent:#ffffff; --cast-stage:#000000;
+  --lv-v:#bf5af2; --lv-d:#0a84ff; --lv-i:#30d158; --lv-w:#ff9f0a; --lv-e:#ff453a;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.40); --shadow-md:0 4px 12px rgba(0,0,0,.48);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.62); --scrim:rgba(0,0,0,.62);
+  --glass:rgba(28,28,30,.72); color-scheme:dark;
+}
+
+:root[data-theme="eye"] {
+  
+  --bg:#fdfaf3; --surface:#fffdf7; --surface-2:#f6efe0;
+  --border:rgba(120,105,75,.28); --border-strong:rgba(120,105,75,.46);
+  --text:#3b352c; --text-dim:rgba(59,53,44,.76); --text-faint:rgba(59,53,44,.56);
+  --accent:#8a5a12; --accent-soft:rgba(138,90,18,.12);
+  --ok:#4f7d3a; --ok-soft:rgba(79,125,58,.12);
+  --err:#a63f3f; --err-soft:rgba(166,63,63,.10); --err-soft-hover:rgba(166,63,63,.20);
+  --on-accent:#fffdf7; --cast-stage:#000000;
+  
+  --lv-v:#6b46c1; --lv-d:#2f6f9c; --lv-i:#4f7d3a; --lv-w:#9a6a12; --lv-e:#a63f3f;
+  --shadow-sm:0 1px 2px rgba(80,66,40,.10); --shadow-md:0 4px 12px rgba(80,66,40,.14);
+  --shadow-lg:0 16px 40px rgba(80,66,40,.20); --scrim:rgba(48,40,26,.38);
+  --glass:rgba(255,253,247,.80); color-scheme:light;
+}
+
+:root[data-theme="light"] {
+  
+  --bg:#f2f2f7; --surface:#ffffff; --surface-2:#f2f2f7;
+  --border:rgba(60,60,67,.29); --border-strong:rgba(60,60,67,.46);
+  --text:#1d1d1f; --text-dim:rgba(60,60,67,.72); --text-faint:rgba(60,60,67,.54);
+  --accent:#0066cc; --accent-soft:rgba(0,102,204,.10);
+  --ok:#1a7f37; --ok-soft:rgba(26,127,55,.11);
+  --err:#c0362c; --err-soft:rgba(192,54,44,.10); --err-soft-hover:rgba(192,54,44,.20);
+  --on-accent:#ffffff; --cast-stage:#000000;
+  --lv-v:#8944ab; --lv-d:#0066cc; --lv-i:#1a7f37; --lv-w:#a35a00; --lv-e:#c0362c;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.08); --shadow-md:0 4px 12px rgba(0,0,0,.12);
+  --shadow-lg:0 16px 40px rgba(0,0,0,.20); --scrim:rgba(0,0,0,.34);
+  --glass:rgba(255,255,255,.76); color-scheme:light;
+}
+
+:root{
+  
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-6:24px; --space-8:32px;
+  
+  --r-1:4px;   
+  --r-2:6px;   
+  --r-3:8px;   
+  --r-4:10px;  
+  --r-5:12px;  
+  --r-6:16px;  
+  --r-sm:6px; --r-md:10px; --r-lg:14px; --r-pill:999px;   
+  --dur-fast:150ms; --dur:220ms;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --font-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei UI",system-ui,sans-serif;
+  --font-mono:"SF Mono","JetBrains Mono",Consolas,"Microsoft YaHei UI",monospace;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{background:var(--bg); color:var(--text);
+  font-family:var(--font-ui);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+  display:flex; overflow:hidden;
+  
+  user-select:none;
+  -webkit-user-select:none;}
+.frame{flex:1;display:flex;flex-direction:column;background:var(--surface);min-width:0;opacity:0;visibility:hidden;}
+.frame.show{opacity:1;visibility:visible;}
+body{letter-spacing:.01em;}
+.frame{position:relative;z-index:1;background:var(--frame);}
+.frame{background:var(--surface);}
+
+@media (prefers-reduced-transparency:reduce){
+  .topbar,.apk-mgr-box,.fs-modal-box,.wadb-pop,.qsearch-pop,.ui-wrap .ui-form{
+    -webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface);
+  }
+}
+@media (prefers-contrast:more){
+  :root[data-theme="dark"]{ --border:rgba(235,235,245,.62);--border-strong:rgba(235,235,245,.80);
+    --text-dim:rgba(235,235,245,.86);--text-faint:rgba(235,235,245,.70); }
+  :root[data-theme="light"]{ --border:rgba(60,60,67,.58);--border-strong:rgba(60,60,67,.78);
+    --text-dim:rgba(60,60,67,.88);--text-faint:rgba(60,60,67,.72); }
+  :root[data-theme="eye"]{ --border:rgba(120,105,75,.56);--border-strong:rgba(120,105,75,.76);
+    --text-dim:rgba(59,53,44,.90);--text-faint:rgba(59,53,44,.74); }
+  .btn,.tab,.qcard,.fs-pane{ border-color:var(--border-strong); }
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important; }
+  .spin{ animation:none; }
+}
+
+:root[data-theme="dark"][data-accent="blue"]{ --accent:#0A84FF; --accent-soft:rgba(10,132,255,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="cyan"]{ --accent:#64D2FF; --accent-soft:rgba(100,210,255,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="teal"]{ --accent:#40C8E0; --accent-soft:rgba(64,200,224,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="mint"]{ --accent:#63E6E2; --accent-soft:rgba(99,230,226,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="green"]{ --accent:#30D158; --accent-soft:rgba(48,209,88,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="yellow"]{ --accent:#FFD60A; --accent-soft:rgba(255,214,10,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="orange"]{ --accent:#FF9F0A; --accent-soft:rgba(255,159,10,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="red"]{ --accent:#FF453A; --accent-soft:rgba(255,69,58,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="pink"]{ --accent:#FF375F; --accent-soft:rgba(255,55,95,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="purple"]{ --accent:#BF5AF2; --accent-soft:rgba(191,90,242,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="indigo"]{ --accent:#5E5CE6; --accent-soft:rgba(94,92,230,.16); --on-accent:#ffffff; }
+:root[data-theme="dark"][data-accent="brown"]{ --accent:#AC8E68; --accent-soft:rgba(172,142,104,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="graphite"]{ --accent:#AEAEB2; --accent-soft:rgba(174,174,178,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="purewhite"]{ --accent:#F2F2F2; --accent-soft:rgba(242,242,242,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="eyewhite"]{ --accent:#F0F0F0; --accent-soft:rgba(240,240,240,.16); --on-accent:#1d1d1f; }
+:root[data-theme="dark"][data-accent="glasswhite"]{ --accent:#E6E6E6; --accent-soft:rgba(230,230,230,.16); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="blue"]{ --accent:#0072EF; --accent-soft:rgba(0,114,239,.10); --on-accent:#ffffff; }
+:root[data-theme="light"][data-accent="cyan"]{ --accent:#1A9AD6; --accent-soft:rgba(26,154,214,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="teal"]{ --accent:#2CA1B5; --accent-soft:rgba(44,161,181,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="mint"]{ --accent:#009F9B; --accent-soft:rgba(0,159,155,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="green"]{ --accent:#2AA94A; --accent-soft:rgba(42,169,74,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="yellow"]{ --accent:#AF9000; --accent-soft:rgba(175,144,0,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="orange"]{ --accent:#D77F00; --accent-soft:rgba(215,127,0,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="red"]{ --accent:#FF3B30; --accent-soft:rgba(255,59,48,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="pink"]{ --accent:#FF2D55; --accent-soft:rgba(255,45,85,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="purple"]{ --accent:#A946DC; --accent-soft:rgba(169,70,220,.10); --on-accent:#ffffff; }
+:root[data-theme="light"][data-accent="indigo"]{ --accent:#5856D6; --accent-soft:rgba(88,86,214,.10); --on-accent:#ffffff; }
+:root[data-theme="light"][data-accent="brown"]{ --accent:#A2845E; --accent-soft:rgba(162,132,94,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="graphite"]{ --accent:#8E8E93; --accent-soft:rgba(142,142,147,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="purewhite"]{ --accent:#939393; --accent-soft:rgba(147,147,147,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="eyewhite"]{ --accent:#9C9284; --accent-soft:rgba(156,146,132,.10); --on-accent:#1d1d1f; }
+:root[data-theme="light"][data-accent="glasswhite"]{ --accent:#8E949E; --accent-soft:rgba(142,148,158,.10); --on-accent:#1d1d1f; }
+:root[data-theme="eye"][data-accent="blue"]{ --accent:#1573DA; --accent-soft:rgba(21,115,218,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="cyan"]{ --accent:#267CAB; --accent-soft:rgba(38,124,171,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="teal"]{ --accent:#2E7F89; --accent-soft:rgba(46,127,137,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="mint"]{ --accent:#0A7D76; --accent-soft:rgba(10,125,118,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="green"]{ --accent:#2F8445; --accent-soft:rgba(47,132,69,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="yellow"]{ --accent:#8D700A; --accent-soft:rgba(141,112,10,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="orange"]{ --accent:#A2670D; --accent-soft:rgba(162,103,13,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="red"]{ --accent:#DF2118; --accent-soft:rgba(223,33,24,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="pink"]{ --accent:#E4183F; --accent-soft:rgba(228,24,63,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="purple"]{ --accent:#A24DCB; --accent-soft:rgba(162,77,203,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="indigo"]{ --accent:#6362CA; --accent-soft:rgba(99,98,202,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="brown"]{ --accent:#846F55; --accent-soft:rgba(132,111,85,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="graphite"]{ --accent:#727277; --accent-soft:rgba(114,114,119,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="purewhite"]{ --accent:#737373; --accent-soft:rgba(115,115,115,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="eyewhite"]{ --accent:#7A756A; --accent-soft:rgba(122,117,106,.10); --on-accent:#fffdf7; }
+:root[data-theme="eye"][data-accent="glasswhite"]{ --accent:#6F747D; --accent-soft:rgba(111,116,125,.10); --on-accent:#fffdf7; }
