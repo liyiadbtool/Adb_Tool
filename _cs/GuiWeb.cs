@@ -2030,8 +2030,10 @@ namespace AdbLogExport.Gui
                             string path2 = GetField(json, "path");
                             if (act2 == "set")
                             {
-                                App.SetExportPath((id2 ?? "").Trim().ToLowerInvariant(), (path2 ?? "").Trim());
-                                PushOnUi("{\"kind\":\"toast\",\"ok\":true,\"text\":\"导出路径已保存\"}");
+                                bool okSet = App.SetExportPath((id2 ?? "").Trim().ToLowerInvariant(), (path2 ?? "").Trim());
+                                PushOnUi(okSet
+                                    ? "{\"kind\":\"toast\",\"ok\":true,\"text\":\"导出路径已保存\"}"
+                                    : "{\"kind\":\"toast\",\"ok\":false,\"text\":\"路径不合法，已拒绝\"}");
                             }
                             else
                             {

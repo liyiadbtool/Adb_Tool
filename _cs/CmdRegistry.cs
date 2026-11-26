@@ -391,8 +391,45 @@ namespace AdbLogExport
             _exportPaths = map;
             return map;
         }
-        internal static void SetExportPath(string cmdId, string path)
+        /* 2026-11-26（W-15/R9）：导出路径必须校验，外部输入不可信。
+           拒绝：相对路径、磁盘根、Windows/Program Files/系统目录子树。
+           允许：UNC 网络盘（团队常用 \\nas\logs）、普通本地目录。
+           返回 "" 表示通过，否则返回拒绝原因。 */
+        internal static string CheckExportPath(string path)
         {
+            if (string.IsNullOrWhiteSpace(path)) return "";
+            string p0 = path.Trim();
+            if (!Path.IsPathRooted(p0)) return "必须是绝对路径（例如 D:////导出）";
+
+            string full;
+            try { full = Path.GetFullPath(p0).TrimEnd('\\'); }
+            catch { return "路径格式不合法"; }
+
+            string root = Path.GetPathRoot(full);
+            if (root != null && string.Equals(full, root.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                return "不能直接用磁盘根目录（例如 D:////），请指定子目录";
+
+            string[] banned = new string[] {
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            };
+            for (int i = 0; i < banned.Length; i++)
+            {
+                string b = (banned[i] ?? "").TrimEnd('\\');
+                if (b.Length == 0) continue;
+                if (string.Equals(full, b, StringComparison.OrdinalIgnoreCase)
+                    || full.StartsWith(b + "\\", StringComparison.OrdinalIgnoreCase))
+                    return "不允许写入系统目录：" + b;
+            }
+            return "";
+        }
+
+        internal static bool SetExportPath(string cmdId, string path)
+        {
+            string bad = CheckExportPath(path);
+            if (bad.Length > 0) { Warn("导出路径被拒绝：" + bad); return false; }
             var map = ExportPaths();
             if (string.IsNullOrEmpty(path)) map.Remove(cmdId ?? "");
             else map[cmdId] = path;
@@ -412,6 +449,7 @@ namespace AdbLogExport
                 File.WriteAllText(ExportPathsFile(), sb.ToString(), Encoding.UTF8);
             }
             catch { }
+            return true;
         }
         /// <summary>给前端用的全量快照（JSON）。</summary>
         internal static string ExportPathsJson()
@@ -479,7 +517,7 @@ namespace AdbLogExport
                 Ok(id + " 已恢复默认路径");
                 return;
             }
-            SetExportPath(id, path);
+            if (!SetExportPath(id, path)) return;      // 路径被拒绝，Warn 已在里面给出原因
             // 立即校验一次，别让用户以为设置成功其实不可写
             try
             {
