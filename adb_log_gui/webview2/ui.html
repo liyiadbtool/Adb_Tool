@@ -19266,6 +19266,7 @@ function txClose(ev, i){
   if (!d) return;
   function doClose(){
     TX_DOCS.splice(i, 1);
+    setTimeout(txSessionSave, 0);
     if (_txCur >= TX_DOCS.length) _txCur = TX_DOCS.length - 1;
     if (!TX_DOCS.length) { txNew(); return; }
     txRenderTabs();
@@ -19359,6 +19360,41 @@ function txKey(ev){
 
 /* 2026-11-26（对齐 Notepad++「使用 XX 编码重新打开」）：
    只改变解码方式，不写文件。用于"文件本来是 GBK，被当成 UTF-8 读成乱码"的场景。 */
+/* 2026-11-26（会话恢复，对齐 Notepad++）：记住打开过的文件，重启后自动恢复。
+   只记有 path 的文档（未命名的不记），恢复时走自动探测编码，不强制。 */
+var TX_SESSION_KEY = 'tx_session_v1';
+
+function txSessionSave(){
+  try {
+    var docs = [];
+    for (var i = 0; i < TX_DOCS.length; i++){
+      var d = TX_DOCS[i];
+      if (d && d.path) docs.push({ path: d.path, name: d.name, sel: d.sel ? d.sel[0] : 0 });
+    }
+    localStorage.setItem(TX_SESSION_KEY, JSON.stringify({
+      docs: docs,
+      cur: 0,
+      ts: Date.now()
+    }));
+  } catch (e) {}
+}
+
+function txSessionRestore(){
+  try {
+    var raw = localStorage.getItem(TX_SESSION_KEY);
+    if (!raw) return;
+    var o = JSON.parse(raw);
+    if (!o || !o.docs || !o.docs.length) return;
+    // 超过 7 天不恢复，避免打开一堆过期文件
+    if (o.ts && (Date.now() - o.ts) > 7*24*3600*1000) return;
+    for (var i = 0; i < o.docs.length; i++){
+      var d = o.docs[i];
+      if (!d || !d.path) continue;
+      post('textopen', '', undefined, undefined, { path: d.path, name: d.name || '' });
+    }
+  } catch (e) {}
+}
+
 function txReopen(){
   var d = txDoc();
   if (!d || !d.path) { toast('请先打开一个本地文件', 'err'); return; }
@@ -19413,6 +19449,7 @@ function txSave(asNew){
 function txSaveAs(){ txSave(true); }
 
 function txApplyFile(msg){
+  setTimeout(txSessionSave, 0);
   var text = b64dec(msg.data || '');
   // 打开的第一个文件直接占用那个「未命名」空壳，不再多留一个空白页签
   var d = null;

@@ -133,6 +133,7 @@ A12_ADDS = {
         "txToggleWrap", "txZoom", "txUndoRedo", "txSyncCaret", "txSelect", "txClose",
         # 2026-11-26：导出路径（下拉选择/删除）
         "outPathPick", "delOutPath", "txReopen", "txConvertEnc", "txVisibleForceSave",
+        "txSessionSave", "txSessionRestore",
         # 2026-11-21：配置文件（设置页两个按钮）
         "cfgExport", "cfgImport",
         # 2026-11-23：仪表投屏 —— 从 ClusterDebugTool 导入通道配置

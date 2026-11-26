@@ -4600,11 +4600,14 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
         private void RunTextOpen(string forcedEnc, string reopenPath, string reopenName)
         {
             string path = "";
-            bool forced = !string.IsNullOrEmpty(forcedEnc) && !string.IsNullOrEmpty(reopenPath);
-            if (forced)
+            bool hasPath = !string.IsNullOrEmpty(reopenPath);
+            bool forced = hasPath && !string.IsNullOrEmpty(forcedEnc);
+            if (hasPath)
             {
+                // 2026-11-26（会话恢复）：给了路径就直接读；enc 为空则走自动探测
                 path = reopenPath;
-                Thread th0 = new Thread(new ThreadStart(delegate { ReadTextFile(path, forcedEnc); }));
+                string fe2 = forced ? forcedEnc : null;
+                Thread th0 = new Thread(new ThreadStart(delegate { ReadTextFile(path, fe2); }));
                 th0.IsBackground = true; th0.Start();
                 return;
             }
