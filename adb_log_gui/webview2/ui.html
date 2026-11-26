@@ -5531,8 +5531,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 
 /* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
-.qgear{opacity:0;margin-left:auto;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:15px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
-.qcard:hover .qgear{opacity:1;}
+.qgear{opacity:0;margin-left:auto;flex:0 0 26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:17px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
+.qcard:hover 
 .qgear:hover{color:var(--accent);background:var(--surface-2);}
 .qgear.set{opacity:.95;color:var(--ok);}
 .qgear.set::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--ok);}
@@ -15288,6 +15288,13 @@ function qcardInputKey(e, j){
    处理有差异，也不会误执行。 */
 function qcardClick(e, j){
   if(e && e.target && e.target.closest && e.target.closest('.qgear')) return;
+  // 2026-11-26：再按坐标判一次 —— 冒泡被拦截不到时的兜底
+  if(e && e.target && e.target.closest){
+    var card0 = e.target.closest('.qcard');
+    var g0 = card0 && card0.querySelector('.qgear');
+    if(g0){ var r0=g0.getBoundingClientRect();
+      if(e.clientX>=r0.left-3 && e.clientX<=r0.right+3 && e.clientY>=r0.top-3 && e.clientY<=r0.bottom+3) return; }
+  }
   if(e && _mdX >= 0 && (Math.abs(e.clientX-_mdX)+Math.abs(e.clientY-_mdY)) > 6){ _mdX=-1; return; }
   if(Date.now() < _suppressClickUntil) return;
 
