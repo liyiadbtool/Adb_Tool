@@ -148,7 +148,7 @@ A12_ADDS = {
         "cf-mask", "cf-panel", "cf-title", "cf-text", "cf-sub", "cf-danger",
         "cf-ok", "cf-cancel",
         # 2026-11-26：导出路径弹窗重构（下拉选择 / 删除按钮 / 标题）
-        "op-title", "op-row-id", "op-sel", "op-del", "tx-reopen", "tx-convert",
+        "op-title", "op-row-id", "op-sel", "op-del", "tx-reopen", "tx-convert", "tx-word", "tx-regex",
         "set-mask", "set-theme", "set-font", "set-font-preview",
         "help-mask", "help-toc", "help-doc", "help-search",
         "page-text", "tx-tabs", "tx-find", "tx-find-i", "tx-repl-i", "tx-find-n",

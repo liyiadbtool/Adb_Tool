@@ -6383,6 +6383,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
           <button class="tx-btn" id="tx-repl-one" onclick="txReplaceOne()" style="display:none;">替换</button>
           <button class="tx-btn" id="tx-repl-all" onclick="txReplaceAll()" style="display:none;">全部替换</button>
           <label class="tx-chk"><input type="checkbox" id="tx-case" onchange="txFindHighlight()"> 区分大小写</label>
+          <label class="tx-chk"><input type="checkbox" id="tx-word" onchange="txFindHighlight()"> 全词</label>
+          <label class="tx-chk"><input type="checkbox" id="tx-regex" onchange="txFindHighlight()"> 正则</label>
           <span class="tx-find-n" id="tx-find-n"></span>
           <button class="tx-ico" onclick="txFindClose()" title="关闭（Esc）">✕</button>
         </div>
@@ -19504,17 +19506,33 @@ function txFindClose(){
   if (box) box.style.display = 'none';
   var ta = txEl(); if (ta) ta.focus();
 }
+/* 2026-11-26（对齐 Notepad++）：查找支持 正则 / 全词 / 大小写。
+   统一返回 [{s,e}]，供定位、高亮计数、替换共用同一套匹配结果。 */
+function txFindOpts(){
+  return {
+    cs:  !!($v12('tx-case')  && $v12('tx-case').checked),
+    ww:  !!($v12('tx-word')  && $v12('tx-word').checked),
+    re:  !!($v12('tx-regex') && $v12('tx-regex').checked)
+  };
+}
+function txBuildRe(q, o){
+  var src = o.re ? q : q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (o.ww) src = '(?<![\\w])' + src + '(?![\\w])';
+  return new RegExp(src, o.cs ? 'g' : 'gi');
+}
 function txFindMatches(){
   var ta = txEl(), q = $v12('tx-find-i').value;
-  if (!q) return [];
-  var hay = ta.value, cs = $v12('tx-case').checked;
-  if (!cs) { hay = hay.toLowerCase(); q = q.toLowerCase(); }
-  var out = [], i = 0;
-  while (true){
-    var k = hay.indexOf(q, i);
-    if (k < 0) break;
-    out.push(k); i = k + Math.max(1, q.length);
-    if (out.length > 5000) break;
+  if (!q || !ta) return [];
+  var o = txFindOpts(), out = [];
+  try {
+    var re = txBuildRe(q, o), m;
+    while ((m = re.exec(ta.value)) !== null){
+      if (m[0] === '') { re.lastIndex++; continue; }
+      out.push({ s: m.index, e: m.index + m[0].length });
+      if (out.length > 5000) break;
+    }
+  } catch (e) {
+    return [];      // 正则写错：当作无匹配，不炸页面
   }
   return out;
 }
@@ -19531,16 +19549,16 @@ function txFindNext(dir){
   if (!q) { txFindHighlight(); return; }
   var m = txFindMatches();
   if (!m.length) { toast('没有匹配内容', 'err'); return; }
-  var cur = ta.selectionStart, target = null;
+  var cur = ta.selectionStart, pick = null;
   if (dir > 0){
-    for (var i = 0; i < m.length; i++) if (m[i] > cur) { target = m[i]; break; }
-    if (target === null) target = m[0];
+    for (var i = 0; i < m.length; i++) if (m[i].s > cur) { pick = m[i]; break; }
+    if (!pick) pick = m[0];
   } else {
-    for (var j = m.length - 1; j >= 0; j--) if (m[j] < cur) { target = m[j]; break; }
-    if (target === null) target = m[m.length - 1];
+    for (var j = m.length - 1; j >= 0; j--) if (m[j].s < cur) { pick = m[j]; break; }
+    if (!pick) pick = m[m.length - 1];
   }
   ta.focus();
-  ta.setSelectionRange(target, target + q.length);
+  ta.setSelectionRange(pick.s, pick.e);
   txScrollToCaret();
   txStatus();
   txFindHighlight();
@@ -19559,12 +19577,14 @@ function txReplaceOne(){
   var ta = txEl(), q = $v12('tx-find-i').value, rep = $v12('tx-repl-i').value;
   if (!q) return;
   var sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
-  var cs = $v12('tx-case').checked;
-  var hit = cs ? (sel === q) : (sel.toLowerCase() === q.toLowerCase());
+  var o = txFindOpts(), hit = false;
+  try { hit = txBuildRe(q, o).test(sel); } catch (e) { hit = false; }
   if (hit){
     var s = ta.selectionStart;
-    ta.value = ta.value.slice(0, s) + rep + ta.value.slice(ta.selectionEnd);
-    ta.setSelectionRange(s + rep.length, s + rep.length);
+    var rep2 = rep;
+    try { rep2 = (o.re || o.ww) ? sel.replace(txBuildRe(q, o), rep) : rep; } catch (e) {}
+    ta.value = ta.value.slice(0, s) + rep2 + ta.value.slice(ta.selectionEnd);
+    ta.setSelectionRange(s + rep2.length, s + rep2.length);
     txOnInput();
   }
   txFindNext(1);
@@ -19573,13 +19593,12 @@ function txReplaceAll(){
   var ta = txEl(), q = $v12('tx-find-i').value, rep = $v12('tx-repl-i').value;
   if (!q) return;
   var n = 0;
-  if ($v12('tx-case').checked){
-    n = ta.value.split(q).length - 1;
-    ta.value = ta.value.split(q).join(rep);
-  } else {
-    var re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  try {
+    var o = txFindOpts(), re = txBuildRe(q, o);
     n = (ta.value.match(re) || []).length;
     ta.value = ta.value.replace(re, rep);
+  } catch (e) {
+    toast('正则表达式有误', 'err'); return;
   }
   txOnInput();
   txFindHighlight();
