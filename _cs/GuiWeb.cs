@@ -2366,7 +2366,7 @@ namespace AdbLogExport.Gui
                                 string local = Path.Combine(fbDir, j);
                                 if (!File.Exists(local)) { sb.Append("缺文件 " + j + "; "); fail++; continue; }
                                 string jerr;
-                                if (RunAdbRawEx("push \"" + local + "\" \"/sdcard/" + j + "\"", out jerr))
+                                if (RunAdbArgv(new List<string> { "push", local, "/sdcard/" + j }, out jerr))
                                     done++;
                                 else { fail++; sb.Append("推送失败 " + j + (jerr.Length > 0 ? "（" + jerr + "）" : "") + "; "); }
                             }
@@ -2383,7 +2383,7 @@ namespace AdbLogExport.Gui
                                 // 先建目录，再 push（PushFile 不会自动建父目录）
                                 RunAdbRaw("shell mkdir -p /data/local/tmp/" + abi);
                                 string serr;
-                                if (RunAdbRawEx("push \"" + soLocal + "\" \"/data/local/tmp/" + abi + "/libfastbot_native.so\"", out serr))
+                                if (RunAdbArgv(new List<string> { "push", soLocal, "/data/local/tmp/" + abi + "/libfastbot_native.so" }, out serr))
                                     done++;
                                 else { fail++; sb.Append("native 库推送失败" + (serr.Length > 0 ? "（" + serr + "）" : "") + "; "); }
                             }
@@ -2399,7 +2399,7 @@ namespace AdbLogExport.Gui
                                 string[] otherAbis = { "arm64-v8a", "armeabi-v7a", "x86", "x86_64" };
                                 string d1;
                                 foreach (string oa in otherAbis)
-                                    if (oa != abi) RunAdbRawEx("shell rm -rf /data/local/tmp/" + oa, out d1);
+                                    if (oa != abi) RunAdbArgv(new List<string> { "shell", "rm -rf /data/local/tmp/" + oa }, out d1);
 
                                 string soMd5Local = Md5Of(soLocal);
                                 string devMd5 = RunAdbRawExOut("shell md5sum /data/local/tmp/" + abi + "/libfastbot_native.so");
@@ -3131,7 +3131,7 @@ namespace AdbLogExport.Gui
                                 "logcat", DateTime.Now.ToString("yyyy-MM-dd"), "fb_" + stamp);
                             try { System.IO.Directory.CreateDirectory(dest); } catch { }
                             string err2;
-                            bool okp = RunAdbRawEx("pull \"" + dir + "\" \"" + dest + "\"", out err2);
+                            bool okp = RunAdbArgv(new List<string> { "pull", dir, dest }, out err2);
                             PortToastAndOpen(okp, okp
                                 ? ("报告已拉取到：" + dest)
                                 : ("拉取失败：" + (err2.Length > 0 ? err2 : "见日志")), dest);
@@ -4337,6 +4337,20 @@ namespace AdbLogExport.Gui
             if (cur.Length > 0) outp.Add(cur.ToString());
             return outp;
         }
+
+// 2026-11-26（W-11-2/R8）：参数用 List 传，不拼字符串。
+// 路径里的空格/引号/& 由 CreateProcess 原样传递，避免手工加引号出错。
+private static bool RunAdbArgv(List<string> argv, out string errText)
+{
+    errText = "";
+    if (argv == null || argv.Count == 0) { errText = "空命令"; return false; }
+    string o = "", e = "";
+    int rc = App.AdbCall(argv, out o, out e);
+    if (rc == 0) return true;
+    errText = ((e ?? "") + (o ?? "")).Trim();
+    if (errText.Length == 0) errText = "命令失败（rc=" + rc + "）";
+    return false;
+}
 
 private static bool RunAdbRawEx(string adbArgs, out string errText)
         {
