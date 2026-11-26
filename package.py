@@ -49,6 +49,15 @@ REQUIRED_GLOBS = [
 ]
 
 
+# 2026-11-26（W-20/R10）：打包排除编译临时文件，避免包内文件数抖动
+SKIP_EXT = (".tmp", ".obj", ".pdb", ".ilk")
+
+
+def _skip_temp(name):
+    n = (name or "").lower()
+    return any(n.endswith(e) for e in SKIP_EXT)
+
+
 def check_dist():
     """逐项校验 dist 是否自包含；返回错误列表（空 = 通过）。"""
     errs = []
@@ -116,6 +125,8 @@ def main():
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for r, _, fs in os.walk(STAGE):
             for f in fs:
+                if _skip_temp(f):        # 2026-11-26（R10）：临时文件不进包
+                    continue
                 p = os.path.join(r, f)
                 try:
                     z.write(p, os.path.relpath(p, STAGE).replace("\\", "/"))

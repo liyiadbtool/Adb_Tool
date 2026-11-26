@@ -42,3 +42,7 @@ desktop.ini
 
 # ---- AI 助手的本机记忆（含会话痕迹，不入库）----
 .workbuddy/memory/
+
+# 2026-11-26（W-20/R10）：构建临时文件
+*.TMP
+*.tmp
