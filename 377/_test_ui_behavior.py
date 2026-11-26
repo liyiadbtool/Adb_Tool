@@ -22,6 +22,37 @@ except Exception:
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 本脚本在 377/，项目根是上一级
 UI = os.path.join(ROOT, "adb_log_gui", "webview2", "ui.html")
 TEST = os.path.join(ROOT, "377", "test_behavior.html")
+def _find_browser():
+    """2026-11-26（B）：浏览器可配置 + Chrome/Chromium 回退。
+       本机实测 Edge 新版 --dump-dom 输出恒为空（rc=0 但无 DOM），
+       所以顺序改成：环境变量 UI_BROWSER > Chrome > Chromium > Edge。
+       Edge 仍保留在候选末尾，换台机器能跑就不影响原有行为。"""
+    env = os.environ.get("UI_BROWSER")
+    if env and os.path.exists(env):
+        return env
+    cands = []
+    for envname in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA"):
+        base = os.environ.get(envname)
+        if not base:
+            continue
+        cands.append(os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"))
+        cands.append(os.path.join(base, "Chromium", "Application", "chrome.exe"))
+        cands.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
+    cands += [
+        r"C://Program Files//Google//Chrome//Application//chrome.exe",
+        r"C://Program Files (x86)//Google//Chrome//Application//chrome.exe",
+        r"C://Program Files (x86)//Microsoft//Edge//Application//msedge.exe",
+        r"C://Program Files//Microsoft//Edge//Application//msedge.exe",
+    ]
+    for c in cands:
+        try:
+            if c and os.path.exists(c):
+                return c
+        except Exception:
+            pass
+    return "msedge.exe"
+
+
 def _find_edge():
     """跨机器找 Edge：优先环境变量，再试两个默认安装位置。
     原先写死 C:/Program Files (x86)/...，换台机器/换用户名就跑不了。"""
@@ -41,7 +72,7 @@ def _find_edge():
     return "msedge.exe"   # 交给 PATH
 
 
-EDGE = _find_edge()
+EDGE = _find_browser()
 # 2026-11-22：支持通过环境变量指定独立的浏览器 profile 目录。
 # 目的：让 verify_all.py 能**并行**跑多个套件（它们共用同一个 profile 时会争抢锁，
 # 串行必须 sleep 等待，实测 3 套串行 13.7s、并行只有 4.8s）。
@@ -1217,6 +1248,9 @@ def main():
     m = re.search(r'<pre id="RESULT">(.*?)</pre>', dom, re.S)
     if not m:
         print("没拿到 RESULT，DOM 长度", len(dom))
+        print("  浏览器:", EDGE)
+        print("  提示：Edge 新版 --dump-dom 可能返回空。可设 UI_BROWSER=<chrome.exe 路径> 切换；")
+        print("        或用 --headless=old；确认 msedge --version 是否有输出。")
         print(dom[:800])
         return 1
 
