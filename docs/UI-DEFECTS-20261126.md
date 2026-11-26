@@ -93,4 +93,48 @@ clientWidth 差 15~18px → gutter 问题；scrollHeight 明显变化 → 异步
 | 编号 | 项 | 优先级 | 状态 |
 |---|---|---|---|
 | D1 | 切页/开面板抖动（40 处 gutter + 异步填充） | 高 | 记录，未修 |
-| D2 | 最大化时底部输出条被遮挡 | 高 | 记录，未修 |
+| D2 | 最大化时底部输出条被遮挡（已确认：窗口越界，底部在屏幕外） | 高 | 记录，未修 |
+| D3 | 导出路径齿轮偏小 / 点击看似无响应（弹窗在 overflow 容器内） | 高 | 记录，未修 |
+
+---
+
+## D3 导出路径齿轮：视觉偏小 + 点击“看起来没反应”
+
+**现象**：卡片右上角齿轮仍是小图标；点它没有弹出设置框。
+
+**实测（无头浏览器，ui.html 现版本）**
+
+```
+齿轮数量            8（= 当前 exp 卡片数，正确）
+计算样式            width 26px / font-size 17px（CSS 已生效）
+点击 .click()       op-backdrop display=flex，op-id="shot"（逻辑正确）
+遮罩几何            位置 y=116，高 784（**没有覆盖顶部 116px 标签栏**）
+面板几何            560 × 74
+祖先裁剪链          quick-scroll → quick-body(overflow:hidden)
+                    → quick-wrap(overflow:hidden) → main(perspective:1700px)
+```
+
+**结论：逻辑没坏，是“住错了地方”**
+
+`#op-backdrop` 被写在 `#page-quick` 内部，而中间有三层 `overflow:hidden` 和一个
+`perspective` 容器。`position:fixed` 在有 transform/perspective 的祖先下**不再是视口定位**，
+而是相对该祖先，并被 `overflow:hidden` 裁剪：
+
+- 遮罩从 y=116 开始，顶部标签栏没被盖住（说明 `inset:0` 失效）
+- 页面滚动时弹窗跟着内容跑，可能滚出可视区 → 用户看到的就是“点了没反应”
+- 面板高度仅 74px（一行控件 + 空列表），本身也偏小，容易被当成“没打开”
+
+**次要问题：齿轮视觉尺寸**
+`.qgear` 盒子 26px，但字形只有 17px，实际观感约 13px；且默认 `opacity:.45` 偏淡。
+
+**建议修法**
+
+```
+① 把 #op-backdrop 移到 <body> 末尾（脱离 overflow/perspective 容器）
+   —— 一行 DOM 位置调整，治"点击无效"
+② .qgear 字号 17 → 20，盒子 26 → 28；或改用 SVG 齿轮图标
+③ 面板加最小高度（约 160px），列表区留空时也给提示
+```
+
+**优先级**：高（功能入口，用户直接感知）
+
