@@ -269,6 +269,26 @@ namespace AdbLogExport
            30 秒对"下发即返回"的命令足够，但 push/pull/install/bugreport/logcat -f
            这类搬运型命令经常跑几十秒到几分钟，超时会被 kill 并只拿到半截输出，
            上层若只看输出就会把半截数据当完整结果。 */
+        /* 2026-11-26（W-07/R2）：超时集中成一张表，不再散落 if 判断。
+           加新命令类型只改 TIMEOUT_TABLE，不用在函数里插条件。 */
+        private static readonly object[,] TIMEOUT_TABLE = new object[,]
+        {
+            // 命令（子命令 或 shell 内容关键字）, 毫秒
+            { "push",            180000 },
+            { "pull",            180000 },
+            { "install",         180000 },
+            { "uninstall",       180000 },
+            { "bugreport",       600000 },
+            { "backup",          600000 },
+            { "restore",         600000 },
+            { "logcat",          600000 },
+            { "screencap",       120000 },
+            { "screenrecord",    120000 },
+            { "dumpsys",          60000 },
+            { "am force-stop",    60000 },
+            { "pm ",              60000 },
+        };
+
         private static int TimeoutFor(List<string> argv)
         {
             if (argv == null || argv.Count == 0) return CALL_TIMEOUT_MS;
@@ -279,20 +299,20 @@ namespace AdbLogExport
                 if (a == "-s") { i++; continue; }          // 跳过序列号
                 sub = a; break;
             }
-            /* 2026-11-25：设备离线时一律 3 秒超时。
-               离线状态下 adb 会阻塞到 transport 超时（可长达 30~60 秒），
-               表现为"命令一直在加载"。有 3 秒上限就能快速失败。 */
-            if (DEVID == null || DEVID.Length == 0 || DEVN == 0) return 3000;
-            if (sub == "push" || sub == "pull" || sub == "install" || sub == "uninstall") return 180000;
-            if (sub == "bugreport" || sub == "backup" || sub == "restore") return 600000;
+
+            // 离线：一律 3 秒，避免阻塞到 transport 超时（30~60 秒）
+            if (string.IsNullOrEmpty(DEVID) || DEVN == 0) return 3000;
+
+            string body = "";
             if (sub == "shell" && argv.Count > 1)
+                body = (argv[argv.Count - 1] ?? "").ToLowerInvariant();
+
+            for (int r = 0; r < TIMEOUT_TABLE.GetLength(0); r++)
             {
-                string body = (argv[argv.Count - 1] ?? "").ToLowerInvariant();
-                if (body.Contains("logcat")) return 600000;      // logcat -f / -d 大缓冲
-                if (body.Contains("bugreport")) return 600000;
-                if (body.Contains("dumpsys")) return 60000;       // meminfo 全量偏慢
-                if (body.Contains("screencap") || body.Contains("screenrecord")) return 120000;
-                if (body.Contains("am force-stop") || body.Contains("pm ")) return 60000;
+                string key = (string)TIMEOUT_TABLE[r, 0];
+                bool hit = key.EndsWith(" ") ? body.Contains(key)
+                        : (sub == key || (body.Length > 0 && body.Contains(key)));
+                if (hit) return (int)TIMEOUT_TABLE[r, 1];
             }
             return CALL_TIMEOUT_MS;
         }
