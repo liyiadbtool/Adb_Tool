@@ -9386,9 +9386,13 @@ function diagRefresh(){
   var sub = document.getElementById('diag-sub');
   if(sub) sub.textContent = '正在采集…';
 
-  _diag.health = {};
-  diagSetHealth('adb', 'wait', 'adb 采集中');
-  diagUpdateSum();
+  /* 2026-11-26（D1）：首次进入才把状态置为"采集中"。
+     已有数据时保留上一次的汇总条，避免"变短→变长"的跳动。 */
+  if(!_diag.health || !Object.keys(_diag.health).length){
+    _diag.health = {};
+    diagSetHealth('adb', 'wait', 'adb 采集中');
+    diagUpdateSum();
+  }
 
   // 本机（快）
   try { post('diagget'); } catch(e){}
@@ -9583,8 +9587,14 @@ function diagOnUseAdb(msg){
 
 /* ---------- 车机信息渲染 ---------- */
 function diagRenderCarLoading(){
+  /* 2026-11-26（D1 纵向抖动）：只在**没有数据**时放占位。
+     原来每次进页都把已有内容换成一行"正在读取"，数据回来又铺满，
+     卡片高度"塌→涨"，两列网格互相牵扯，就是用户看到的"切到诊断页抖一下"。 */
   var box = document.getElementById('diag-rows-car');
-  if(box) box.innerHTML = '<div class="diag-empty">正在读取车机信息…</div>';
+  if(!box) return;
+  var has = box.querySelector('.diag-row, .diag-kv');
+  if(has) return;
+  box.innerHTML = '<div class="diag-empty">正在读取车机信息…</div>';
 }
 
 function diagOnCar(msg){
