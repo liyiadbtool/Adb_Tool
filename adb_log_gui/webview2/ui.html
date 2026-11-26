@@ -5531,7 +5531,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 
 /* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
-.qgear{opacity:.45;margin-left:auto;flex:0 0 26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:17px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
+.qgear{opacity:.55;margin-left:auto;flex:0 0 28px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:20px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
 .qcard:hover 
 .qcard:hover .qgear{opacity:1;}
 .qgear:hover{color:var(--accent);background:var(--surface-2);}
@@ -5546,7 +5546,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .cf-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;}
 .cf-text{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;}
 .cf-sub{font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:6px;}
-.cf-danger{font-size:12px;color:var(--err,#ff453a);margin-top:8px;}
+.cf-danger{font-size:12px;color:var(--err);margin-top:8px;}
 .cf-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;}
 .op-mask .op-panel{width:min(560px,92vw);margin:0;background:var(--surface);border:1px solid var(--rim);border-radius:var(--r-4);padding:16px;box-shadow:var(--shadow-lg);}
 </style>
@@ -6098,18 +6098,7 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <div class="cm-grid" id="cm-grid"></div>
           </div>
 
-<div class="op-mask" id="op-backdrop" style="display:none" onmousedown="if(event.target===this)closeOutPath()"><div class="op-panel" id="op-panel">
-            <div class="op-row">
-              <span class="op-lbl">指令</span>
-              <input class="mk-inp" id="op-id" placeholder="apk / dlog / shotopen …" spellcheck="false" style="width:150px">
-              <span class="op-lbl">路径</span>
-              <input class="mk-inp" id="op-path" placeholder="留空并保存 = 恢复默认（桌面\logcat）" spellcheck="false" style="flex:1">
-              <button class="btn ghost sm" onclick="browseOutPath()">浏览…</button>
-              <button class="btn primary sm" onclick="saveOutPath()">保存</button>
-              <button class="btn ghost sm" onclick="closeOutPath()">关闭</button>
-            </div>
-            <div class="op-list" id="op-list"></div>
-          </div></div>
+
           <div class="quick-grid" id="quick-grid"></div>
           </div>
         </div>
@@ -10356,7 +10345,12 @@ function onMessage(ev){
   if(typeof v12OnMessage === 'function' && v12OnMessage(msg)) return;
   switch(msg.kind){
     case 'outpathdir': var _p=document.getElementById('op-path'); if(_p) _p.value=msg.data||''; break;
-    case 'outpathlist': try{ _opPaths = msg.data ? JSON.parse(msg.data) : {}; if(typeof renderQuickItems==='function') renderQuickItems(); }catch(e){} break;
+    case 'outpathlist': try{
+        _opPaths = msg.data ? JSON.parse(msg.data) : {};
+        if(typeof renderQuickItems==='function') renderQuickItems();
+        // 2026-11-26：同步刷新导出路径弹窗（下拉绿点 + 路径回填），双端一致
+        if(typeof onOutPathList==='function') onOutPathList(_opPaths);
+      }catch(e){} break;
     case 'outpathlist_': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
     case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
     case 'line': appendLine(msg); break;
@@ -22380,17 +22374,86 @@ document.addEventListener('DOMContentLoaded', function (){
 
 
 // 2026-11-25：导出路径设置面板（C 方案）。⚙ 图标（B 方案）复用同一函数。
-function openOutPath(id){var p=document.getElementById('op-backdrop');if(!p)return;p.style.display='flex';
-  if(id){var e=document.getElementById('op-id');if(e)e.value=id;}
-  postObj({kind:'outpath',act:'list'});}
+/* 2026-11-26：两套模式共用同一个弹窗
+   - 完整模式（设置页打开，id 为空）：显示指令下拉 + 删除
+   - 轻量模式（卡片齿轮，id 有值）：只显示路径框 + 删除 */
+var _opMode = 'full', _opId = '';
+
+function opExpItems(){
+  var out = [];
+  try{
+    for (var g = 0; g < quickGroups.length; g++){
+      var it = quickGroups[g].items || [];
+      for (var i = 0; i < it.length; i++){
+        if (it[i] && it[i].exp) out.push({ id:String(it[i].cmd||'').replace(/^:/,'').split(' ')[0], name:it[i].name });
+      }
+    }
+  }catch(e){}
+  return out;
+}
+
+function openOutPath(id){
+  var p = document.getElementById('op-backdrop'); if(!p) return;
+  _opMode = id ? 'lite' : 'full';
+  _opId = id || '';
+  var rowId = document.getElementById('op-row-id');
+  var title = document.getElementById('op-title');
+  var sel = document.getElementById('op-sel');
+  if (_opMode === 'full'){
+    rowId.style.display = 'flex';
+    title.textContent = '设置导出路径';
+    var items = opExpItems();
+    var html = '';
+    for (var k = 0; k < items.length; k++)
+      html += '<option value="' + items[k].id + '">' + items[k].name + '（' + items[k].id + '）</option>';
+    sel.innerHTML = html;
+    if (items.length) sel.value = items[0].id;
+    _opId = sel.value;
+  } else {
+    rowId.style.display = 'none';
+    title.textContent = '设置导出路径';
+  }
+  var pathEl = document.getElementById('op-path');
+  if (pathEl) pathEl.value = '';
+  document.getElementById('op-list').textContent = '读取中…';
+  p.style.display = 'flex';
+  postObj({kind:'outpath', act:'list'});
+}
+
+function outPathPick(id){ _opId = id || ''; onOutPathList(_opCache); }
+
+function delOutPath(){
+  if (!_opId) { toast('请先选择指令', 'err'); return; }
+  confirmBox({
+    title:'恢复默认路径', text:'确定清除「' + _opId + '」的自定义导出路径？',
+    sub:'清除后该指令写回：桌面\logcat\<日期>\<类型>',
+    okText:'删除', okDanger:true,
+    onOk:function(){ postObj({kind:'outpath', act:'del', id:_opId}); postObj({kind:'outpath', act:'list'}); }
+  });
+}
 function closeOutPath(){var p=document.getElementById('op-backdrop');if(p)p.style.display='none';}
 function saveOutPath(){
-  var id=(document.getElementById('op-id')||{}).value||'';
+  var id = _opId || '';
   var path=(document.getElementById('op-path')||{}).value||'';
-  if(!id.trim()){toast('请填指令名，例如 apk','err');return;}
+  if(!id.trim()){toast('请先选择指令','err');return;}
   postObj({kind:'outpath',act:'set',id:id.trim(),path:path.trim()});
   postObj({kind:'outpath',act:'list'});
 }
+var _opCache = {};
+function onOutPathList(obj){
+  _opCache = obj || {};
+  renderOutPathList(_opCache);
+  var pathEl = document.getElementById('op-path');
+  if (pathEl) pathEl.value = (_opId && _opCache[_opId]) ? _opCache[_opId] : '';
+  var sel = document.getElementById('op-sel');
+  if (sel && _opMode === 'full'){
+    for (var i=0;i<sel.options.length;i++){
+      var o = sel.options[i], v = o.value;
+      o.textContent = o.textContent.replace(/\s*●$/, '') + (_opCache[v] ? ' ●' : '');
+    }
+  }
+}
+
 function renderOutPathList(obj){
   var box=document.getElementById('op-list');if(!box)return;
   var keys=Object.keys(obj||{});
@@ -22496,5 +22559,21 @@ function opHas(cmd){
     </div>
   </div>
 </div>
+<div class="op-mask" id="op-backdrop" style="display:none" onmousedown="if(event.target===this)closeOutPath()"><div class="op-panel" id="op-panel">
+            <div class="op-title" id="op-title">设置导出路径</div>
+            <div class="op-row" id="op-row-id">
+              <span class="op-lbl">指令</span>
+              <select class="mk-inp" id="op-sel" onchange="outPathPick(this.value)" style="min-width:220px"></select>
+            </div>
+            <div class="op-row">
+              <span class="op-lbl">路径</span>
+              <input class="mk-inp" id="op-path" placeholder="留空并保存 = 恢复默认（桌面\logcat）" spellcheck="false" style="flex:1">
+              <button class="btn ghost sm" onclick="browseOutPath()">浏览…</button>
+              <button class="btn primary sm" onclick="saveOutPath()">保存</button>
+              <button class="btn ghost sm" id="op-del" onclick="delOutPath()">删除</button>
+              <button class="btn ghost sm" onclick="closeOutPath()">关闭</button>
+            </div>
+            <div class="op-list" id="op-list"></div>
+          </div></div>
 </body>
 </html>

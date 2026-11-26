@@ -131,6 +131,8 @@ A12_ADDS = {
         "txNew", "txOpen", "txSave", "txFindOpen", "txFindNext", "txFindClose",
         "txReplaceOne", "txReplaceAll", "txGoto", "txSetEnc", "txSetEol",
         "txToggleWrap", "txZoom", "txUndoRedo", "txSyncCaret", "txSelect", "txClose",
+        # 2026-11-26：导出路径（下拉选择/删除）
+        "outPathPick", "delOutPath",
         # 2026-11-21：配置文件（设置页两个按钮）
         "cfgExport", "cfgImport",
         # 2026-11-23：仪表投屏 —— 从 ClusterDebugTool 导入通道配置
@@ -142,6 +144,11 @@ A12_ADDS = {
     ]),
     "ids": set([
         "titlebar", "tb-sub", "tb-min", "tb-max", "tb-close", "settings-btn",
+        # 2026-11-26：统一确认弹窗
+        "cf-mask", "cf-panel", "cf-title", "cf-text", "cf-sub", "cf-danger",
+        "cf-ok", "cf-cancel",
+        # 2026-11-26：导出路径弹窗重构（下拉选择 / 删除按钮 / 标题）
+        "op-title", "op-row-id", "op-sel", "op-del",
         "set-mask", "set-theme", "set-font", "set-font-preview",
         "help-mask", "help-toc", "help-doc", "help-search",
         "page-text", "tx-tabs", "tx-find", "tx-find-i", "tx-repl-i", "tx-find-n",

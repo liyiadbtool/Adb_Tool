@@ -2028,7 +2028,13 @@ namespace AdbLogExport.Gui
                             string act2 = GetField(json, "act");
                             string id2 = GetField(json, "id");
                             string path2 = GetField(json, "path");
-                            if (act2 == "set")
+                            if (act2 == "del")
+                            {
+                                // 2026-11-26：一键删除该指令的自定义路径，回到默认目录
+                                App.SetExportPath((id2 ?? "").Trim().ToLowerInvariant(), "");
+                                PushOnUi("{\"kind\":\"toast\",\"ok\":true,\"text\":\"已恢复默认路径\"}");
+                            }
+                            else if (act2 == "set")
                             {
                                 bool okSet = App.SetExportPath((id2 ?? "").Trim().ToLowerInvariant(), (path2 ?? "").Trim());
                                 PushOnUi(okSet
