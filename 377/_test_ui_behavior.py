@@ -27,6 +27,10 @@ def _find_browser():
        本机实测 Edge 新版 --dump-dom 输出恒为空（rc=0 但无 DOM），
        所以顺序改成：环境变量 UI_BROWSER > Chrome > Chromium > Edge。
        Edge 仍保留在候选末尾，换台机器能跑就不影响原有行为。"""
+    # 2026-11-26：项目内置 chrome-headless-shell（免安装，Edge 在本机跑不动）
+    bundled = os.path.join(ROOT, "tools", "chrome-headless-shell", "chrome-headless-shell.exe")
+    if os.path.exists(bundled):
+        return bundled
     env = os.environ.get("UI_BROWSER")
     if env and os.path.exists(env):
         return env
@@ -1231,7 +1235,9 @@ def main():
     if dom is None:
         cmd = [
             EDGE, "--headless=new", "--disable-gpu",
-            "--window-size=", "--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync", "--disable-extensions", "--disable-component-update" + win,
+            "--window-size=" + win, "--no-first-run", "--no-default-browser-check",
+            "--disable-background-networking", "--disable-sync", "--disable-extensions",
+            "--disable-component-update",
             "--virtual-time-budget=5000",
             "--dump-dom",
             "--user-data-dir=" + PROF,

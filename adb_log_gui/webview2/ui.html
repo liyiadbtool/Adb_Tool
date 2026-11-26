@@ -14683,11 +14683,11 @@ function renderQuickItems(){
     }
     html += '<div class="'+cls+'" data-j="'+j+'" onclick="qcardClick(event,'+j+')">'
       + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
-      + '<span class="qname" title="'+escAttr(it.name)+'">'+escHtml(it.name)+'</span>'
+      + '<span class="qname" title="'+escAttr(it.name||'')+'">'+escHtml(it.name||'')+'</span>'
       + (it.exp ? '<span class="qgear'+(opHas(it.cmd)?' set':'')+'" title="设置导出路径" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();qcardOutPath('+j+')">⚙</span>' : '')
       + (it.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
       + '</div>'
-      + '<div class="qcmd" title="'+escAttr(sub)+'">'+escHtml(sub)+'</div>'
+      + '<div class="qcmd" title="'+escAttr(sub||'')+'">'+escHtml(sub||'')+'</div>'
       + inpHtml
       + '<div class="qbar"><i></i></div>'
       + '</div>';
