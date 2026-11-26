@@ -200,6 +200,24 @@ namespace AdbLogExport.Gui
             // 延迟到句柄就绪后再开 immersive dark mode。
             HandleCreated += (s, e) => ApplyDarkTitleBar();
 
+            // 2026-11-26（D2）：任务栏/分辨率/DPI 变化后重算最大化边界
+            try
+            {
+                Microsoft.Win32.SystemEvents.DisplaySettingsChanged += delegate
+                {
+                    try
+                    {
+                        BeginInvoke((Action)delegate
+                        {
+                            UpdateMaximizedBounds();
+                            if (WindowState == FormWindowState.Maximized) EnsureInsideWorkingArea(true);
+                        });
+                    }
+                    catch { }
+                };
+            }
+            catch { }
+
             // 窗口显示前居中到主屏（需求2：取消拓展屏后仍落在主屏）
             Load += (s, e) => CenterToPrimaryScreen();
         }
@@ -959,6 +977,33 @@ namespace AdbLogExport.Gui
             if (_inSizeMove && now - _lastCornerTick < 80) return;
             _lastCornerTick = now;
             ApplyWindowCorner();
+
+            /* 2026-11-26（D2）：最大化时窗口越界 → 底部输出条落到屏幕外。
+               原因：MaximizedBounds 只在 OnLoad 算一次，换屏/任务栏变化/DPI 调整后失效。
+               这里按当前状态补一次：正常态重算目标矩形，最大化态检查并纠正。 */
+            if (WindowState == FormWindowState.Normal) UpdateMaximizedBounds();
+            else if (WindowState == FormWindowState.Maximized) EnsureInsideWorkingArea(false);
+        }
+
+        /* 纠正"最大化但超出工作区"：窗口 Bottom 超过 WorkingArea.Bottom 时，
+           先回 Normal、设对 MaximizedBounds，再重新最大化。 */
+        private void EnsureInsideWorkingArea(bool force)
+        {
+            try
+            {
+                Rectangle wa = Screen.FromControl(this).WorkingArea;
+                Rectangle b = Bounds;
+                bool outOfArea = b.Bottom > wa.Bottom + 1 || b.Top < wa.Top - 1
+                              || b.Right > wa.Right + 1 || b.Left < wa.Left - 1;
+                if (!outOfArea && !force) return;
+                MaximizedBounds = wa;
+                if (WindowState == FormWindowState.Maximized)
+                {
+                    WindowState = FormWindowState.Normal;
+                    WindowState = FormWindowState.Maximized;
+                }
+            }
+            catch { }
         }
 
         /* ★ 2026-11-23（第 23 批）：窗口激活（从任务栏 / Dock 唤起）时校正缩放。
