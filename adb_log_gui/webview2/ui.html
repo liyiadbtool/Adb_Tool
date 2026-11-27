@@ -57,8 +57,8 @@
 /* 2026-11-27（第四批）：玻璃 · 柔白（独立第四档，默认不启用） */
 :root[data-theme="glass"] {
   --bg:#F7F9FC;
-  --surface:rgba(255,255,255,.72);
-  --surface-2:rgba(255,255,255,.86);
+  --surface:rgba(255,255,255,.34);
+  --surface-2:rgba(255,255,255,.52);
   --rim:rgba(15,23,42,.07);
   --border:rgba(15,23,42,.10);
   --border-strong:rgba(15,23,42,.16);
@@ -173,6 +173,18 @@ body::before{
     radial-gradient(50% 40% at 30% 42%, rgba(140,180,255,.20), transparent 70%),
     radial-gradient(46% 38% at 74% 52%, rgba(190,160,255,.16), transparent 72%);
   mix-blend-mode:soft-light;
+}
+
+/* 液态玻璃：内容区是一整块玻璃板，卡片浮在它上面（而不是一块白板 + 白卡） */
+:root[data-theme="glass"] .quick-body{
+  background:rgba(255,255,255,.30) !important;
+  backdrop-filter:blur(30px) saturate(185%);
+  -webkit-backdrop-filter:blur(30px) saturate(185%);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 -1px 0 rgba(15,23,42,.05),
+    0 10px 40px rgba(23,43,77,.10);
 }
 :root[data-theme="glass"] .qcard:hover{
   background:rgba(255,255,255,.62);
