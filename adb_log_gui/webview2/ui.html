@@ -4743,7 +4743,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 }
 
 /* 诊断页数据异步填充会让高度跳变；先占位，回来时不顶动下方卡片 */
-[id^="diag-rows-"]{ min-height: 168px; }
+[id^="diag-rows-"]{ min-height: 0; }
+.diag-card:not(.folded) [id^="diag-rows-"]{ min-height: 120px; }
 .diag-scroll{
   flex:1 1 auto; min-height:0;
   overflow-y:auto; overflow-x:hidden;
@@ -4787,7 +4788,8 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
 /* 2026-11-26（D1）：卡片先占住高度，数据回来不改变整体高度 */
-.diag-card{ min-height: 216px; }
+.diag-card:not(.folded){ min-height: 216px; }   /* 2026-11-27：只在展开态占位，折叠时不要空白 */
+.diag-card.folded{ min-height: 0 !important; }
 .diag-card{
   /* 第 19 批：宽度交给 Grid 分配（原来 calc(50% - 6px) + 断点是跳变根源） */
   min-width:0;

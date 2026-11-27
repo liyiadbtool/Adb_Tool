@@ -820,6 +820,28 @@ namespace AdbLogExport.Gui
                     MINMAXINFO mmi = (MINMAXINFO)m.GetLParam(typeof(MINMAXINFO));
                     mmi.ptMinTrackSize.X = MinimumSize.Width;
                     mmi.ptMinTrackSize.Y = MinimumSize.Height;
+
+                    /* 2026-11-27（D2 真修）：无边框窗口最大化会铺满整屏、盖住任务栏。
+                       MaximizedBounds 只在进入最大化那一刻生效，任务栏变化/换屏后失效
+                       （用户实测：全屏后底部输出条被任务栏遮住）。
+                       这里在 WM_GETMINMAXINFO 里直接把最大化矩形限制到工作区：
+                       位置用「相对所在显示器原点」的坐标，避免跨屏绝对坐标出错。 */
+                    try
+                    {
+                        Screen scr = Screen.FromHandle(m.HWnd);
+                        Rectangle wa = scr.WorkingArea;   // 屏幕坐标
+                        Rectangle mo = scr.Bounds;        // 显示器原点
+                        int nonClientW = Math.Max(0, Bounds.Width - ClientSize.Width);
+                        int nonClientH = Math.Max(0, Bounds.Height - ClientSize.Height);
+                        mmi.ptMaxPosition.X = wa.X - mo.X;
+                        mmi.ptMaxPosition.Y = wa.Y - mo.Y;
+                        mmi.ptMaxSize.X = wa.Width + nonClientW;
+                        mmi.ptMaxSize.Y = wa.Height + nonClientH;
+                        if (mmi.ptMaxTrackSize.X < mmi.ptMaxSize.X) mmi.ptMaxTrackSize.X = mmi.ptMaxSize.X;
+                        if (mmi.ptMaxTrackSize.Y < mmi.ptMaxSize.Y) mmi.ptMaxTrackSize.Y = mmi.ptMaxSize.Y;
+                    }
+                    catch { }
+
                     System.Runtime.InteropServices.Marshal.StructureToPtr(
                         mmi, m.LParam, false);
                     return;
