@@ -268,7 +268,7 @@ namespace AdbLogExport
             {
                 CALL_TIMEOUT_MS = 600000;   // pull 大文件同样要放宽
                 string o = "", e = "";
-                ShellCall(CUR, "pull " + remote + " \"" + dir + "\"", out o, out e);
+                AdbCall(new List<string> { "pull", remote, dir }, out o, out e);
                 string all = ((o ?? "") + (e ?? ""));
                 if (all.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0
                     || all.IndexOf("failed", StringComparison.OrdinalIgnoreCase) >= 0)

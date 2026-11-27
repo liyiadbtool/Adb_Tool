@@ -231,10 +231,10 @@ namespace AdbLogExport
 
             // root + remount（anr/tombstones/dropbox 都要 root 才能读）
             Info("① adb root");
-            ShellCapture("root");
+            HostCapture("root");
             System.Threading.Thread.Sleep(800);
             Info("② adb remount");
-            string rm = ShellCapture("remount");
+            string rm = HostCapture("remount");
             if (rm.Trim().Length > 0) Hint("  " + FirstLine(rm).Trim());
 
             // 建目录
@@ -355,11 +355,11 @@ namespace AdbLogExport
             Blank();
 
             Info("① adb root");
-            ShellCapture("root");
+            HostCapture("root");
             System.Threading.Thread.Sleep(800);
 
             Info("② adb remount");
-            string rm = ShellCapture("remount");
+            string rm = HostCapture("remount");
             if (rm.Trim().Length > 0) Hint("  " + FirstLine(rm).Trim());
 
             Info("③ 禁用工程模式 com.android.engmode");
@@ -523,6 +523,14 @@ namespace AdbLogExport
         // ====================================================================
 
         // 跑设备 shell 并返回完整输出（stdout+stderr）
+        /* 2026-11-27（D9）：root / remount 是主机端 adb 命令，不能进设备 shell。 */
+        private static string HostCapture(string cmd)
+        {
+            string o = "", e = "";
+            try { AdbCall(new List<string> { cmd }, out o, out e); } catch { }
+            return ((o ?? "") + (e ?? "")).Trim();
+        }
+
         private static string ShellCapture(string cmd)
         {
             string o = "", e = "";

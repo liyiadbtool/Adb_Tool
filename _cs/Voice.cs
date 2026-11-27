@@ -779,14 +779,14 @@ namespace AdbLogExport
             // ① root
             Info("① adb root");
             string o = "", e = "";
-            ShellCall(CUR, "root", out o, out e);
+            AdbCall(new List<string> { "root" }, out o, out e);
             // adb root 后服务会重启，稍微等一会儿再继续
             System.Threading.Thread.Sleep(900);
 
             // ② remount
             Info("② adb remount");
             o = ""; e = "";
-            int rc = ShellCall(CUR, "remount", out o, out e);
+            int rc = AdbCall(new List<string> { "remount" }, out o, out e);
             string rm1 = (o + e).Trim();
             if (rm1.Length > 0) Hint("  " + FirstLine(rm1));
             if (rc != 0)
@@ -799,7 +799,7 @@ namespace AdbLogExport
             // ③ disable-verity（拿不到就提示，不中断 —— 有些机器 remount 已经够了）
             Info("③ adb disable-verity");
             o = ""; e = "";
-            ShellCall(CUR, "disable-verity", out o, out e);
+            AdbCall(new List<string> { "disable-verity" }, out o, out e);
             string dv = (o + e).Trim();
             if (dv.Length > 0) Hint("  " + FirstLine(dv));
 

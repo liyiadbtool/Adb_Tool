@@ -113,12 +113,9 @@ namespace AdbLogExport
 
             string o = "";
             string e = "";
-            int rc = ShellCall(CUR, "adb uninstall " + pkg, out o, out e);
-            if (rc != 0 && (o + e).Trim().Length == 0)
-            {
-                // 某些机型 adb 在设备 shell 里不接受嵌套 adb，退一步用 pm uninstall
-                rc = ShellCall(CUR, "pm uninstall " + pkg, out o, out e);
-            }
+            // 2026-11-27（D8）：本工具在设备 shell 里执行命令（adb shell），
+            // 设备 shell 没有 adb 二进制；卸载应直接用设备端 pm uninstall。
+            int rc = ShellCall(CUR, "pm uninstall " + pkg, out o, out e);
 
             string combined = (o + "\n" + e).Trim();
             string low = combined.ToLowerInvariant();

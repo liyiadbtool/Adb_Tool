@@ -366,7 +366,7 @@ namespace AdbLogExport
             string o = "", e = "";
             try
             {
-                int rc = App.ShellCall(App.CUR, "pull " + remote + " \"" + dir + "\"", out o, out e);
+                int rc = App.AdbCall(new List<string> { "pull", remote, dir }, out o, out e);
                 string all = (o ?? "") + (e ?? "");
                 // pull 失败时输出里会带 "does not exist" / "No such file" / "error"
                 if (all.IndexOf("No such file", StringComparison.OrdinalIgnoreCase) >= 0

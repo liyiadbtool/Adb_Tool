@@ -214,7 +214,7 @@ namespace AdbLogExport
         {
             Info("① adb root");
             string o = "", e = "";
-            try { ShellCall(CUR, "root", out o, out e); } catch { }
+            try { AdbCall(new List<string> { "root" }, out o, out e); } catch { }
             System.Threading.Thread.Sleep(700);   // root 后 adbd 重连
 
             Info("② lxc-attach -n " + p.LxcName);
