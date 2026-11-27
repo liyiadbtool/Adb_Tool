@@ -6852,6 +6852,23 @@ body[data-navlabels="0"] .filenav-item.active::after{
             </div>
           </section>
 
+          <!-- 2026-11-27（诊断第 6 阶段）：快照历史 + 与当前对比。
+               界面曾在第 20 批删除（数据仍在 _diag.hist），这里恢复渲染入口，
+               并接上已有的 diagDiffHist / diagCopyHist。 -->
+          <section class="diag-card diag-card--wide" id="diag-card-hist">
+            <header class="diag-card-head" onclick="diagToggleCard('hist')">
+              <svg class="diag-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              <span class="diag-dot ok"></span>
+              <span class="diag-card-title">快照历史</span>
+              <span class="diag-card-note" id="diag-hist-note"></span>
+              <div class="spacer"></div>
+              <button class="diag-copy-card" onclick="event.stopPropagation();diagSaveSnapshot()" title="保存当前环境为新快照">保存快照</button>
+            </header>
+            <div class="diag-rows" id="diag-rows-hist">
+              <div class="diag-empty">还没有快照</div>
+            </div>
+          </section>
+
           <!-- ⑤ 资源占用（2026-11-22 第 19 批 B2）：整行宽，含本机 + 车机两块 -->
           <section class="diag-card diag-card--wide" id="diag-card-res">
             <header class="diag-card-head">
