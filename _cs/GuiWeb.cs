@@ -268,18 +268,39 @@ namespace AdbLogExport.Gui
         // 从 exe 所在目录加载黑猫 ico 设为窗口图标（找不到则尝试内嵌图标）
         private void TrySetCatIcon()
         {
+            /* 2026-11-27（D11）：任务栏 hover 小弹窗显示"原始图标"。
+               根因：这里找 dist\adb_Tool.ico，但构建脚本只把 ico 放到
+               dist\internal\adb_Tool.ico → 文件判断恒 false，
+               永远走 ExtractAssociatedIcon 兜底，且 ShowIcon=false 下
+               任务栏拿不到正确的大图标，退而显示默认图标。
+               修法：先找 internal\adb_Tool.ico，再找 exe 同级，最后才从 exe 提取。 */
             try
             {
-                string icp = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "adb_Tool.ico");
-                if (System.IO.File.Exists(icp))
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] candidates = new string[]
+                {
+                    System.IO.Path.Combine(baseDir, "internal", "adb_Tool.ico"),
+                    System.IO.Path.Combine(baseDir, "adb_Tool.ico"),
+                };
+                string icp = null;
+                for (int i = 0; i < candidates.Length; i++)
+                {
+                    string c = candidates[i];
+                    if (!string.IsNullOrEmpty(c)
+                        && System.IO.File.Exists(c)
+                        && c.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
+                    { icp = c; break; }
+                }
+
+                if (icp != null)
                 {
                     using (Icon ic = new Icon(icp)) { Icon = (Icon)ic.Clone(); }
                 }
                 else
                 {
                     // 兜底：从 exe 本身提取图标（/win32icon 已把黑猫嵌入）
-                    Icon = System.Drawing.Icon.ExtractAssociatedIcon(
-                        System.Reflection.Assembly.GetEntryAssembly().Location);
+                    string exe = System.Reflection.Assembly.GetEntryAssembly().Location;
+                    Icon = System.Drawing.Icon.ExtractAssociatedIcon(exe);
                 }
             }
             catch { }
