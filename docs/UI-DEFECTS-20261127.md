@@ -506,3 +506,81 @@ B. 网格行高：搜索结果按 data-g/data-j 渲染，若某张卡带 .hasinp
 ```
 
 **优先级**：中（视觉问题，不影响点击）
+
+---
+
+## D16 指令执行中点击「停止/暂停」无效（长驻命令尤其明显）
+
+**现象**：卡片指令正在执行（绿灯/执行中/输出在滚），点停止按钮没反应，任务继续跑。
+
+**根因（代码链路，三条叠加）**
+
+**① 长驻命令不登记到槽位进程表**
+
+`RunRaw`（`Adb.cs:186`）：
+
+```csharp
+if (PERSIST_CHANNEL)
+{
+    Process prevP = PERSIST_RUNNING;
+    if (prevP != null) { try { if (!prevP.HasExited) prevP.Kill(); } catch { } }
+    PERSIST_RUNNING = p;          // ← 只记独立引用，不写 RUNNING_SLOTS
+}
+else
+{
+    RUNNING = p;
+    RUNNING_SLOTS[slot] = p;      // ← 只有普通命令登记
+}
+```
+
+而 `IsPersistentCmd` 把这几类都判为长驻（`GuiWeb.cs:4177`）：
+
+```
+monkey / logcat -f / scrcpy-server / app_process
+```
+
+**② 停止只杀槽位表里的进程**
+
+`StopWorker`（`GuiWeb.cs:4102`）：
+
+```csharp
+_stopRequested[slot] = true;
+App.GUISTOP = true;
+if (App.REC_GRAB_RUNNING[slot]) { App.StopRecGrab(slot); return; }
+if (!App.KillRunning(slot))                 // 长驻命令没登记 → 返回 false
+{
+    if (App.RUNNING != null && !App.RUNNING.HasExited) App.RUNNING.Kill();   // persist 路径没设 RUNNING → 杀不到
+}
+```
+
+**③ 设备侧只清了两类**
+
+`KillDeviceSidePersistent`（`GuiWeb.cs:4152`）：
+
+```bash
+pkill -f com.android.commands.monkey; pkill -f 'logcat -f'
+```
+
+`scrcpy-server` / `app_process` **不在清理列表**里。
+
+**④ 停止标志写了没人读**
+
+```
+_stopRequested[]  → 全仓只有写入与清零，没有任何读取点（死标志）
+GUISTOP           → 只有 TaskCmds.cs:1941 读过一次
+```
+
+**结果**：点停止后，PC 端进程没被杀、设备端进程按类型可能还在跑、
+worker 也不检查停止标志 → 命令照常执行到结束，界面一直"执行中"。
+
+**建议修法（记录，未执行）**
+
+```
+① 长驻命令也登记：PERSIST_RUNNING 之外补 RUNNING_SLOTS[slot] = p
+② StopWorker 增加：if (App.PERSIST_RUNNING 未退出) Kill()
+③ 设备侧 pkill 列表补 scrcpy / app_process
+④ 让 worker 在长等待/循环处读 _stopRequested[slot]，命中即收尾
+⑤ 停止后立即 PushEnd(false)，不要等命令自己退出（UI 才有反馈）
+```
+
+**优先级**：高（用户无法中断长任务，只能杀进程重开）
