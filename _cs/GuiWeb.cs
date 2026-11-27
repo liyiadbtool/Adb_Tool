@@ -2249,6 +2249,12 @@ namespace AdbLogExport.Gui
                     try { KillDeviceSidePersistent(); } catch { }
                     break;
 
+                /* 2026-11-27（终端第 4 批）：Tab 路径补全。
+                   前端把"目录部分 + 前缀"发上来，这里 ls 一次回候选。 */
+                case "tabpath":
+                    RunTabPath(GetField(json, "dir"), GetField(json, "prefix"));
+                    break;
+
                 case "copy":
                     string c = GetField(json, "data");
                     if (!string.IsNullOrEmpty(c))
@@ -5189,6 +5195,43 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             _worker[0].IsBackground = true;
             _worker[0].SetApartmentState(ApartmentState.STA);
             _worker[0].Start();
+        }
+
+        /* Tab 补全：列目录 + 前缀过滤，最多回 60 项（够用且不卡） */
+        private void RunTabPath(string dir, string prefix)
+        {
+            Thread th = new Thread(new ThreadStart(delegate()
+            {
+                string d = (dir ?? "").Trim();
+                string pfx = prefix ?? "";
+                try
+                {
+                    string o = "", e = "";
+                    string target = string.IsNullOrEmpty(d) ? "." : d;
+                    App.ShellCall(App.CUR, "ls -1p '" + target.Replace("'", "'\\''") + "' 2>/dev/null",
+                                   out o, out e);
+                    string[] lines = (o + "\n" + e).Replace("\r", "")
+                                     .Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("{\"kind\":\"tabpath\",\"dir\":").Append(Json(d))
+                      .Append(",\"prefix\":").Append(Json(pfx)).Append(",\"items\":[");
+                    int n = 0;
+                    for (int i = 0; i < lines.Length && n < 60; i++)
+                    {
+                        string name = lines[i].Trim();
+                        if (name.Length == 0) continue;
+                        if (pfx.Length > 0 && name.IndexOf(pfx, StringComparison.OrdinalIgnoreCase) != 0) continue;
+                        if (n > 0) sb.Append(',');
+                        sb.Append('"').Append(Json(name).Trim('"')).Append('"');
+                        n++;
+                    }
+                    sb.Append("]}");
+                    PushOnUi(sb.ToString());
+                }
+                catch (Exception ex) { GuiEntry.Dump("RunTabPath", ex); }
+            }));
+            th.IsBackground = true;
+            th.Start();
         }
 
         private void RunApkAct(string pkg, string act)

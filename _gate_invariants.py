@@ -94,7 +94,7 @@ def chk(name, cond, detail=""):
 # 契约口径：冻结层禁止删除 / 改名，允许新增，但新增项必须逐条登记在这里，
 # 未登记的新增仍然判失败 —— 既不让门禁形同虚设，也不把合法追加误判成违约。
 A9_ADDS = {
-    "kinds": set(["accent", "customcmds"]),
+    "kinds": set(["accent", "customcmds", "tabpath"]),   # tabpath: 2026-11-27 Tab 补全
     "onclicks": set([
         # 9 色强调色
         "accentPopClick", "toggleAccentPop",
