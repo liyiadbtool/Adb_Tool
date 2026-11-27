@@ -293,3 +293,70 @@ if (rc != 0 && (o + e).Trim().Length == 0)   // ← 条件太窄
 ```
 
 **优先级**：高（影响 VR 提权、地图、堆栈拉取、卸载等多条链路）
+
+---
+
+## D12 设备离线时点指令，卡片永久停在「执行中/加载中」，切页才恢复
+
+**现象**：设备不在线（已识别为离线）时点指令卡片 → 卡片转圈 + 副标题"执行中…"，
+一直不结束；切一次页面（重渲染）就恢复正常。
+
+**根因（代码定位到行，100% 可复现）**
+
+`runQuickAt()`（`ui.html:15466` 起）里，**先**把卡片置为 running，**后**才判断设备是否在线：
+
+```js
+if(card){
+  _quickRunningCard = card;                 // 15476
+  card.classList.remove('done');
+  card.classList.remove('error');
+  card.classList.add('running');            // ← 先标"执行中"
+  setCardIcon(card, 'running');
+}
+
+// R1 兜底：设备未连接
+var _c = String(it.cmd || '');
+if (!_online && _c.indexOf(':url') !== 0) {
+  toast('设备未连接');
+  return;                                   // ← 直接 return，没有回滚上面三件事
+}
+
+_busy[0] = true;
+addPendingRow(it.cmd);
+post('quick', it.cmd);                      // ← 因为 return，这句根本没执行
+```
+
+于是形成死锁：
+
+```
+① 卡片被标 running（转圈 + "执行中…"）
+② 走到离线判断 → toast → return
+③ running 没撤、_quickRunningCard 没清、_busy 没置
+④ 没发 post('quick') → 后端不会回 begin/end
+⑤ endRun 永远不执行 → 卡片永久"执行中"
+⑥ 切页触发 renderQuickItems 重建 DOM → 状态"看起来"恢复
+```
+
+**为什么"切页就好了"**：切页会把卡片 DOM 整体重建，class 上的 `running` 随旧节点一起丢弃，
+看起来恢复；但这是**假恢复**——`_quickRunningCard` 仍指向被丢弃的旧节点。
+
+**连带风险**
+
+```
+· _quickRunningCard 残留指向已脱离文档的节点
+· 下一次真正执行时，endRun 可能对这些旧节点做 classList 操作（无效）
+· 若用户连续快速点击，可能出现"上一张卡还在转"的错觉
+```
+
+**修法建议（记录，未执行）**
+
+```
+① 把「设备在线判断」提到置 running 之前（最简单、最安全）
+② 或在离线分支里显式回滚：
+     card.classList.remove('running'); setCardIcon(card,'idle');
+     _quickRunningCard = null;
+③ 统一收口：任何 early return 都要走同一个"撤销 pending 态"的函数
+④ 加一条自检：离线点击后卡片不含 running 类、_quickRunningCard 为 null
+```
+
+**优先级**：高（离线是常见状态，且表现为"卡死"，用户会以为工具坏了）
