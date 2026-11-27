@@ -13367,7 +13367,14 @@ function run(slot){
     toast('这个输入框的上一条指令还在执行，请稍候');
     return;
   }
-  inp.value = '';
+  /* 多行的确认逻辑在 window.run 包装器里（它会先接管多行文本，
+     这里只处理单行）。见 ui.html 里的 wrapRun / v13 包装。 */
+  _runSubmit(slot, inp, cmd, fromQuick);
+}
+
+/* 真正的提交：原来 run() 里"清空 + 记历史 + 建占位 + post"那几行 */
+function _runSubmit(slot, inp, cmd, fromQuick){
+  if(inp){ inp.value = ''; }
   txAutoGrow(slot);          // T10：清空后高度收回单行
   histPush(cmd);
   var fromQuick = (_tab === 'quick');
@@ -13473,9 +13480,40 @@ function copyCmd(slot){
 }
 
 function onInputKey(e, slot){
-  if(e.key === 'Enter'){ e.preventDefault(); run(slot || 0); return; }
-  if(e.key === 'ArrowUp'){ e.preventDefault(); nav(-1, slot || 0); return; }
-  if(e.key === 'ArrowDown'){ e.preventDefault(); nav(1, slot || 0); return; }
+  slot = slot || 0;
+  var inp = e.target;
+  var ctrl = e.ctrlKey || e.metaKey;
+
+  /* 2026-11-27（终端第 2 批）：对齐 Windows 命令行的快捷键
+     · Ctrl+C：有选中内容 → 走默认复制；无选中且正在执行 → 中断
+     · Ctrl+L：清屏   Ctrl+U：清空当前行   Ctrl+W：删前一个词 */
+  if(ctrl && (e.key === 'c' || e.key === 'C')){
+    var hasSel = inp && inp.selectionStart !== inp.selectionEnd;
+    if(hasSel) return;                        // 让浏览器复制
+    if(_busy[slot]){ e.preventDefault(); stop(slot); toast('已请求中断'); return; }
+    return;
+  }
+  if(ctrl && (e.key === 'l' || e.key === 'L')){ e.preventDefault(); clearLog(slot); return; }
+  if(ctrl && (e.key === 'u' || e.key === 'U')){
+    e.preventDefault();
+    if(inp){ inp.value = ''; txAutoGrow(slot); updateCopyBtn(slot); }
+    return;
+  }
+  if(ctrl && (e.key === 'w' || e.key === 'W')){
+    e.preventDefault();
+    if(inp){
+      var pos = inp.selectionStart, v = inp.value;
+      var head = v.slice(0, pos).replace(/\s*\S+\s*$/, '');
+      inp.value = head + v.slice(pos);
+      try{ inp.setSelectionRange(head.length, head.length); }catch(err){}
+      txAutoGrow(slot); updateCopyBtn(slot);
+    }
+    return;
+  }
+
+  if(e.key === 'Enter'){ e.preventDefault(); run(slot); return; }
+  if(e.key === 'ArrowUp'){ e.preventDefault(); nav(-1, slot); return; }
+  if(e.key === 'ArrowDown'){ e.preventDefault(); nav(1, slot); return; }
 }
 
 function nav(dir, slot){
@@ -13560,6 +13598,14 @@ function setStatus(s){
   setRootState(rt, _online, s.rooted === null && _rooted !== true);
   // 需求7：日志等级徽章（persist.log.tag，V/D/I/W/E）
   setLogLevel(s.loglevel || '');
+  /* 2026-11-27（终端第 1 批）：设备变了 → ↑↓ 浏览位置与草稿作废，
+     否则上键会停在旧设备的历史位置、下键还原出旧草稿。 */
+  try {
+    if (window._lastDev !== (s.dev || '')) {
+      window._lastDev = (s.dev || '');
+      if (typeof histPos !== 'undefined') { histPos = {}; drafts = {}; }
+    }
+  } catch (e) {}
   // R1：设备上下线都要重算置灰
   try { applyOnlineGate(); } catch (e) {}
   // 提示符：输入框只显示 ">"（需求4），设备号/目录只出现在日志回显里。
@@ -22458,8 +22504,20 @@ document.addEventListener('DOMContentLoaded', function (){
         if (typeof toast === 'function') toast('这个输入框的上一条指令还在执行，请稍候');
         return;
       }
-      _txQ[slot] = { lines: lines, i: 0 };
-      txNext(slot);
+      /* 2026-11-27（终端第 2 批）：原来是"回车即连环执行"，
+         粘贴一段日志就会批量跑掉。改成先确认一次。 */
+      var _start = function () { _txQ[slot] = { lines: lines, i: 0 }; txNext(slot); };
+      if (typeof confirmBox === 'function') {
+        confirmBox({
+          title: '执行多条命令',
+          text: '这次提交包含 ' + lines.length + ' 条命令',
+          sub: '将按顺序逐条执行，可点停止中断',
+          okText: '全部执行',
+          onOk: _start
+        });
+        return;
+      }
+      _start();
     };
 
     if (typeof origEnd === 'function') {

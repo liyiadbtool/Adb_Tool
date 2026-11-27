@@ -5719,6 +5719,19 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
         {
             string s = (serial ?? "").Trim();
             if (s.Length == 0) return;
+
+            /* 2026-11-27（终端第 1 批）：切换设备必须重置"路径类"状态。
+               否则提示符会停在旧设备的目录上，后续命令全部在失效目录里执行 ——
+               就是「车机信息整体错位 / cd .. 报错 / ls 报断连」的根源。 */
+            string oldSerial = App.SERIAL ?? "";
+            if (!string.Equals(oldSerial, s, StringComparison.Ordinal))
+            {
+                App.CUR = App.ROOT;          // 回根目录
+                App.OLDPWD = "";             // cd - 不可跨设备
+                App.PEND_K = "";             // 挂起的重试动作作废
+                App.PEND_R = "";
+            }
+
             App.SERIAL = s;
             App.SERIAL_OK = true;
             try { SaveIniKey("serial", s); } catch { }
