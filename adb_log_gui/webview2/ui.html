@@ -1875,6 +1875,11 @@ textarea:focus,select:focus{
 .tb-btn svg{width:10px;height:10px;stroke:currentColor;stroke-width:1;fill:none;}
 .tb-btn:hover{background:var(--well);color:var(--text);}
 .tb-btn:active{background:var(--edge);}
+/* D16（2026-11-27）：标题栏三个窗口按钮点过后会留下 Chromium 默认焦点环，
+   在深色标题栏上就是一圈白色圆角框。统一改成：键盘没在用时不出框，
+   Tab 走到时给一条内嵌的强调色细线（不占额外宽度，不会被标题栏裁掉）。 */
+.tb-btn:focus{outline:none;}
+.tb-btn:focus-visible{outline:1px solid var(--accent);outline-offset:-3px;}
 .tb-close:hover{background:var(--win-close);color:var(--surface);}
 .tb-close:active{background:var(--win-close-hover);color:var(--surface);}
 html[data-winmax="1"] .tb-max-ico{display:none;}
@@ -2357,8 +2362,10 @@ body.col-resizing *{cursor:col-resize !important;}
 .fs-list::-webkit-scrollbar-thumb:hover,.tx-edit::-webkit-scrollbar-thumb:hover{
   background:var(--text-faint);background-clip:content-box;
 }
-/* 焦点环统一（键盘可达） */
-.tb-btn:focus-visible,.set-seg button:focus-visible,.tx-btn:focus-visible,
+/* 焦点环统一（键盘可达）
+   D16：.tb-btn 从这里移出 —— 标题栏按钮是满高的，2px 外扩环会被 titlebar 的
+   overflow 裁掉一半；它的键盘焦点样式改在 .tb-btn 自己的规则里（内嵌 1px）。 */
+.set-seg button:focus-visible,.tx-btn:focus-visible,
 .tx-ico:focus-visible,.fs-swap:focus-visible,.set-link:focus-visible{
   outline:2px solid var(--accent);outline-offset:2px;
 }
@@ -9392,31 +9399,9 @@ function diagRenderVerdict(){
   sub.textContent = detail;
 }
 
-function diagCopyAll(){
-  var parts = [];
-  ['adb','pc','car','res'].forEach(function(k){
-    var box = document.getElementById('diag-rows-' + k);
-    if (box && box.innerText.trim()) parts.push('【' + (DIAG_TITLES[k]||k) + '】\n' + box.innerText.trim());
-  });
-  /* 界面隐藏但报告里要有的字段（2026-11-27：.NET 版本 / 进程数 / 设备名称） */
-  try {
-    var extra = [];
-    for (var i = 0; i < (_diag.local || []).length; i++){
-      var r = _diag.local[i];
-      if (r.k === '.NET 版本' || r.k === '进程数') extra.push(r.k + '：' + (r.v || '—'));
-    }
-    if (extra.length) parts.push('【界面隐藏项】\n' + extra.join('\n'));
-  } catch (e) {}
-
-  var txt = '诊断报告  ' + new Date().toLocaleString() + '\n'
-          + document.getElementById('diag-verdict-title').textContent + '\n'
-          + document.getElementById('diag-verdict-sub').textContent + '\n\n'
-          + parts.join('\n\n');
-  try {
-    navigator.clipboard.writeText(txt).then(function(){ toast('诊断报告已复制', 'ok'); },
-      function(){ toast('复制失败，请检查剪贴板权限', 'err'); });
-  } catch (e) { toast('复制失败：' + e.message, 'err'); }
-}
+/* D16（2026-11-27）：这里原本还有一份 diagCopyAll（纯文本拼四块内容），
+   与下面「读取 #diag-fmt、支持 text/md/json」的那份同名 —— 后定义的覆盖先定义的，
+   两份都在只会让人误改到无效的那份。已删除这一份，全文件只保留下面的实现。 */
 
 /* 2026-11-27：标识信息折叠/展开 */
 function diagToggleIds(){
@@ -12760,6 +12745,8 @@ function applyBuildStamp(m){
 }
 function accentPopClick(ev){
   ev.stopPropagation();
+  /* D16：强调色浮层打开时也让其它三类让位（四类互斥的唯一出口）。 */
+  if(typeof window.closeAllPopovers === 'function') window.closeAllPopovers('accent');
   var dot = ev.target.closest ? ev.target.closest('.accent-dot') : null;
   if (dot) setAccent(dot.getAttribute('data-accent'));
 }
@@ -16901,11 +16888,11 @@ function copyApkOut(){
 }
 
 // 点面板外任意处收起下拉（按钮自己 stopPropagation，所以不会刚开就关）
+// D16：无线调试（#wadb-pop）的"点外面关掉"已从这里移除，统一到下面那条
+//      document mousedown 委托（四类浮层一个出口），避免两处各关各的。
 document.addEventListener('click', function(ev){
   var sel = document.getElementById('apk-select');
   if(sel && !sel.contains(ev.target)) closeApkDrop();
-  var w = document.getElementById('wadb');
-  if(w && !w.contains(ev.target)) closeWadb();
 });
 
 
@@ -18061,7 +18048,9 @@ function toggleWadb(ev){
   if(ev) ev.stopPropagation();
   var p = document.getElementById('wadb-pop');
   if(!p) return;
+  /* D16：切换语义 —— 已打开就只关自己；要打开则先让其它三类让位。 */
   if(p.style.display !== 'none'){ closeWadb(); return; }
+  if(typeof window.closeAllPopovers === 'function') window.closeAllPopovers('wadb');
   p.style.display = 'flex';
   var h = document.getElementById('wadb-host');
   if(h){
@@ -21001,6 +20990,33 @@ document.addEventListener('DOMContentLoaded', function (){
     popCur = null;
   }
 
+  /* ==== D16（2026-11-27）：顶栏四类浮层统一互斥 ====
+     以前 log / dev 互相知道对方（popCur），但无线调试（#wadb-pop）和强调色
+     （#accent-pop）各管各的，于是最多能同时挂三个浮层。
+     现在只有这一个出口：调 closeAllPopovers(自己的 key) 再打开自己。
+       except = 'log' | 'dev' | 'wadb' | 'accent' | null
+     ⚠ 只关这四类，绝不碰 #cf-mask / #op-backdrop 等模态层。 */
+  function closeAllPopovers(except){
+    var lp = $('v15-logpop'), dp = $('v15-devpop');
+    if (except !== 'log' && lp) detachPop(lp, 'log');
+    if (except !== 'dev' && dp) detachPop(dp, 'dev');
+    if (except !== 'wadb'){
+      if (typeof window.closeWadb === 'function'){
+        try { window.closeWadb(); } catch (e) {}
+      } else {
+        var wp = $('wadb-pop');
+        if (wp) wp.style.display = 'none';
+      }
+    }
+    if (except !== 'accent'){
+      var ap = $('accent-pop');
+      if (ap) ap.style.display = 'none';
+    }
+  }
+  /* 弹出到全局：toggleWadb / accentPopClick 在 IIFE 外面（文件靠前的位置），
+     它们打开自己之前也要走同一个出口。参数同 closeAllPopovers。 */
+  window.closeAllPopovers = closeAllPopovers;
+
   function repositionPops(){
     if (!popCur) return;
     var p = popNode(popCur), a = popAnchors[popCur];
@@ -21043,7 +21059,9 @@ document.addEventListener('DOMContentLoaded', function (){
     });
   }
 
-  /* 全局收口：点空白处 / 按 Esc 关弹窗；窗口尺寸变化或滚动时跟随重定位。 */
+  /* 全局收口：点空白处 / 按 Esc 关弹窗；窗口尺寸变化或滚动时跟随重定位。
+     D16：点空白处关闭已统一到文件末尾那条 document mousedown 委托
+     （log / dev / wadb / accent 四类一起关，只此一处），这里只剩提示气泡。 */
   function initPopLayer(){
     document.addEventListener('click', function(ev){
       var t = ev.target;
@@ -21052,7 +21070,6 @@ document.addEventListener('DOMContentLoaded', function (){
       var p = popCur ? popNode(popCur) : null;
       var inPop = p && t && p.contains(t);
       if (inPop) return;
-      closeAllPops();
       if (!inLog && !inDev) hideTip();
     });
     document.addEventListener('keydown', function(ev){
@@ -21134,7 +21151,7 @@ document.addEventListener('DOMContentLoaded', function (){
   function openLogPop(){
     var pill = $('log-pill');
     if (!pill) return;
-    if (popCur === 'dev'){ var dp = $('v15-devpop'); if (dp) detachPop(dp, 'dev'); }
+    closeAllPopovers('log');       // D16：日志/设备/无线/强调色四类互斥
     var p = $('v15-logpop');
     if (!p) p = buildLogPop();
     hideTip();
@@ -21274,7 +21291,7 @@ document.addEventListener('DOMContentLoaded', function (){
   function openDevPop(){
     var badge = $('dev-badge');
     if (!badge) return;
-    if (popCur === 'log'){ var lp = $('v15-logpop'); if (lp) detachPop(lp, 'log'); }
+    closeAllPopovers('dev');       // D16：日志/设备/无线/强调色四类互斥
     var p = $('v15-devpop');
     if (!p) p = buildDevPop();
     hideTip();
@@ -23151,6 +23168,25 @@ function opHas(cmd){
     return !!(id && m[id]);
   }catch(e){ return false; }
 }
+
+/* ============================================================================
+   D16（2026-11-27）：顶栏四类浮层——"点外面关掉"的唯一收口
+   ----------------------------------------------------------------------------
+   原来各浮层自己挂 document 监听：log/dev 在 initPopLayer 里关自己，
+   wadb 在 APK 下拉那条监听里顺带关，强调色没人关。三处逻辑各说各话，
+   开着一个再开另一个就叠一起。
+   现在只留这一条 mousedown 委托，用 closeAllPopovers(null) 一次全关：
+     · 用 mousedown 而不是 click：它会先于按钮的 click 触发，点触发器时
+       触发器所在容器在下面的跳过名单里，所以不会"刚打开就被这次点击关掉"；
+     · 跳过名单 ＝ 四类浮层本体 + .tb-status（四个圆点触发器 + 无线弹窗都在里面）；
+     · 只关这四类，绝不碰 #cf-mask / #op-backdrop 等模态层。
+   ---------------------------------------------------------------------------- */
+document.addEventListener('mousedown', function(ev){
+  var t = ev.target;
+  if (!t) return;
+  if (t.closest && t.closest('.wadb-pop, #v15-logpop, #v15-devpop, .accent-pop, .tb-status')) return;
+  if (typeof window.closeAllPopovers === 'function') window.closeAllPopovers(null);
+});
 </script>
 <!-- APK 管理：管理列表浮层（增 / 删）。下拉里只显示名称，这里必须两列都露出来，
      否则两个同名应用根本分不清谁是谁。 -->
