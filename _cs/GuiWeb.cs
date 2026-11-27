@@ -359,6 +359,7 @@ namespace AdbLogExport.Gui
         private const int HTCAPTION = 2;
         private const int WM_SETICON = 0x0080;
         private const int WM_GETICON = 0x007F;
+        private const int WM_SETTINGCHANGE = 0x001A;
         private const int ICON_SMALL2 = 2;
         private const int ICON_SMALL = 0;
         private const int ICON_BIG = 1;
@@ -371,6 +372,7 @@ namespace AdbLogExport.Gui
         private Icon _icoBig   = null;   // 32x32 → 任务栏按钮 / 缩略图大图标
         // 2026-11-26：D2 修复引入的死循环保护 —— Normal↔Maximized 切换会再次触发 OnResize
         private bool _fixingMax = false;
+        private System.Windows.Forms.Timer _trayTimer = null;   // 任务栏变化防抖
         private string _rzDir = "";
         private Rectangle _rzRect = Rectangle.Empty;
 
@@ -864,6 +866,23 @@ namespace AdbLogExport.Gui
         {
             try
             {
+                if (m.Msg == WM_SETTINGCHANGE)
+                {
+                    /* 2026-11-27（D13）：任务栏自动隐藏/展开、任务栏高度变化
+                       不会触发 DisplaySettingsChanged，只发 WM_SETTINGCHANGE
+                       （lParam = "TraySettings"）。这里接住并防抖纠正窗口。 */
+                    try
+                    {
+                        string area = (m.LParam == IntPtr.Zero) ? ""
+                            : (System.Runtime.InteropServices.Marshal.PtrToStringUni(m.LParam) ?? "");
+                        if (area.IndexOf("TraySettings", StringComparison.OrdinalIgnoreCase) >= 0
+                            || area.IndexOf("WindowMetrics", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            ScheduleMaxFix();
+                        }
+                    }
+                    catch { }
+                }
                 if (m.Msg == WM_GETICON)
                 {
                     /* 2026-11-27（D11）：ShowIcon=false 时窗口不主动提供图标，
@@ -1078,6 +1097,29 @@ namespace AdbLogExport.Gui
             /* 只在正常态重算目标矩形。最大化态的越界纠正放到 WM_EXITSIZEMOVE
                与显示设置变化事件里做 —— 在 OnResize 里切状态会自激（窗口上下闪）。 */
             if (WindowState == FormWindowState.Normal) UpdateMaximizedBounds();
+        }
+
+        /* 任务栏变化 250ms 内只纠正一次：动画期间会连发多条 WM_SETTINGCHANGE，
+           每条都去切窗口状态就会闪。 */
+        private void ScheduleMaxFix()
+        {
+            try
+            {
+                if (_trayTimer == null)
+                {
+                    _trayTimer = new System.Windows.Forms.Timer();
+                    _trayTimer.Interval = 250;
+                    _trayTimer.Tick += delegate
+                    {
+                        _trayTimer.Stop();
+                        if (_closing) return;
+                        try { EnsureInsideWorkingArea(false); } catch { }
+                    };
+                }
+                _trayTimer.Stop();
+                _trayTimer.Start();
+            }
+            catch { }
         }
 
         /* 纠正"最大化但超出工作区"：窗口 Bottom 超过 WorkingArea.Bottom 时，
