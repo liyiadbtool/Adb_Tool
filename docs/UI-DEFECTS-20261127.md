@@ -127,3 +127,55 @@ adb shell "ls -la '/' 2>&1"      → 正常输出 36 项（acct/apex/avm_config/
 ```
 
 **优先级**：高（功能不可用，且错误提示指向错误方向）
+
+---
+
+## D7 设置里「设备端日志等级」点击 V/D/I/W/E 无效（选中态不变）
+
+**现象**：点齿轮浮层里的 D，按钮不切换，设备端也没变化；「本工具显示」同理。
+
+**根因（代码层，已定位到行）**
+
+`initLogPill()` 里：
+
+```js
+var pop = $('v15-logpop');
+if (!pop) { pop = buildLogPop(); }      // ← 只创建，没有 append 到 document
+pop.addEventListener('click', function(ev){ ... });   // ← 监听绑在这个游离节点上
+```
+
+`buildLogPop()` 返回的是**尚未挂到文档**的节点，`$()` 用的是 `getElementById`，
+游离节点查不到。于是：
+
+```
+① init 时创建 popA（游离），把 click 监听绑在 popA
+② 打开时 $('v15-logpop') 返回 null → buildLogPop() 再建 popB
+③ attachPop(popB) 把 popB 挂到 body —— popB 没有任何 click 监听
+④ 用户点按钮 → 无监听 → 什么都不发生
+```
+
+`attachPop()` 的注释也写明“弹窗已经挂到 body，不再是 pill 的后代”，
+监听本应绑在“挂载之后”的节点上，实际绑在了被丢弃的那一个。
+
+**对照**：同一段代码里 `p.onclick = function(ev){ ev.stopPropagation(); }` 是
+在 `buildLogPop()` 内部设置的，所以 popB 有 stopPropagation、没有业务逻辑 ——
+表现为“点了没反应，但也不会把浮层关掉”。
+
+**影响**
+
+- 设备端 `persist.log.tag` 设置不了（功能完全不可用）
+- 本工具显示级别也切不了
+- 界面上没有任何错误提示，用户只能以为“点错了”
+
+**建议修法（记录，未执行）**
+
+```
+① buildLogPop 里直接绑定业务 click（与 p.onclick 同处），或
+② attachPop 成功后统一 addEventListener，或
+③ 改 document 级委托：closest('#v15-logpop') 再判断 BUTTON
+④ 顺带检查 v15-devpop 是否同一写法（设备管理浮层）
+```
+
+**验证方式**：打开浮层点 D，按钮 `on` 类应切换，且发出 `logset` 请求。
+
+**优先级**：高（功能不可用 + 静默失败）
