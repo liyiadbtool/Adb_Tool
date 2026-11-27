@@ -9344,6 +9344,12 @@ function diagVerdict(){
     }
     // 日志等级
     if (_online && _diag.loglevel === '') warn.push('日志等级未设置');
+    // 崩溃 / ANR
+    if (_online && _diag.car){
+      if ((_diag.car.crash || 0) >= 3) bad.push('崩溃 ' + _diag.car.crash + ' 次');
+      else if ((_diag.car.crash || 0) > 0) warn.push('崩溃 ' + _diag.car.crash + ' 次');
+      if ((_diag.car.anr || 0) > 0) warn.push('ANR ' + _diag.car.anr + ' 次');
+    }
   } catch (e) {}
   return { bad: bad, warn: warn };
 }
@@ -9749,6 +9755,15 @@ function diagOnCar(msg){
   } else {
     html += diagRowHtml('car', '是否 ROOT', msg.root ? '✓ 已 root' : '✗ 未 root',
                         msg.root ? 'ok' : 'warn');
+  }
+
+  /* 2026-11-27：崩溃 / ANR 计数（来自 crash 缓冲与主缓冲） */
+  if (typeof msg.crash === 'number'){
+    var cTxt = msg.crash > 0
+      ? (msg.crash + ' 次' + (msg.lastcrash ? '（最近 ' + msg.lastcrash + '）' : ''))
+      : '0 次';
+    html += diagRowHtml('car', '崩溃', cTxt, msg.crash > 0 ? 'bad' : 'ok');
+    html += diagRowHtml('car', 'ANR', (msg.anr || 0) + ' 次', (msg.anr || 0) > 0 ? 'warn' : 'ok');
   }
 
   // ② 版本 / 硬件 / 标识 / 显示

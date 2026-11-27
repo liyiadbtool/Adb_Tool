@@ -2692,6 +2692,43 @@ namespace AdbLogExport.Gui
                                     catch { }
                                 }
                                 cb.Append(",\"devts\":").Append(devts);
+
+                                /* 2026-11-27：崩溃 / ANR 计数（诊断页"设备健康"）
+                                   crash 缓冲通常只保留最近的崩溃，量小；ANR 从主缓冲 grep。 */
+                                int crashN = 0, anrN = 0;
+                                string lastPkg = "";
+                                if (online)
+                                {
+                                    try
+                                    {
+                                        string co = "", ce = "";
+                                        App.ShellCall(App.CUR,
+                                            "logcat -b crash -d -v brief 2>/dev/null | grep -c 'FATAL EXCEPTION'",
+                                            out co, out ce);
+                                        int.TryParse((co + ce).Trim(), out crashN);
+
+                                        string ao = "", ae = "";
+                                        App.ShellCall(App.CUR,
+                                            "logcat -d -v brief 2>/dev/null | grep -c 'ANR in'",
+                                            out ao, out ae);
+                                        int.TryParse((ao + ae).Trim(), out anrN);
+
+                                        if (crashN > 0)
+                                        {
+                                            string po = "", pe = "";
+                                            App.ShellCall(App.CUR,
+                                                "logcat -b crash -d -v brief 2>/dev/null | grep -m1 'Process:'",
+                                                out po, out pe);
+                                            string pl = (po + pe).Trim();
+                                            int ci = pl.IndexOf("Process:");
+                                            if (ci >= 0) lastPkg = pl.Substring(ci + 8).Trim();
+                                        }
+                                    }
+                                    catch { }
+                                }
+                                cb.Append(",\"crash\":").Append(crashN)
+                                  .Append(",\"anr\":").Append(anrN)
+                                  .Append(",\"lastcrash\":").Append(Json(lastPkg));
                                 cb.Append(",\"serial\":").Append(Json(App.SERIAL == null ? "" : App.SERIAL));
                                 cb.Append(",\"devn\":").Append(App.DEVN);
 
