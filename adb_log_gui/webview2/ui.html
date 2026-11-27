@@ -10292,6 +10292,20 @@ function diagCopySection(sec){
 }
 
 /* 全部复制 */
+/* 2026-11-27（B1）：界面隐藏但报告必需的字段（.NET 版本 / 进程数）。
+   早前删重复 diagCopyAll 时把带这段逻辑的那份删了，导致复制/导出都缺这两项。 */
+function diagHiddenLines(){
+  var out = [];
+  try{
+    var arr = _diag.local || [];
+    for(var i=0;i<arr.length;i++){
+      var r = arr[i];
+      if(r.k === '.NET 版本' || r.k === '进程数') out.push(r.k + '：' + (r.v || '—'));
+    }
+  }catch(e){}
+  return out;
+}
+
 function diagCopyAll(){
   var secs = ['adb','pc','car'];
   var fmt = diagFmt();
@@ -10303,6 +10317,8 @@ function diagCopyAll(){
       var rs = diagCollect(secs[s]);
       if(rs.length) all[DIAG_TITLES[secs[s]]] = diagFormatRows(rs, 'json', '');
     }
+    var hidj = diagHiddenLines();
+    if(hidj.length) all['界面隐藏项'] = hidj;
     if(Object.keys(all).length <= 1){ toast('还没有诊断数据', 'err'); return; }
     diagCopyText(JSON.stringify(all, null, 2), '已复制全部（JSON）');
     return;
@@ -10316,6 +10332,11 @@ function diagCopyAll(){
   }
   if(!parts.length){ toast('还没有诊断数据', 'err'); return; }
 
+  var hid = diagHiddenLines();
+  if(hid.length){
+    parts.push((fmt === 'md') ? ('## 界面隐藏项\n\n' + hid.map(function(x){ return '- ' + x; }).join('\n'))
+                              : ('【界面隐藏项】\n' + hid.join('\n')));
+  }
   var body = (fmt === 'md') ? ('# ' + head + '\n\n' + parts.join('\n\n'))
                             : (head + '\n\n' + parts.join('\n\n'));
   diagCopyText(body, '已复制全部诊断信息');
@@ -10344,6 +10365,8 @@ function diagExport(){
       var rs = diagCollect(secs[s]);
       if(rs.length) all[DIAG_TITLES[secs[s]]] = diagFormatRows(rs, 'json', '');
     }
+    var hidj2 = diagHiddenLines();
+    if(hidj2.length) all['界面隐藏项'] = hidj2;   // 2026-11-27（B1）
     if(Object.keys(all).length <= 1){ toast('还没有诊断数据', 'err'); return; }
     txt = JSON.stringify(all, null, 2);
   } else {
@@ -10354,6 +10377,11 @@ function diagExport(){
       parts.push(diagFormatRows(rows, fmt, DIAG_TITLES[secs[i]]));
     }
     if(!parts.length){ toast('还没有诊断数据', 'err'); return; }
+    var hid2 = diagHiddenLines();   // 2026-11-27（B1）
+    if(hid2.length){
+      parts.push((fmt === 'md') ? ('## 界面隐藏项\n\n' + hid2.map(function(x){ return '- ' + x; }).join('\n'))
+                                : ('【界面隐藏项】\n' + hid2.join('\n')));
+    }
     txt = (fmt === 'md') ? ('# ' + head + '\n\n' + parts.join('\n\n'))
                          : (head + '\n\n' + parts.join('\n\n'));
   }
@@ -18156,7 +18184,12 @@ function closeWadb(){
 }
 function onWadbKey(ev){
   if(ev.key === 'Enter'){ ev.preventDefault(); wadbConnect(); }
-  if(ev.key === 'Escape'){ ev.preventDefault(); closeWadb(); }
+  /* 2026-11-27（B3）：#wadb-pop 已是空壳，关它用户看不到反应 → 改关当前面板。 */
+  if(ev.key === 'Escape'){
+    ev.preventDefault();
+    if(typeof window.closeAllPopovers === 'function') window.closeAllPopovers(null);
+    else closeWadb();
+  }
 }
 function loadWadbHost(){
   try { return localStorage.getItem('adb_tool_wadb_host') || ''; } catch(e){ return ''; }
@@ -21420,6 +21453,13 @@ document.addEventListener('DOMContentLoaded', function (){
     if (!p) p = buildDevPop();
     hideTip();
     attachPop(p, 'dev', badge);
+    /* 2026-11-27（B2）：无线输入框搬进面板后，回填与聚焦还留在已隐藏的 toggleWadb 里，
+       导致每次都要手输 IP。这里补回填（不抢焦点）。 */
+    try {
+      var wh = document.getElementById('wadb-host');
+      if (wh && !wh.value && typeof loadWadbHost === 'function') wh.value = loadWadbHost();
+      if (typeof syncWadbArc === 'function') syncWadbArc();   // B4：每次开面板校正 wifi 弧
+    } catch (e) {}
     renderDevRows();
     placePop(p, badge);          // 行数变了，尺寸跟着变，重新定位一次
     post2('devlist', '');

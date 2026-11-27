@@ -5996,12 +5996,23 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                 string o = "", e = "";
                 try
                 {
-                    App.ShellCall(App.CUR, "settings put global http_proxy " + ip + ":" + NetSim.Port,
-                                  out o, out e);
-                    string back = "";
-                    App.ShellCall(App.CUR, "settings get global http_proxy", out back, out e);
-                    PushNetSimLog("已把车机代理指向 " + ip + ":" + NetSim.Port
-                                  + "（回读：" + (back ?? "").Trim() + "）");
+                    /* 2026-11-27：三个键一起写。
+                       很多 ROM 的 App 读的是 global_http_proxy_host/port，
+                       只写 http_proxy 会出现"配置完不生效" —— 正是用户反馈的现象。 */
+                    string tip = "settings put global http_proxy " + ip + ":" + NetSim.Port + "; "
+                               + "settings put global global_http_proxy_host " + ip + "; "
+                               + "settings put global global_http_proxy_port " + NetSim.Port;
+                    App.ShellCall(App.CUR, tip, out o, out e);
+
+                    string back = "", back2 = "", back3 = "";
+                    App.ShellCall(App.CUR,
+                        "settings get global http_proxy; settings get global global_http_proxy_host; "
+                        + "settings get global global_http_proxy_port", out back, out e);
+                    PushNetSimLog("已写代理三键：" + (back ?? "").Replace("\r\n", " / ").Trim());
+
+                    /* 关键提示：改代理不会影响已经在跑的 App（它们只在启动时读一次）。 */
+                    PushNetSimLog("提示：需重启目标应用（或重新发起请求）才生效；"
+                                  + "不走系统代理的 App（原生 socket / UDP）不受本工具影响。");
                 }
                 catch (Exception ex) { PushNetSimLog("设置代理失败：" + ex.Message); }
             }));
