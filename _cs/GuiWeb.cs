@@ -5889,13 +5889,20 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             string oldSerial = App.SERIAL ?? "";
             if (!string.Equals(oldSerial, s, StringComparison.Ordinal))
             {
-                App.CUR = App.ROOT;          // 回根目录
-                App.OLDPWD = "";             // cd - 不可跨设备
+                /* 2026-11-27（第 3 批）：切设备 → **三个槽**的路径一起作废。
+                   以前 App.CUR 是全局单值，赋值一次等于全清；槽位化之后
+                   必须显式调 ResetSlotPaths()，否则只清到"界面线程那一份"，
+                   另外两个槽的提示符会继续指着旧设备的目录。 */
+                App.ResetSlotPaths();        // 三个槽回 ROOT + cd - 记录清空
                 App.PEND_K = "";             // 挂起的重试动作作废
                 App.PEND_R = "";
             }
 
             App.SERIAL = s;
+            /* 切设备是**全局决定**：写默认值，保证后台线程 / 诊断 / APK / 投屏
+               这些不认槽位的老代码立刻跟着走（只靠"槽 0 同步默认值"在
+               万一 DoDeviceSwitch 换了线程调用时会漏）。 */
+            App.SERIAL_DEFAULT = s;
             App.SERIAL_OK = true;
             try { SaveIniKey("serial", s); } catch { }
 

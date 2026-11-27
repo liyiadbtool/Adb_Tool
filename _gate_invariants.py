@@ -255,7 +255,11 @@ A17_ADDS = {
 
 A15_ADDS = {
     "kinds": set(),
-    "onclicks": set(),
+    "onclicks": set([
+        # 2026-11-27：自定义流程新增交互
+        "customSkip", "customStop", "cmSetFail", "cmInsPick",
+        "cmPromptOk", "cmPromptCancel", "cmPromptKey",
+    ]),
     "ids": set([
         # 设置 · 显示选项（主题跟随系统 / OLED 纯黑 / 护眼三档）
         "a15-sec-display", "set-auto", "set-display-hint", "set-eyelevel", "set-oled",
@@ -264,6 +268,9 @@ A15_ADDS = {
         # 设备管理面板
         "v15-devh", "v15-devrows", "v15-devrefresh", "v15-devoff",
         "diag-verdict", "diag-verdict-dot", "diag-verdict-title", "diag-verdict-sub",
+        # 2026-11-27：自定义流程两批（等待/断言/参数/调试条）
+        "cm-runbar", "cm-runbar-txt", "cm-fail", "cm-preview",
+        "cm-prompt", "cmp-title", "cmp-label", "cmp-input",
         "diag-ids-box", "diag-ids-caret",
     ]),
 }

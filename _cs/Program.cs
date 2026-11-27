@@ -38,7 +38,9 @@ namespace AdbLogExport
         internal static string ADB_SOURCE = "";
         // 内置 platform-tools 的版本号（读 source.properties 或 adb version 缓存）
         internal static string ADB_BUILTIN_VER = "";
-        internal static string SERIAL = "";
+        // SERIAL 已改成"按槽位 + 全局默认"的属性，声明挪到下面的
+        // 「二、运行时状态」里（连同 CUR / OLDPWD）。这里不要再定义同名字段 ——
+        // 字段会盖住属性，编译能过但槽位化静默失效。
         internal static string FFMPEG = "ffmpeg.exe";   // 截帧录屏编码用（ini: ffmpeg=路径）
         // 外挂 scrcpy（R10）：有它就用它开流畅窗口，没有就走内置截帧通道。
         // 默认值 "scrcpy.exe" 表示"没配"，查找逻辑会从程序同级/PATH 自动找。
@@ -80,8 +82,99 @@ namespace AdbLogExport
         internal static string[] QUICK = new string[10];   // QUICK[1..9] 常用语
 
         // ==================== 二、运行时状态 ====================
-        internal static string CUR = "/";
-        internal static string OLDPWD = "";
+        // ---------------- 按槽位保存的"终端上下文"（2026-11-27 第 3 批：多设备并行）----------------
+        // 为什么改：3 个输入框各跑各的 adb shell，但 CUR / OLDPWD / SERIAL 是全局单值 ——
+        //   槽 1 里 cd 到 /sdcard，槽 2 的提示符跟着变；两个槽还互相把对方拽回 /；
+        //   同一个槽里 `adb -s X ...` 的临时覆盖会和其它槽抢同一个变量。
+        // 现在每个槽各存一份，槽内取值一律经过 SlotIdx()。
+        //
+        // 取值口径（别随手改，改之前先看下面三条）：
+        //   ① 槽位索引只认 SlotIdx()（内部转调 Adb.cs 的 CurSlotSafe）：负数落 0、
+        //      超界落最后一槽。非槽位线程（后台探测、车机信息、投屏、定时任务）
+        //      CUR_SLOT 天然是 0，所以它们读到的就是"槽 0 = 主线程那一份"，
+        //      与改造前的全局单值完全一致。
+        //   ② CUR 落空回 "/"（沿用改造前字段初值，不是 ROOT —— ROOT 可被 ini 改，两者本来就分家）。
+        //   ③ SERIAL 落空回 SERIAL_DEFAULT（ini / 命令行 -s / 界面切设备写下的值），
+        //      这样诊断、APK、投屏、文件管理这些不认槽位的老代码读到的仍是同一个值。
+        internal static readonly string[] CUR_SLOTS = new string[SLOT_COUNT];
+        internal static readonly string[] OLDPWD_SLOTS = new string[SLOT_COUNT];
+        internal static readonly string[] SERIAL_SLOTS = new string[SLOT_COUNT];
+        internal static string SERIAL_DEFAULT = "";   // 全局默认设备号（SERIAL 的回落值）
+
+        /// <summary>槽位索引的唯一边界保护。CUR_SLOT 是 [ThreadStatic]，坏值不许漏到数组下标上。</summary>
+        internal static int SlotIdx()
+        {
+            /* 直接复用 Adb.cs 里已有的 CurSlotSafe()（同属 partial class App）：
+               "当前槽是谁"这件事只能有一套口径，不然输出路由和目录上下文会各说各话。
+               取值：<0 落 0，>=SLOT_COUNT 落最后一槽；非 worker 线程天然是 0，
+               正好等于改造前"全局单值"的语义。 */
+            return CurSlotSafe();
+        }
+
+        /// <summary>当前槽的工作目录：终端里每条命令都在这个目录下执行。</summary>
+        internal static string CUR
+        {
+            get
+            {
+                string v = CUR_SLOTS[SlotIdx()];
+                return string.IsNullOrEmpty(v) ? "/" : v;
+            }
+            set { CUR_SLOTS[SlotIdx()] = value; }
+        }
+
+        /// <summary>当前槽的上一个目录（cd - 用）。不跨槽，也不跨设备。</summary>
+        internal static string OLDPWD
+        {
+            get
+            {
+                string v = OLDPWD_SLOTS[SlotIdx()];
+                return v == null ? "" : v;
+            }
+            set { OLDPWD_SLOTS[SlotIdx()] = value; }
+        }
+
+        /// <summary>当前槽绑定的设备号；本槽没指定就回落到全局默认（SERIAL_DEFAULT）。</summary>
+        internal static string SERIAL
+        {
+            get
+            {
+                string v = SERIAL_SLOTS[SlotIdx()];
+                if (!string.IsNullOrEmpty(v)) return v;
+                return SERIAL_DEFAULT;
+            }
+            set
+            {
+                int s = SlotIdx();
+                SERIAL_SLOTS[s] = value;
+                /* 槽 0 就是"主线程 / 界面线程"那一份，ini 的 serial=、命令行 -s、
+                   界面切设备全都落在这里。同步写默认值，后台线程和非槽位代码才能
+                   立刻看到新设备 —— 否则会出现"界面切了设备，诊断页还在连旧设备"。 */
+                if (s == 0) SERIAL_DEFAULT = value;
+            }
+        }
+
+        /// <summary>只清当前槽的目录状态（命令级自愈：目录失效、cd 失败回退）。</summary>
+        internal static void ResetSlotPath()
+        {
+            int s = SlotIdx();
+            CUR_SLOTS[s] = ROOT;
+            OLDPWD_SLOTS[s] = "";
+        }
+
+        /// <summary>
+        /// 清掉**所有**槽的目录状态。用在"设备换了"这一类事件上：
+        /// 路径是"那台设备上的路径"，换了设备三个槽一起失效；
+        /// 只清当前槽会让另外两个槽的提示符说谎（用户以为还在 /sdcard，其实设备已经换了）。
+        /// </summary>
+        internal static void ResetSlotPaths()
+        {
+            for (int i = 0; i < SLOT_COUNT; i++)
+            {
+                CUR_SLOTS[i] = ROOT;
+                OLDPWD_SLOTS[i] = "";
+            }
+        }
+
         internal static int LSW = 0;              // 窗口宽度，会话内只取一次
         internal static int DEVN = 0;             // 在线设备数（按序列号去重）
         internal static int DEVOTHER = 0;         // 离线/未授权设备数（不计入 DEVN）
@@ -1036,8 +1129,10 @@ namespace AdbLogExport
                 // 换了另一台：旧设备的路径可能不存在，回根目录并重新取设备信息
                 if (prompt != null) ClearPromptLine(prompt);
                 Warn("设备已切换：" + old + " -> " + DEVID);
-                CUR = ROOT;
-                OLDPWD = "";
+                // 2026-11-27（第 3 批）：设备换了 → 三个槽的路径一起作废。
+                // 以前这里是 CUR = ROOT / OLDPWD = ""（全局单值，等于全部清空）；
+                // 槽位化之后必须显式写"全清"，否则只清当前槽，另外两个槽的提示符会说谎。
+                ResetSlotPaths();
                 PEND_K = "";
                 AutoRoot();
                 Probe();

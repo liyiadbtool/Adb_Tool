@@ -1488,7 +1488,7 @@ input[type=radio],input[type=checkbox]{accent-color:var(--accent);}
 .cm-steps-head{font-size:12px;font-weight:600;color:var(--text-dim);
   margin:6px 0 8px;letter-spacing:.3px;}
 .cm-steps{display:flex;flex-direction:column;gap:8px;}
-.cm-step{display:flex;align-items:flex-start;gap:10px;padding:10px;
+.cm-step{display:flex;align-items:flex-start;gap:10px;padding:10px;flex-wrap:wrap;
   border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface-2);}
 .cm-no{flex:0 0 auto;width:24px;height:24px;border-radius:50%;
   background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:600;
@@ -1512,6 +1512,46 @@ input[type=radio],input[type=checkbox]{accent-color:var(--accent);}
 @media (hover:hover){ .cm-del:hover{background:var(--err-soft);color:var(--err);} }
 .cm-addrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
 .cm-err{min-height:18px;margin-top:8px;color:var(--err);font-size:12px;}
+/* ---- 2026-11-27 自定义流程 2.0：预览 / 行内插入 / 执行条 / 新节点字段 ---- */
+.cm-preview{margin-top:10px;padding:7px 11px;border:1px dashed var(--border-strong);
+  border-radius:var(--r-sm);background:var(--surface-2);color:var(--text-dim);
+  font-size:12px;letter-spacing:.2px;}
+.cm-sel{flex:1;height:38px;padding:0 10px;border:1px solid var(--border);
+  border-radius:var(--r-sm);background:var(--bg);color:var(--text);font-size:13px;}
+.cm-sel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.cm-val.cm-line{min-height:0;height:38px;min-width:160px;padding:0 11px;font-family:var(--font-mono);}
+.cm-val.cm-short{flex:0 0 120px;width:120px;}
+.cm-chk{align-self:center;display:flex;align-items:center;gap:5px;
+  font-size:12px;color:var(--text-dim);white-space:nowrap;}
+.cm-ins-sel{flex:0 0 auto;width:104px;height:28px;margin-top:6px;padding:0 6px;
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--surface);color:var(--text-dim);font-size:11px;cursor:pointer;}
+.cm-ins-sel:focus{outline:none;border-color:var(--accent);}
+@media (hover:hover){ .cm-ins-sel:hover{color:var(--text);border-color:var(--border-strong);} }
+/* 单步调试：当前执行到的步骤高亮 */
+.cm-step.running{border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);background:var(--surface);}
+.cm-step.running .cm-no{background:var(--accent);color:var(--on-accent);}
+/* 执行条（流程卡片区顶部，执行时可见） */
+.cm-runbar{display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border:1px solid var(--border-strong);border-radius:var(--r-md);
+  background:var(--surface-2);font-size:12px;color:var(--text-dim);}
+.cm-runbar .spacer{flex:1;}
+.cm-runbar-dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.cm-runbar-txt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:var(--text);font-size:12px;}
+/* 参数输入弹窗：复用 .cm-mgr 的遮罩与 .cm-mgr-head/.cm-foot 的头部尾部 */
+.cmp-box{width:420px;max-width:92vw;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--border-strong);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);overflow:hidden;}
+.cmp-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+.cmp-label{font-size:12px;color:var(--text-dim);line-height:1.7;word-break:break-all;}
+.cmp-input{height:40px;padding:0 12px;border:1px solid var(--border);
+  border-radius:var(--r-sm);background:var(--bg);color:var(--text);
+  font-family:var(--font-mono);font-size:13px;}
+.cmp-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.cmp-tip{font-size:11px;color:var(--text-faint);}
 .cm-foot{display:flex;align-items:center;gap:8px;padding:12px 18px;
   border-top:1px solid var(--border);}
 .cm-foot .spacer{flex:1;}
@@ -6179,11 +6219,19 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <div class="cm-head">
               <div>
                 <div class="cm-title">自定义 ADB 指令</div>
-                <div class="cm-sub">自定义命令一键下发；支持多行按顺序执行、失败跳过，
-                  以及「延时 / 循环」两个官方节点。失败命令的原始回显照常显示在下方「输出」区。</div>
+                <div class="cm-sub">自定义命令一键下发；支持多行按顺序执行、失败策略（继续 / 中止），
+                  以及「延时 / 循环 / 等待输出 / 断言 / 参数」节点。失败命令的原始回显照常显示在下方「输出」区。</div>
               </div>
               <div class="spacer"></div>
               <button class="btn primary" onclick="openCustomMgr()">＋ 新建指令</button>
+            </div>
+            <!-- 执行中的调试条：显示当前步 + 「跳过本条」「停止」（平时隐藏） -->
+            <div class="cm-runbar" id="cm-runbar" style="display:none;">
+              <span class="cm-runbar-dot"></span>
+              <span class="cm-runbar-txt" id="cm-runbar-txt">执行中</span>
+              <div class="spacer"></div>
+              <button class="btn ghost sm" onclick="customSkip()" title="跳过当前这一步，直接执行下一步">跳过本条</button>
+              <button class="btn ghost sm" onclick="customStop()" title="停止整个流程">停止</button>
             </div>
             <div class="cm-grid" id="cm-grid"></div>
           </div>
@@ -10680,8 +10728,13 @@ function onMessage(ev){
       }catch(e){} break;
     case 'outpathlist_': try { renderOutPathList(msg.data ? JSON.parse(msg.data) : {}); } catch(e){} break;
     case 'toast': toast(msg.text || '', msg.ok ? 'ok' : 'err'); break;
-    case 'line': appendLine(msg); break;
-    case 'lines': appendLines(msg.items); break;   // 批量帧（性能优化）
+    case 'line':
+      /* 2026-11-27：自定义流程执行中，先把输出喂给 waitfor / assert 的匹配器 */
+      if(_customRunning) { try { customOnOut([msg]); } catch(e){} }
+      appendLine(msg); break;
+    case 'lines':                                 // 批量帧（性能优化）
+      if(_customRunning) { try { customOnOut(msg.items || []); } catch(e){} }
+      appendLines(msg.items); break;
     case 'commands': applyServerCommands(msg.items); break;   // cmds.ini → 指令页
     case 'tabpath': try{ onTabPath(msg); }catch(e){} break;   // Tab 补全候选
     /* 2026-11-27（D17）：诊断报告导出结果（C# 弹完保存框后回）。
@@ -18800,6 +18853,23 @@ var _customIdx = -1;
 var _customRunning = false;
 var _customOk = 0;
 var _customFail = 0;
+/* 2026-11-27（自定义流程 2.0）运行期状态：
+     _customDef      正在执行的流程定义（失败策略等从这里读）
+     _customVars     参数节点收集到的变量表：{ 参数名: 值 }
+     _customPending  正在挂起的等待节点（waitfor / assert），null = 没有
+     _customOutBuf   本次执行期间的输出行缓冲（等待 / 断言的匹配来源）
+     _customOutMark  最近一条命令下发时的缓冲位置；断言只在这个位置之后匹配，
+                     免得被前面命令的历史输出"误判通过"
+     _customIgnoreEnd 被「跳过本条」丢弃的 end 回执个数（防止连跳两次）
+     _cmp            参数输入弹窗的运行期状态 */
+var _customDef = null;
+var _customVars = {};
+var _customPending = null;
+var _customOutBuf = [];
+var _customOutMark = 0;
+var _customIgnoreEnd = 0;
+var _customFailMode = 'continue';
+var _cmp = { list: [], i: 0, vals: {}, cb: null };
 
 function _customB64Encode(obj){
   return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
@@ -18824,82 +18894,465 @@ function customFind(id){
   return null;
 }
 
-/* 校验：名称必填 / 第一行必须是 adb 命令 / 官方节点必须间隔一条命令 */
+/* 校验：名称必填 / 至少一条 cmd / 各节点参数合法。
+   2026-11-27（第 2 批）：解除两条历史限制 ——
+     · 首行不再必须是 adb 命令（delay / loop / waitfor 都可以打头）
+     · 官方节点不再要求"必须间隔一条命令"（连续节点的语义已在 customExpand 里定义）
+   未知类型 t 一律安全跳过，不抛异常。 */
 function customValidate(name, steps){
   if(!String(name||'').trim()) return '名称必填';
   if(!steps || !steps.length) return '至少添加一条 adb 命令';
-  if(steps[0].t !== 'cmd') return '第一行必须是 adb 命令，不能是官方节点';
-  if(!String(steps[0].v||'').replace(/\s/g,'')) return '第 1 行命令不能为空';
-  var prevNode = false, hasCmd = false;
+  var hasCmd = false;
   for(var i=0;i<steps.length;i++){
-    var st = steps[i];
-    if(st.t === 'cmd'){
+    var st = steps[i] || {};
+    var t = st.t;
+    if(t === 'cmd'){
       if(!String(st.v||'').replace(/\s/g,'')) return '第 ' + (i+1) + ' 行命令不能为空';
-      hasCmd = true; prevNode = false;
-    }else{
-      if(prevNode) return '官方节点不能连续，中间必须间隔一条 adb 命令';
-      prevNode = true;
-      if(st.t === 'delay' && !(parseInt(st.ms,10) > 0)) return '第 ' + (i+1) + ' 行延时毫秒数要大于 0';
-      if(st.t === 'loop' && !(parseInt(st.n,10) >= 2)) return '第 ' + (i+1) + ' 行循环次数至少 2 次';
+      hasCmd = true;
+      continue;
     }
+    if(t === 'delay'){
+      if(!(parseInt(st.ms,10) > 0)) return '第 ' + (i+1) + ' 行延时毫秒数要大于 0';
+      continue;
+    }
+    if(t === 'loop'){
+      if(!(parseInt(st.n,10) >= 2)) return '第 ' + (i+1) + ' 行循环次数至少 2 次';
+      continue;
+    }
+    if(t === 'waitfor'){
+      if(!String(st.v||'').replace(/\s/g,'')) return '第 ' + (i+1) + ' 行等待文本不能为空';
+      var wms = String(st.ms === undefined || st.ms === null ? '' : st.ms).replace(/\s/g,'');
+      if(wms !== '' && !(parseInt(wms,10) > 0)) return '第 ' + (i+1) + ' 行等待超时要大于 0 毫秒';
+      continue;
+    }
+    if(t === 'assert'){
+      if(!String(st.v||'').replace(/\s/g,'')) return '第 ' + (i+1) + ' 行断言文本不能为空';
+      continue;
+    }
+    if(t === 'param'){
+      var pn = String(st.name||'').replace(/\s/g,'');
+      if(!pn) return '第 ' + (i+1) + ' 行参数名不能为空';
+      if(!/^[A-Za-z_\u4e00-\u9fa5][A-Za-z0-9_\u4e00-\u9fa5\.\-]*$/.test(pn))
+        return '第 ' + (i+1) + ' 行参数名只能用字母/数字/下划线/点/短横线/中文，且不能以数字开头';
+      continue;
+    }
+    /* 未知类型：安全跳过（保存时原样保留，执行时不参与） */
   }
   if(!hasCmd) return '至少添加一条 adb 命令';
   return '';
 }
 
-/* 把流程展开成线性队列：命令按换行拆条；延时原样；循环重复「上一条命令」n 次 */
-function customExpand(def){
-  var q = [], last = '';
-  var steps = (def && def.steps) || [];
-  for(var i=0;i<steps.length;i++){
-    var st = steps[i];
-    if(st.t === 'cmd'){
-      var lines = String(st.v||'').split(/\r?\n/);
-      for(var k=0;k<lines.length;k++){
-        var ln = lines[k].trim();
-        if(!ln) continue;
-        q.push({t:'cmd', v:ln});
-        last = ln;
-      }
-    }else if(st.t === 'delay'){
-      q.push({t:'delay', ms: Math.max(0, parseInt(st.ms,10)||0)});
-    }else if(st.t === 'loop'){
-      var n = Math.max(2, Math.min(99, parseInt(st.n,10)||2));
-      if(last) for(var z=0;z<n;z++) q.push({t:'cmd', v:last});
+/* 取步骤里的参数定义（同名只问一次，保持出现顺序） */
+function customParamDefs(steps){
+  var out = [], seen = {}, i;
+  steps = steps || [];
+  for(i=0;i<steps.length;i++){
+    var st = steps[i] || {};
+    if(st.t !== 'param') continue;
+    var n = String(st.name === undefined || st.name === null ? '' : st.name).replace(/\s/g,'');
+    if(!n || seen[n]) continue;
+    seen[n] = 1;
+    out.push({ name:n, label: String(st.label === undefined || st.label === null ? '' : st.label).trim() });
+  }
+  return out;
+}
+
+/* {{name}} 占位符替换：只替换已定义的变量，未定义的保持原样（校验时会提示） */
+function customVarsReplace(text, vars){
+  var v = vars || {};
+  return String(text === undefined || text === null ? '' : text)
+    .replace(/\{\{\s*([A-Za-z0-9_\-\.\u4e00-\u9fa5]+)\s*\}\}/g, function(all, k){
+      return Object.prototype.hasOwnProperty.call(v, k) ? String(v[k]) : all;
+    });
+}
+
+/* 校验期的"软提示"：命令里写了 {{x}} 但没有对应的参数节点 → 原样下发 */
+function customPlaceholderWarn(steps){
+  steps = steps || [];
+  var defined = {}, i;
+  var pdefs = customParamDefs(steps);
+  for(i=0;i<pdefs.length;i++) defined[pdefs[i].name] = 1;
+  var miss = [], seen = {};
+  for(i=0;i<steps.length;i++){
+    var st = steps[i] || {};
+    if(st.t !== 'cmd' && st.t !== 'waitfor' && st.t !== 'assert') continue;
+    var re = /\{\{\s*([A-Za-z0-9_\-\.\u4e00-\u9fa5]+)\s*\}\}/g;
+    var txt = String(st.v === undefined || st.v === null ? '' : st.v), m;
+    while((m = re.exec(txt)) !== null){
+      var k = m[1];
+      if(defined[k] || seen[k]) continue;
+      seen[k] = 1;
+      miss.push('{{' + k + '}}');
     }
   }
+  if(!miss.length) return '';
+  return '未定义的变量 ' + miss.join('、') + ' 会按原样下发';
+}
+
+/* 把流程展开成线性队列：命令按换行拆条；延时原样；循环重复「上一条命令」n 次。
+   2026-11-27（第 2 批）明确的语义：
+     · 连续 delay  → 累加合并成一条（ms 相加），插在它后面那条命令之前
+     · loop        → 作用于"最近一条 cmd"（展开后的最后一条命令文本）
+     · loop 前面没有命令 → 该 loop 直接跳过，不报错
+     · 连续 loop   → 串联（各自重复最近那条命令）
+     · waitfor/assert → 原样进队列（执行期挂起等待）
+     · param       → 不进队列（执行前收集变量，展开时做替换）
+     · 未知类型    → 安全跳过
+   vars 省略时不做变量替换（编辑期预览走这条路径）。 */
+function customExpand(def, vars){
+  var q = [], last = '', pendingDelay = 0, pendingSi = 0;
+  var v = vars || {};
+  var steps = (def && def.steps) || [];
+
+  function flushDelay(){
+    if(pendingDelay > 0){
+      q.push({t:'delay', ms: pendingDelay, si: pendingSi});
+      pendingDelay = 0;
+    }
+  }
+
+  for(var i=0;i<steps.length;i++){
+    var st = steps[i] || {};
+    var t = st.t;
+    if(t === 'cmd'){
+      flushDelay();
+      var lines = String(st.v === undefined || st.v === null ? '' : st.v).split(/\r?\n/);
+      for(var k=0;k<lines.length;k++){
+        var ln = customVarsReplace(lines[k], v).trim();
+        if(!ln) continue;
+        q.push({t:'cmd', v:ln, si:i});
+        last = ln;
+      }
+    }else if(t === 'delay'){
+      var dms = Math.max(0, parseInt(st.ms,10)||0);
+      if(pendingDelay === 0) pendingSi = i;
+      pendingDelay += dms;                 // 相邻延时累加
+    }else if(t === 'loop'){
+      var n = Math.max(2, Math.min(99, parseInt(st.n,10)||2));
+      if(!last) continue;                  // 前面没有命令：这个循环没有作用对象，跳过
+      flushDelay();
+      for(var z=0;z<n;z++) q.push({t:'cmd', v:last, si:i});
+    }else if(t === 'waitfor'){
+      var wv = customVarsReplace(st.v, v);
+      if(!String(wv).replace(/\s/g,'')) continue;
+      flushDelay();
+      q.push({ t:'waitfor', v: wv, ms: Math.max(1, parseInt(st.ms,10)||8000), si:i });
+    }else if(t === 'assert'){
+      var av = customVarsReplace(st.v, v);
+      if(!String(av).replace(/\s/g,'')) continue;
+      flushDelay();
+      var neg = (st.neg === 1 || st.neg === '1' || st.neg === true) ? 1 : 0;
+      q.push({ t:'assert', v: av, neg: neg, si:i });
+    }
+    /* param / 未知类型：不进队列 */
+  }
+  flushDelay();                            // 结尾残留的延时
   return q;
 }
 
-/* 执行：逐条复用 quick 链路；end 消息驱动下一条，失败也继续（= 跳过） */
+/* 展开后的时长估算：cmd 按 800ms/条、delay 按实际 ms、
+   loop 已被展开成 n 条 cmd（自然等价于 n×前一条命令耗时）、
+   waitfor 取 1000ms（典型命中时间）、assert 取 3000ms（判定窗口上限）。 */
+function customEstimate(def){
+  var q = customExpand(def);
+  var cnt = 0, ms = 0;
+  for(var i=0;i<q.length;i++){
+    var it = q[i];
+    if(it.t === 'cmd'){ cnt++; ms += 800; }
+    else if(it.t === 'delay') ms += it.ms;
+    else if(it.t === 'waitfor') ms += 1000;
+    else if(it.t === 'assert') ms += 3000;
+  }
+  return { n: cnt, ms: ms, total: q.length };
+}
+function customDurText(ms){
+  var s = Math.round((ms || 0) / 1000);
+  if(s < 1) return '不到 1 秒';
+  if(s < 60) return '约 ' + s + ' 秒';
+  var m = Math.floor(s / 60), r = s % 60;
+  return '约 ' + m + ' 分' + (r ? ' ' + r + ' 秒' : '');
+}
+/* 编辑面板里的展开预览：随步骤 / 输入实时刷新 */
+function customPreviewUpdate(){
+  var el = document.getElementById('cm-preview');
+  if(!el) return;
+  if(!_customDraft || !_customDraft.steps || !_customDraft.steps.length){
+    el.textContent = '还没有步骤';
+    return;
+  }
+  var e = customEstimate(_customDraft);
+  var nodeCnt = e.total - e.n;
+  el.textContent = '预计 ' + e.n + ' 条命令 · ' + customDurText(e.ms)
+    + (nodeCnt > 0 ? '（另有 ' + nodeCnt + ' 个延时/等待/断言节点）' : '');
+}
+
+/* 执行：逐条复用 quick 链路；end 消息驱动下一条。
+   2026-11-27（第 2 批）：失败策略、参数收集、单步调试。 */
 function customRun(id){
   var def = customFind(id);
   if(!def) return;
   if(_customRunning){ toast('已有自定义流程在执行，请稍候'); return; }
-  var q = customExpand(def);
+  _customDef = def;
+  _customFailMode = (def.failMode === 'abort') ? 'abort' : 'continue';   // 旧数据缺字段 → 继续
+  _customVars = {};
+  customCollectParams(def, function(ok, vals){
+    if(!ok){ toast('已取消执行'); return; }
+    _customVars = vals || {};
+    customStart(def);
+  });
+}
+/* 真的开始跑（参数收集完之后）。失败策略在这里再同步一次，
+   这样即使有人绕过 customRun 直接调用 customStart（自测 / 复用）也不会用错策略。 */
+function customStart(def){
+  if(_customRunning){ toast('已有自定义流程在执行，请稍候'); return; }
+  var q = customExpand(def, _customVars);
   if(!q.length){ toast('这个流程没有可执行的命令'); return; }
-  _customQueue = q; _customIdx = -1; _customRunning = true;
+  _customDef = def;
+  _customFailMode = (def && def.failMode === 'abort') ? 'abort' : 'continue';
+  _customQueue = q;
+  _customIdx = -1;
+  _customRunning = true;
   _customOk = 0; _customFail = 0;
+  _customOutBuf = []; _customOutMark = 0;
+  _customPending = null; _customIgnoreEnd = 0;
+  customRunBar(true);
   customNext();
 }
 function customNext(){
   if(!_customRunning) return;
+  _customPending = null;
   _customIdx++;
   if(_customIdx >= _customQueue.length){ customFinish(); return; }
   var st = _customQueue[_customIdx];
-  if(st.t === 'delay'){ setTimeout(customNext, st.ms); return; }
-  try{ post('quick', st.v); }catch(e){ setTimeout(customNext, 30); }
+  customRunBarText('执行中 · 第 ' + (_customIdx + 1) + '/' + _customQueue.length + ' 步');
+  customMarkRunning(st.si);                     // 调试：给对应步骤行加 .running（编辑器开着才有效）
+  if(st.t === 'delay'){ setTimeout(function(){ customNext(); }, st.ms); return; }
+  if(st.t === 'waitfor'){ customStepWaitfor(st); return; }
+  if(st.t === 'assert'){ customStepAssert(st); return; }
+  customLogStep(st);
+  _customOutMark = _customOutBuf.length;         // 断言只看这条命令之后的输出
+  try{ post('quick', st.v); }catch(e){ setTimeout(function(){ customNext(); }, 30); }
 }
 function customOnEnd(msg){
   if(!_customRunning) return;
-  if(msg && msg.busy){ _customIdx--; setTimeout(customNext, 150); return; }
-  if(msg && msg.ok) _customOk++; else _customFail++;
-  setTimeout(customNext, 30);
+  if(msg && msg.busy){ _customIdx--; setTimeout(function(){ customNext(); }, 150); return; }
+  /* 挂起中的断言：收到"命令结束"就先判定，不必等满 3 秒 */
+  if(_customPending && _customPending.t === 'assert'){ customAssertJudge('命令结束'); return; }
+  if(_customIgnoreEnd > 0){ _customIgnoreEnd--; return; }   // 被「跳过本条」丢弃的回执
+  if(msg && msg.ok){ _customOk++; setTimeout(function(){ customNext(); }, 30); return; }
+  customFail('第 ' + (_customIdx + 1) + ' 条命令执行失败');
 }
-function customFinish(){
+/* ---- 等待输出（waitfor）---- */
+function customStepWaitfor(st){
+  customLogStep(st);
+  var key = String(st.v||'').toLowerCase();
+  /* 只匹配"最近一条命令下发之后"的输出，避免被更早的历史回显直接判过 */
+  if(customBufHas(key, _customOutMark)){        // 输出已经出现 → 直接放行
+    _customOk++;
+    setTimeout(function(){ customNext(); }, 20);
+    return;
+  }
+  var p = { t:'waitfor', key:key, v:st.v, ms: st.ms, timer:0 };
+  _customPending = p;
+  p.timer = setTimeout(function(){
+    if(!_customRunning || _customPending !== p) return;
+    _customPending = null;
+    customFail('等待输出超时：' + p.v + '（' + p.ms + 'ms）');
+  }, p.ms);
+}
+/* ---- 断言（assert）：等待"下一条 cmd 结束"或 3 秒后判定 ---- */
+function customStepAssert(st){
+  customLogStep(st);
+  var key = String(st.v||'').toLowerCase();
+  var neg = !!st.neg;
+  if(!neg && customBufHas(key, _customOutMark)){   // 正向断言：已经出现 → 立即通过
+    _customOk++;
+    setTimeout(function(){ customNext(); }, 20);
+    return;
+  }
+  var p = { t:'assert', key:key, v:st.v, neg:neg, timer:0 };
+  _customPending = p;
+  p.timer = setTimeout(function(){
+    if(!_customRunning || _customPending !== p) return;
+    customAssertJudge('超时');
+  }, 3000);
+}
+function customAssertJudge(reason){
+  if(!_customRunning || !_customPending || _customPending.t !== 'assert') return;
+  var p = _customPending;
+  _customPending = null;
+  try{ clearTimeout(p.timer); }catch(e){}
+  var found = customBufHas(p.key, _customOutMark);
+  var pass = p.neg ? !found : found;
+  if(pass){ _customOk++; setTimeout(function(){ customNext(); }, 20); return; }
+  customFail('断言失败：' + (p.neg ? '输出里不应出现「' : '输出里没有出现「') + p.v + '」'
+    + (reason ? '（' + reason + '）' : ''));
+}
+/* 输出行接入（由 onMessage 的 line / lines 分派调用） */
+function customOnOut(items){
+  if(!_customRunning || !items) return;
+  for(var i=0;i<items.length;i++){
+    var it = items[i];
+    var txt = (it && it.text !== undefined && it.text !== null) ? String(it.text) : String(it === undefined || it === null ? '' : it);
+    if(!txt) continue;
+    _customOutBuf.push(txt);
+  }
+  if(_customOutBuf.length > 400) _customOutBuf.splice(0, _customOutBuf.length - 400);
+  if(!_customPending) return;
+  var p = _customPending;
+  if(p.t === 'waitfor'){
+    if(customBufHas(p.key, _customOutMark)){
+      _customPending = null;
+      try{ clearTimeout(p.timer); }catch(e){}
+      _customOk++;
+      setTimeout(function(){ customNext(); }, 20);
+    }
+    return;
+  }
+  if(p.t === 'assert'){
+    if(!p.neg && customBufHas(p.key, _customOutMark)) customAssertJudge('命中');
+    return;
+  }
+}
+function customBufHas(key, from){
+  if(!key) return false;
+  var start = Math.max(0, parseInt(from,10) || 0);
+  for(var i=start;i<_customOutBuf.length;i++){
+    if(String(_customOutBuf[i]).toLowerCase().indexOf(key) >= 0) return true;
+  }
+  return false;
+}
+/* 失败收口：计数 → 按策略继续或中止。
+   abort 时在输出后追加一行"已按策略中止（第 N 条失败）"再收尾。 */
+function customFail(why){
+  _customFail++;
+  var n = _customIdx + 1;
+  try{ appendOut({ kind:'line', src:1, level:2, text:'✗ ' + (why || '失败') }); }catch(e){}
+  if(_customFailMode === 'abort'){
+    var tip = '已按策略中止（第 ' + n + ' 条失败）';
+    try{ appendOut({ kind:'line', src:1, level:2, text: tip }); }catch(e){}
+    customFinish(tip);
+    return;
+  }
+  setTimeout(function(){ customNext(); }, 30);
+}
+/* 「跳过本条」：挂起中的等待直接放行，命令在飞行中则丢弃它的一条回执 */
+function customSkip(){
+  if(!_customRunning) return;
+  if(_customPending){
+    _customPending = null;
+    toast('已跳过第 ' + (_customIdx + 1) + ' 步');
+    customNext();
+    return;
+  }
+  _customIgnoreEnd++;
+  toast('已跳过第 ' + (_customIdx + 1) + ' 步');
+  customNext();
+}
+function customStop(){
+  if(!_customRunning) return;
+  customFinish('用户中止');
+}
+function customLogStep(st){
+  var txt;
+  if(st.t === 'cmd') txt = st.v;
+  else if(st.t === 'waitfor') txt = '等待输出「' + st.v + '」';
+  else if(st.t === 'assert') txt = (st.neg ? '断言不含「' : '断言包含「') + st.v + '」';
+  else txt = String(st.t || '');
+  try{
+    appendOut({ kind:'line', src:1, level:3,
+      text:'[第 ' + (_customIdx + 1) + '/' + _customQueue.length + ' 步] ' + txt });
+  }catch(e){}
+  customRunBarText('执行中 · 第 ' + (_customIdx + 1) + '/' + _customQueue.length + ' 步 · ' + txt);
+}
+/* 编辑器里的当前步骤高亮（编辑器没开着就是空操作） */
+function customMarkRunning(si){
+  var box = document.getElementById('cm-steps');
+  if(!box) return;
+  var old = box.querySelectorAll('.cm-step.running');
+  for(var i=0;i<old.length;i++) old[i].classList.remove('running');
+  if(si === undefined || si === null || si < 0) return;
+  var row = box.querySelector('.cm-step[data-i="' + si + '"]');
+  if(row){
+    row.classList.add('running');
+    try{ row.scrollIntoView({ block:'nearest' }); }catch(e){}
+  }
+}
+function customRunBar(on){
+  var bar = document.getElementById('cm-runbar');
+  if(bar) bar.style.display = on ? 'flex' : 'none';
+  if(!on) customMarkRunning(-1);
+}
+function customRunBarText(t){
+  var el = document.getElementById('cm-runbar-txt');
+  if(el) el.textContent = t || '';
+}
+function customFinish(reason){
   _customRunning = false;
-  toast('自定义流程结束：成功 ' + _customOk + ' / 失败 ' + _customFail +
-        '（失败命令的原始回显见输出区）');
+  if(_customPending){
+    try{ clearTimeout(_customPending.timer); }catch(e){}
+    _customPending = null;
+  }
+  _customIgnoreEnd = 0;
+  customRunBar(false);
+  customRunBarText('');
+  var tail = reason ? ('（' + reason + '）') : '（失败命令的原始回显见输出区）';
+  toast((reason ? '自定义流程中止：成功 ' : '自定义流程结束：成功 ')
+        + _customOk + ' / 失败 ' + _customFail + tail);
+  customMarkRunning(-1);
+}
+
+/* ---- 参数输入弹窗（轻量自建：文件里没有 window.prompt 可用）---- */
+function customCollectParams(def, cb){
+  var list = customParamDefs(def && def.steps);
+  if(!list.length){ cb(true, {}); return; }
+  _cmp = { list: list, i: 0, vals: {}, cb: cb };
+  cmPromptShow();
+}
+function cmPromptShow(){
+  var p = _cmp.list[_cmp.i];
+  var mask = document.getElementById('cm-prompt');
+  if(!p || !mask){ cmPromptClose(true); return; }
+  var tEl = document.getElementById('cmp-title');
+  if(tEl) tEl.textContent = '填写参数（' + (_cmp.i + 1) + '/' + _cmp.list.length + '）';
+  var lEl = document.getElementById('cmp-label');
+  if(lEl) lEl.textContent = (p.label || p.name) + '　{{' + p.name + '}}';
+  var inp = document.getElementById('cmp-input');
+  if(inp){
+    inp.value = Object.prototype.hasOwnProperty.call(_cmp.vals, p.name) ? _cmp.vals[p.name] : '';
+    inp.placeholder = p.label || p.name;
+  }
+  mask.style.display = 'flex';
+  setTimeout(function(){ try{ inp.focus(); inp.select(); }catch(e){} }, 30);
+}
+function cmPromptOk(){
+  var p = _cmp.list[_cmp.i];
+  if(!p){ cmPromptClose(false); return; }
+  var inp = document.getElementById('cmp-input');
+  _cmp.vals[p.name] = inp ? String(inp.value || '') : '';
+  _cmp.i++;
+  if(_cmp.i >= _cmp.list.length) cmPromptClose(true);
+  else cmPromptShow();
+}
+function cmPromptCancel(){ cmPromptClose(false); }
+function cmPromptKey(ev){
+  if(!ev) return;
+  if(ev.key === 'Enter'){ ev.preventDefault(); cmPromptOk(); }
+  else if(ev.key === 'Escape'){ ev.preventDefault(); cmPromptCancel(); }
+}
+function cmPromptClose(ok){
+  var mask = document.getElementById('cm-prompt');
+  if(mask) mask.style.display = 'none';
+  var cb = _cmp.cb, list = _cmp.list, vals = _cmp.vals;
+  _cmp = { list: [], i: 0, vals: {}, cb: null };
+  if(!cb) return;
+  if(!ok){ cb(false, {}); return; }
+  var out = {};
+  for(var i=0;i<list.length;i++){
+    var v = vals[list[i].name];
+    out[list[i].name] = (v === undefined || v === null) ? '' : String(v);
+  }
+  cb(true, out);
 }
 
 /* ---- 卡片（与快捷指令 .qcard 同规范；无说明则不渲染说明行）---- */
@@ -18949,23 +19402,40 @@ function closeCustomMgr(){ var m = document.getElementById('custom-mgr'); if(m) 
 function cmBackdrop(ev){ if(ev && ev.target && ev.target.id === 'custom-mgr') closeCustomMgr(); }
 function cmNew(){
   _customEditId = null;
-  _customDraft = { name:'', desc:'', steps:[{t:'cmd', v:''}] };
+  _customDraft = { name:'', desc:'', failMode:'continue', steps:[{t:'cmd', v:''}] };
   var n = document.getElementById('cm-name'); if(n) n.value = '';
   var d = document.getElementById('cm-desc'); if(d) d.value = '';
+  cmFailSync();
   cmErr(''); renderCustomSteps();
+}
+/* 步骤深拷贝：新老节点都要带上（未知类型原样保留，避免编辑一次就丢数据） */
+function cmCopyStep(s){
+  s = s || {};
+  var out = { t: s.t };
+  if(s.t === 'cmd'){ out.v = s.v === undefined || s.v === null ? '' : s.v; return out; }
+  if(s.t === 'delay'){ out.ms = s.ms; return out; }
+  if(s.t === 'loop'){ out.n = s.n; return out; }
+  if(s.t === 'waitfor'){ out.v = s.v || ''; out.ms = s.ms || 8000; return out; }
+  if(s.t === 'assert'){ out.v = s.v || ''; out.neg = (s.neg === 1 || s.neg === '1' || s.neg === true) ? 1 : 0; return out; }
+  if(s.t === 'param'){ out.name = s.name || ''; out.label = s.label || ''; return out; }
+  for(var k in s) if(s.hasOwnProperty(k)) out[k] = s[k];
+  return out;
 }
 function cmEdit(id){
   var d = customFind(id);
   if(!d) return;
   _customEditId = id;
-  _customDraft = { name:d.name, desc:d.desc || '', steps:[] };
-  for(var i=0;i<d.steps.length;i++){
-    var s = d.steps[i];
-    _customDraft.steps.push(s.t === 'cmd' ? {t:'cmd', v:s.v}
-      : s.t === 'delay' ? {t:'delay', ms:s.ms} : {t:'loop', n:s.n});
-  }
+  _customDraft = {
+    name: d.name,
+    desc: d.desc || '',
+    failMode: (d.failMode === 'abort') ? 'abort' : 'continue',   // 旧数据缺字段 → 继续
+    steps: []
+  };
+  var ss = d.steps || [];
+  for(var i=0;i<ss.length;i++) _customDraft.steps.push(cmCopyStep(ss[i]));
   var n = document.getElementById('cm-name'); if(n) n.value = d.name;
   var de = document.getElementById('cm-desc'); if(de) de.value = d.desc || '';
+  cmFailSync();
   cmErr(''); renderCustomSteps();
 }
 function cmDel(id){
@@ -18987,70 +19457,146 @@ function cmDel(id){
     }
   });
 }
-function cmAddStep(t){
+/* 新增步骤。at 省略 = 追加到末尾；at = i 表示插到第 i 行之后（「在此后插入」）。
+   2026-11-27（第 2 批）：放开"首行必须是命令 / 节点必须间隔命令"两条限制，
+   连续节点已经有明确语义（见 customExpand），不再拦截。 */
+function cmAddStep(t, at){
   if(!_customDraft) return;
   var st = _customDraft.steps;
-  if(t !== 'cmd'){
-    if(!st.length){ cmErr('第一行必须是 adb 命令'); return; }
-    var last = st[st.length-1];
-    if(last.t !== 'cmd'){ cmErr('官方节点不能连续，中间要隔一条 adb 命令'); return; }
-    if(!String(last.v||'').replace(/\s/g,'')){
-      cmErr(st.length === 1 ? '请先在第一行填写 adb 命令，再添加官方节点'
-                            : '上一条 adb 命令还是空的，先填写命令再添加官方节点');
-      return;
-    }
+  var idx = st.length;
+  if(at !== undefined && at !== null && at !== ''){
+    var v = parseInt(at, 10);
+    if(!isNaN(v)) idx = v;
   }
-  if(t === 'cmd') st.push({t:'cmd', v:''});
-  else if(t === 'delay') st.push({t:'delay', ms:1000});
-  else st.push({t:'loop', n:3});
+  if(idx < 0) idx = 0;
+  if(idx > st.length) idx = st.length;
+  var node = null;
+  if(t === 'cmd') node = {t:'cmd', v:''};
+  else if(t === 'delay') node = {t:'delay', ms:1000};
+  else if(t === 'loop') node = {t:'loop', n:3};
+  else if(t === 'waitfor') node = {t:'waitfor', v:'', ms:8000};
+  else if(t === 'assert') node = {t:'assert', v:'', neg:0};
+  else if(t === 'param') node = {t:'param', name:'', label:''};
+  else { cmErr('未知节点类型：' + t); return; }
+  st.splice(idx, 0, node);
   cmErr(''); renderCustomSteps();
+}
+/* 行内「在此后插入」下拉：选完就插入并把下拉复位 */
+function cmInsPick(el){
+  if(!el) return;
+  var t = el.value;
+  var i = parseInt(el.getAttribute('data-i'), 10);
+  el.value = '';
+  if(!t) return;
+  cmAddStep(t, (isNaN(i) ? -1 : i) + 1);
+}
+function cmSetFail(v){ if(_customDraft) _customDraft.failMode = (v === 'abort') ? 'abort' : 'continue'; }
+function cmFailSync(){
+  var sel = document.getElementById('cm-fail');
+  if(sel) sel.value = (_customDraft && _customDraft.failMode === 'abort') ? 'abort' : 'continue';
 }
 function cmDelStep(i){
   if(!_customDraft) return;
   _customDraft.steps.splice(i, 1);
   renderCustomSteps();
 }
-/* 输入只更新数据，绝不重建 DOM（否则输入框会失焦） */
+/* 输入只更新数据，绝不重建 DOM（否则输入框会失焦）。
+   data-f 用来区分同一节点里的多个字段（waitfor 的文本/超时、assert 的文本/取反 …） */
 function cmOnInput(el){
   if(!_customDraft || !el) return;
   var i = parseInt(el.getAttribute('data-i'), 10);
   var st = _customDraft.steps[i];
   if(!st) return;
   var t = el.getAttribute('data-t');
+  var f = el.getAttribute('data-f') || '';
   if(t === 'cmd') st.v = el.value;
   else if(t === 'delay') st.ms = el.value;
   else if(t === 'loop') st.n = el.value;
+  else if(t === 'waitfor'){
+    if(f === 'ms') st.ms = el.value;
+    else st.v = el.value;
+  }else if(t === 'assert'){
+    if(f === 'neg') st.neg = el.checked ? 1 : 0;
+    else st.v = el.value;
+  }else if(t === 'param'){
+    if(f === 'label') st.label = el.value;
+    else st.name = el.value;
+  }
   cmErr('');
+  customPreviewUpdate();          // 预览随输入实时更新
+}
+function cmKindName(t){
+  if(t === 'cmd') return 'ADB 命令';
+  if(t === 'delay') return '延时';
+  if(t === 'loop') return '循环';
+  if(t === 'waitfor') return '等待输出';
+  if(t === 'assert') return '断言';
+  if(t === 'param') return '参数';
+  return '未知';
 }
 function renderCustomSteps(){
   var box = document.getElementById('cm-steps');
   if(!box || !_customDraft) return;
   var h = '';
   for(var i=0;i<_customDraft.steps.length;i++){
-    var st = _customDraft.steps[i];
-    var kind = st.t === 'cmd' ? 'ADB 命令' : (st.t === 'delay' ? '延时' : '循环');
+    var st = _customDraft.steps[i] || {};
+    var kind = cmKindName(st.t);
     var cls = st.t === 'cmd' ? '' : ' node';
     h += '<div class="cm-step" data-i="' + i + '">'
       +  '<span class="cm-no">' + (i+1) + '</span>'
       +  '<span class="cm-kind' + cls + '">' + kind + '</span>';
     if(st.t === 'cmd'){
       h += '<textarea class="cm-val" data-i="' + i + '" data-t="cmd" '
-        +  'placeholder="每行一条 adb 命令，可换行输入多条" oninput="cmOnInput(this)">'
+        +  'placeholder="每行一条 adb 命令，可换行输入多条；支持 {{参数名}} 占位" oninput="cmOnInput(this)">'
         +  escHtml(st.v || '') + '</textarea>';
     }else if(st.t === 'delay'){
       h += '<input type="number" class="cm-num" data-i="' + i + '" data-t="delay" min="1" '
         +  'value="' + escAttr(st.ms) + '" oninput="cmOnInput(this)">'
         +  '<span class="cm-unit">ms</span>'
-        +  '<span class="cm-tip">执行到这一步等待指定毫秒</span>';
-    }else{
+        +  '<span class="cm-tip">执行到这一步等待指定毫秒（相邻延时自动累加）</span>';
+    }else if(st.t === 'loop'){
       h += '<input type="number" class="cm-num" data-i="' + i + '" data-t="loop" min="2" max="99" '
         +  'value="' + escAttr(st.n) + '" oninput="cmOnInput(this)">'
         +  '<span class="cm-unit">次</span>'
-        +  '<span class="cm-tip">重复执行「上一条 adb 指令」指定次数</span>';
+        +  '<span class="cm-tip">重复执行「最近一条 adb 指令」指定次数</span>';
+    }else if(st.t === 'waitfor'){
+      h += '<input class="cm-val cm-line" data-i="' + i + '" data-t="waitfor" data-f="v" '
+        +  'placeholder="等待输出里出现这段文本（不区分大小写）" value="' + escAttr(st.v || '') + '" '
+        +  'oninput="cmOnInput(this)">'
+        +  '<input type="number" class="cm-num" data-i="' + i + '" data-t="waitfor" data-f="ms" '
+        +  'min="100" step="100" value="' + escAttr(st.ms || 8000) + '" oninput="cmOnInput(this)">'
+        +  '<span class="cm-unit">ms</span>'
+        +  '<span class="cm-tip">超时视为失败，按失败策略处理</span>';
+    }else if(st.t === 'assert'){
+      h += '<input class="cm-val cm-line" data-i="' + i + '" data-t="assert" data-f="v" '
+        +  'placeholder="期望输出里包含的文本（不区分大小写）" value="' + escAttr(st.v || '') + '" '
+        +  'oninput="cmOnInput(this)">'
+        +  '<label class="cm-chk"><input type="checkbox" data-i="' + i + '" data-t="assert" data-f="neg" '
+        +  (st.neg == 1 ? 'checked ' : '') + 'oninput="cmOnInput(this)">不包含</label>'
+        +  '<span class="cm-tip">下一条命令结束或 3 秒后判定</span>';
+    }else if(st.t === 'param'){
+      h += '<input class="cm-val cm-line cm-short" data-i="' + i + '" data-t="param" data-f="name" '
+        +  'placeholder="变量名，例如 pkg" value="' + escAttr(st.name || '') + '" oninput="cmOnInput(this)">'
+        +  '<input class="cm-val cm-line" data-i="' + i + '" data-t="param" data-f="label" '
+        +  'placeholder="提示文案，例如 包名" value="' + escAttr(st.label || '') + '" oninput="cmOnInput(this)">'
+        +  '<span class="cm-tip">命令里用 {{' + escHtml(st.name || '参数名') + '}} 引用</span>';
+    }else{
+      h += '<span class="cm-tip">未知节点类型（' + escHtml(String(st.t || '')) + '），执行时会被跳过</span>';
     }
+    /* 每一行都能「在此后插入」：复用 cmAddStep，只是位置换成 i+1 */
+    h += '<select class="cm-ins-sel" data-i="' + i + '" onchange="cmInsPick(this)" title="在这一行之后插入">'
+      +   '<option value="">在此后插入…</option>'
+      +   '<option value="cmd">命令</option>'
+      +   '<option value="delay">延时</option>'
+      +   '<option value="loop">循环</option>'
+      +   '<option value="waitfor">等待输出</option>'
+      +   '<option value="assert">断言</option>'
+      +   '<option value="param">参数</option>'
+      +  '</select>';
     h += '<button class="cm-del" onclick="cmDelStep(' + i + ')" title="删除这一行">×</button></div>';
   }
   box.innerHTML = h;
+  customPreviewUpdate();
 }
 function cmSave(){
   if(!_customDraft) return;
@@ -19060,9 +19606,13 @@ function cmSave(){
   _customDraft.name = name; _customDraft.desc = desc;
   var err = customValidate(name, _customDraft.steps);
   if(err){ cmErr(err); return; }
+  var steps = [];
+  for(var j=0;j<_customDraft.steps.length;j++) steps.push(cmCopyStep(_customDraft.steps[j]));
   var def = {
     id: _customEditId || ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
-    name: name, desc: desc, steps: _customDraft.steps.slice()
+    name: name, desc: desc,
+    failMode: (_customDraft.failMode === 'abort') ? 'abort' : 'continue',
+    steps: steps
   };
   if(_customEditId){
     for(var i=0;i<_customDefs.length;i++) if(_customDefs[i].id === _customEditId) _customDefs[i] = def;
@@ -19071,7 +19621,8 @@ function cmSave(){
   }
   customSaveDefs();
   renderCustomCards(); renderCustomList(); cmNew();
-  toast('已保存：' + name);
+  var warn = customPlaceholderWarn(steps);
+  toast(warn ? ('已保存：' + name + '（' + warn + '）') : ('已保存：' + name));
 }
 
 /* 卡片点击（事件委托）；弹层 Esc 关闭；启动拉一次持久化数据 */
@@ -19083,6 +19634,9 @@ function cmSave(){
   });
   document.addEventListener('keydown', function(ev){
     if(ev.key === 'Escape'){
+      /* 参数输入弹窗优先关闭（它在编辑器之上） */
+      var pm = document.getElementById('cm-prompt');
+      if(pm && pm.style.display !== 'none' && pm.style.display !== ''){ cmPromptCancel(); return; }
       var m = document.getElementById('custom-mgr');
       if(m && m.style.display !== 'none' && m.style.display !== '') closeCustomMgr();
     }
@@ -23382,7 +23936,7 @@ document.addEventListener('mousedown', function(ev){
   <div class="cm-box" onclick="event.stopPropagation()">
     <div class="cm-mgr-head">
       <span>自定义 ADB 指令</span>
-      <span class="cm-hint">名称必填 · 第一行必须是命令 · 节点需间隔命令</span>
+      <span class="cm-hint">名称必填 · 至少一条命令 · 支持命令/延时/循环/等待/断言/参数</span>
       <button class="x" onclick="closeCustomMgr()" title="关闭">×</button>
     </div>
     <div class="cm-body">
@@ -23392,12 +23946,21 @@ document.addEventListener('mousedown', function(ev){
           <input id="cm-name" placeholder="例如：重启并清缓存" maxlength="40" autocomplete="off"></div>
         <div class="cm-field"><label>说明</label>
           <input id="cm-desc" placeholder="选填；不填则卡片上不显示说明" maxlength="120" autocomplete="off"></div>
+        <div class="cm-field"><label>失败策略</label>
+          <select id="cm-fail" class="cm-sel" onchange="cmSetFail(this.value)">
+            <option value="continue">失败继续（跳过失败步骤，接着跑后面的）</option>
+            <option value="abort">失败中止（立刻停下整个流程）</option>
+          </select></div>
         <div class="cm-steps-head">执行流程（每行一条；ADB 命令可在一个框内换行输入多条）</div>
         <div class="cm-steps" id="cm-steps"></div>
+        <div class="cm-preview" id="cm-preview">还没有步骤</div>
         <div class="cm-addrow">
           <button class="btn ghost sm" onclick="cmAddStep('cmd')">＋ 添加命令</button>
           <button class="btn ghost sm" onclick="cmAddStep('delay')">＋ 延时节点</button>
           <button class="btn ghost sm" onclick="cmAddStep('loop')">＋ 循环节点</button>
+          <button class="btn ghost sm" onclick="cmAddStep('waitfor')">＋ 等待输出</button>
+          <button class="btn ghost sm" onclick="cmAddStep('assert')">＋ 断言</button>
+          <button class="btn ghost sm" onclick="cmAddStep('param')">＋ 参数</button>
         </div>
         <div class="cm-err" id="cm-err"></div>
       </div>
@@ -23407,6 +23970,28 @@ document.addEventListener('mousedown', function(ev){
       <div class="spacer"></div>
       <button class="btn" onclick="closeCustomMgr()">关闭</button>
       <button class="btn primary" onclick="cmSave()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2026-11-27 参数输入弹窗（自定义流程的 param 节点执行前逐个收集）。
+     为什么自建：WebView2 里的 window.prompt 被宿主屏蔽，confirmBox 又没有输入框。 -->
+<div class="cm-mgr" id="cm-prompt" style="display:none;">
+  <div class="cmp-box" onclick="event.stopPropagation()">
+    <div class="cm-mgr-head">
+      <span id="cmp-title">填写参数</span>
+      <button class="x" onclick="cmPromptCancel()" title="关闭">×</button>
+    </div>
+    <div class="cmp-body">
+      <div class="cmp-label" id="cmp-label"></div>
+      <input class="cmp-input" id="cmp-input" maxlength="300" autocomplete="off" spellcheck="false"
+             onkeydown="cmPromptKey(event)">
+      <div class="cmp-tip">回车确定 · Esc 取消（取消则整条流程不执行）</div>
+    </div>
+    <div class="cm-foot">
+      <div class="spacer"></div>
+      <button class="btn" onclick="cmPromptCancel()">取消</button>
+      <button class="btn primary" onclick="cmPromptOk()">确定</button>
     </div>
   </div>
 </div>

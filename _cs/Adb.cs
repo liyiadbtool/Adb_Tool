@@ -1905,7 +1905,9 @@ namespace AdbLogExport
             // 原来这里写死 CUR = ROOT + 末尾 LsAfterCd()，用户只是想重连，结果目录被
             // 拽回根目录、还多打印一屏 ls —— 用户原话"仅显示要输出的信号，不要再执行 cd"。
             // 只在当前目录确实失效（设备重启/目录被删）时才回退。
-            if (!DirStillValid()) CUR = ROOT;
+            // 2026-11-27（第 3 批）：`r` 是"本槽发起的刷新"，只动本槽 ——
+            // 另外两个槽可能正停在别的目录（甚至别的设备）上，刷新不该替它们做决定。
+            if (!DirStillValid()) ResetSlotPath();
             OLDPWD = "";
             Probe();
             CMD_OK = true;
@@ -1945,7 +1947,11 @@ namespace AdbLogExport
             if (!ok || DEVN == 0) return;      // 静默失败
 
             AutoRoot();
-            if (!DirStillValid()) CUR = ROOT;   // 2026-11-21：同上，别重置目录
+            /* 2026-11-21：别无条件重置目录（用户只是想重连）。
+               2026-11-27（第 3 批）：这里是**后台自动重连**（设备重新枚举才会走到），
+               三个槽的路径按同一台新设备算，所以要全清而不是只清当前槽 ——
+               后台线程的 CUR_SLOT 恒为 0，只清当前槽等于只清槽 0。 */
+            if (!DirStillValid()) ResetSlotPaths();
             OLDPWD = "";
             Probe();
             CMD_OK = true;
@@ -2041,8 +2047,10 @@ namespace AdbLogExport
             }
 
             AutoRoot();
-            CUR = ROOT;
-            OLDPWD = "";
+            /* 2026-11-27（第 3 批）：`:rr` 是"把 adb 服务打掉重来"，
+               设备句柄、路径一起作废 —— 三个槽的 CUR 全部回 ROOT（等价于改造前
+               那一份全局 CUR 被清空的效果，其它槽的提示符不会继续指着旧设备的目录）。 */
+            ResetSlotPaths();
             Probe();
             CMD_OK = true;
             OFFLINE = false;
@@ -2171,7 +2179,13 @@ namespace AdbLogExport
             string low = o2.ToLowerInvariant();
             if (low.Contains("no such file") || low.Contains("permission denied"))
             {
-                CUR = ROOT;
+                /* 2026-11-27（第 3 批）：这里**只回退当前槽**。
+                   判断依据是本槽目录在这台设备上的实际探测结果（ls -d），
+                   替其它槽下结论没有依据 —— 别的槽可能显式 -s 到另一台设备，
+                   它们的路径是好的，硬清会把用户的目录拽掉。
+                   真正的"切设备"入口（DoDeviceSwitch / 主循环探测到换机 / :rr / InitEnv）
+                   才调 ResetSlotPaths() 全清。 */
+                ResetSlotPath();
                 Warn("新设备上没有原路径，已回到 " + CUR);
             }
             Probe();
@@ -2187,8 +2201,9 @@ namespace AdbLogExport
         {
             PEND_K = ""; PEND_R = ""; PEND_N = ""; PEND_A = "";
             PERMOK = true;
-            OLDPWD = "";
-            CUR = ROOT;
+            /* 2026-11-27（第 3 批）：InitEnv 是"首次连上 / 重连后重新初始化"，
+               设备可能是另一台 —— 三个槽的目录一起回 ROOT（= 改造前全局 CUR 被清空）。 */
+            ResetSlotPaths();
             LSW = 0;
 
             EnsureWidth();
@@ -2244,7 +2259,7 @@ namespace AdbLogExport
             }
 
             AutoRoot();
-            CUR = ROOT;
+            CUR = ROOT;      // 本槽回 ROOT（三个槽已在函数入口 ResetSlotPaths 全清过）
             Probe();
             LoadDeviceInfo();
             CMD_OK = true;
