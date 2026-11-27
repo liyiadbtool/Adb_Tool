@@ -15472,19 +15472,21 @@ function runQuickAt(g, j, cardEl){
   // 加上 setCardIcon 换成转圈图标，观感就是"消失了"。
   // 现在：卡片保留原地、保留图标位，只换成转圈/停止块 + 文案"执行中"，
   // 非 toggle 类卡片在本次执行完成前不接受新点击（endRun 时恢复）。
+  /* 2026-11-27（D12）：设备离线判断必须放在"置 running"之前。
+     原顺序是先标执行中、再判离线，return 时没回滚 → 卡片永久转圈，
+     只有切页重建 DOM 才"看起来"恢复。 */
+  var _c = String(it.cmd || '');
+  if (!_online && _c.indexOf(':url') !== 0) {
+    toast('设备未连接');
+    return;
+  }
+
   if(card){
     _quickRunningCard = card;
     card.classList.remove('done');
     card.classList.remove('error');
     card.classList.add('running');
     setCardIcon(card, 'running');
-  }
-
-  // R1 兜底：卡片若被脚本/键盘绕过点进来，也不许下发设备类指令
-  var _c = String(it.cmd || '');
-  if (!_online && _c.indexOf(':url') !== 0) {
-    toast('设备未连接');
-    return;
   }
 
   // 立即置忙：防止这一条还没收到 begin 回执前又点进第二条
@@ -21585,6 +21587,9 @@ document.addEventListener('DOMContentLoaded', function (){
     var ap = document.getElementById('apk-panel'); if (ap) ap.style.display = 'none';
     var np = document.getElementById('netsim-panel'); if (np) np.style.display = 'none';
     var cp = document.getElementById('custom-panel'); if (cp) cp.style.display = 'none';
+    /* 2026-11-27（D14）：投屏面板也必须隐藏，否则在 Scrcpy 分组下搜索时，
+       cast-panel 仍占着主区域，搜索结果被挤到看不见 → 用户以为"搜索失效"。 */
+    var castP = document.getElementById('cast-panel'); if (castP) castP.style.display = 'none';
     var g0 = document.getElementById('quick-grid'); if (g0) g0.style.display = '';
     var navItems = document.querySelectorAll('#quick-nav .qnav-item');
     for (var q = 0; q < navItems.length; q++) navItems[q].classList.remove('active');
