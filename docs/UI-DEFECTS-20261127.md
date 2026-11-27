@@ -360,3 +360,53 @@ post('quick', it.cmd);                      // ← 因为 return，这句根本�
 ```
 
 **优先级**：高（离线是常见状态，且表现为"卡死"，用户会以为工具坏了）
+
+---
+
+## D13 全屏态下任务栏收起/展开后，窗口脱离工作区（界面超出屏幕）
+
+**现象**（截图）：全屏 → 鼠标移到任务栏 → 任务栏收起 → 再展开 → 全屏界面异常：
+
+- 内容整体贴左上，左侧导航被裁掉一截
+- 底部状态栏被任务栏压住（截图底部能同时看到应用状态行和任务栏图标）
+- 窗口矩形明显大于工作区
+
+**触发路径**
+
+```
+① 最大化（全屏）
+② 任务栏自动隐藏收起（WorkingArea 变大）
+③ 任务栏再次展开（WorkingArea 变小）
+④ 窗口仍保持 ② 时候的矩形 → 超出屏幕
+```
+
+**与 D2 的关系**
+
+D2 修的是**进入最大化那一刻**的边界（`WM_GETMINMAXINFO`）；
+但这条路是**最大化之后工作区发生变化**，`WM_GETMINMAXINFO` 不会再被调用，
+窗口也不会自己缩回来。
+
+**为什么现有的事件订阅没兜住**
+
+`GuiWeb.cs` 里订阅的是：
+
+```csharp
+SystemEvents.DisplaySettingsChanged += ...   // 分辨率/DPI 变化才触发
+```
+
+而**任务栏自动隐藏/展开、任务栏高度变化不会触发 `DisplaySettingsChanged`**，
+Windows 是通过 `WM_SETTINGCHANGE`（`lParam = "TraySettings"`）通知的。
+所以这条路径完全没有被监听 → 窗口不会重算边界。
+
+**建议修法（记录，未执行）**
+
+```
+① WndProc 处理 WM_SETTINGCHANGE，lParam 为 "TraySettings" 时：
+     重算 Screen.WorkingArea → 若最大化态且越界，SetWindowPos 到工作区
+② 或（更稳）在最大化态监听 WM_WINDOWPOSCHANGED / WM_SIZE，
+     发现 Bounds 超出 WorkingArea 就纠正一次（带重入锁，避免 D2 那种自激闪烁）
+③ 加防抖：任务栏动画期间会连续发消息，200ms 内只纠正一次
+④ 复用 D2 的 _fixingMax 重入锁，避免又出现"上下闪"
+```
+
+**优先级**：高（全屏是常用状态，界面被裁会影响操作）
