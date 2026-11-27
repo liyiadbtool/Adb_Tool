@@ -39,6 +39,60 @@ namespace AdbLogExport
         internal static Process PERSIST_RUNNING = null;
         [System.ThreadStatic] internal static bool PERSIST_CHANNEL = false;
         internal static readonly Process[] RUNNING_SLOTS = new Process[SLOT_COUNT];
+
+        /* 2026-11-27（终端第 4 批）：设备输出编码自适应。
+           国产车机有的不是 UTF-8（GBK/GB18030），固定按 UTF-8 解会成乱码。
+           做法：连上后跑一次 `echo 中文探测`，按字节严格解 UTF-8；
+           解不开就切 GBK。探测失败保持 UTF-8（默认行为不变）。 */
+        internal static Encoding OUT_ENC = new UTF8Encoding(false);
+        private static string _encProbedFor = "";
+
+        private static bool _encProbing = false;
+
+        internal static void ProbeOutputEncoding(string devId)
+        {
+            if (_encProbing) return;
+            _encProbing = true;
+            try
+            {
+                if (!string.IsNullOrEmpty(devId) && _encProbedFor == devId) return;
+                _encProbedFor = devId ?? "";
+                byte[] b = RunCaptureBytes(new List<string> { "shell", "echo 中文探测" });
+                if (b == null || b.Length == 0) return;
+                try
+                {
+                    new UTF8Encoding(false, true).GetString(b);   // 严格解码，不合法就抛
+                    OUT_ENC = new UTF8Encoding(false);
+                }
+                catch
+                {
+                    try { OUT_ENC = Encoding.GetEncoding(936); } catch { OUT_ENC = new UTF8Encoding(false); }
+                }
+            }
+            catch { }
+            finally { _encProbing = false; }
+        }
+
+        // 同步抓一次原始字节（只给编码探测用，超时 5 秒）
+        private static byte[] RunCaptureBytes(List<string> argv)
+        {
+            try
+            {
+                ProcessStartInfo psi = BuildPsi(argv);
+                if (psi == null) return null;
+                using (Process p = new Process())
+                {
+                    p.StartInfo = psi;
+                    p.Start();
+                    try { p.StandardInput.Close(); } catch { }
+                    MemoryStream ms = new MemoryStream();
+                    try { p.StandardOutput.BaseStream.CopyTo(ms); } catch { }
+                    if (!p.WaitForExit(5000)) { try { p.Kill(); } catch { } }
+                    return ms.ToArray();
+                }
+            }
+            catch { return null; }
+        }
         /* 2026-11-27（D16）：长驻命令（monkey / logcat -f / scrcpy / app_process）
            原来只记 PERSIST_RUNNING 单例，停止时杀不到 → 点停止无效。
            这里按槽位再记一份，专门给 StopWorker 用。 */
@@ -583,8 +637,8 @@ namespace AdbLogExport
             // 这里一律给一个空管道并立刻关掉，adb 立刻读到 EOF，不会抢按键。
             psi.RedirectStandardInput = true;
             psi.CreateNoWindow = true;
-            psi.StandardOutputEncoding = new UTF8Encoding(false);
-            psi.StandardErrorEncoding = new UTF8Encoding(false);
+            psi.StandardOutputEncoding = OUT_ENC;
+            psi.StandardErrorEncoding = OUT_ENC;
 
             // .NET Framework 没有 ArgumentList（那是 .NET Core 才有），
             // 只能拼 Arguments 字符串，并手动做引号转义
@@ -2489,6 +2543,10 @@ namespace AdbLogExport
         // 这里只做"把结果映射到旧的三个字段"的桥接，避免改动所有既有引用。
         private static void LoadDeviceInfo()
         {
+            /* 2026-11-27（终端第 4 批）：连上/切换设备时探一次输出编码，
+               非 UTF-8 的国产车机（GBK）就不会再乱码。 */
+            try { ProbeOutputEncoding(DEVID); } catch { }
+
             DEV_SOC = "";
             DEV_PLAT = "";
             DEV_RES = "";
