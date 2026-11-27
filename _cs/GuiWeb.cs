@@ -2701,7 +2701,7 @@ namespace AdbLogExport.Gui
 
                                 /* 2026-11-27：崩溃 / ANR 计数（诊断页"设备健康"）
                                    crash 缓冲通常只保留最近的崩溃，量小；ANR 从主缓冲 grep。 */
-                                int crashN = 0, anrN = 0;
+                                int crashN = 0, anrN = 0, crash5 = 0, anr5 = 0;
                                 string lastPkg = "";
                                 if (online)
                                 {
@@ -2719,6 +2719,31 @@ namespace AdbLogExport.Gui
                                             out ao, out ae);
                                         int.TryParse((ao + ae).Trim(), out anrN);
 
+                                        /* 2026-11-27：再算一次"最近 5 分钟"窗口。
+                                           用设备自己的时间作基准，避开本机与车机时差。 */
+                                        try
+                                        {
+                                            string dnow = "", dne = "";
+                                            App.ShellCall(App.CUR, "date '+%Y-%m-%d %H:%M:%S'", out dnow, out dne);
+                                            DateTime devNow;
+                                            if (DateTime.TryParse((dnow + dne).Trim(), out devNow))
+                                            {
+                                                DateTime from = devNow.AddMinutes(-5);
+                                                string c5o = "", c5e = "";
+                                                App.ShellCall(App.CUR,
+                                                    "logcat -b crash -d -t 400 -v time 2>/dev/null",
+                                                    out c5o, out c5e);
+                                                crash5 = CountSince(c5o + c5e, "FATAL EXCEPTION", devNow, from);
+
+                                                string a5o = "", a5e = "";
+                                                App.ShellCall(App.CUR,
+                                                    "logcat -d -t 2000 -v time 2>/dev/null | grep 'ANR in'",
+                                                    out a5o, out a5e);
+                                                anr5 = CountSince(a5o + a5e, "ANR in", devNow, from);
+                                            }
+                                        }
+                                        catch { }
+
                                         if (crashN > 0)
                                         {
                                             string po = "", pe = "";
@@ -2734,6 +2759,8 @@ namespace AdbLogExport.Gui
                                 }
                                 cb.Append(",\"crash\":").Append(crashN)
                                   .Append(",\"anr\":").Append(anrN)
+                                  .Append(",\"crash5\":").Append(crash5)
+                                  .Append(",\"anr5\":").Append(anr5)
                                   .Append(",\"lastcrash\":").Append(Json(lastPkg));
                                 cb.Append(",\"serial\":").Append(Json(App.SERIAL == null ? "" : App.SERIAL));
                                 cb.Append(",\"devn\":").Append(App.DEVN);
@@ -5232,6 +5259,42 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             }));
             th.IsBackground = true;
             th.Start();
+        }
+
+        /* 2026-11-27：统计日志里"最近 N 分钟内、含关键字"的行数。
+           logcat -v time 的行首形如 "11-27 19:59:15.123  1234  1250 E ..."，
+           这里只解析前 18 个字符，解析失败就跳过（不猜）。 */
+        private static int CountSince(string text, string keyword, DateTime now, DateTime from)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int n = 0;
+            string[] lines = text.Replace("\r", "").Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string ln = lines[i];
+                if (ln.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                DateTime t;
+                if (!TryParseLogTime(ln, now, out t)) continue;
+                if (t >= from && t <= now.AddMinutes(1)) n++;
+            }
+            return n;
+        }
+
+        private static bool TryParseLogTime(string line, DateTime now, out DateTime t)
+        {
+            t = DateTime.MinValue;
+            if (line == null || line.Length < 15) return false;
+            string head = line.Substring(0, 18);                  // "MM-DD HH:MM:SS.mmm"
+            string full = now.Year + "-" + head;
+            string[] fmts = new string[] { "yyyy-MM-dd HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.ff", "yyyy-MM-dd HH:mm:ss.f" };
+            if (DateTime.TryParseExact(full, fmts,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out t)) return true;
+            // 跨年：1 月看到 12 月的日志
+            if (DateTime.TryParseExact((now.Year - 1) + "-" + head, fmts,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out t)) return true;
+            return false;
         }
 
         private void RunApkAct(string pkg, string act)
