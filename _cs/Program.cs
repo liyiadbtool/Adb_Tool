@@ -327,8 +327,21 @@ namespace AdbLogExport
                 catch { }
             }
 
-            // 一份都没找到：仍然保留 "adb"（PATH 里可能有但读不到），
-            // 由调用方报错。诊断页会显示"未安装"，并提供内置一键安装。
+            /* 2026-11-27（R6）：一份都没找到 → 自动释放 exe 内嵌的 adb 三件套。
+               没有这一步，去掉 platform-tools 的包首次运行会直接进离线模式。 */
+            try
+            {
+                string rel = Embed.PrepareAdbTools();
+                if (!string.IsNullOrEmpty(rel) && File.Exists(rel))
+                {
+                    ADB = rel;
+                    ADB_SOURCE = "内置 adb（自动释放）";
+                    return;
+                }
+            }
+            catch { }
+
+            // 仍然找不到：保留 "adb"，由调用方报错；诊断页会显示"未安装"并提供按钮。
             ADB_SOURCE = "未找到";
         }
 

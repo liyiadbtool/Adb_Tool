@@ -442,6 +442,8 @@ body{
 .qinp::placeholder{ color:var(--text-faint); }
 .qcard:hover{border-color:var(--border-strong);background:var(--surface-2);}
 .qcard:active{transform:scale(.98);}
+/* 2026-11-27（D15）：搜索结果是等高网格，给卡片最小高度避免行高抖动 */
+.qcard{ min-height: 62px; }
 .qcard .qhead{display:flex;align-items:center;gap:8px;margin-bottom:5px;min-width:0;}
 .qcard .qico{flex:0 0 auto;width:16px;height:16px;color:var(--text-faint);}
 .qcard .qico svg{width:16px;height:16px;display:block;}
@@ -1204,7 +1206,10 @@ button,input,select,textarea{ font-family:inherit; }
 @media (hover:hover){
   .btn:hover:not(:disabled),.fbtn:hover:not(:disabled),.fs-act:hover:not(:disabled),
   .cast-max:hover:not(:disabled){ border-color:var(--accent); }
-  .qcard:hover{ border-color:var(--accent); box-shadow:var(--shadow-md); }
+  /* 2026-11-27（D15）：原来 hover 用外扩 box-shadow，搜索结果里第一行/最后一行
+     会被 .quick-scroll 的 overflow 裁掉顶部（用户看到"顶部被遮挡"）。
+     改成内描边 + 轻微提亮：不向外扩，任何位置都不会被裁。 */
+  .qcard:hover{ border-color:var(--accent); box-shadow: inset 0 0 0 1px var(--accent-soft); }
   .tab:hover:not(.active){ color:var(--text); }
 }
 .btn:active:not(:disabled),.tab:active:not(:disabled),.icon-btn:active:not(:disabled),
@@ -14146,6 +14151,7 @@ var quickGroups = [
     {name:'网络状态-IP', desc:'读 wlan0 地址（car_net 实测）', cmd:'stip', cat:'显示与信息'},
     // ---- 配置入口 ----
     {name:'打开日志设置', desc:'车机日志设置（com.gxa.car.systemlog）', cmd:'stlogset', cat:'配置入口'},
+    {name:'配置中心后台', desc:'space.syncore.cockpit 配置中心（网联服务同款入口）', cmd:'wsconfig', cat:'配置入口'},
     {name:'账号助手', desc:'工程模式-助手页（SynTestUtil zhzs 实测）', cmd:'staccount', cat:'配置入口'},
     {name:'工程模式', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stengmode', cat:'配置入口'},
     // ---- 环境与校验（2026-11-22 第 12 批需求 3）----

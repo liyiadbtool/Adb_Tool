@@ -38,10 +38,11 @@ REQUIRED = [
     os.path.join("internal", "adb_Tool.ico"),
     "monkeyq.jar",                       # 兜底：老布局
 ]
+# 2026-11-27（R6）：platform-tools 不再随包 —— adb 三件套已内嵌进 exe，
+# 首次运行会自动释放到 %LOCALAPPDATA%\adb_Tool\platform-tools\。
 REQUIRED_DIRS = [
     "fastbot",
     os.path.join("fastbot", "libs"),
-    "platform-tools",
 ]
 REQUIRED_GLOBS = [
     (os.path.join("fastbot", "libs", "arm64-v8a"), ".so"),
@@ -84,8 +85,6 @@ def check_dist():
         if os.path.isdir(d) and not any(x.endswith(ext) for x in os.listdir(d)):
             errs.append("缺原生库：%s\\*%s" % (sub, ext))
 
-    if not os.path.exists(os.path.join(DIST, "platform-tools", "adb.exe")):
-        errs.append("缺 adb：platform-tools\\adb.exe（目标机器没装 SDK 就打不开设备）")
 
     return errs
 
@@ -102,6 +101,12 @@ def main():
     if os.path.exists(STAGE):
         shutil.rmtree(STAGE)
     shutil.copytree(DIST, STAGE)
+
+    # 2026-11-27（R6）：内嵌 adb 已够用，包内不再带 8.4MB 的 platform-tools
+    pt = os.path.join(STAGE, "platform-tools")
+    if os.path.isdir(pt):
+        shutil.rmtree(pt, ignore_errors=True)
+        print("已排除 platform-tools（改用 exe 内嵌 adb 自动释放）")
 
     # scrcpy 可选：只有本机装了才带
     if not no_scrcpy:
@@ -137,7 +142,7 @@ def main():
     # 打包后自检：关键项真的进包了
     with zipfile.ZipFile(out) as z:
         names = z.namelist()
-        must = ["platform-tools/adb.exe", "fastbot/monkeyq.jar", "internal/ui.html"]
+        must = ["fastbot/monkeyq.jar", "internal/ui.html"]
         missing = [m for m in must if m not in names]
     if missing:
         print("打包完成但缺关键项：%s" % missing)

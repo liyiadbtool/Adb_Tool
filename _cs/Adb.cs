@@ -39,6 +39,10 @@ namespace AdbLogExport
         internal static Process PERSIST_RUNNING = null;
         [System.ThreadStatic] internal static bool PERSIST_CHANNEL = false;
         internal static readonly Process[] RUNNING_SLOTS = new Process[SLOT_COUNT];
+        /* 2026-11-27（D16）：长驻命令（monkey / logcat -f / scrcpy / app_process）
+           原来只记 PERSIST_RUNNING 单例，停止时杀不到 → 点停止无效。
+           这里按槽位再记一份，专门给 StopWorker 用。 */
+        internal static readonly Process[] PERSIST_SLOTS = new Process[SLOT_COUNT];
 
         private static int CurSlotSafe()
         {
@@ -52,14 +56,21 @@ namespace AdbLogExport
         internal static bool KillRunning(int slot)
         {
             if (slot < 0 || slot >= SLOT_COUNT) return false;
-            Process p = RUNNING_SLOTS[slot];
-            if (p == null) return false;
             bool killed = false;
+            Process p = RUNNING_SLOTS[slot];
             try
             {
-                if (!p.HasExited) { p.Kill(); killed = true; }
+                if (p != null && !p.HasExited) { p.Kill(); killed = true; }
             }
             catch { }
+            /* 2026-11-27（D16）：长驻命令不在 RUNNING_SLOTS 里，这里补一刀 */
+            try
+            {
+                Process q = PERSIST_SLOTS[slot];
+                if (q != null && !q.HasExited) { q.Kill(); killed = true; }
+            }
+            catch { }
+            try { PERSIST_SLOTS[slot] = null; } catch { }
             return killed;
         }
 
@@ -189,6 +200,8 @@ namespace AdbLogExport
                     Process prevP = PERSIST_RUNNING;
                     if (prevP != null) { try { if (!prevP.HasExited) prevP.Kill(); } catch { } }
                     PERSIST_RUNNING = p;
+                    // 2026-11-27（D16）：同时按槽位登记，否则"停止"永远杀不到长驻命令
+                    try { PERSIST_SLOTS[slot] = p; } catch { }
                 }
                 else if (!quiet)
                 {

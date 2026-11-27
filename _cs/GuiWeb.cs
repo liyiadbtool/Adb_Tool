@@ -4116,6 +4116,16 @@ namespace AdbLogExport.Gui
             }
             // 只杀本槽的 adb 进程。原来杀 App.RUNNING（全局单例），
             // 结果点 A 槽的停止可能杀掉 B 槽正在跑的命令。
+            /* 2026-11-27（D16）：长驻命令（monkey / logcat -f / scrcpy-server）走
+               PERSIST_CHANNEL，不在槽位表里；KillRunning 已补槽位兜底，
+               这里再杀一次全局单例，覆盖"没登记到槽位"的老路径。 */
+            try
+            {
+                if (App.PERSIST_RUNNING != null && !App.PERSIST_RUNNING.HasExited)
+                    App.PERSIST_RUNNING.Kill();
+            }
+            catch { }
+
             if (!App.KillRunning(slot))
             {
                 // 兜底：个别路径（如后台探测）没登记到槽位表，仍按全局引用收尾
@@ -4157,7 +4167,8 @@ namespace AdbLogExport.Gui
                 {
                     string o = "", e = "", cnt = "", e2 = "";
                     App.AdbCallQuiet(new List<string> { "shell",
-                        "pkill -f com.android.commands.monkey; pkill -f 'logcat -f'" },
+                        "pkill -f com.android.commands.monkey; pkill -f 'logcat -f'; "
+                      + "pkill -f scrcpy-server; pkill -f app_process" },
                         out o, out e);
                     // 复查一次，把真实结果告诉用户（不猜）
                     App.AdbCallQuiet(new List<string> { "shell",
