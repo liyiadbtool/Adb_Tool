@@ -13975,9 +13975,9 @@ var quickGroups = [
     {name:'网络状态-ping', desc:'ping 公网 5 个包（car_net 实测）', cmd:'stping', cat:'显示与信息'},
     {name:'网络状态-IP', desc:'读 wlan0 地址（car_net 实测）', cmd:'stip', cat:'显示与信息'},
     // ---- 配置入口 ----
-    {name:'日志配置', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stlogcfg', cat:'配置入口'},
+    {name:'打开日志设置', desc:'车机日志设置（com.gxa.car.systemlog）', cmd:'stlogset', cat:'配置入口'},
     {name:'账号助手', desc:'工程模式-助手页（SynTestUtil zhzs 实测）', cmd:'staccount', cat:'配置入口'},
-    {name:'下线配置', desc:'工程模式-离线配置页（SynTestUtil xxpz）', cmd:'stoffline', cat:'配置入口'},
+    {name:'工程模式', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stengmode', cat:'配置入口'},
     // ---- 环境与校验（2026-11-22 第 12 批需求 3）----
     // 这四条都是"确认环境对不对"的只读/开关类动作。
     // 用户给的原始命令是 `adb shell getprop | findstr domain` —— findstr 是 Windows

@@ -747,7 +747,7 @@ BEHAVIOR = r"""
         var stCmdStr = ieCmds.join(' | ');
         ok('ST 11 条 st* 命令已并入指令执行',
            ['stlogall','stsyslog','sttcpdump','stxyon','stxyoff','stvin',
-            'stping','stip','stlogcfg','staccount','stoffline'].every(function(c){
+            'stping','stip','stlogset','staccount','stengmode'].every(function(c){
               return stCmdStr.indexOf(c) >= 0;
             }), stCmdStr.slice(-120));
         ok('ST 开启/关闭坐标成对',
