@@ -616,14 +616,31 @@ namespace AdbLogExport
         // shell 命令（收集模式）：cd '<cur>' && <cmd>
         internal static int ShellCall(string cur, string cmd, out string stdout, out string stderr)
         {
-            string full = "cd '" + cur + "' && " + cmd;
+            /* 2026-11-27（终端 bug）：原来是 `cd '<cur>' && cmd`。
+               一旦 CUR 失效（换设备后遗留旧路径），整条命令被 && 短路 ——
+               连 `echo '##0'` 都不执行，下游解析少一段 → 车机信息整体错位一格
+               （MCU 显示成 Android 12 就是这么来的），并且 cd .. / ls 全报错。
+               改成 `cd ... 2>/dev/null; cmd`：cd 失败不影响主命令，
+               属性类命令本来就与工作目录无关。 */
+            string full = cmd;
+            if (!string.IsNullOrEmpty(cur))
+            {
+                string c = cur.Replace("'", "'\\''");
+                full = "cd '" + c + "' 2>/dev/null; " + cmd;
+            }
             return AdbCall(new List<string> { "shell", full }, out stdout, out stderr);
         }
 
         // shell 命令（流式模式）
         internal static int ShellCallStream(string cur, string cmd, out string combined)
         {
-            string full = "cd '" + cur + "' && " + cmd;
+            // 同上：cd 失败不得短路主命令
+            string full = cmd;
+            if (!string.IsNullOrEmpty(cur))
+            {
+                string c = cur.Replace("'", "'\\''");
+                full = "cd '" + c + "' 2>/dev/null; " + cmd;
+            }
             return AdbCallStream(new List<string> { "shell", full }, out combined);
         }
 

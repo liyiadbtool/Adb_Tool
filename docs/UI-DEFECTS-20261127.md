@@ -584,3 +584,91 @@ worker 也不检查停止标志 → 命令照常执行到结束，界面一直"�
 ```
 
 **优先级**：高（用户无法中断长任务，只能杀进程重开）
+
+---
+
+## D17 终端：CUR 失效导致「车机信息整体错位 + cd .. 失败 + ls 报断连」
+
+**现象**（用户日志）：
+
+```
+车型      GACNE_AHT_IDC_S2_261125_1503F_D     ← 实际是 short_name
+SOC 版本  AHT_IDM_01_42.290_261118_R
+MCU 版本  12                                  ← 实际是 Android 版本
+Android   HACRA3G30S1S02426
+...
+存储      Physical size: 2880x1620;           ← 实际是分辨率
+屏幕分辨率 -
+
+cd ..   → 进入失败：目录不存在 '..'
+ls      → 查询失败：设备连接中断
+```
+
+**根因（一条链）**
+
+提示符里的路径是 `/iflytek_a/iflytek/res/T09M/SRRes`，而当前设备是 AHT。
+实测该目录**在这台设备上不存在**：
+
+```
+$ adb shell "cd '/iflytek_a/iflytek/res/T09M/SRRes' && echo OK || echo FAIL"
+FAIL
+/system/bin/sh: cd: ... : No such file or directory
+```
+
+而 `ShellCall` 原来把所有命令拼成：
+
+```csharp
+string full = "cd '" + cur + "' && " + cmd;
+```
+
+`&&` 会**短路**：cd 失败 → 后面整条不执行。
+
+对车机信息采集来说，后果是**第一个标记 `##0` 被跳过**：
+
+```
+预期输出            实际输出
+  ##0                 156            ← 少了一行标记
+  156                 ##1
+  ##1                 GACNE_AHT...
+  GACNE_AHT...        ...
+```
+
+`ParseMarkedTextN` 按"标记出现顺序"计数，于是把 `##1` 当成第 0 段 →
+**所有字段整体上移一格**（MCU 显示成 Android 12 就是这么来的）。
+
+同一个失效 CUR 也解释了另外两条：
+
+```
+cd ..   → 实际执行 `cd '<失效CUR>' && cd '..'` → 第一条就失败 → 报"目录不存在 '..'"
+ls      → 同上，输出为空 + rc≠0 → 被归类成"设备连接中断"（误报）
+```
+
+**修复（已改）**
+
+```csharp
+// ShellCall / ShellCallStream：
+full = "cd '" + c + "' 2>/dev/null; " + cmd;   // 分号，cd 失败不短路
+```
+
+**验证（同一条命令，换分号后）**
+
+```
+markers seen: 4
+车型 => 156
+SOC  → GACNE_AHT_IDC_S2_261125_1503F_D
+MCU  → AHT_IDM_01_42.290_261118_R
+Android => 12
+```
+
+值全部对齐，错位消失；`cd ..` / `ls` 也不再被 CUR 拖累。
+
+**还需要跟进（记录）**
+
+```
+① 换设备/设备上线时应校验 CUR 是否仍存在，失效就回落到 /（提示符别停在幽灵路径）
+② ParseMarkedTextN 可加自检：seen < n 时说明标记缺失，应报"采集不完整"而不是硬塞
+③ "设备连接中断"文案要区分"cd 失败 / 目录不存在 / 真的断链"
+④ jump 点 logs 指向 /log/android_log/androidlog，在该设备不存在 → 需按机型配置
+```
+
+**优先级**：高（信息错位会误导判断，且现象像"设备问题"）
