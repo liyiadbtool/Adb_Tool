@@ -14629,10 +14629,33 @@ var ICON_STOP = '<svg viewBox="0 0 24 24"><g transform="scale(1.5)"><rect x="4.5
 var ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><g transform="scale(1.5)"><path d="M3.5 8.5l3 3L12.5 5"/></g></svg>';
 var ICON_ERROR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><g transform="scale(1.5)"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></g></svg>';
 
+/* 2026-11-27（D10）：卡片按语义配图标，不再全是播放三角 */
+var ICON_GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"/></svg>';
+var ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
+var ICON_BOLT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 13.5H11l-1 8 8.5-11H12z"/></svg>';
+var ICON_ARROW_DN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4.5 20h15"/></svg>';
+var ICON_DOC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3h7l4.5 4.5V21h-11z"/><path d="M13.5 3v4.5H18M9.5 12h5M9.5 15.5h5"/></svg>';
+var ICON_SCREEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/></svg>';
+var ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4.5h-4.5"/></svg>';
+
+function pickCardIcon(it){
+  try{
+    var t = (((it && it.name) || '') + ' ' + ((it && it.cmd) || '')).toLowerCase();
+    if(/日志|logcat/.test(t))                               return ICON_DOC;
+    if(/后台|配置|设置|setting|config/.test(t))              return ICON_GEAR;
+    if(/截图|录屏|投屏|cast|screen/.test(t))                return ICON_SCREEN;
+    if(/重启|reboot|重连|刷新/.test(t))                     return ICON_REFRESH;
+    if(/版本|查询|信息|状态|vin|status|ver|getprop/.test(t)) return ICON_EYE;
+    if(/导出|拉取|下载|pull|dump/.test(t))                   return ICON_ARROW_DN;
+    if(/激活|一键|快速|开启/.test(t))                        return ICON_BOLT;
+  }catch(e){}
+  return ICON_PLAY;
+}
+
 function setCardIcon(card, state){
   var ico = card ? card.querySelector('.qico') : null;
   if(!ico) return;
-  var svg = ICON_PLAY;
+  var svg = card.__ico || ICON_PLAY;   // 回到这张卡原本的类别图标
   if(state === 'running'){ svg = card.classList.contains('toggle') ? ICON_STOP : ICON_SPIN; }
   else if(state === 'done'){ svg = ICON_DONE; }
   else if(state === 'error'){ svg = ICON_ERROR; }
@@ -15072,7 +15095,7 @@ function renderQuickItems(){
         + ' onkeydown="qcardInputKey(event,'+j+')">';
     }
     html += '<div class="'+cls+'" data-j="'+j+'" onclick="qcardClick(event,'+j+')">'
-      + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
+      + '<div class="qhead"><span class="qico">'+pickCardIcon(it)+'</span>'
       + '<span class="qname" title="'+escAttr(it.name||'')+'">'+escHtml(it.name||'')+'</span>'
       + (it.exp ? '<span class="qgear'+(opHas(it.cmd)?' set':'')+'" data-j="'+j+'" title="设置导出路径">⚙</span>' : '')
       + (it.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
@@ -15083,6 +15106,13 @@ function renderQuickItems(){
       + '</div>';
   }
   swapGrid(grid, html);
+  try{
+    var _cs2 = grid.querySelectorAll('.qcard');
+    for(var _i2=0;_i2<_cs2.length;_i2++){
+      var _ic = _cs2[_i2].querySelector('.qico');
+      if(_ic) _cs2[_i2].__ico = _ic.innerHTML;
+    }
+  }catch(e){}
   // 2026-11-21：卡片拖拽（委托绑定，重渲染不需重绑）
   if (!grid.__dragBound){
     grid.__dragBound = 1;
@@ -15187,7 +15217,7 @@ function renderSearchResults(){
     var sub2 = it2.desc || it2.cmd;
     var cls2 = 'qcard'+(it2.arg?' arg':'')+(it2.toggle?' toggle':'')+(it2.progress?' progress':'');
     html += '<div class="'+cls2+'" data-g="'+h.g+'" data-j="'+h.j+'" onclick="runQuickAt('+h.g+','+h.j+',this)">'
-      + '<div class="qhead"><span class="qico">'+ICON_PLAY+'</span>'
+      + '<div class="qhead"><span class="qico">'+pickCardIcon(it2)+'</span>'
       + '<span class="qname" title="'+escAttr(it2.name)+'">'+escHtml(it2.name)+'</span>'
       + (it2.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
       + '</div>'
@@ -18732,7 +18762,7 @@ function renderCustomCards(){
   for(var i=0;i<_customDefs.length;i++){
     var d = _customDefs[i];
     h += '<div class="qcard cm-card" data-id="' + escAttr(d.id) + '" title="点击执行">'
-      +  '<div class="qhead"><span class="qico">' + ICON_PLAY + '</span>'
+      +  '<div class="qhead"><span class="qico">' + pickCardIcon(d) + '</span>'
       +  '<span class="qname">' + escHtml(d.name) + '</span></div>'
       +  (d.desc ? '<div class="qcmd">' + escHtml(d.desc) + '</div>' : '')
       +  '<div class="cm-meta">' + customExpand(d).length + ' 步 · 点击执行</div>'
@@ -21961,7 +21991,7 @@ document.addEventListener('DOMContentLoaded', function (){
       }
       html += '<div class="' + cls2 + '" data-g="' + h.g + '" data-j="' + h.j + '"'
             + ' onclick="qcardClickAt(event,' + h.g + ',' + h.j + ',this)">'
-            + '<div class="qhead"><span class="qico">' + ICON_PLAY + '</span>'
+            + '<div class="qhead"><span class="qico">' + pickCardIcon(it2) + '</span>'
             + '<span class="qname" title="' + escAttr(it2.name) + '">' + escHtml(it2.name) + '</span>'
             + (it2.arg ? '<span class="qarg" title="需要补充参数">＋</span>' : '')
             + '</div>'
