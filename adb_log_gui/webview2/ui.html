@@ -841,6 +841,12 @@ body{
 .fs-row .i{flex:0 0 auto;width:14px;text-align:center;font-size:12px;color:var(--text-faint);}
 .fs-row.dir .i{color:var(--accent);}
 .fs-row .sz,.fs-row .tm{text-align:right;font-family:var(--font-mono);font-size:12px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* 2026-11-27：异步加载的列表先占住高度，数据回来不顶动下方（D1 纵向收尾） */
+.fs-list{ min-height: 200px; }
+.apk-list{ min-height: 160px; }
+.apk-mgr-list{ min-height: 140px; }
+.fs-empty{ min-height: 140px; display:flex; flex-direction:column; justify-content:center; }
+
 .fs-empty{padding:16px 12px;font-size:12px;color:var(--text-faint);line-height:1.9;}
 .fs-empty.err{color:var(--err);}
 .fs-acts{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex:0 0 auto;}
@@ -5555,6 +5561,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .qgear.set::after{content:'';position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--accent);}
 
 /* 2026-11-25：导出路径改成遮罩弹窗（原来是指令页内展开的面板） */
+.op-item{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px dashed var(--rim);font-size:12px;}
+.op-item:last-child{border-bottom:none;}
+.op-item .op-k{flex:0 0 96px;color:var(--text);}
+.op-item .op-v{flex:1;min-width:0;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .op-mask{position:fixed;inset:0;background:var(--scrim);z-index:90;display:flex;align-items:center;justify-content:center;}
 /* 2026-11-26：统一确认弹窗（替代原生 confirm，样式与页内弹层一致） */
 .cf-mask{position:fixed;inset:0;background:var(--scrim);z-index:200;display:flex;align-items:center;justify-content:center;}
@@ -19647,7 +19657,11 @@ function txReplaceOne(){
   if (hit){
     var s = ta.selectionStart;
     var rep2 = rep;
-    try { rep2 = (o.re || o.ww) ? sel.replace(txBuildRe(q, o), rep) : rep; } catch (e) {}
+    try {
+      // 2026-11-27：正则模式支持 $1/$& 捕获组；普通模式按字面（$ 不当占位符）
+      if (o.re) rep2 = sel.replace(txBuildRe(q, o), rep);
+      else rep2 = sel.replace(txBuildRe(q, o), function(){ return rep; });
+    } catch (e) {}
     ta.value = ta.value.slice(0, s) + rep2 + ta.value.slice(ta.selectionEnd);
     ta.setSelectionRange(s + rep2.length, s + rep2.length);
     txOnInput();
@@ -19661,7 +19675,9 @@ function txReplaceAll(){
   try {
     var o = txFindOpts(), re = txBuildRe(q, o);
     n = (ta.value.match(re) || []).length;
-    ta.value = ta.value.replace(re, rep);
+    // 2026-11-27：正则模式支持 $1/$2/$&；非正则模式 $ 按字面保留
+    ta.value = o.re ? ta.value.replace(re, rep)
+                    : ta.value.replace(re, function(){ return rep; });
   } catch (e) {
     toast('正则表达式有误', 'err'); return;
   }
@@ -22620,6 +22636,16 @@ function openOutPath(id){
     if (listEl) listEl.textContent = '读取中…';
   } catch (e) { }
   try { postObj({kind:'outpath', act:'list'}); } catch (e) {}
+  /* 2026-11-27：Esc 关闭 / Enter 保存（全局只绑一次，靠弹窗可见性判断） */
+  if (!window._opKeyBound){
+    window._opKeyBound = true;
+    document.addEventListener('keydown', function(ev){
+      var bk = document.getElementById('op-backdrop');
+      if (!bk || getComputedStyle(bk).display === 'none') return;
+      if (ev.key === 'Escape'){ ev.preventDefault(); closeOutPath(); }
+      else if (ev.key === 'Enter'){ ev.preventDefault(); saveOutPath(); }
+    });
+  }
 }
 
 function outPathPick(id){ _opId = id || ''; onOutPathList(_opCache); }
@@ -22660,7 +22686,27 @@ function renderOutPathList(obj){
   var box=document.getElementById('op-list');if(!box)return;
   var keys=Object.keys(obj||{});
   if(!keys.length){box.textContent='当前全部使用默认路径：桌面\\logcat\\<日期>\\<类型>';return;}
-  box.innerHTML=keys.map(function(k){return '<div>'+k+' → '+(obj[k]||'')+'</div>';}).join('');
+  /* 2026-11-27：每条带删除按钮（不等回到设置页才能删） */
+  var html='';
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i], v=obj[k]||'';
+    html += '<div class="op-item"><span class="op-k">'+k+'</span>'
+          + '<span class="op-v" title="'+v+'">'+v+'</span>'
+          + '<button class="btn ghost sm op-del1" data-id="'+k+'" title="恢复默认路径">删除</button></div>';
+  }
+  box.innerHTML=html;
+  box.querySelectorAll('.op-del1').forEach(function(b){
+    b.onclick=function(ev){
+      ev.stopPropagation();
+      var id=b.getAttribute('data-id');
+      confirmBox({
+        title:'恢复默认路径', text:'确定清除「'+id+'」的自定义导出路径？',
+        sub:'清除后该指令写回：桌面\\logcat\\<日期>\\<类型>',
+        okText:'删除', okDanger:true,
+        onOk:function(){ postObj({kind:'outpath', act:'del', id:id}); postObj({kind:'outpath', act:'list'}); }
+      });
+    };
+  });
 }
 
 // 2026-11-25（B 方案）：卡片⚙ → 打开导出路径面板，并预填该卡片的指令名
