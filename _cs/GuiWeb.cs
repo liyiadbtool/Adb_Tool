@@ -2898,6 +2898,63 @@ namespace AdbLogExport.Gui
                     }
                     break;
 
+                // 2026-11-27（D17）：诊断报告导出成文件。
+                // 前端 diagExport() 按 #diag-fmt 生成正文（与「复制全部」逐字节相同）后发
+                //   diagexport { data: 正文, fmt: text|md|json }
+                // 这里只负责「弹保存框 + 落盘 + 回执」，内容一个字都不改 —— 格式化逻辑
+                // 只在前端有一份，避免两边各写一套导致导出和复制不一致。
+                // 与 cfgexport 同理：本 switch 在 UI 线程上，直接 ShowDialog 即可。
+                // 失败不弹 MessageBox，统一走 diagexported 回执（页面用 toast 提示）。
+                case "diagexport":
+                    {
+                        string dData = GetField(json, "data");
+                        if (dData == null) dData = "";
+                        string dFmt = (GetField(json, "fmt") ?? "text").Trim().ToLowerInvariant();
+
+                        string dExt = ".txt";
+                        string dFilter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+                        if (dFmt == "md")
+                        {
+                            dExt = ".md";
+                            dFilter = "Markdown 文件 (*.md)|*.md|所有文件 (*.*)|*.*";
+                        }
+                        else if (dFmt == "json")
+                        {
+                            dExt = ".json";
+                            dFilter = "JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*";
+                        }
+
+                        string dFile = "";
+                        using (SaveFileDialog dlg = new SaveFileDialog())
+                        {
+                            dlg.Title = "导出诊断报告";
+                            dlg.Filter = dFilter;
+                            dlg.FileName = "诊断报告_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + dExt;
+                            if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                            dFile = dlg.FileName;
+                        }
+
+                        try
+                        {
+                            // UTF8 无 BOM：BOM 会让部分工单系统/脚本把首行认成乱码
+                            File.WriteAllText(dFile, dData, new UTF8Encoding(false));
+                            PushOnUi(
+                                "{\"kind\":\"diagexported\",\"ok\":true,\"text\":"
+                                + Json(dFile) + "}");
+                        }
+                        catch (Exception ex)
+                        {
+                            try
+                            {
+                                PushOnUi(
+                                    "{\"kind\":\"diagexported\",\"ok\":false,\"text\":"
+                                    + Json("导出失败：" + ex.Message) + "}");
+                            }
+                            catch { }
+                        }
+                    }
+                    break;
+
                 // 2026-11-22（需求）：诊断页 —— 开始采样时重置 CPU 基准，
                 // 否则第一帧会拿"上次采样到这次"的时间差，算出不合理的值。
                 case "diagsample_reset":

@@ -482,6 +482,19 @@ A36_ADDS = {
                 "as-now-dot", "as-now-name", "as-now-hex"]),
 }
 
+# D17（2026-11-27）：诊断报告导出成文件。
+#   diagexported  C# 弹完保存框后的回执 {ok, text}（成功 text=路径，失败 text=原因）。
+#                 前端只 toast，不弹 MessageBox，所以必须有一条回执 kind。
+#   diagExport    诊断页顶部「导出文件」按钮的处理函数；内容口径与 diagCopyAll 相同，
+#                 格式化仍只在前端一份，C# 只负责落盘。
+# 本轮**没有新增 DOM id**：设备胶囊复用既有 #dev-badge（点击仍走 initDevBadge），
+# 无线调试的输入框/按钮是「搬节点」进设备面板，id 与 onclick 全部沿用。
+A37_ADDS = {
+    "kinds": set(["diagexported"]),
+    "onclicks": set(["diagExport"]),
+    "ids": set(),
+}
+
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
 # 关闭仍可用右上角 × 或 Esc；「关闭应用」入口移进关于弹层，避免误触。
 A35_REMOVED = {
@@ -519,7 +532,8 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A29_ADDS[k] and x not in A30_ADDS[k]
              and x not in A33_ADDS[k] and x not in A34_ADDS[k]
              and x not in A35_ADDS[k]
-             and x not in A36_ADDS[k]]
+             and x not in A36_ADDS[k]
+             and x not in A37_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k]
               and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]
               and x not in A33_REMOVED[k] and x not in A35_REMOVED[k]]

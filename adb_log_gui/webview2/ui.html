@@ -171,6 +171,18 @@ body{
 .wadb-acts{display:flex;gap:8px;}
 .wadb-acts .btn{flex:1;}
 
+/* 2026-11-27（D17）：无线调试的输入框/按钮被搬进设备面板（#v15-devpop）后，
+   宿主不再是 .wadb-pop，上面那条 `.wadb-pop input` 就选不中了 —— 补一条等价的。 */
+.v15-wadx-in{display:flex;flex-direction:column;gap:9px;padding:0 4px 6px;}
+.v15-wadx-in input{
+  width:100%;height:32px;border:1px solid var(--border);border-radius:var(--r-2);
+  background:var(--bg);color:var(--text);font-size:13px;padding:0 10px;
+  outline:none;font-family:var(--font-mono);
+}
+.v15-wadx-in input:focus{border-color:var(--accent);}
+.v15-wadx-in .wadb-acts{gap:6px;}
+.v15-wadx-in .wadb-acts .btn{flex:1;height:28px;font-size:12px;}
+
 /* 需求7：设备日志等级徽章（ROOT 后面），纯状态显示，不可点击 */
 .logpill{
   display:inline-flex;align-items:center;gap:6px;
@@ -3305,7 +3317,11 @@ body::after{
   color:inherit;cursor:pointer;
   transition:background .12s var(--ease-soft);
 }
-.tb-status > .wadb{display:inline-flex;}
+/* 2026-11-27（D17）：无线调试并入设备胶囊 —— 顶栏从 4 个点收成 3 个点
+   （root / 设备 / 日志）。.wadb 只保留 DOM 不占位：
+   #wadb-btn / #wadb-pop / #wadb-host 这些 id 仍在（门禁与 _check_v13 按 id 检查），
+   它的**子节点**在 buildDevPop() 里被整体搬进设备面板复用。 */
+.tb-status > .wadb{display:none;}
 .tb-status > .rootpill:hover,
 .tb-status > .wadb:hover,
 .tb-status > .logpill:hover,
@@ -3383,6 +3399,25 @@ body::after{
 .tb-status .device .dot{ background:var(--ok); }
 .tb-status .device .dot.off{ background:var(--err); }
 .tb-status .device .dot.none{ background:var(--text-faint); }
+
+/* 2026-11-27（D17）：无线已连接时，在设备圆点右上角叠一个小 wifi 弧。
+   状态来源就是既有的 .wadb-btn.on（onWadb 里 toggle），不新造全局变量；
+   syncWadbArc() 只负责把它镜像成 .device.wifion。 */
+.tb-status .device{ position:relative; }
+.tb-status .device .warc{
+  display:none;
+  position:absolute;right:0;top:0;
+  width:12px;height:12px;
+  color:var(--accent);
+  pointer-events:none;
+  filter:drop-shadow(0 0 1.5px var(--surface));
+}
+.tb-status .device.wifion .warc{ display:block; }
+.tb-status .device .warc svg{
+  width:12px;height:12px;display:block;
+  stroke:currentColor;stroke-width:1.9;fill:none;
+  stroke-linecap:round;
+}
 
 /* 无线弹窗：进标题栏后必须 fixed 定位（absolute 会被标题栏的堆叠上下文压住） */
 .tb-status .wadb-pop{
@@ -5660,7 +5695,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
     <button class="rootpill no disabled" id="root-pill" onclick="onRootClick()" title="未 root，点击执行 adb root">
       <span class="rdot"></span><span class="rtxt" id="root-txt">root</span>
     </button>
-    <!-- 无线 adb：ROOT 右边。点开填 IP 再连接，避免顶栏被输入框撑爆 -->
+    <!-- 无线 adb（2026-11-27 D17：入口已并入右边「设备」胶囊，这里只留 DOM 壳）。
+         为什么不整体删：#wadb-btn / #wadb-pop / #wadb-host 等 id 是既有契约，
+         门禁与 _check_v13 都按 id 检查；而且 #wadb-pop 里的输入框/按钮会被
+         buildDevPop() 原样搬进设备面板复用（onclick、onkeydown 全部不变）。
+         视觉上 .wadb 已 display:none，顶栏只剩 root / 设备 / 日志 三个点。 -->
     <div class="wadb" id="wadb">
       <button class="wadb-btn" id="wadb-btn" onclick="toggleWadb(event)" title="无线调试（adb over TCP）">
         <span class="wdot" id="wadb-dot"></span><span id="wadb-txt">无线</span>
@@ -5683,8 +5722,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
     <span class="logpill" id="log-pill" title="" style="display:none;">
       <span class="ltag">日志</span><span class="lv" id="log-lv"></span><span class="dot" id="log-dot"></span>
     </span>
+    <!-- 2026-11-27（D17）：设备胶囊 = 原 .wadb + .device 的合体入口（顶栏第三个点）。
+         点击走既有 initDevBadge 的监听 → openDevPop()，设备列表与无线调试在同一个面板里。 -->
     <div class="device" id="dev-badge">
       <span class="dot" id="dev-dot"></span>
+      <span class="warc" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M1.2 4.2a7 7 0 019.6 0"/><path d="M3.1 6.4a4.2 4.2 0 015.8 0"/><path d="M4.9 8.6a1.6 1.6 0 012.2 0"/></svg></span>
       <span class="id" id="dev-id"></span>
       <span class="sep" id="dev-sep"></span>
       <span class="soc" id="dev-soc"></span>
@@ -6787,6 +6829,9 @@ body[data-navlabels="0"] .filenav-item.active::after{
             <option value="json">JSON</option>
           </select>
           <button class="btn ghost sm" onclick="diagCopyAll()" title="把所有诊断结果复制到剪贴板">复制全部</button>
+          <!-- 2026-11-27（D17）：导出成文件。格式跟左边 #diag-fmt 走（txt/md/json），
+               落盘由 C# 的 SaveFileDialog 负责（kind=diagexport）。 -->
+          <button class="btn ghost sm" onclick="diagExport()" title="把诊断结果导出成文件（按左侧格式）">导出文件</button>
           <button class="btn primary sm" onclick="diagSaveSnapshot()"
                   title="把本次诊断结果存进历史，便于以后对比排查">保存快照</button>
         </div>
@@ -10276,6 +10321,46 @@ function diagCopyAll(){
   diagCopyText(body, '已复制全部诊断信息');
 }
 
+/* ============================================================================
+   2026-11-27（D17）：导出成文件
+   ----------------------------------------------------------------------------
+   「复制全部」只能进剪贴板，贴到工单/周报还得再找地方留档。这里按当前
+   #diag-fmt 生成**完全相同**的内容，交给 C# 弹 SaveFileDialog 落盘：
+     kind = diagexport { data: 正文, fmt: text|md|json }
+   C# 回 diagexported { ok, text }，成功 text 是文件路径。
+   内容口径与 diagCopyAll 一致（同样的 diagCollect / diagFormatRows），
+   不另写一套格式化 —— 两处输出必须逐字节相同，否则用户会发现"复制的和导出
+   的不一样"。
+   ============================================================================ */
+function diagExport(){
+  var secs = ['adb','pc','car'];
+  var fmt = diagFmt();
+  var head = '环境诊断 · ' + new Date().toLocaleString('zh-CN');
+  var txt = '';
+
+  if(fmt === 'json'){
+    var all = { '时间': head };
+    for(var s=0;s<secs.length;s++){
+      var rs = diagCollect(secs[s]);
+      if(rs.length) all[DIAG_TITLES[secs[s]]] = diagFormatRows(rs, 'json', '');
+    }
+    if(Object.keys(all).length <= 1){ toast('还没有诊断数据', 'err'); return; }
+    txt = JSON.stringify(all, null, 2);
+  } else {
+    var parts = [];
+    for(var i=0;i<secs.length;i++){
+      var rows = diagCollect(secs[i]);
+      if(!rows.length) continue;
+      parts.push(diagFormatRows(rows, fmt, DIAG_TITLES[secs[i]]));
+    }
+    if(!parts.length){ toast('还没有诊断数据', 'err'); return; }
+    txt = (fmt === 'md') ? ('# ' + head + '\n\n' + parts.join('\n\n'))
+                         : (head + '\n\n' + parts.join('\n\n'));
+  }
+
+  postObj({kind:'diagexport', data: txt, fmt: fmt});
+}
+
 
 /* ---------- 资源采样 ---------- */
 function diagToggleSample(){
@@ -10571,6 +10656,12 @@ function onMessage(ev){
     case 'lines': appendLines(msg.items); break;   // 批量帧（性能优化）
     case 'commands': applyServerCommands(msg.items); break;   // cmds.ini → 指令页
     case 'tabpath': try{ onTabPath(msg); }catch(e){} break;   // Tab 补全候选
+    /* 2026-11-27（D17）：诊断报告导出结果（C# 弹完保存框后回）。
+       成功时 text 是落盘路径，失败时是原因 —— 都只在 toast 里说，不弹框。 */
+    case 'diagexported':
+      if(msg.ok) toast('已导出：' + (msg.text || ''), 'ok');
+      else toast(msg.text || '导出失败', 'err');
+      break;
     case 'echo': appendEcho(msg); break;
     case 'status': setStatus(msg); break;      // status 字段在顶层，传整个 msg
     case 'begin': beginRun(msg); break;
@@ -18120,6 +18211,18 @@ function setWadbTip(text, isErr){
   e.textContent = text;
   e.className = 'wadb-tip' + (isErr ? ' err' : '');
 }
+
+/* 2026-11-27（D17）：设备胶囊上的 wifi 小弧。
+   顶栏已经没有独立的「无线」点了，连接状态就叠在设备圆点右上角。
+   状态只有一份来源 —— 既有的 .wadb-btn.on（onWadb 里 toggle），
+   这里只做镜像，不新增全局状态变量。 */
+function syncWadbArc(){
+  var wb = document.getElementById('wadb-btn');
+  var dev = document.getElementById('dev-badge');
+  if(!wb || !dev) return;
+  if(wb.classList.contains('on')) dev.classList.add('wifion');
+  else dev.classList.remove('wifion');
+}
 function onWadb(msg){
   setWadbBusy(false);
   var b = document.getElementById('wadb-btn');
@@ -18130,6 +18233,7 @@ function onWadb(msg){
     // 断开成功时 ip 是空的 —— 这时要把绿色去掉，不能照旧 add
     if(b) b.classList.toggle('on', !!_wadbIp);
     if(t) t.textContent = _wadbIp ? _wadbIp : '无线';
+    syncWadbArc();                       // D17：设备胶囊上的 wifi 弧跟着亮/灭
     setWadbTip(msg.ip ? ('已连接 ' + msg.ip + '，可以拔掉 USB 了') : '已断开');
     toast(msg.ip ? ('无线 adb 已连接 ' + msg.ip) : '无线 adb 已断开');
     closeWadb();
@@ -18139,6 +18243,7 @@ function onWadb(msg){
   // 失败：保留原来的 IP 显示，别把已经连上的状态也抹掉
   if(msg && !msg.ip && !_wadbIp && b) b.classList.remove('on');
   if(t) t.textContent = _wadbIp ? _wadbIp : '无线';
+  syncWadbArc();
   var m = (msg && msg.msg) ? msg.msg : '无线操作失败';
   setWadbTip(m, true);
   toast(m);
@@ -21263,6 +21368,25 @@ document.addEventListener('DOMContentLoaded', function (){
         '<button class="btn" id="v15-devoff" type="button">断开当前</button>' +
       '</div>' +
       '<div class="v15-note">USB 连接无法软件断开，需拔线；无线连接会执行 adb disconnect。</div>';
+
+    /* 2026-11-27（D17）：无线调试并入本面板（顶栏 4 个点 → 3 个点）。
+       做法是「搬节点」而不是重写 UI：把 #wadb-pop 的**全部子节点**
+       （#wadb-host / #wadb-code / #wadb-tip / 连接·断开·配对 三个按钮）
+       原样 appendChild 到这里 —— id、onclick、onkeydown 一个都不变，
+       wadbConnect() / wadbPair() / setWadbTip() 仍按 id 取节点，行为完全一致。
+       外壳 #wadb-pop 变空、仍 display:none，只为保住既有 id 契约。
+       幂等：面板只建一次，host 已有父节点时（重复调用）直接跳过。 */
+    var wp = $('wadb-pop');
+    var wh = $('wadb-host');
+    if (wp && wh && !p.contains(wh)){
+      var sec = el('div', 'v15-wadx', '');
+      sec.appendChild(el('div', 'v15-h', '无线调试 · adb over TCP'));
+      var box = el('div', 'v15-wadx-in', '');
+      while (wp.firstChild) box.appendChild(wp.firstChild);   // 搬的是原节点，不是拷贝
+      sec.appendChild(box);
+      sec.appendChild(el('div', 'v15-sep', ''));
+      p.insertBefore(sec, p.firstChild);
+    }
     return p;
   }
 
@@ -22508,6 +22632,11 @@ document.addEventListener('DOMContentLoaded', function (){
       if (i1 && i1.textContent.trim()) parts.push(i1.textContent.trim());
       if (i2 && i2.textContent.trim()) parts.push(i2.textContent.trim());
       if (i3 && i3.textContent.trim()) parts.push(i3.textContent.trim());
+      /* 2026-11-27（D17）：无线调试已并进这个面板（顶栏少了一个点），
+         所以「已连无线」这件事必须在这个 tooltip 里说清楚，否则用户找不到入口。 */
+      var wbBtn = $('wadb-btn');
+      if (wbBtn && wbBtn.classList.contains('on') && typeof _wadbIp !== 'undefined' && _wadbIp)
+        parts.push('无线 ' + _wadbIp);
       return parts.length ? ('设备：' + parts.join(' · ')) : '设备未连接';
     }
     return el.title || '';
