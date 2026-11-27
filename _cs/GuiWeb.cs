@@ -2636,6 +2636,20 @@ namespace AdbLogExport.Gui
                                 cb.Append(",\"root\":").Append(App.ROOTED ? "true" : "false")
                                   .Append(",\"rootprobed\":").Append(App.ROOT_PROBED ? "true" : "false");
 
+                                /* 2026-11-27：带设备当前时间戳，前端算"时间偏差"。
+                                   时间不同步会让 logcat 时间戳与操作时间对不上，是隐形坑。 */
+                                long devts = 0;
+                                if (online)
+                                {
+                                    try
+                                    {
+                                        string tso = "", tse = "";
+                                        App.ShellCall(App.CUR, "date +%s", out tso, out tse);
+                                        long.TryParse((tso + tse).Trim(), out devts);
+                                    }
+                                    catch { }
+                                }
+                                cb.Append(",\"devts\":").Append(devts);
                                 cb.Append(",\"serial\":").Append(Json(App.SERIAL == null ? "" : App.SERIAL));
                                 cb.Append(",\"devn\":").Append(App.DEVN);
 

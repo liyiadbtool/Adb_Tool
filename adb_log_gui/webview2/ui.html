@@ -4794,6 +4794,16 @@ body[data-navlabels="0"] .filenav-item.active::after{
 
 /* 卡片：宽屏两列。整行卡片用 .diag-card--wide */
 /* 2026-11-26（D1）：卡片先占住高度，数据回来不改变整体高度 */
+/* 2026-11-27：体检结论条 */
+.diag-verdict{ display:flex; align-items:center; gap:10px; padding:12px 14px; margin-bottom:12px;
+  border:1px solid var(--rim); border-radius: var(--r-4); background: var(--surface-2); }
+.diag-verdict-dot{ width:9px; height:9px; border-radius:50%; background: var(--text-faint); flex:0 0 auto; }
+.diag-verdict-dot.ok{ background: var(--ok); }
+.diag-verdict-dot.warn{ background: var(--lv-w); }
+.diag-verdict-dot.bad{ background: var(--err); }
+.diag-verdict-main{ flex:1; min-width:0; }
+.diag-verdict-title{ font-size:13px; font-weight:500; color: var(--text); }
+.diag-verdict-sub{ font-size:12px; color: var(--text-dim); margin-top:2px; }
 .diag-card:not(.folded){ min-height: 216px; }   /* 2026-11-27：只在展开态占位，折叠时不要空白 */
 .diag-card.folded{ min-height: 0 !important; }
 .diag-card{
@@ -6777,6 +6787,17 @@ body[data-navlabels="0"] .filenav-item.active::after{
         </div>
 
         <div class="diag-scroll" id="diag-scroll">
+
+          <!-- 2026-11-27：一键体检结论条（字段罗列 → 先给结论） -->
+          <div class="diag-verdict" id="diag-verdict">
+            <span class="diag-verdict-dot" id="diag-verdict-dot"></span>
+            <div class="diag-verdict-main">
+              <div class="diag-verdict-title" id="diag-verdict-title">诊断结论</div>
+              <div class="diag-verdict-sub" id="diag-verdict-sub">正在体检…</div>
+            </div>
+            <button class="btn ghost sm" onclick="diagRefresh()" title="重新采集全部信息">重新体检</button>
+            <button class="btn ghost sm" onclick="diagCopyAll()" title="复制完整诊断报告">复制报告</button>
+          </div>
 
           <!-- ① 连接状态：adb 状态 + 连通性合并（第 15 批）
                原来这是两张卡，各 3~5 行，存在感低、还占两格。
@@ -9299,6 +9320,64 @@ function diagLoadFold(){
   });
 }
 
+/* 2026-11-27：一键体检。
+   把分散在 4 张卡里的状态聚合成一个结论：ok / warn / bad + 告警清单。
+   规则集中在这里，新增检查项只加一条 push 即可。 */
+function diagVerdict(){
+  var bad = [], warn = [];
+  try {
+    // adb
+    var adbOk = (typeof _diag !== 'undefined') && _diag.adb && _diag.adbsrc !== '未找到';
+    if (!_diag.adb) bad.push('adb 未找到');
+    // 设备
+    if (!_online) bad.push('设备未连接');
+    else if (_diag.car && _diag.car.serial) {
+      if (!_diag.car.got) warn.push('车机信息未取全');
+    }
+    // ROOT
+    if (_online && _diag.car && _diag.car.rootprobed && !_diag.car.root) warn.push('车机未 root');
+    // 时间偏差
+    if (typeof _diag.skew === 'number' && _online) {
+      var sk = Math.abs(_diag.skew) / 1000;
+      if (sk > 60) bad.push('时间偏差 ' + Math.round(sk) + 's');
+      else if (sk > 5) warn.push('时间偏差 ' + Math.round(sk) + 's');
+    }
+    // 日志等级
+    if (_online && _diag.loglevel === '') warn.push('日志等级未设置');
+  } catch (e) {}
+  return { bad: bad, warn: warn };
+}
+
+function diagRenderVerdict(){
+  var dot = document.getElementById('diag-verdict-dot');
+  var t   = document.getElementById('diag-verdict-title');
+  var sub = document.getElementById('diag-verdict-sub');
+  if (!dot || !t || !sub) return;
+  var v = diagVerdict();
+  var cls = 'diag-verdict-dot', text = '环境正常', detail = '未发现异常';
+  if (v.bad.length){ cls += ' bad';  text = '诊断结论：' + v.bad.length + ' 项异常'; detail = v.bad.concat(v.warn).join('、'); }
+  else if (v.warn.length){ cls += ' warn'; text = '诊断结论：' + v.warn.length + ' 项告警'; detail = v.warn.join('、'); }
+  dot.className = cls;
+  t.textContent = text;
+  sub.textContent = detail;
+}
+
+function diagCopyAll(){
+  var parts = [];
+  ['adb','pc','car','res'].forEach(function(k){
+    var box = document.getElementById('diag-rows-' + k);
+    if (box && box.innerText.trim()) parts.push('【' + (DIAG_TITLES[k]||k) + '】\n' + box.innerText.trim());
+  });
+  var txt = '诊断报告  ' + new Date().toLocaleString() + '\n'
+          + document.getElementById('diag-verdict-title').textContent + '\n'
+          + document.getElementById('diag-verdict-sub').textContent + '\n\n'
+          + parts.join('\n\n');
+  try {
+    navigator.clipboard.writeText(txt).then(function(){ toast('诊断报告已复制', 'ok'); },
+      function(){ toast('复制失败，请检查剪贴板权限', 'err'); });
+  } catch (e) { toast('复制失败：' + e.message, 'err'); }
+}
+
 function diagToggleCard(k){
   var el = document.getElementById('diag-card-' + k);
   if(!el) return;
@@ -9584,6 +9663,7 @@ function diagRenderAdb(){
     + diagRowHtml('adb', '来源', src || '未知');
 
   diagSetHealth('adb', 'ok', 'adb ' + (src || '可用'));
+  try { diagRenderVerdict(); } catch (e) {}
 }
 
 /* 一键启用内置 adb：让 C# 把 program\platform-tools\adb.exe 作为 adb 使用 */
@@ -9617,6 +9697,12 @@ function diagRenderCarLoading(){
 
 function diagOnCar(msg){
   _diag.car = msg;
+  /* 2026-11-27：设备时间偏差（正数=设备比本机快） */
+  try {
+    if (msg && msg.devts > 0){
+      _diag.skew = (msg.devts * 1000) - Date.now();
+    }
+  } catch (e) {}
 
   // 收到回包就取消超时兜底（否则 8 秒后还会覆盖成"超时"）
   if(_diag.carTimer){ clearTimeout(_diag.carTimer); _diag.carTimer = 0; }
@@ -9635,6 +9721,7 @@ function diagOnCar(msg){
   }
 
   if(dot) dot.className = msg.got ? 'diag-dot ok' : 'diag-dot warn';
+  try { diagRenderVerdict(); } catch (e) {}
 
   // 2026-11-22（第 15 批）：分组 + 空值统一 — + 未取到计数
   // 车机 11 项按语义分三段，比平铺好扫。
@@ -9650,6 +9737,13 @@ function diagOnCar(msg){
 
   // ① 状态
   html += '<div class="diag-group">状态</div>';
+  /* 2026-11-27：时间偏差（|偏差|>5s 标黄，>60s 标红） */
+  if (typeof _diag.skew === 'number'){
+    var sk = Math.round(_diag.skew / 1000);
+    var skTxt = (sk === 0) ? '一致' : ((sk > 0 ? '设备快 ' : '设备慢 ') + Math.abs(sk) + 's');
+    var skLv = Math.abs(sk) > 60 ? 'bad' : (Math.abs(sk) > 5 ? 'warn' : 'ok');
+    html += diagRowHtml('car', '时间偏差', skTxt, skLv);
+  }
   if(!msg.rootprobed){
     html += diagRowHtml('car', '是否 ROOT', '未探测', '');
   } else {

@@ -261,6 +261,7 @@ A15_ADDS = {
         "v15-lvdev", "v15-lvshow", "v15-lvstate",
         # 设备管理面板
         "v15-devh", "v15-devrows", "v15-devrefresh", "v15-devoff",
+        "diag-verdict", "diag-verdict-dot", "diag-verdict-title", "diag-verdict-sub",
     ]),
 }
 
