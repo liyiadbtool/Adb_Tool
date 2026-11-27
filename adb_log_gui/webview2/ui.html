@@ -13370,6 +13370,7 @@ function run(slot){
   }
   /* 多行的确认逻辑在 window.run 包装器里（它会先接管多行文本，
      这里只处理单行）。见 ui.html 里的 wrapRun / v13 包装。 */
+  var fromQuick = (_tab === 'quick');
   _runSubmit(slot, inp, cmd, fromQuick);
 }
 
@@ -13378,7 +13379,6 @@ function _runSubmit(slot, inp, cmd, fromQuick){
   if(inp){ inp.value = ''; }
   txAutoGrow(slot);          // T10：清空后高度收回单行
   histPush(cmd);
-  var fromQuick = (_tab === 'quick');
   // 在指令页敲的命令，输出要落在反馈区 —— 但在反馈区里得先有"这一条"，
   // 否则 appendOut 找不到 _curOutEl 会把整段输出静默丢掉（等于敲了没反应）。
   if(fromQuick) addPendingRow(cmd);
