@@ -20708,7 +20708,23 @@ document.addEventListener('DOMContentLoaded', function (){
   function buildLogPop(){
     var p = el('div', 'v15-pop', '');
     p.id = 'v15-logpop';
-    p.onclick = function(ev){ ev.stopPropagation(); };
+    /* 2026-11-27 D7: bind logic inside build; init bound it on a detached node. */
+    p.onclick = function(ev){
+      ev.stopPropagation();
+      var t = ev.target;
+      if (!t || t.tagName !== 'BUTTON') return;
+      var lv = t.getAttribute('data-lv');
+      if (!lv) return;
+      if (t.parentNode && t.parentNode.id === 'v15-lvdev'){
+        post2('logset', lv);
+        logDev = lv;
+        setTimeout(function(){ post2('logget', ''); }, 600);
+      } else {
+        logShow = lv;
+        try { applyLogShow(lv); } catch (e) {}
+      }
+      syncLogPop();
+    };
     p.innerHTML =
       '<div class="v15-h">设备端日志等级 · persist.log.tag</div>' +
       '<div class="v15-lvseg" id="v15-lvdev">' +
@@ -20828,7 +20844,20 @@ document.addEventListener('DOMContentLoaded', function (){
     var p = el('div', 'v15-pop', '');
     p.id = 'v15-devpop';
     p.style.width = '310px';
-    p.onclick = function(ev){ ev.stopPropagation(); };
+    /* 2026-11-27 D7+: same fix for device popover. */
+    p.onclick = function(ev){
+      ev.stopPropagation();
+      var t = ev.target;
+      if (!t) return;
+      if (t.id === 'v15-devrefresh'){ post2('devlist', ''); return; }
+      if (t.id === 'v15-devoff'){ post2('devdisconnect', devCur || ''); return; }
+      var row = t;
+      while (row && row !== p && (!row.getAttribute || !row.getAttribute('data-serial'))) row = row.parentNode;
+      if (row && row !== p && row.getAttribute && row.getAttribute('data-serial')){
+        var s2 = row.getAttribute('data-serial');
+        if (s2 && s2 !== devCur) post2('devswitch', s2);
+      }
+    };
     p.innerHTML =
       '<div class="v15-h" id="v15-devh">已连接设备</div>' +
       '<div id="v15-devrows"></div>' +

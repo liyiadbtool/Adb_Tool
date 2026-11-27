@@ -160,6 +160,15 @@ namespace AdbLogExport
                 err = "没有权限读取该目录（需要 root，点顶部 root 提权后再试）";
                 return list;
             }
+            /* 2026-11-27（D6）：先判"没设备"，再判"路径不存在"。
+               否则 adb 的 "error: no devices/emulators found" 里含 "not found"，
+               会被下面的分支报成"读取失败"，或者空输出被当成"目录不存在"。 */
+            if (low.IndexOf("no devices") >= 0 || low.IndexOf("device offline") >= 0
+                || low.IndexOf("no emulators") >= 0)
+            {
+                err = "未连接设备：请插线或点设备徽章刷新后重试";
+                return list;
+            }
             if (low.IndexOf("no such file") >= 0)
             {
                 err = "目录不存在：" + path;

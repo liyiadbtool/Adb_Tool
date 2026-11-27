@@ -5791,6 +5791,20 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
 
         private void RunFsList(string side, string path, int seq)
         {
+            /* 2026-11-27（D6）：设备侧没连设备时直接返回"未连接"，
+               不要发 adb 命令 —— 空结果会被前端翻译成"目录不存在"，
+               把"没插线"误导成"路径错了"。 */
+            if (string.Equals(side, "dev", StringComparison.OrdinalIgnoreCase)
+                && (App.OFFLINE || App.DEVN == 0))
+            {
+                PushOnUi("{\"kind\":\"fslist\",\"seq\":" + seq
+                       + ",\"side\":\"dev\",\"path\":" + Json(path)
+                       + ",\"parent\":" + Json("")
+                       + ",\"err\":" + Json("未连接设备：请插线或点右上角设备徽章刷新后重试")
+                       + ",\"items\":[]}");
+                return;
+            }
+
             Thread th = new Thread(new ThreadStart(delegate()
             {
                 string err = "";
