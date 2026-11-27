@@ -2693,18 +2693,28 @@ namespace AdbLogExport.Gui
                     {
                         try
                         {
+                            /* 2026-11-27：改成真正的"释放并启用"。
+                               顺序：① 程序目录已有就用它（绿色包）
+                                     ② 没有则从 exe 内嵌资源释放到
+                                        %LOCALAPPDATA%\adb_Tool\platform-tools\
+                                     ③ 都失败 → 明确提示杀软/权限，而不是只报"没有文件" */
                             string builtin = Path.Combine(
                                 AppDomain.CurrentDomain.BaseDirectory,
                                 Path.Combine("platform-tools", "adb.exe"));
                             if (!File.Exists(builtin))
                             {
+                                try { builtin = Embed.PrepareAdbTools(); } catch { builtin = null; }
+                            }
+                            if (string.IsNullOrEmpty(builtin) || !File.Exists(builtin))
+                            {
                                 PushOnUi(
                                     "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
-                                    + Json("程序目录下没有 platform-tools\\adb.exe") + "}");
+                                    + Json("内置 adb 释放失败：可能被杀毒软件拦截，或 %LOCALAPPDATA% 不可写。"
+                                           + "请把 %LOCALAPPDATA%\\adb_Tool\\platform-tools 加入白名单后重试。") + "}");
                                 break;
                             }
                             App.ADB = builtin;
-                            App.ADB_SOURCE = "内置 platform-tools";
+                            App.ADB_SOURCE = "内置 adb（已释放）";
 
                             // 取一次版本号，顺带确认这份 adb 真能跑
                             string ver = "";
@@ -2737,9 +2747,17 @@ namespace AdbLogExport.Gui
                             catch { }
 
                             App.ADB_BUILTIN_VER = ver;
+                            if (ver.Length == 0)
+                            {
+                                PushOnUi(
+                                    "{\"kind\":\"diagadbused\",\"ok\":false,\"text\":"
+                                    + Json("adb.exe 已释放但无法执行（可能被杀毒软件拦截或缺少 AdbWinApi.dll）："
+                                           + builtin) + "}");
+                                break;
+                            }
                             PushOnUi(
                                 "{\"kind\":\"diagadbused\",\"ok\":true,\"text\":"
-                                + Json(ver.Length > 0 ? ver : builtin) + "}");
+                                + Json(ver) + "}");
                         }
                         catch (Exception ex)
                         {

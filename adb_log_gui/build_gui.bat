@@ -105,6 +105,10 @@ if exist "%WV2%\Microsoft.Web.WebView2.WinForms.dll" set "RES=%RES% /resource:"%
 if exist "%WV2%\WebView2Loader.dll" set "RES=%RES% /resource:"%WV2%\WebView2Loader.dll",adb.WebView2Loader.dll"
 if exist "%~dp0adb_log_export.ini" set "RES=%RES% /resource:"%~dp0adb_log_export.ini",adb.default.ini"
 if exist "%~dp0cmds.ini" set "RES=%RES% /resource:"%~dp0cmds.ini",adb.default.cmds.ini"
+rem 2026-11-27: embed adb trio so single-exe can extract+enable
+if exist "%~dp0..\platform-tools\adb.exe"           set "RES=%RES% /resource:"%~dp0..\platform-tools\adb.exe",adb.pt.adb.exe"
+if exist "%~dp0..\platform-tools\AdbWinApi.dll"     set "RES=%RES% /resource:"%~dp0..\platform-tools\AdbWinApi.dll",adb.pt.AdbWinApi.dll"
+if exist "%~dp0..\platform-tools\AdbWinUsbApi.dll"  set "RES=%RES% /resource:"%~dp0..\platform-tools\AdbWinUsbApi.dll",adb.pt.AdbWinUsbApi.dll"
 rem 2026-11-22: System.Management.dll is required by Diag.cs
 rem   (WMI queries: CPU model / SMBIOS memory type / OS build number).
 rem   WARNING: never put a "rem" line INSIDE the multi-line compile command

@@ -9570,7 +9570,7 @@ function diagRenderAdb(){
         diagRowHtml('adb', '状态', '未安装 / 未找到', 'bad')
       + diagRowHtml('adb', '内置版本', 'platform-tools 35.0.0（随包提供，点下方按钮启用）', '')
       + '<div class="diag-row"><span class="diag-k"></span><span class="diag-v">'
-      + '<button class="btn primary sm" onclick="diagInstallBuiltinAdb()">一键启用内置 adb</button>'
+      + '<button class="btn primary sm" onclick="diagInstallBuiltinAdb()">使用内置 adb</button>'
       + '</span></div>';
     diagSetHealth('adb', 'bad', 'adb 未找到');
     return;

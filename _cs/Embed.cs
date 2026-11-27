@@ -104,6 +104,51 @@ namespace AdbLogExport
             finally { try { s.Close(); } catch { } }
         }
 
+        /* 2026-11-27：内置 adb 三件套（adb.exe + 两个 AdbWin*.dll）。
+           释放到 %LOCALAPPDATA%\adb_Tool\platform-tools\ 并返回 adb.exe 路径。
+           为什么要一起放：adb.exe 依赖 AdbWinApi.dll / AdbWinUsbApi.dll，
+           缺了会报"找不到入口点"或直接不启动。 */
+        internal const string ResPtAdb   = "adb.pt.adb.exe";
+        internal const string ResPtWin   = "adb.pt.AdbWinApi.dll";
+        internal const string ResPtUsb   = "adb.pt.AdbWinUsbApi.dll";
+
+        internal static string PrepareAdbTools()
+        {
+            try
+            {
+                if (!Has(ResPtAdb)) return null;      // 这个构建没内嵌 adb
+                string dir = Path.Combine(DataDir(), "platform-tools");
+                Directory.CreateDirectory(dir);
+
+                string adb = Path.Combine(dir, "adb.exe");
+                string api = Path.Combine(dir, "AdbWinApi.dll");
+                string usb = Path.Combine(dir, "AdbWinUsbApi.dll");
+
+                WriteIfNeeded(ResPtAdb, adb);
+                WriteIfNeeded(ResPtWin, api);
+                WriteIfNeeded(ResPtUsb, usb);
+
+                if (!File.Exists(adb)) return null;
+                // 让 adb.exe 优先从自己目录加载依赖 dll
+                try { SetDllDirectory(dir); } catch { }
+                return adb;
+            }
+            catch { return null; }
+        }
+
+        // 已存在且大小一致就不重写（避免每次启动都写 8MB）
+        private static void WriteIfNeeded(string resName, string target)
+        {
+            byte[] data = ReadBytes(resName);
+            if (data == null) return;
+            try
+            {
+                if (File.Exists(target) && new FileInfo(target).Length == data.Length) return;
+                File.WriteAllBytes(target, data);
+            }
+            catch { }
+        }
+
         internal static string ReadText(string name)
         {
             byte[] b = ReadBytes(name);
