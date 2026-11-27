@@ -576,7 +576,7 @@ frozen = [
     ("WebView2 消息桥", "window.chrome.webview.postMessage(o)"),
     ("ready() 回包", "{kind:'ready'}"),
     ("文件拖放桥", "postMessageWithAdditionalObjects('fileDrop', [files[0]])"),
-    ("THEME_ORDER 冻结", "var THEME_ORDER = ['dark', 'light', 'eye'];"),
+    ("THEME_ORDER 冻结", "var THEME_ORDER = ['dark', 'light', 'eye', 'glass'];"),
 ]
 for name, anchor in frozen:
     chk(name, anchor in s, anchor[:48])

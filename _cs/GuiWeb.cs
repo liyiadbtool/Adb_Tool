@@ -2267,7 +2267,9 @@ namespace AdbLogExport.Gui
                     // 页面切主题：同步系统标题栏深浅（只有 dark 用深色标题栏，
                     // light / eye 都是浅底，标题栏必须跟着变浅）。
                     string th = GetField(json, "data");
-                    App.THEME = (th == "light" || th == "eye") ? th : "dark";
+                    /* 2026-11-27：glass（玻璃·柔白）作为第四档，标题栏按浅色处理 */
+                    bool thLight = (th == "light" || th == "eye" || th == "glass");
+                    App.THEME = thLight ? th : "dark";
                     SetTitleBarDark(App.THEME == "dark");
                     ApplyChromeColor();   // A13：圆角四角露出的底色也要跟着换
                     // UI 测试模式（ProbeJs 非空）禁止落盘：测试页会来回切主题，
