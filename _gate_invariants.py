@@ -270,6 +270,7 @@ A15_ADDS = {
         "diag-verdict", "diag-verdict-dot", "diag-verdict-title", "diag-verdict-sub",
         # 2026-11-27：自定义流程两批（等待/断言/参数/调试条）
         "cm-runbar", "cm-runbar-txt", "cm-fail", "cm-preview",
+        "set-glass-a", "set-glass-a-val",
         "cm-prompt", "cmp-title", "cmp-label", "cmp-input",
         "diag-ids-box", "diag-ids-caret",
     ]),

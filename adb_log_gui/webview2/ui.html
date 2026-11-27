@@ -76,8 +76,9 @@
   --aurora-2:rgba(168,132,255,.52);
   --aurora-3:rgba(64,215,200,.42);
   --aurora-4:rgba(255,170,120,.30);
-  --glass-fill:rgba(255,255,255,.46);
-  --glass-fill-2:rgba(255,255,255,.62);
+  --glass-a:.24;                       /* 玻璃不透明度，设置页滑块可调 */
+  --glass-fill:rgba(255,255,255,var(--glass-a));
+  --glass-fill-2:rgba(255,255,255,calc(var(--glass-a) + .14));
   --glass-ring:rgba(255,255,255,.75);
   --aurora-base:#F9FBFF;
   --aurora-mid:#F4F7FC;
@@ -121,8 +122,8 @@ body::before{
    再加一层极淡噪点消掉大模糊带来的色带。填充越淡越像玻璃（.72 看着就是白卡）。 */
 :root[data-theme="glass"] .qcard{
   background:var(--glass-fill);
-  backdrop-filter:blur(22px) saturate(185%);
-  -webkit-backdrop-filter:blur(22px) saturate(185%);
+  backdrop-filter:blur(34px) saturate(200%);
+  -webkit-backdrop-filter:blur(34px) saturate(200%);
   border:1px solid rgba(255,255,255,.52);
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.30),   /* 玻璃外缘反光 */
@@ -177,9 +178,9 @@ body::before{
 
 /* 液态玻璃：内容区是一整块玻璃板，卡片浮在它上面（而不是一块白板 + 白卡） */
 :root[data-theme="glass"] .quick-body{
-  background:rgba(255,255,255,.30) !important;
-  backdrop-filter:blur(30px) saturate(185%);
-  -webkit-backdrop-filter:blur(30px) saturate(185%);
+  background:rgba(255,255,255,var(--glass-a)) !important;
+  backdrop-filter:blur(40px) saturate(205%);
+  -webkit-backdrop-filter:blur(40px) saturate(205%);
   border:1px solid rgba(255,255,255,.45);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.85),
@@ -7310,6 +7311,16 @@ body[data-navlabels="0"] .filenav-item.active::after{
         </div>
         <div class="set-col" style="margin-top:10px;">
           <div class="set-seg set-seg-compact" id="set-eyelevel"></div>
+        </div>
+        <!-- 2026-11-27：玻璃透明度（仅「玻璃」主题生效） -->
+        <div class="set-col" style="margin-top:12px;">
+          <div class="set-h" style="margin:0 0 6px;">玻璃透明度</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="range" id="set-glass-a" min="8" max="60" step="2" value="24"
+                   oninput="setGlassAlpha(this.value)" style="flex:1;min-width:0;">
+            <span class="set-fsize-hint" id="set-glass-a-val" style="width:46px;text-align:right;">24%</span>
+          </div>
+          <div class="set-fsize-hint">仅「玻璃」主题生效：数值越小越透</div>
         </div>
         <div class="set-fsize-hint" id="set-display-hint"></div>
       </section>
@@ -20041,6 +20052,25 @@ function setNavLabels(v){
   try { toast(on ? '导航栏已显示名称' : '导航栏已切换为仅图标', 'ok'); } catch (e) {}
 }
 
+/* 2026-11-27：玻璃透明度（0.08 ~ 0.60），存进 prefs.glassA，切主题/重启都保留 */
+function setGlassAlpha(v){
+  var n = parseInt(v, 10);
+  if(isNaN(n)) n = 24;
+  if(n < 8) n = 8;
+  if(n > 60) n = 60;
+  var a = (n / 100).toFixed(2);
+  try{ document.documentElement.style.setProperty('--glass-a', a); }catch(e){}
+  var lab = document.getElementById('set-glass-a-val');
+  if(lab) lab.textContent = n + '%';
+  var sl = document.getElementById('set-glass-a');
+  if(sl && String(sl.value) !== String(n)) sl.value = n;
+  try{ _prefs.glassA = n; prefsSave(); }catch(e){}
+}
+function applyGlassAlpha(n){
+  if(n === undefined || n === null || n === '') n = 24;
+  setGlassAlpha(n);
+}
+
 function prefsSave(){
   // 2026-11-20：落盘前把服务端给的完整 prefs 合并回来。
   // 原来只写 _prefs，而 _prefs 里往往只有 font/size，于是 accent/tabOrder/oled/eye
@@ -20062,10 +20092,12 @@ function prefsApply(b64){
       _prefsBase = o;
       if (typeof o.font === 'string' && o.font) _prefs.font = o.font;
       if (typeof o.custom === 'string') _prefs.custom = o.custom;
+      if (typeof o.glassA === 'number') _prefs.glassA = o.glassA;
     }
   } catch (e) {}
   _prefsLoaded = true;
   applyFont(_prefs.font, true);
+  try { applyGlassAlpha(_prefs.glassA); } catch (e) {}
 }
 
 function syncThemeSeg(){
