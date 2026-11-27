@@ -243,3 +243,53 @@ if (rc != 0 && (o + e).Trim().Length == 0)   // ← 条件太窄
 ```
 
 **优先级**：高（功能完全不可用）
+
+---
+
+## D9 全仓扫描：还有 8 处「主机命令误在设备 shell 执行」
+
+**排查方法**：`ShellCall`/`ShellCapture` 都走 `adb shell "cd ... && cmd"`（设备端执行），
+`AdbCall` 才是主机端 adb。据此把所有“命令对、环境错”的地方筛出来。
+
+**结论：共 9 处**（含 D8 的 uninstall）。设备 shell 里没有 adb/root/remount/disable-verity/pull 这些命令。
+
+| 文件 | 行 | 实际命令 | 应为（主机端） | 影响 |
+|---|---|---|---|---|
+| ApkCmds.cs | 116 | `adb uninstall` | `pm uninstall`（设备端） | 卸载无效（D8） |
+| AutoTask.cs | 369 | `pull` | `adb pull`（AdbCall） | 拉文件失败 |
+| HeapDump.cs | 271 | `pull` | `adb pull`（AdbCall） | 堆栈拉取失败 |
+| Voice.cs | 789 | `remount` | `adb remount`（AdbCall） | remount 失败 |
+| Voice.cs | 802 | `disable-verity` | `adb disable-verity`（AdbCall） | 失败 |
+| Voice.cs | 782 | `root` | `adb root`（AdbCall） | 提权失败 |
+| Cluster.cs | 217 | `root` | `adb root`（AdbCall） | 提权失败 |
+| MapCmds.cs | 234 / 358 | `root`（ShellCapture） | `adb root`（AdbCall） | 提权失败 |
+| MapCmds.cs | 237 / 362 | `remount`（ShellCapture） | `adb remount`（AdbCall） | remount 失败 |
+
+**为什么多数是“静默失败”**
+
+- `root` / `remount` 的调用处大多只 `Hint(输出)` 或 `try{}catch{}`，输出为空就跳过；
+- 设备 shell 报 `/system/bin/sh: root: not found`，但很多地方没做 rc 判定，
+  于是既不报错也不生效 —— 比 uninstall 更隐蔽。
+
+**正确映射（供修复参考）**
+
+```
+主机端命令（用 AdbCall，不套 shell）：
+  adb root / remount / disable-verity / enable-verity / pull / push /
+  install / uninstall / forward / reverse / tcpip / connect / reboot / devices
+
+设备端命令（用 ShellCall，即 adb shell 里）：
+  pm / am / getprop / setprop / settings / dumpsys / ls / find / rm /
+  mv / mkdir / cat / stat / test / sync / whoami / id / ps / kill /
+  logcat / wm / monkey / tc / ifconfig / df / awk / grep / tr
+```
+
+**建议修法**
+
+```
+① 主机命令统一改 AdbCall（注意带 -s SERIAL 定位设备）
+② 补自检：扫描 ShellCall 参数是否以 主机命令词 开头，是则报警
+③ root/remount 调用处补 rc 判定，失败要有明确提示（不能吞）
+```
+
+**优先级**：高（影响 VR 提权、地图、堆栈拉取、卸载等多条链路）
