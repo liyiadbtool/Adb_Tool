@@ -179,3 +179,67 @@ pop.addEventListener('click', function(ev){ ... });   // ← 监听绑在这个�
 **验证方式**：打开浮层点 D，按钮 `on` 类应切换，且发出 `logset` 请求。
 
 **优先级**：高（功能不可用 + 静默失败）
+
+---
+
+## D8 APK 管理「卸载」不生效：命令用了 `adb uninstall`，但工具在设备 shell 里执行
+
+**现象**：APK 管理 → 选应用 → 卸载APK，界面报「卸载失败」。
+
+**根因（已定位 + 设备实测）**
+
+工具执行 shell 命令的方式是（`Adb.cs ShellCall`）：
+
+```csharp
+full = "cd '" + cur + "' && " + cmd;
+AdbCall(new List<string> { "shell", full }, ...)
+```
+
+即所有命令都在**设备的 shell** 里跑。而 `ApkCmds.UninstallPkg` 用的是：
+
+```csharp
+int rc = ShellCall(CUR, "adb uninstall " + pkg, out o, out e);
+```
+
+设备 shell 里**没有 `adb` 这个命令**。设备实测：
+
+```
+$ adb shell "adb uninstall com.example.foo"
+/system/bin/sh: adb: inaccessible or not found
+
+$ adb shell "pm uninstall com.example.foo"
+Failure [DELETE_FAILED_INTERNAL_ERROR]   ← pm 命令本身存在、能执行
+```
+
+**为何 fallback 也没救回来**：代码里确实写了“adb 失败就退 pm”：
+
+```csharp
+if (rc != 0 && (o + e).Trim().Length == 0)   // ← 条件太窄
+    rc = ShellCall(CUR, "pm uninstall " + pkg, out o, out e);
+```
+
+但 `adb: inaccessible or not found` 会写入 stderr → `(o+e)` **非空** →
+退 pm 的分支**永远不触发** → `UninstallSucceeded("adb: inaccessible...")` = false → 卸载失败。
+
+**结论**：不是“卸载该用什么命令”的问题，是**执行环境与命令不匹配**：
+设备端卸载应直接用 `pm uninstall`，不是 `adb uninstall`。
+
+**对照（同文件其它动作都正确）**
+
+| 动作 | 命令 | 是否正确 |
+|---|---|---|
+| 清理数据 | `pm clear` | ✓ 设备端命令 |
+| 关闭进程 | `am force-stop` | ✓ 设备端命令 |
+| 卸载 | `adb uninstall` | ✗ 主机端命令，设备 shell 没有 adb |
+| 查询路径 | `pm path` | ✓ |
+
+**建议修法（记录，未执行）**
+
+```
+① UninstallPkg 直接用 ShellCall(CUR, "pm uninstall " + pkg, ...)
+② 若担心某些机型 pm 不支持，fallback 条件改成「输出含 not found / inaccessible」
+   而不是「输出为空」
+③ UninstallSucceeded 的正反向判定保留（pm 输出同样是 Success / Failure）
+```
+
+**优先级**：高（功能完全不可用）
