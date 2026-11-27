@@ -294,14 +294,32 @@ namespace AdbLogExport.Gui
 
                 if (icp != null)
                 {
-                    using (Icon ic = new Icon(icp)) { Icon = (Icon)ic.Clone(); }
+                    using (Icon ic = new Icon(icp)) { _appIcon = (Icon)ic.Clone(); }
                 }
                 else
                 {
                     // 兜底：从 exe 本身提取图标（/win32icon 已把黑猫嵌入）
                     string exe = System.Reflection.Assembly.GetEntryAssembly().Location;
-                    Icon = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+                    _appIcon = System.Drawing.Icon.ExtractAssociatedIcon(exe);
                 }
+                Icon = _appIcon;
+
+                /* ShowIcon=false 时 WinForms 不会发 WM_SETICON，
+                   任务栏按钮/悬停小弹窗拿不到窗口图标，退而显示默认图标。
+                   这里在句柄就绪后显式发一次 WM_SETICON（大 + 小），
+                   任务栏就能显示黑猫。 */
+                HandleCreated += delegate
+                {
+                    try
+                    {
+                        if (_appIcon != null && Handle != IntPtr.Zero)
+                        {
+                            SendMessage(Handle, WM_SETICON, (IntPtr)ICON_BIG, _appIcon.Handle);
+                            SendMessage(Handle, WM_SETICON, (IntPtr)ICON_SMALL, _appIcon.Handle);
+                        }
+                    }
+                    catch { }
+                };
             }
             catch { }
         }
@@ -332,9 +350,14 @@ namespace AdbLogExport.Gui
 
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 2;
+        private const int WM_SETICON = 0x0080;
+        private const int ICON_SMALL = 0;
+        private const int ICON_BIG = 1;
 
         // 页面驱动的边缘缩放：记住按下瞬间的窗口矩形，之后只套"总位移"
         private bool _rzActive = false;
+        // 2026-11-27（D11）：保存加载到的黑猫图标，供任务栏显式 WM_SETICON
+        private Icon _appIcon = null;
         // 2026-11-26：D2 修复引入的死循环保护 —— Normal↔Maximized 切换会再次触发 OnResize
         private bool _fixingMax = false;
         private string _rzDir = "";
