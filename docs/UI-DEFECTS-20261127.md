@@ -410,3 +410,99 @@ Windows 是通过 `WM_SETTINGCHANGE`（`lParam = "TraySettings"`）通知的。
 ```
 
 **优先级**：高（全屏是常用状态，界面被裁会影响操作）
+
+---
+
+## D14 投屏页（Scrcpy）搜索失效：搜出结果但屏幕还是投屏页内容
+
+**现象**：在「Scrcpy投屏」分组下，搜索框输入「重启」，标题变成"搜索结果"，
+但主区域显示的还是「屏幕投屏 / 仪表投屏」的卡片，看不到搜索结果。
+
+**根因（代码定位）**
+
+实际生效的搜索渲染是 `window.renderSearchResults`（`ui.html:21571`）。
+它在渲染前会隐藏其它面板，但**漏了投屏面板**：
+
+```js
+var panel = document.getElementById('vr-panel');        if (panel) panel.style.display = 'none';
+var ttR0  = document.getElementById('tt-row2');         if (ttR0)  ttR0.style.display  = 'none';
+var ap    = document.getElementById('apk-panel');       if (ap)    ap.style.display    = 'none';
+var np    = document.getElementById('netsim-panel');    if (np)    np.style.display    = 'none';
+var cp    = document.getElementById('custom-panel');    if (cp)    cp.style.display    = 'none';
+var g0    = document.getElementById('quick-grid');      if (g0)    g0.style.display    = '';
+// ↑ 没有 cast-panel
+```
+
+而投屏面板正是靠它显示/隐藏的（`ui.html:14724`）：
+
+```js
+castPanel.style.display = (g.panel === 'cast') ? '' : 'none';
+```
+
+所以链路是：
+
+```
+在 Scrcpy 分组 → cast-panel display=''
+在搜索框输入 → _quickFilter 有值 → renderSearchResults()
+  → 隐藏了 apk / netsim / custom / vr，唯独没隐藏 cast-panel
+  → cast-panel 仍占据主区域，搜索结果的 #quick-grid 被挤到下面（看不见）
+  → 用户看到"标题变了、内容没变" = 搜索失效
+```
+
+**为什么在其它分组能搜**：那些分组用的是 items 卡片（无 panel），
+`cast-panel` 本来就是 `display:none`，所以不受影响。
+
+**修法建议（记录，未执行）**
+
+```
+① renderSearchResults 里补一行：
+     var castP = document.getElementById('cast-panel'); if (castP) castP.style.display = 'none';
+② 更好的做法：抽一个 hideAllPanels()，搜索/切分组都调它，避免下次又漏一个
+③ 加自检：搜索态下 cast/apk/netsim/custom/vr 五个面板都必须 display:none
+```
+
+**优先级**：高（投屏页是常用分组，搜索完全不可用）
+
+---
+
+## D15 搜索结果卡片 hover 时顶部被遮挡
+
+**现象**：搜索结果里鼠标移到卡片上，卡片顶部（圆角/上边框）被切掉或盖住。
+
+**已知相关样式**
+
+```css
+/* ui.html:1207 —— 悬停时加阴影 */
+@media (hover:hover){
+  .qcard:hover{ border-color:var(--accent); box-shadow:var(--shadow-md); }
+}
+
+/* ui.html:374 —— 滚动容器裁掉溢出 */
+.quick-scroll{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
+```
+
+**两个可疑点（需一次实测确认）**
+
+```
+A. 溢出裁剪：.quick-scroll 的 overflow 会把 hover 阴影/外扩部分裁掉，
+   第一行卡片最明显（阴影往上长，正好被容器上边缘切掉）
+B. 网格行高：搜索结果按 data-g/data-j 渲染，若某张卡带 .hasinp（输入框），
+   行高变化会让相邻行在 hover 时视觉重叠
+```
+
+**确认方法（不改代码）**
+
+```
+① 把搜索区滚到底部再看 hover —— 若底部卡片不被裁，则是 A（容器边缘裁剪）
+② hover 一张不带输入框的卡 —— 若正常，则是 B（hasinp 行高）
+③ 用开发者工具看 hover 那张卡的 boundingRect.top 是否 < 容器 rect.top
+```
+
+**修法方向（按原因二选一）**
+
+```
+若 A：给 .quick-scroll 留 padding-top（或 hover 不用外扩阴影，改成 inset 描边）
+若 B：给 .qcard 固定 min-height，或给行容器加 row-gap 抵消
+```
+
+**优先级**：中（视觉问题，不影响点击）
