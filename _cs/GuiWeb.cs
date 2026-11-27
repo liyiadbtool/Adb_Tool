@@ -295,6 +295,8 @@ namespace AdbLogExport.Gui
                 if (icp != null)
                 {
                     using (Icon ic = new Icon(icp)) { _appIcon = (Icon)ic.Clone(); }
+                    try { _icoSmall = new Icon(icp, 16, 16); } catch { }
+                    try { _icoBig   = new Icon(icp, 32, 32); } catch { }
                 }
                 else
                 {
@@ -312,10 +314,15 @@ namespace AdbLogExport.Gui
                 {
                     try
                     {
-                        if (_appIcon != null && Handle != IntPtr.Zero)
+                        if (Handle != IntPtr.Zero)
                         {
-                            SendMessage(Handle, WM_SETICON, (IntPtr)ICON_BIG, _appIcon.Handle);
-                            SendMessage(Handle, WM_SETICON, (IntPtr)ICON_SMALL, _appIcon.Handle);
+                            /* 2026-11-27（D11 第二次）：ICON_SMALL 必须是 16x16 的小图标。
+                               上次把 256x256 的大图当小图发，Windows 直接忽略 →
+                               任务栏缩略图标题栏仍是"原始图标"。 */
+                            if (_icoBig != null)
+                                SendMessage(Handle, WM_SETICON, (IntPtr)ICON_BIG, _icoBig.Handle);
+                            if (_icoSmall != null)
+                                SendMessage(Handle, WM_SETICON, (IntPtr)ICON_SMALL, _icoSmall.Handle);
                         }
                     }
                     catch { }
@@ -351,6 +358,8 @@ namespace AdbLogExport.Gui
         private const int WM_NCLBUTTONDOWN = 0x00A1;
         private const int HTCAPTION = 2;
         private const int WM_SETICON = 0x0080;
+        private const int WM_GETICON = 0x007F;
+        private const int ICON_SMALL2 = 2;
         private const int ICON_SMALL = 0;
         private const int ICON_BIG = 1;
 
@@ -358,6 +367,8 @@ namespace AdbLogExport.Gui
         private bool _rzActive = false;
         // 2026-11-27（D11）：保存加载到的黑猫图标，供任务栏显式 WM_SETICON
         private Icon _appIcon = null;
+        private Icon _icoSmall = null;   // 16x16 → 缩略图标题栏 / Alt+Tab 小图标
+        private Icon _icoBig   = null;   // 32x32 → 任务栏按钮 / 缩略图大图标
         // 2026-11-26：D2 修复引入的死循环保护 —— Normal↔Maximized 切换会再次触发 OnResize
         private bool _fixingMax = false;
         private string _rzDir = "";
@@ -853,6 +864,21 @@ namespace AdbLogExport.Gui
         {
             try
             {
+                if (m.Msg == WM_GETICON)
+                {
+                    /* 2026-11-27（D11）：ShowIcon=false 时窗口不主动提供图标，
+                       Windows 问 WM_GETICON 只能拿到默认值 → 缩略图标题栏显示"原始图标"。
+                       这里直接回答：小图标给 16、大图标给 32。 */
+                    int which = (int)m.WParam.ToInt64();
+                    if (which == ICON_SMALL || which == ICON_SMALL2)
+                    {
+                        if (_icoSmall != null) { m.Result = _icoSmall.Handle; return; }
+                    }
+                    else if (which == ICON_BIG)
+                    {
+                        if (_icoBig != null) { m.Result = _icoBig.Handle; return; }
+                    }
+                }
                 if (m.Msg == WM_GETMINMAXINFO)
                 {
                     /* 2026-11-23 最终处置：**不再自己算最大化几何**。
