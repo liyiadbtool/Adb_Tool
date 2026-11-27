@@ -106,7 +106,8 @@ body::before{
    否则只是一块半透明盒子（第一版就是这个毛病）。这里把光晕铺满整屏，
    包括中间区域，让卡片/导航都有东西可透。 */
 :root[data-theme="glass"]{
-  background:
+  background-color:transparent;
+  background-image:
     radial-gradient(46% 38% at 12% 8%, var(--aurora-1), transparent 68%),
     radial-gradient(42% 36% at 88% 4%, var(--aurora-2), transparent 70%),
     radial-gradient(40% 34% at 8% 78%, var(--aurora-3), transparent 70%),

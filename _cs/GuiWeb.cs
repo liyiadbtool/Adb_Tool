@@ -336,6 +336,59 @@ namespace AdbLogExport.Gui
         [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(
             IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        /* 2026-11-27：玻璃主题要"真透明"——让 DWM 在窗口后面画亚克力模糊，
+           页面 html 背景设为透明即可看到桌面被模糊后的颜色。
+           只对 glass 生效，其它三档仍是不透明纯色（避免低端机拖影）。 */
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct AccentPolicy
+        {
+            public int AccentState;
+            public int AccentFlags;
+            public int GradientColor;   // 0xAABBGGRR
+            public int AnimationId;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct WindowCompositionAttributeData
+        {
+            public int Attribute;
+            public IntPtr Data;
+            public int SizeOfData;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int SetWindowCompositionAttribute(IntPtr hwnd,
+            ref WindowCompositionAttributeData data);
+
+        private const int WCA_ACCENT_POLICY = 19;
+        private const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+
+        private void ApplyAcrylic(bool on)
+        {
+            try
+            {
+                AccentPolicy ap = new AccentPolicy();
+                ap.AccentState = on ? ACCENT_ENABLE_ACRYLICBLURBEHIND : 0;
+                ap.AccentFlags = 2;
+                ap.GradientColor = unchecked((int)0x40FFFFFF);   // AABBGGRR：很淡的白
+                ap.AnimationId = 0;
+
+                int size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(AccentPolicy));
+                IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
+                try
+                {
+                    System.Runtime.InteropServices.Marshal.StructureToPtr(ap, ptr, false);
+                    WindowCompositionAttributeData d = new WindowCompositionAttributeData();
+                    d.Attribute = WCA_ACCENT_POLICY;
+                    d.Data = ptr;
+                    d.SizeOfData = size;
+                    SetWindowCompositionAttribute(Handle, ref d);
+                }
+                finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr); }
+            }
+            catch { }
+        }
+
 
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;   // Win10 19041+/Win11
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19; // 旧版回退值
@@ -483,12 +536,15 @@ namespace AdbLogExport.Gui
             try
             {
                 Color bg;
+                bool glass = (App.THEME == "glass");
                 if (App.THEME == "light") bg = Color.FromArgb(254, 254, 255);
                 else if (App.THEME == "eye") bg = Color.FromArgb(255, 251, 240);
+                else if (glass) bg = Color.Transparent;
                 else bg = Color.FromArgb(13, 17, 23);
                 BackColor = bg;
-                /* 2026-11-23（第 23 批）：WebView2 的底色也要跟着主题走。
-                   否则切换主题后从任务栏恢复，还会闪一次旧主题的白/深底。 */
+                /* 2026-11-27：glass 走 DWM 亚克力 + WebView2 透明底，
+                   这样页面里 html 透明时能直接看到桌面被模糊的颜色。 */
+                ApplyAcrylic(glass);
                 if (_web != null) _web.DefaultBackgroundColor = bg;
             }
             catch { }
@@ -1363,6 +1419,8 @@ namespace AdbLogExport.Gui
                     _web.DefaultBackgroundColor = Color.FromArgb(254, 254, 255);
                 else if (App.THEME == "eye")
                     _web.DefaultBackgroundColor = Color.FromArgb(255, 251, 240);
+                else if (App.THEME == "glass")
+                    _web.DefaultBackgroundColor = Color.Transparent;
                 else
                     _web.DefaultBackgroundColor = Color.FromArgb(13, 17, 23);
             }
