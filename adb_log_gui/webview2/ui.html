@@ -72,9 +72,13 @@
   --on-accent:#FFFFFF;
   --ok:#1E9E6A;
   --err:#D93A3A;
-  --aurora-1:rgba(96,165,250,.28);
-  --aurora-2:rgba(167,139,250,.24);
-  --aurora-3:rgba(45,212,191,.18);
+  --aurora-1:rgba(88,158,255,.62);
+  --aurora-2:rgba(168,132,255,.52);
+  --aurora-3:rgba(64,215,200,.42);
+  --aurora-4:rgba(255,170,120,.30);
+  --glass-fill:rgba(255,255,255,.46);
+  --glass-fill-2:rgba(255,255,255,.62);
+  --glass-ring:rgba(255,255,255,.75);
   --aurora-base:#F9FBFF;
   --aurora-mid:#F4F7FC;
   --aurora-end:#F1F5FB;
@@ -97,23 +101,43 @@ body::before{
 :root[data-theme="glass"] body{ background:transparent; }
 /* 极光直接画在 html 上：body::before 用 z-index:-1 会被画布底色盖住，
    这就是第一版"背景几乎纯白"的真正原因。 */
+/* 参考 GitHub 上的 glass recipes：玻璃必须压在"有颜色的背景"上，
+   否则只是一块半透明盒子（第一版就是这个毛病）。这里把光晕铺满整屏，
+   包括中间区域，让卡片/导航都有东西可透。 */
 :root[data-theme="glass"]{
   background:
-    radial-gradient(60% 50% at 16% 10%, var(--aurora-1), transparent 70%),
-    radial-gradient(52% 46% at 84% 6%, var(--aurora-2), transparent 72%),
-    radial-gradient(70% 60% at 50% 104%, var(--aurora-3), transparent 70%),
-    linear-gradient(180deg, var(--aurora-base) 0%, var(--aurora-mid) 60%, var(--aurora-end) 100%);
+    radial-gradient(46% 38% at 12% 8%, var(--aurora-1), transparent 68%),
+    radial-gradient(42% 36% at 88% 4%, var(--aurora-2), transparent 70%),
+    radial-gradient(40% 34% at 8% 78%, var(--aurora-3), transparent 70%),
+    radial-gradient(38% 32% at 92% 86%, var(--aurora-4), transparent 72%),
+    radial-gradient(60% 44% at 52% 46%, rgba(120,170,255,.22), transparent 76%),
+    linear-gradient(180deg, var(--aurora-base) 0%, var(--aurora-mid) 55%, var(--aurora-end) 100%);
   background-attachment:fixed;
 }
 
 /* 卡片：给"玻璃厚度"——上缘高光 + 细描边，而不是只有一条边线 */
+/* 参考 github.com/iart-ai/web-animation-skills 「glass-recipes」：
+   玻璃四要素 = 半透明填充 + 背景模糊(加饱和度) + 边缘高光 + 分层投影，
+   再加一层极淡噪点消掉大模糊带来的色带。填充越淡越像玻璃（.72 看着就是白卡）。 */
 :root[data-theme="glass"] .qcard{
-  background:rgba(255,255,255,.66);
-  border:1px solid rgba(255,255,255,.72);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(15,23,42,.05), 0 6px 18px rgba(15,23,42,.05);
-  backdrop-filter:blur(14px) saturate(140%);
-  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  background:var(--glass-fill);
+  backdrop-filter:blur(22px) saturate(185%);
+  -webkit-backdrop-filter:blur(22px) saturate(185%);
+  border:1px solid rgba(255,255,255,.52);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.30),   /* 玻璃外缘反光 */
+    inset 0 1px 0 rgba(255,255,255,.92),     /* 顶缘高光 */
+    inset 0 -1px 0 rgba(15,23,42,.06),       /* 底缘内阴影 */
+    0 6px 18px rgba(23,43,77,.10),
+    0 18px 40px rgba(23,43,77,.06);
 }
+/* 噪点：0.035 几乎看不见，但能把渐变色带打散 */
+:root[data-theme="glass"] .qcard::after{
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  opacity:.035; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="glass"] .qcard{ position:relative; }
 
 :root[data-theme="glass"] .topbar,
 :root[data-theme="glass"] .qnav,
@@ -121,14 +145,37 @@ body::before{
 :root[data-theme="glass"] .wadb-pop,
 :root[data-theme="glass"] .cf-panel,
 :root[data-theme="glass"] .qsearch-pop{
-  background:rgba(255,255,255,.72);
-  backdrop-filter:blur(26px) saturate(165%);
-  -webkit-backdrop-filter:blur(26px) saturate(165%);
-  border:1px solid rgba(255,255,255,.55);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85), 0 1px 2px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.08);
+  background:var(--glass-fill-2);
+  backdrop-filter:blur(30px) saturate(190%);
+  -webkit-backdrop-filter:blur(30px) saturate(190%);
+  border:1px solid rgba(255,255,255,.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -1px 0 rgba(15,23,42,.05),
+    0 2px 6px rgba(23,43,77,.06),
+    0 16px 40px rgba(23,43,77,.10);
+}
+
+/* 主内容区在玻璃主题下要让光晕透上来；补一层极淡的柔光把中间"洗白"的地方染回来 */
+:root[data-theme="glass"] .page,
+:root[data-theme="glass"] .frame{ background:transparent; }
+
+/* 内容区那块大白板是最大"不像玻璃"的来源：它在玻璃主题下也透明，
+   让底下极光透上来；自身只留极淡的磨砂感。 */
+:root[data-theme="glass"] .quick-body,
+:root[data-theme="glass"] .quick-wrap,
+:root[data-theme="glass"] .qbody,
+:root[data-theme="glass"] .qpanel,
+:root[data-theme="glass"] .cmd-body{ background:transparent; }
+:root[data-theme="glass"] body::after{
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(50% 40% at 30% 42%, rgba(140,180,255,.20), transparent 70%),
+    radial-gradient(46% 38% at 74% 52%, rgba(190,160,255,.16), transparent 72%);
+  mix-blend-mode:soft-light;
 }
 :root[data-theme="glass"] .qcard:hover{
-  background:rgba(255,255,255,.92);
+  background:rgba(255,255,255,.62);
   border-color:rgba(47,111,235,.35);
   box-shadow:inset 0 0 0 1px rgba(47,111,235,.25);
 }
