@@ -9374,6 +9374,16 @@ function diagCopyAll(){
     var box = document.getElementById('diag-rows-' + k);
     if (box && box.innerText.trim()) parts.push('【' + (DIAG_TITLES[k]||k) + '】\n' + box.innerText.trim());
   });
+  /* 界面隐藏但报告里要有的字段（2026-11-27：.NET 版本 / 进程数 / 设备名称） */
+  try {
+    var extra = [];
+    for (var i = 0; i < (_diag.local || []).length; i++){
+      var r = _diag.local[i];
+      if (r.k === '.NET 版本' || r.k === '进程数') extra.push(r.k + '：' + (r.v || '—'));
+    }
+    if (extra.length) parts.push('【界面隐藏项】\n' + extra.join('\n'));
+  } catch (e) {}
+
   var txt = '诊断报告  ' + new Date().toLocaleString() + '\n'
           + document.getElementById('diag-verdict-title').textContent + '\n'
           + document.getElementById('diag-verdict-sub').textContent + '\n\n'
@@ -9382,6 +9392,16 @@ function diagCopyAll(){
     navigator.clipboard.writeText(txt).then(function(){ toast('诊断报告已复制', 'ok'); },
       function(){ toast('复制失败，请检查剪贴板权限', 'err'); });
   } catch (e) { toast('复制失败：' + e.message, 'err'); }
+}
+
+/* 2026-11-27：标识信息折叠/展开 */
+function diagToggleIds(){
+  var box = document.getElementById('diag-ids-box');
+  var caret = document.getElementById('diag-ids-caret');
+  if (!box) return;
+  var open = (box.style.display !== 'none');
+  box.style.display = open ? 'none' : '';
+  if (caret) caret.textContent = open ? '展开 ▾' : '收起 ▴';
 }
 
 function diagToggleCard(k){
@@ -9578,6 +9598,9 @@ function diagOnLocal(msg){
         var row = _diag.local[i];
         var k = row.k, v = row.v, lv = row.lv;
         if(used[k]) continue;
+        /* 2026-11-27：这三项不进界面 —— 设备名称无诊断价值，
+           .NET 版本 / 进程数属于开发排障，只进「复制报告」。 */
+        if(k === '设备名称' || k === '.NET 版本' || k === '进程数'){ used[k] = 1; continue; }
 
         var hit = false;
         for(var gk=0; gk<grp.keys.length; gk++){
@@ -9663,10 +9686,9 @@ function diagRenderAdb(){
 
   if(dot){ dot.className = 'diag-dot ok'; }
   if(note) note.textContent = src ? ('来源：' + src) : '';
-  box.innerHTML =
-      diagRowHtml('adb', '状态', '已找到', 'ok')
-    + diagRowHtml('adb', '路径', adb)
-    + diagRowHtml('adb', '来源', src || '未知');
+  /* 2026-11-27：路径/来源只在失败时展开显示（正常时用不上，占两行）。
+     失败了走上面的 missing 分支，本来就会显示。 */
+  box.innerHTML = diagRowHtml('adb', '状态', '已找到', 'ok');
 
   diagSetHealth('adb', 'ok', 'adb ' + (src || '可用'));
   try { diagRenderVerdict(); } catch (e) {}
@@ -9772,10 +9794,23 @@ function diagOnCar(msg){
   var G = [
     { t:'版本', keys:['SOC 版本','MCU 版本','Android 版本'] },
     { t:'硬件', keys:['芯片','内存','DDR 类型','存储'] },
-    { t:'标识', keys:['VIN 码','UUID','DID','OPENID','设备 ID'] },
+    { t:'标识', keys:['VIN 码','设备 ID'] },
     { t:'其他', keys:null }   // 兜底
   ];
   var used = {};
+
+  /* 2026-11-27：UUID / DID / OPENID 折叠成一行 —— 值长且经常为空，
+     平铺三行把「标识」这一组撑得很散。点一下展开，复制仍含完整内容。 */
+  var _ids = ['UUID','DID','OPENID'];
+  var _idRows = [], _idHave = 0;
+  for (var _ii=0; _ii<rows.length; _ii++){
+    if (_ids.indexOf(rows[_ii].k) >= 0){
+      used[rows[_ii].k] = 1;
+      if (rows[_ii].v) _idHave++;
+      _idRows.push(rows[_ii]);
+    }
+  }
+
   for(var gi=0; gi<G.length; gi++){
     var grp = G[gi];
     var gHtml = '';
@@ -9802,6 +9837,17 @@ function diagOnCar(msg){
         gHtml += diagRowHtml('car', rows[j].k, v2, rows[j].v ? '' : '');
       }
     }
+      if(grp.t === '标识'){
+        var sum = _idHave > 0 ? ('标识信息（' + _idHave + '/' + _ids.length + ' 项）') : '标识信息（未取到）';
+        gHtml += '<div class="diag-row diag-fold" onclick="diagToggleIds()" style="cursor:pointer;">'
+               + '<span class="diag-k">' + sum + '</span>'
+               + '<span class="diag-v" id="diag-ids-caret">展开 ▾</span></div>'
+               + '<div id="diag-ids-box" style="display:none;">';
+        for (var _k=0; _k<_idRows.length; _k++){
+          gHtml += diagRowHtml('car', _idRows[_k].k, _idRows[_k].v || '—', _idRows[_k].v ? '' : '');
+        }
+        gHtml += '</div>';
+      }
     if(gHtml) html += '<div class="diag-group">' + mkEsc(grp.t) + '</div>' + gHtml;
   }
 
@@ -10226,7 +10272,7 @@ function diagToggleSample(){
      ② diagtop5    → 本机全机 + 车机的剩余量与 TOP5
    间隔 **3 秒**（用户指定）：本机 WMI 约 0.3~0.5s、车机 top 约 1~2s，
    2 秒会和上一次采集中间重叠，3 秒安全。 */
-var DIAG_SAMPLE_MS = 3000;
+var DIAG_SAMPLE_MS = 10000;   /* 2026-11-27：3s → 10s（用户要求，降低 adb 占用） */
 
 function diagStartSample(){
   _diag.sampling = true;
@@ -10263,7 +10309,7 @@ function diagStopSample(){
   var btn = document.getElementById('diag-sample-btn');
   if(btn){ btn.textContent = '开始采样'; btn.classList.remove('primary'); }
   var box = document.getElementById('diag-rows-res');
-  if(box) box.innerHTML = '<div class="diag-empty">已停止采样</div>';
+  if(box) box.innerHTML = '<div class="diag-empty">未开启采样（点「开始采样」，每 10 秒刷新一次）</div>';
 }
 
 function diagOnSample(msg){
@@ -13274,7 +13320,12 @@ function switchTab(name){
     // 从终端页切过来时，焦点还留在隐藏的输入框里，键盘输入会"没反应"
     var qs2 = document.getElementById('quick-search');
     if(qs2) { try { qs2.blur(); } catch(e) {} }
-  }else if(name === 'file'){
+  }
+  /* 2026-11-27：离开诊断页就停掉资源采样，避免后台一直跑 adb */
+  if (name !== 'diag' && typeof _diag !== 'undefined' && _diag.sampling){
+    try { diagStopSample(); } catch (e) {}
+  }
+  if(name === 'file'){
     // 首次进入才请求目录，避免启动就多两次 adb 往返
     if(typeof fsEnsureInit === 'function') fsEnsureInit();
     // 设备是在别的页面连上的：切过来时补一次（fsOnDeviceOnline 当时因为不可见跳过了）

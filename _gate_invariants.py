@@ -103,6 +103,8 @@ A9_ADDS = {
         "cmAddStep", "cmDelStep", "cmDel", "cmEdit",
         "wadbPair",                    # 2026-11-24（P7）：Android 11+ 配对码配对
         "openOutPath", "closeOutPath", "saveOutPath", "outpathlist", "qcardOutPath", "browseOutPath", "opHas", "op-backdrop", "outpathdir",   # 2026-11-25：导出路径面板
+        # 2026-11-27：诊断页体检 / 标识折叠
+        "diagRefresh", "diagCopyAll", "diagToggleIds",
     ]),
     "ids": set([
         # 9 色强调色
@@ -262,6 +264,7 @@ A15_ADDS = {
         # 设备管理面板
         "v15-devh", "v15-devrows", "v15-devrefresh", "v15-devoff",
         "diag-verdict", "diag-verdict-dot", "diag-verdict-title", "diag-verdict-sub",
+        "diag-ids-box", "diag-ids-caret",
     ]),
 }
 
