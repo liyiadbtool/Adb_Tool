@@ -253,9 +253,22 @@ namespace AdbLogExport
                 list.Add(c);
             };
 
-            // 1 在线
-            string st = SpSh("get-state 2>/dev/null");
-            add("online", "设备在线", true, st.IndexOf("device", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : "FAIL:" + st);
+            /* 2026-11-28：get-state 是**主机侧** adb 命令，不能走 adb shell。
+               原来用 SpSh("get-state") 一定拿不到 "device"，于是体检永远报"设备在线 FAIL"。
+               改：走 AdbCall（带 -s），失败再退回全局连接状态。 */
+            string st = "";
+            bool online = false;
+            try
+            {
+                string o1 = "", e1 = "";
+                int rc = AdbCall(new List<string> { "get-state" }, out o1, out e1);
+                st = ((o1 ?? "") + (e1 ?? "")).Trim();
+                online = rc == 0 && st.IndexOf("device", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            catch { }
+            if (!online && SERIAL_OK) { online = true; st = "device（来自当前连接状态）"; }
+            if (!online && st.Length == 0) st = "adb get-state 无输出";
+            add("online", "设备在线", true, online ? "" : ("FAIL:" + st));
 
             // 2 构建类型
             string bt = SpSh("getprop ro.build.type");
