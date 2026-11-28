@@ -6898,16 +6898,41 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                 }
                 /* 2026-11-28：合并「查询前台包名」——一并解析前台 Activity，
                    原来那两条命令（apkfront / :front）能力重复，现在一个按钮给全。 */
+                /* 2026-11-28 实测修正：`cmd package resolve-activity --brief <pkg>`
+                   在车机 Launcher 这类没有 LAUNCHER intent 的应用上返回 "No activity found"。
+                   改成三路兜底：
+                     ① dumpsys window 的 mCurrentFocus（最准，前台就是它）
+                     ② cmd package resolve-activity（普通应用可用）
+                     ③ dumpsys activity top 的第一条 ACTIVITY（兜底） */
                 string act = "";
                 try
                 {
-                    string o = "", e = "";
-                    App.ShellCall(App.CUR, "cmd package resolve-activity --brief " + pkg, out o, out e);
-                    string[] ls = (o ?? "").Replace("\r", "").Split('\n');
-                    for (int i = ls.Length - 1; i >= 0; i--)
+                    string[] cmds = new string[] {
+                        "dumpsys window 2>/dev/null | grep -m1 mCurrentFocus",
+                        "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER " + pkg,
+                        "dumpsys activity top 2>/dev/null | grep -m1 ACTIVITY"
+                    };
+                    for (int ci = 0; ci < cmds.Length && act.Length == 0; ci++)
                     {
-                        string t = ls[i].Trim();
-                        if (t.Length > 0 && t.IndexOf('/') > 0) { act = t; break; }
+                        string o = "", e = "";
+                        try { App.ShellCall(App.CUR, cmds[ci], out o, out e); } catch { }
+                        string txt = (o ?? "").Replace("\r", "");
+                        string[] ls = txt.Split('\n');
+                        for (int i = 0; i < ls.Length; i++)
+                        {
+                            string t = ls[i].Trim();
+                            int u = t.IndexOf('/');
+                            if (u <= 0) continue;
+                            // 从 "mCurrentFocus=Window{... u0 pkg/act}" 这种格式里抽出组件名
+                            int sp = t.LastIndexOf(' ', u);
+                            string cand = sp >= 0 ? t.Substring(sp + 1) : t;
+                            cand = cand.Trim('}', ' ', '"');
+                            int sp2 = cand.IndexOf(' ');      // 后面还有 " 4ae2a5 pid=..." 之类的尾巴
+                            if (sp2 > 0) cand = cand.Substring(0, sp2);
+                            if (cand.IndexOf('/') > 0 && cand.IndexOf('.') > 0
+                                && cand.StartsWith(pkg, StringComparison.OrdinalIgnoreCase))
+                            { act = cand; break; }
+                        }
                     }
                 }
                 catch { }
