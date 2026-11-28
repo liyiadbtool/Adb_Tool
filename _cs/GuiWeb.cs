@@ -1002,7 +1002,12 @@ namespace AdbLogExport.Gui
                 {
                     int sc = m.WParam.ToInt32() & 0xFFF0;
                     if (sc == 0xF030) { DoFakeMax(); return; }
-                    if (sc == 0xF120) { DoFakeRestore(); return; }
+                    /* 2026-11-28 热修：窗口是最小化状态时，SC_RESTORE 必须交给系统，
+                       否则吞掉之后窗口永远停在最小化 —— 表现就是"dock 点不开"。 */
+                    if (sc == 0xF120 && WindowState != FormWindowState.Minimized)
+                    {
+                        DoFakeRestore(); return;
+                    }
                 }
 
                 if (m.Msg == WM_GETMINMAXINFO)
@@ -1047,6 +1052,25 @@ namespace AdbLogExport.Gui
                         mmi, m.LParam, false);
                     return;
                 }
+                /* 2026-11-28 热修：自算最大化时把窗口拖到另一块屏，
+                   Bounds 仍是上一块屏的尺寸 → 在主屏上就溢出。
+                   拖动结束（WM_EXITSIZEMOVE）后按"当前所在屏"重新贴合。 */
+                if (m.Msg == 0x0232 /* WM_EXITSIZEMOVE */ && _fakeMax)
+                {
+                    try
+                    {
+                        IntPtr hm = MonitorFromWindow(Handle, MONITOR_DEFAULTTONEAREST);
+                        RECT wk, mn;
+                        if (hm != IntPtr.Zero && GetMonitorWorkRect(hm, out wk, out mn))
+                        {
+                            Rectangle wa = new Rectangle(wk.Left, wk.Top,
+                                Math.Abs(wk.Right - wk.Left), Math.Abs(wk.Bottom - wk.Top));
+                            if (Bounds != wa) { Bounds = wa; PushWinState(); }
+                        }
+                    }
+                    catch { }
+                }
+
                 if (m.Msg == WM_ACTIVATE)
                 {
                     // 点任务栏图标收起（兜底，见 CheckTaskbarMinimize 注释）
