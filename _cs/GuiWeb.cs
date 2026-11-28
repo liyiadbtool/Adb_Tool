@@ -426,6 +426,7 @@ namespace AdbLogExport.Gui
         private Icon _icoBig   = null;   // 32x32 → 任务栏按钮 / 缩略图大图标
         // 2026-11-26：D2 修复引入的死循环保护 —— Normal↔Maximized 切换会再次触发 OnResize
         private bool _fixingMax = false;
+        private int _lastMaxFixTick = 0;   // 2026-11-28 热修：纠正频率闸
         private System.Windows.Forms.Timer _trayTimer = null;   // 任务栏变化防抖
         private string _rzDir = "";
         private Rectangle _rzRect = Rectangle.Empty;
@@ -1015,22 +1016,6 @@ namespace AdbLogExport.Gui
                         mmi, m.LParam, false);
                     return;
                 }
-                /* 2026-11-28（D19 补）：副屏最大化仍溢出 —— 说明系统给的
-                   ptMaxSize 在副屏上仍大于工作区（无边框 + 跨屏时序）。
-                   这里在 WM_SIZE 里兜底：已是最大化且越界 → 延后一帧强纠正。
-                   用 BeginInvoke 是为了避开"在 WM_SIZE 里切状态 → 再触发 WM_SIZE"的自激。 */
-                if (m.Msg == WM_SIZE && m.WParam.ToInt32() == 2 /* SIZE_MAXIMIZED */)
-                {
-                    try
-                    {
-                        BeginInvoke((Action)delegate
-                        {
-                            if (!_closing) EnsureInsideWorkingArea(false);
-                        });
-                    }
-                    catch { }
-                }
-
                 if (m.Msg == WM_ACTIVATE)
                 {
                     // 点任务栏图标收起（兜底，见 CheckTaskbarMinimize 注释）
@@ -1285,6 +1270,13 @@ namespace AdbLogExport.Gui
                 /* 2026-11-28（D18）：原来这里直接 return —— 若最大化恰好发生在
                    _fixingMax 为 true 的窗口期，这次纠正被丢弃且永不重来。
                    改成排队重试一次。 */
+                /* 2026-11-28 热修：WM_SIZE 兜底会造成 Normal→Maximized→WM_SIZE 死循环
+                   （窗口上下闪、关不掉）。除了删掉那个兜底，这里再加一道频率闸：
+                   400ms 内最多纠正一次，任何调用方都不可能再把它变成振荡。 */
+                int nowTick = Environment.TickCount;
+                if (nowTick - _lastMaxFixTick < 400) return;
+                _lastMaxFixTick = nowTick;
+
                 if (_fixingMax)
                 {
                     try { BeginInvoke((Action)delegate { if (!_closing) EnsureInsideWorkingArea(false); }); }
