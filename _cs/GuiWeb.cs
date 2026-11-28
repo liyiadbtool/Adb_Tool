@@ -6896,6 +6896,27 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                     catch { }
                     return false;
                 }
+                /* 2026-11-28：合并「查询前台包名」——一并解析前台 Activity，
+                   原来那两条命令（apkfront / :front）能力重复，现在一个按钮给全。 */
+                string act = "";
+                try
+                {
+                    string o = "", e = "";
+                    App.ShellCall(App.CUR, "cmd package resolve-activity --brief " + pkg, out o, out e);
+                    string[] ls = (o ?? "").Replace("\r", "").Split('\n');
+                    for (int i = ls.Length - 1; i >= 0; i--)
+                    {
+                        string t = ls[i].Trim();
+                        if (t.Length > 0 && t.IndexOf('/') > 0) { act = t; break; }
+                    }
+                }
+                catch { }
+                try
+                {
+                    Console.WriteLine("  前台包名      " + pkg);
+                    Console.WriteLine("  前台 Activity  " + (act.Length > 0 ? act : "（未取到）"));
+                }
+                catch { }
                 try
                 {
                     BeginInvoke((MethodInvoker)delegate
@@ -6903,7 +6924,8 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                         try
                         {
                             PushOnUi(
-                                "{\"kind\":\"apkfront\",\"pkg\":" + Json(pkg) + "}");
+                                "{\"kind\":\"apkfront\",\"pkg\":" + Json(pkg)
+                                + ",\"act\":" + Json(act) + "}");
                         }
                         catch { }
                     });

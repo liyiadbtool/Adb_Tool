@@ -534,6 +534,14 @@ body{
      · quick-grid 回归自然高度，不再被 flex 挤压
    注意：面板不要 sticky。吸顶会让面板钉死在顶部、卡片只在底部露出一条，
    滚动时看着像"输入框不能滑动"，这正是用户反馈的第二个问题。 */
+/* 2026-11-28：隐藏分组头后，内层面板不再自己画底和边框（否则"面板套面板"两层背景），
+   同时允许纵向滚动 —— 去边框后高度仍按外层算，overflow:hidden 会把内容裁掉。 */
+.quick-body.nohd .apk-panel,
+.quick-body.nohd .cast-panel,
+.quick-body.nohd .netsim-panel{
+  background:transparent;border:0;border-radius:0;margin:0;padding:10px 0 0;
+  overflow-y:auto;overflow-x:hidden;
+}
 /* 2026-11-28：隐藏分组头后，内容整体上移填掉空白 */
 .quick-body.nohd{padding-top:0;}
 .quick-body.nohd .cast-panel,
@@ -1107,7 +1115,7 @@ body{
 .apk-legacy .btn{font-size:12px;padding:0 10px;}
 /* 结果区：动作输出是纯文本行，版本查询是有结构的块 */
 .apk-chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-dim);margin-right:10px;}
-.apk-systx{width:100%;height:52px;margin:4px 0 6px;padding:6px 8px;font-size:12px;font-family:var(--font-mono);
+.apk-systx{width:100%;height:68px;min-height:68px;flex:0 0 auto;margin:4px 0 6px;padding:6px 8px;font-size:12px;font-family:var(--font-mono);
   color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-2);resize:vertical;}
 .apk-systx:focus{outline:none;border-color:var(--accent);}
 .apk-out{
@@ -6287,7 +6295,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
               <button class="btn ghost" onclick="apkAddCurrentFront()" title="把当前前台应用加进列表">加入列表</button>
               <!-- 2026-11-22（第 18 批 A9）：补手动刷新。
                    原来只能靠"切走再切回"重新扫描，用户不知道还能这么操作。 -->
-              <button class="btn ghost" onclick="apkReload()" title="重新扫描已安装应用（等价于重新进入本页）">刷新列表</button>
               <div class="spacer"></div>
               <button class="btn ghost" onclick="openApkMgr()">＋ 管理列表</button>
             </div>
@@ -6297,7 +6304,6 @@ body[data-navlabels="0"] .filenav-item.active::after{
                  它们走的是同一条 Dispatch，所以输出、判定、提示都和 CLI 完全一致。 -->
             <div class="apk-row apk-legacy">
               <span class="apk-lbl">前台指令</span>
-              <button class="btn ghost" onclick="apkRunCmd(':front')" title="只查前台包名与 Activity">查询前台包名</button>
               <button class="btn ghost" onclick="apkRunCmd(':fstop')" title="pm clear 清空前台应用数据（回到刚安装）">清理前台应用</button>
               <button class="btn ghost" onclick="apkRunCmd(':killfront')" title="adb shell kill -9：只杀进程，不清数据（需要 root）">Kill前台应用</button>
               <button class="btn ghost" onclick="apkRunCmd(':apk')" title="导出前台应用的 APK 到桌面 logcat">导出前台APK</button>
@@ -10930,14 +10936,17 @@ function onMessage(ev){
     case 'syspushpick':
       try{
         var tx=document.getElementById('syspush-targets');
-        if(tx && msg.text){ tx.value = msg.text; sysPushCount(); }
+        if(tx && msg.text){ tx.value = msg.text; sysPushCount(); _spCritFail=false; sysPushUpdateButtons(); }
       }catch(e){}
       break;
     case 'syspushck':
+      _spCritFail = !!msg.crit;
+      sysPushUpdateButtons();
       if(msg.crit){ toast('体检有关键项未通过，不能推包','err'); }
+      else toast('体检通过','ok');
       break;
     case 'syspushdone':
-      _apkBusy = false; updateApkButtons();
+      _spBusy = false; _apkBusy = false; updateApkButtons(); sysPushUpdateButtons();
       toast(msg.ok
         ? ('推包完成：成功 ' + (msg.pushed||0) + '，跳过 ' + (msg.skipped||0))
         : (msg.msg||'推包失败'), msg.ok?'ok':'err');
@@ -11049,7 +11058,7 @@ function onMessage(ev){
     case 'apkack': onApkAck(msg); break;
     case 'apkver': renderApkVers(msg); break;
     case 'apkdetail': onApkDetail(msg); break;
-    case 'apkfront': onApkFront(msg.pkg); break;
+    case 'apkfront':   /* 2026-11-28：同时带前台 Activity */ onApkFront(msg.pkg, msg.act || ''); break;
     case 'wadb': onWadb(msg); break;
     // ---- 文件管理 ----
     // T3：网络模拟（内置代理）
@@ -16833,6 +16842,7 @@ function updateApkButtons(){
     vb.title = !online ? '设备未连接'
              : (apps.length === 0 ? '列表是空的，先添加应用' : '一次 adb 调用查全部，显示名称/包名/版本/路径');
   }
+  try { if(typeof sysPushUpdateButtons==='function') sysPushUpdateButtons(); } catch(e) {}
 }
 
 /* ---------- 下拉 ---------- */
@@ -17160,7 +17170,7 @@ function apkRunCmd(cmd){
   postObj({kind:'apkcmd', cmd:cmd});
 }
 
-function onApkFront(pkg){
+function onApkFront(pkg, act){
   _apkFront = pkg || '';
   var el = document.getElementById('apk-front');
   if(el){
@@ -17169,7 +17179,9 @@ function onApkFront(pkg){
     }else{
       var a = apkFind(_apkFront);
       el.innerHTML = '当前前台：<b>' + escHtml(a ? a.name : _apkFront) + '</b>'
-                   + (a ? '  <span style="font-family:var(--font-mono)">' + escHtml(_apkFront) + '</span>' : '');
+                   + (a ? '  <span style="font-family:var(--font-mono)">' + escHtml(_apkFront) + '</span>' : '')
+                   + (act ? '<br><span class="apk-lbl">Activity</span> <span style="font-family:var(--font-mono)">'
+                            + escHtml(act) + '</span>' : '');
     }
   }
   if(_apkFront && apkFind(_apkFront)){
@@ -17202,18 +17214,40 @@ function sysPushCount(){
   var c=document.getElementById('syspush-count'); if(c) c.textContent=n+' 项';
   return n;
 }
-function sysPushPick(){ postObj({kind:'syspush',act:'pickfile'}); }
-function sysPushCheck(){ postObj({kind:'syspush',act:'check',targets:sysPushTargets(),opt:sysPushOpt()}); }
+/* 2026-11-28：推包按钮互斥（运行中/离线/无目标/无备份/体检不过 分别禁用） */
+var _spBusy=false, _spCritFail=false;
+function sysPushUpdateButtons(){
+  function dis(id,on){ var b=document.getElementById(id); if(b) b.disabled=!!on; }
+  var n=sysPushCount();
+  dis('syspush-pick', _spBusy);
+  dis('syspush-check', _spBusy || !_online);
+  dis('syspush-run', _spBusy || !_online || n===0 || _spCritFail);
+  dis('syspush-restore', _spBusy || !_online);
+  ['syspush-opt-skipbackup','syspush-opt-force','syspush-opt-auto','syspush-opt-verity']
+    .forEach(function(id){ var el=document.getElementById(id); if(el){ el.disabled=_spBusy; } });
+}
+function sysPushPick(){
+  if(_spBusy) return;
+  postObj({kind:'syspush',act:'pickfile'});
+}
+function sysPushCheck(){
+  if(_spBusy) return;
+  apkOutSection('系统推包 · 体检');
+  postObj({kind:'syspush',act:'check',targets:sysPushTargets(),opt:sysPushOpt()});
+}
 function sysPushRun(){
+  if(_spBusy) return;
   if(!sysPushCount()){ toast('先点「选择文件」挑要推送的 APK 或 SO'); return; }
+  if(_spCritFail){ toast('体检有关键项未通过，不能推包','err'); return; }
   if(!checkPushOpt()) return;
   apkOutSection('系统推包');
-  _apkBusy = true; updateApkButtons();
+  _spBusy = true; _apkBusy = true; sysPushUpdateButtons(); updateApkButtons();
   postObj({kind:'syspush',act:'start',targets:sysPushTargets(),opt:sysPushOpt()});
 }
 function sysPushRestore(){
+  if(_spBusy) return;
   apkOutSection('系统推包 · 还原');
-  _apkBusy = true; updateApkButtons();
+  _spBusy = true; _apkBusy = true; sysPushUpdateButtons(); updateApkButtons();
   postObj({kind:'syspush',act:'restore',opt:sysPushOpt()});
 }
 /* 跳过备份 + 推完还原 同时勾＝推上去就撤回，没有意义，先拦一道 */

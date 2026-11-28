@@ -266,9 +266,17 @@ namespace AdbLogExport
             string uid = SpSh("id -u 2>/dev/null");
             add("root", "当前为 root", true, uid == "0" ? "" : ("FAIL:id -u = " + uid));
 
-            // 4 系统分区可写（只读探测，不修复）
+            /* 2026-11-28：可写性不再是"关键项"。
+               预检是只读阶段，此时还没 remount —— 判它失败等于永远过不了
+               （用户实测：verity=disabled、SELinux=Enforcing，设备其实可写）。
+               这里只把结果当信息，真正的可写性在 start 阶段 remount 之后再判。 */
             string rw = SpSh("touch /system/.adb_push_rwtest 2>&1 && rm -f /system/.adb_push_rwtest && echo RWOK");
-            add("rw", "/system 可写", true, rw.IndexOf("RWOK") >= 0 ? "" : ("FAIL:" + rw));
+            SysPushCheck c4 = new SysPushCheck();
+            c4.Key = "rw"; c4.Name = "/system 当前可写"; c4.Critical = false;
+            c4.Ok = rw.IndexOf("RWOK") >= 0;
+            c4.Detail = c4.Ok ? "是" : "否（推包时会自动 root + remount）";
+            c4.Hint = c4.Ok ? "" : "需要 adb root + remount 才能写入";
+            list.Add(c4);
 
             // 5 pm 可用
             string pm = SpSh("pm list packages 2>/dev/null | head -1");
@@ -507,6 +515,14 @@ namespace AdbLogExport
                 SpAdb(new List<string> { "root" }, out oRoot);
                 string o;
                 SpAdb(new List<string> { "remount" }, out o);
+                // 复查可写：remount 之后仍不可写才中止
+                string rw2 = SpSh("touch /system/.adb_push_rwtest 2>&1 && rm -f /system/.adb_push_rwtest && echo RWOK");
+                if (rw2.IndexOf("RWOK") < 0)
+                {
+                    res.Err = "系统分区仍不可写（remount 未生效）：" + rw2;
+                    SpLog(res.Err);
+                    return res;
+                }
             }
 
             string planErr;
