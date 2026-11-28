@@ -2,6 +2,16 @@
 
 > 2026-11-28 15:25 · 用户截图确认 · **仅记录，未改代码**
 
+## 触发条件（2026-11-28 15:29 用户补充，修正前一版判断）
+
+```
+① 直接最大化        → 正常，不溢出
+② 最大化后「收起」（最小化）→ 从任务栏（dock）点回来 → 底部溢出、被任务栏遮住
+```
+
+所以这不是"首次最大化算错边界"，而是**最小化 → 恢复这条路径**把窗口放大了。
+前一版文档里"首次最大化"的假设作废，保留在下文仅作记录。
+
 ## 现象
 
 最大化后窗口底部延伸到任务栏下方，最底部那行「输出 / 刷新」被任务栏压住一半，右侧时间戳也被截。
@@ -22,7 +32,29 @@ D13 任务栏收起/展开后越界    → WM_SETTINGCHANGE(TraySettings) + 250m
 D13 只在**任务栏状态变化**时纠正。截图这次是**一开始最大化就已经溢出**，
 说明纠正没在"首次最大化"这一刻生效。
 
-## 三个可能的原因（按可能性排序）
+## 恢复路径专属的原因（本次新增，优先级最高）
+
+### ④ 恢复时按"屏幕全尺寸"重算，而不是工作区
+
+无边框窗口最小化后恢复，Windows 会重新走一次 `WM_GETMINMAXINFO` /
+`WM_WINDOWPOSCHANGING`。如果此时 `MaximizedBounds` 已被重置或从未持久生效，
+恢复出来的矩形是 `Screen.Bounds`（含任务栏区域）→ 底部压到任务栏下面。
+
+**特征**：窗口内部布局没有错乱，只是整体往下多出一截（截图正是这样）。
+
+### ⑤ 恢复时用了 `RestoreBounds`（最小化前的矩形）
+
+`RestoreBounds` 记录的是最后一次 Normal 状态的位置。如果最小化发生在
+"最大化"状态，部分路径会把 `RestoreBounds` 当成目标矩形恢复 →
+得到一个既是最大化尺寸、又没扣任务栏的混合值。
+
+### ⑥ `WM_SETTINGCHANGE` 的 250ms 防抖窗口正好盖住恢复时机
+
+D13 的实现是"收到任务栏变化 → 250ms 后纠正"。从任务栏点回来的瞬间，
+如果 `_fixingMax` 为 true 或防抖计时器刚重置，这次纠正会被吃掉，
+且之后没有第二次机会 —— 于是停在越界状态。
+
+## 通用可能原因（原判断，保留）
 
 ### ① `MaximizedBounds` 设置时机太晚
 
@@ -50,17 +82,51 @@ if (_fixingMax) return;
 的切换过程中又触发一次 `Resize`），那次纠正会被直接跳过，
 且没有"稍后再试"的兜底。
 
-## 复现步骤
+## 复现步骤（按用户实际路径）
 
 ```
-1. 打开工具，确认窗口未最大化
-2. 点标题栏最大化（或双击标题栏）
-3. 观察窗口底部：最底一行是否被任务栏压住
-4. 再取消最大化、重新最大化一次，看是否第二次正常
-   （如果第二次正常 → 强烈指向原因 ①：第一次没设好 MaximizedBounds）
+1. 点标题栏最大化 → 观察：正常（这一步已确认 OK）
+2. 点最小化（收起）
+3. 从任务栏图标点回来（恢复）
+4. 观察窗口底部：「输出/刷新」整行是否被任务栏压住
+5. 再最大化/还原一次，看是否自愈（能自愈 → 说明恢复时用的是错误矩形）
 ```
 
 ## 建议修法（后续实施，本轮不动）
+
+**针对恢复路径（④⑤⑥）的最小改动**
+
+```csharp
+// 恢复时强制重算一次工作区，而不是信任系统给的矩形
+protected override void OnShown(EventArgs e) { ... }
+
+protected override void WndProc(ref Message m)
+{
+    // WM_ACTIVATE + WA_ACTIVE / WM_SHOWWINDOW：从最小化恢复的必经消息
+    if (m.Msg == WM_ACTIVATE || m.Msg == WM_SHOWWINDOW)
+    {
+        if (WindowState == FormWindowState.Maximized)
+        {
+            // 下一帧再纠正：此刻窗口矩形还没最终确定
+            BeginInvoke((Action)(delegate {
+                var wa = Screen.FromControl(this).WorkingArea;
+                if (Bounds.Bottom > wa.Bottom || Bounds.Right > wa.Right)
+                {
+                    MaximizedBounds = wa;
+                    WindowState = FormWindowState.Normal;
+                    WindowState = FormWindowState.Maximized;
+                }
+            }));
+        }
+    }
+    base.WndProc(ref m);
+}
+```
+
+要点：**必须用 `BeginInvoke` 延后一帧**。在消息处理当场改尺寸，
+系统随后还会覆盖一次（这就是"改了没用"的常见原因）。
+
+**原判断的修法（① ② ③）**
 
 ```csharp
 // ① 在任何进入最大化的入口之前先设边界
