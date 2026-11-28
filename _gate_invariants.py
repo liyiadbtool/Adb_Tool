@@ -503,6 +503,15 @@ A37_ADDS = {
     "ids": set(),
 }
 
+# A38（2026-11-28）：APK 页「系统推包」
+A38_ADDS = {
+    "kinds": set(["syspush", "syspushpick", "syspushck", "syspushdone", "syspushack"]),
+    "onclicks": set(["sysPushPick", "sysPushCheck", "sysPushRun", "sysPushRestore"]),
+    "ids": set(["syspush-pick", "syspush-check", "syspush-run", "syspush-restore",
+                "syspush-opt-skipbackup", "syspush-opt-force", "syspush-opt-auto",
+                "syspush-opt-verity", "syspush-count", "syspush-targets"]),
+}
+
 # 经批准删除：设置面板底部两个按钮（需求 11「设置底部的关闭应用和完成按钮去除」）。
 # 关闭仍可用右上角 × 或 Esc；「关闭应用」入口移进关于弹层，避免误触。
 A35_REMOVED = {
@@ -541,7 +550,8 @@ for k in ("kinds", "onclicks", "ids"):
              and x not in A33_ADDS[k] and x not in A34_ADDS[k]
              and x not in A35_ADDS[k]
              and x not in A36_ADDS[k]
-             and x not in A37_ADDS[k]]
+             and x not in A37_ADDS[k]
+             and x not in A38_ADDS[k]]
     bad_rm = [x for x in removed if x not in A12_REMOVED[k]
               and x not in A18_REMOVED[k] and x not in A31_REMOVED[k]
               and x not in A33_REMOVED[k] and x not in A35_REMOVED[k]]

@@ -1101,6 +1101,10 @@ body{
 .apk-legacy{padding-top:2px;}
 .apk-legacy .btn{font-size:12px;padding:0 10px;}
 /* 结果区：动作输出是纯文本行，版本查询是有结构的块 */
+.apk-chk{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--text-dim);margin-right:10px;}
+.apk-systx{width:100%;height:52px;margin:4px 0 6px;padding:6px 8px;font-size:12px;font-family:var(--font-mono);
+  color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-2);resize:vertical;}
+.apk-systx:focus{outline:none;border-color:var(--accent);}
 .apk-out{
   /* flex-basis 必须是 0：写成 auto 时内容（几十条版本）会把盒子撑大，
      把「查询全部版本」那一行顶到面板外面去（被下面的反馈区盖住）。
@@ -6294,6 +6298,24 @@ body[data-navlabels="0"] .filenav-item.active::after{
               <button class="btn ghost" onclick="apkRunCmd(':apk')" title="导出前台应用的 APK 到桌面 logcat">导出前台APK</button>
             </div>
 
+            <!-- 2026-11-28：系统推包（把 APK/SO 推到系统分区，带备份/还原） -->
+            <div class="apk-row">
+              <span class="apk-lbl">系统推包</span>
+              <button class="btn ghost" id="syspush-pick" onclick="sysPushPick()" title="选择要推送到系统分区的 APK 或 SO">选择文件</button>
+              <button class="btn ghost" id="syspush-check" onclick="sysPushCheck()" title="只体检：检查在线/root/可写/verity，不改动任何文件">仅体检</button>
+              <button class="btn primary" id="syspush-run" onclick="sysPushRun()" title="备份 → 推送 → 校验（可在下方勾选策略）">开始推包</button>
+              <button class="btn ghost" id="syspush-restore" onclick="sysPushRestore()" title="用最近一次备份还原原版本">还原上次</button>
+            </div>
+            <div class="apk-row apk-sysopt">
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-skipbackup">跳过备份</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-force">强制重推</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-auto">推完还原</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-verity" checked>允许改verity</label>
+              <span class="apk-lbl" id="syspush-count">0 项</span>
+            </div>
+            <textarea class="apk-systx" id="syspush-targets" spellcheck="false"
+                      placeholder="已选文件（每行一个；也可手填本地路径）"></textarea>
+
             <div class="apk-out" id="apk-out"><div class="apk-empty">还没有输出。</div></div>
 
             <div class="apk-foot">
@@ -10900,6 +10922,24 @@ function onMessage(ev){
       appendLines(msg.items); break;
     case 'commands': applyServerCommands(msg.items); break;   // cmds.ini → 指令页
     case 'tabpath': try{ onTabPath(msg); }catch(e){} break;   // Tab 补全候选
+    case 'syspushpick':
+      try{
+        var tx=document.getElementById('syspush-targets');
+        if(tx && msg.text){ tx.value = msg.text; sysPushCount(); }
+      }catch(e){}
+      break;
+    case 'syspushck':
+      if(msg.crit){ toast('体检有关键项未通过，不能推包','err'); }
+      break;
+    case 'syspushdone':
+      _apkBusy = false; updateApkButtons();
+      toast(msg.ok
+        ? ('推包完成：成功 ' + (msg.pushed||0) + '，跳过 ' + (msg.skipped||0))
+        : (msg.msg||'推包失败'), msg.ok?'ok':'err');
+      break;
+    case 'syspushack':
+      if(!msg.ok) toast(msg.msg||'操作失败','err');
+      break;
     /* 2026-11-27（D17）：诊断报告导出结果（C# 弹完保存框后回）。
        成功时 text 是落盘路径，失败时是原因 —— 都只在 toast 里说，不弹框。 */
     case 'diagexported':
@@ -17126,6 +17166,45 @@ function onApkFront(pkg){
 /* 2026-11-22（第 18 批 A9）：手动刷新 APK 列表。
    其它页面都有刷新入口（诊断「重新检测」、投屏「刷新」、文件页工具栏），
    APK 管理原来没有 —— 用户装了新应用后只能切走再切回。 */
+/* ==================== 2026-11-28：系统推包 ==================== */
+function sysPushOpt(){
+  function on(id){ var el=document.getElementById(id); return el&&el.checked?'1':'0'; }
+  return 'skipbackup='+on('syspush-opt-skipbackup')
+       + ';force='+on('syspush-opt-force')
+       + ';autorestore='+on('syspush-opt-auto')
+       + ';verity='+on('syspush-opt-verity');
+}
+function sysPushTargets(){
+  var el=document.getElementById('syspush-targets');
+  return el ? el.value : '';
+}
+function sysPushCount(){
+  var t=sysPushTargets().split('\n'), n=0;
+  for(var i=0;i<t.length;i++){ if(t[i].trim()) n++; }
+  var c=document.getElementById('syspush-count'); if(c) c.textContent=n+' 项';
+  return n;
+}
+function sysPushPick(){ postObj({kind:'syspush',act:'pickfile'}); }
+function sysPushCheck(){ postObj({kind:'syspush',act:'check',targets:sysPushTargets(),opt:sysPushOpt()}); }
+function sysPushRun(){
+  if(!sysPushCount()){ toast('先点「选择文件」挑要推送的 APK 或 SO'); return; }
+  if(!checkPushOpt()) return;
+  apkOutSection('系统推包');
+  _apkBusy = true; updateApkButtons();
+  postObj({kind:'syspush',act:'start',targets:sysPushTargets(),opt:sysPushOpt()});
+}
+function sysPushRestore(){
+  apkOutSection('系统推包 · 还原');
+  _apkBusy = true; updateApkButtons();
+  postObj({kind:'syspush',act:'restore',opt:sysPushOpt()});
+}
+/* 跳过备份 + 推完还原 同时勾＝推上去就撤回，没有意义，先拦一道 */
+function checkPushOpt(){
+  var sb=document.getElementById('syspush-opt-skipbackup');
+  var ar=document.getElementById('syspush-opt-auto');
+  if(sb&&ar&&sb.checked&&ar.checked){ toast('「跳过备份」与「推完还原」不能同时勾选'); return false; }
+  return true;
+}
 function apkReload(){
   try { postObj({ kind: 'apkrefresh' }); }
   catch(e){ toast('刷新失败：' + e, 'err'); }

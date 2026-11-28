@@ -3883,6 +3883,11 @@ namespace AdbLogExport.Gui
 
                 // 原来的前台指令（:pkg now / :front / :fstop / :apk）
                 // 卡片从快捷指令下架了，但从 APK 管理页仍然要能完整用
+                /* 2026-11-28：系统推包（见 _cs/ApkPush.cs） */
+                case "syspush":
+                    RunSysPush(GetField(json, "act"), GetField(json, "targets"), GetField(json, "opt"));
+                    break;
+
                 case "apkcmd":
                     RunApkCmd(GetField(json, "cmd"));
                     break;
@@ -5533,6 +5538,153 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             _worker[0].IsBackground = true;
             _worker[0].SetApartmentState(ApartmentState.STA);
             _worker[0].Start();
+        }
+
+        /* ==================== 系统推包（2026-11-28） ==================== */
+        private void RunSysPush(string act, string targets, string optStr)
+        {
+            string a = (act ?? "").Trim();
+            if (a == "pickfile")
+            {
+                try
+                {
+                    using (OpenFileDialog d = new OpenFileDialog())
+                    {
+                        d.Title = "选择要推送的文件";
+                        d.Filter = "APK / SO (*.apk;*.so)|*.apk;*.so|所有文件 (*.*)|*.*";
+                        d.Multiselect = true;
+                        if (d.ShowDialog(this) == DialogResult.OK)
+                        {
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 0; i < d.FileNames.Length; i++)
+                            {
+                                if (i > 0) sb.Append('\n');
+                                sb.Append(d.FileNames[i]);
+                            }
+                            PushOnUi("{\"kind\":\"syspushpick\",\"text\":\"" + App.SpEsc(sb.ToString()) + "\"}");
+                        }
+                    }
+                }
+                catch (Exception ex) { PushOnUi("{\"kind\":\"syspushack\",\"ok\":0,\"msg\":\"" + App.SpEsc(ex.Message) + "\"}"); }
+                return;
+            }
+
+            if (a == "restore")
+            {
+                RunApkJob(delegate
+                {
+                    App.SysPushSetLog(delegate(string ln) { try { Console.WriteLine("  " + ln); } catch { } });
+                    App.SysPushOpt o = ParseSpOpt(optStr);
+                    List<string> dirs = App.SysPushListBackups(App.SERIAL, o);
+                    if (dirs.Count == 0) { Console.WriteLine("  没有可还原的备份"); return false; }
+                    Console.WriteLine("  还原备份：" + dirs[0]);
+                    App.SysPushResult r = App.SysPushRestore(dirs[0], o, null);
+                    Console.WriteLine(r.Ok ? "  还原完成" : ("  还原失败：" + r.Err));
+                    PushOnUi("{\"kind\":\"syspushdone\",\"ok\":" + (r.Ok ? 1 : 0)
+                        + ",\"restored\":1,\"msg\":\"" + App.SpEsc(r.Ok ? "已还原" : r.Err) + "\"}");
+                    return r.Ok;
+                }, "系统推包 · 还原");
+                return;
+            }
+
+            List<App.SysPushItem> items = ParseSpTargets(targets ?? "");
+            App.SysPushOpt opt = ParseSpOpt(optStr);
+
+            if (a == "check")
+            {
+                RunApkJob(delegate
+                {
+                    App.SysPushSetLog(delegate(string ln) { try { Console.WriteLine("  " + ln); } catch { } });
+                    bool crit;
+                    List<App.SysPushCheck> cs = App.SysPushPreflight(opt, out crit);
+                    for (int i = 0; i < cs.Count; i++)
+                    {
+                        App.SysPushCheck c = cs[i];
+                        Console.WriteLine((c.Ok ? "  ✓ " : (c.Critical ? "  × " : "  ! "))
+                            + c.Name + (c.Detail.Length > 0 ? "：" + c.Detail : "")
+                            + (c.Hint.Length > 0 ? "（" + c.Hint + "）" : ""));
+                    }
+                    if (items.Count > 0)
+                    {
+                        string err;
+                        App.SysPushPlan(items, opt, out err);
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            App.SysPushItem it = items[i];
+                            Console.WriteLine("  " + it.Seq + ". " + it.Kind + " " + it.Local
+                                + " → " + it.Remote + " [" + it.Action + "]"
+                                + (it.Reason.Length > 0 ? " " + it.Reason : ""));
+                        }
+                    }
+                    PushOnUi("{\"kind\":\"syspushck\",\"crit\":" + (crit ? 1 : 0) + "}");
+                    return !crit;
+                }, "系统推包 · 体检");
+                return;
+            }
+
+            if (a == "start")
+            {
+                if (items.Count == 0) { PushOnUi("{\"kind\":\"syspushack\",\"ok\":0,\"msg\":\"还没有选择要推送的文件\"}"); return; }
+                RunApkJob(delegate
+                {
+                    App.SysPushSetLog(delegate(string ln) { try { Console.WriteLine("  " + ln); } catch { } });
+                    App.FS_CANCEL = false;
+                    App.SysPushResult r = App.SysPushRun(items, opt, null);
+                    Console.WriteLine(r.Ok ? "  推包完成" : ("  推包结束：" + r.Err));
+                    PushOnUi("{\"kind\":\"syspushdone\",\"ok\":" + (r.Ok ? 1 : 0)
+                        + ",\"pushed\":" + r.Pushed + ",\"skipped\":" + r.Skipped
+                        + ",\"failed\":" + r.Failed
+                        + ",\"restored\":" + (r.Restored ? 1 : 0)
+                        + ",\"msg\":\"" + App.SpEsc(r.Err) + "\"}");
+                    return r.Ok;
+                }, "系统推包 · 开始");
+                return;
+            }
+
+            PushOnUi("{\"kind\":\"syspushack\",\"ok\":0,\"msg\":\"未知操作：" + App.SpEsc(a) + "\"}");
+        }
+
+        /* targets 用文本传：每行 kind|local|remote|pkg（remote/pkg 可空） */
+        private List<App.SysPushItem> ParseSpTargets(string text)
+        {
+            List<App.SysPushItem> list = new List<App.SysPushItem>();
+            if (string.IsNullOrEmpty(text)) return list;
+            string[] lines = text.Replace("\r", "").Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string ln = lines[i].Trim();
+                if (ln.Length == 0) continue;
+                string[] f = ln.Split('|');
+                App.SysPushItem it = new App.SysPushItem();
+                it.Kind = f.Length > 0 ? f[0].Trim() : "apk";
+                it.Local = f.Length > 1 ? f[1].Trim() : "";
+                it.Remote = f.Length > 2 ? f[2].Trim() : "";
+                it.Pkg = f.Length > 3 ? f[3].Trim() : "";
+                if (it.Kind.Length == 0) it.Kind = "apk";
+                list.Add(it);
+            }
+            return list;
+        }
+
+        /* opt 用 "k=v;k=v" 传，避免再写一层 JSON 解析 */
+        private App.SysPushOpt ParseSpOpt(string s)
+        {
+            App.SysPushOpt o = new App.SysPushOpt();
+            if (string.IsNullOrEmpty(s)) return o;
+            string[] kv = s.Split(';');
+            for (int i = 0; i < kv.Length; i++)
+            {
+                string[] p = kv[i].Split('=');
+                if (p.Length != 2) continue;
+                bool on = p[1].Trim() == "1";
+                string k = p[0].Trim();
+                if (k == "skipbackup") o.SkipBackup = on;
+                else if (k == "force") o.Force = on;
+                else if (k == "autorestore") o.AutoRestore = on;
+                else if (k == "reboot") o.Reboot = on;
+                else if (k == "verity") o.AllowVerity = on;
+            }
+            return o;
         }
 
         /* Tab 补全：列目录 + 前缀过滤，最多回 60 项（够用且不卡） */
