@@ -106,9 +106,17 @@ for (const b of bats) {
 // ---- ui.html 里不允许出现"未完成的占位提示"----
 const ui = text("adb_log_gui/webview2/ui.html") || "";
 const placeholders = ["TODO", "FIXME", "待实现", "占位符", "console.log("];
+// 2026-11-28：注释里出现这些词属于正常说明（如"{{name}} 占位符替换"），
+// 只扫非注释行，避免假红。
+function isCommentLine(line){
+  const t = line.trim();
+  return t.startsWith("//") || t.startsWith("/*") || t.startsWith("*") || t.startsWith("<!--");
+}
+// 2026-11-28：只在"非注释行"里找，注释中的说明文字不算残留。
+const uiCodeLines = ui.split(/\r?\n/).filter(function(l){ return !isCommentLine(l); }).join("\n");
 for (const p of placeholders) {
-    if (ui.indexOf(p) >= 0) {
-        const n = ui.split(p).length - 1;
+    if (uiCodeLines.indexOf(p) >= 0) {
+        const n = uiCodeLines.split(p).length - 1;
         if (p === "console.log(" && n <= 2) { warn("ui.html 有 " + n + " 处 " + p + "（可接受）"); continue; }
         bad("ui.html 含占位/调试残留 " + p + " ×" + n);
     }

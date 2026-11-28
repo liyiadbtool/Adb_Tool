@@ -258,14 +258,25 @@ namespace AdbLogExport
                 }
 
                 Info("   pull " + remote);
-                string o = ShellCapture("pull " + remote + " \"" + target + "\"");
-                string all = o;
-                if (all.IndexOf("No such file", StringComparison.OrdinalIgnoreCase) >= 0
-                    || all.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0
-                    || all.IndexOf("error:", StringComparison.OrdinalIgnoreCase) >= 0)
+                /* 2026-11-28（B-01）：pull 是**主机侧** adb 命令。
+                   原来这里走 ShellCapture（= adb shell），设备上根本没有 pull，
+                   回执是 "sh: pull: not found"，又不在下面的关键字里 → 计成功，
+                   于是"导出完成 N 项"但目录是空的（假成功）。
+                   改成主机侧 AdbCall，并以退出码 + 回执关键字双重判定。 */
+                string po = "", pe = "";
+                int prc = -1;
+                try { prc = AdbCall(new List<string> { "pull", remote, target }, out po, out pe); }
+                catch (Exception ex) { pe = ex.Message; }
+                string all = ((po ?? "") + " " + (pe ?? "")).Trim();
+                bool badWord = all.IndexOf("No such file", StringComparison.OrdinalIgnoreCase) >= 0
+                            || all.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0
+                            || all.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0
+                            || all.IndexOf("error:", StringComparison.OrdinalIgnoreCase) >= 0
+                            || all.IndexOf("failed", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (prc != 0 || badWord)
                 {
                     skipN++;
-                    Warn("     跳过（目录不存在或无权限）");
+                    Warn("     跳过（rc=" + prc + "）：" + FirstLine(all));
                 }
                 else okN++;
             }

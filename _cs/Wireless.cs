@@ -120,7 +120,14 @@ namespace AdbLogExport
                 AdbCallQuiet(new List<string> { "connect", target }, out so, out se);
                 // 结果下一拍用 devices 判定，这里不重复查询（省一次 adb 往返）
             }
-            catch (Exception ex) { AdbLogExport.Gui.GuiEntry.Dump("wadb-beat", ex); }
+            /* 2026-11-28：原来这里调 Gui.GuiEntry.Dump —— 那是 GUI 独有类型，
+               CLI 编译（_cs/build.bat）不含它，导致 **CLI 直接编不过**，
+               而日常只跑 GUI 编译时看不出来（--fast 的 -selftest 用的是旧 exe）。
+               改成不依赖 GUI 的日志，CLI/GUI 都能编。 */
+            catch (Exception ex)
+            {
+                try { Console.WriteLine("  [wadb] 心跳异常：" + ex.Message); } catch { }
+            }
             finally { System.Threading.Interlocked.Exchange(ref _wadbBeatBusy, 0); }
         }
 

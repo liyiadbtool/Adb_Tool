@@ -606,7 +606,7 @@
             "[cmd.stlogall]",
             "[cmd.stproxyoff]",
             "[cmd.stweak]",
-            "[cmd.stoffline]"
+            "[cmd.stengmode]"
           ]
         },
         {
@@ -773,7 +773,7 @@
             "[cmd.stlogall]",
             "[cmd.stproxyon]",
             "[cmd.stweak]",
-            "[cmd.stoffline]"
+            "[cmd.stengmode]"
           ]
         },
         {
@@ -843,7 +843,7 @@
             "--font-ui:-apple-system",
             "prefers-reduced-transparency",
             "prefers-contrast:more",
-            "var THEME_ORDER = ['dark', 'light', 'eye']"
+            "var THEME_ORDER = ['dark', 'light', 'eye', 'glass']"
           ]
         }
       ],
