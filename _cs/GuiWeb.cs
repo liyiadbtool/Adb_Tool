@@ -510,6 +510,23 @@ namespace AdbLogExport.Gui
             public int dwFlags;
         }
 
+        /* 2026-11-28：参考通行实现（pastebin/CSDN 上被反复使用的
+           WmGetMinMaxInfo 版本），这里额外取 rcWork。 */
+        private static bool GetMonitorWorkRect(IntPtr hMon, out RECT work, out RECT mon)
+        {
+            work = new RECT(); mon = new RECT();
+            try
+            {
+                MONITORINFO mi = new MONITORINFO();
+                mi.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(MONITORINFO));
+                if (!GetMonitorInfo(hMon, ref mi)) return false;
+                work = mi.rcWork;
+                mon = mi.rcMonitor;
+                return true;
+            }
+            catch { return false; }
+        }
+
         private static bool GetMonitorInfoRect(IntPtr hMon, out RECT mon)
         {
             mon = new RECT();
@@ -998,17 +1015,22 @@ namespace AdbLogExport.Gui
                        位置用「相对所在显示器原点」的坐标，避免跨屏绝对坐标出错。 */
                     try
                     {
-                        Screen scr = Screen.FromHandle(m.HWnd);
-                        Rectangle wa = scr.WorkingArea;   // 屏幕坐标
-                        Rectangle mo = scr.Bounds;        // 显示器原点
-                        int nonClientW = Math.Max(0, Bounds.Width - ClientSize.Width);
-                        int nonClientH = Math.Max(0, Bounds.Height - ClientSize.Height);
-                        mmi.ptMaxPosition.X = wa.X - mo.X;
-                        mmi.ptMaxPosition.Y = wa.Y - mo.Y;
-                        mmi.ptMaxSize.X = wa.Width + nonClientW;
-                        mmi.ptMaxSize.Y = wa.Height + nonClientH;
-                        if (mmi.ptMaxTrackSize.X < mmi.ptMaxSize.X) mmi.ptMaxTrackSize.X = mmi.ptMaxSize.X;
-                        if (mmi.ptMaxTrackSize.Y < mmi.ptMaxSize.Y) mmi.ptMaxTrackSize.Y = mmi.ptMaxSize.Y;
+                        /* 2026-11-28：换成通行实现（GitHub/CSDN 上被广泛使用的
+                           WmGetMinMaxInfo）：MonitorFromWindow + GetMonitorInfo，
+                           ptMaxSize **等于工作区尺寸本身**。
+                           之前我们额外加了 nonClientW/H，无边框窗口下这个值不是 0，
+                           于是最大化矩形比工作区大一圈 —— 副屏上就表现为底部溢出。 */
+                        IntPtr hMon = MonitorFromWindow(m.HWnd, 2 /* MONITOR_DEFAULTTONEAREST */);
+                        RECT work, mon;
+                        if (hMon != IntPtr.Zero && GetMonitorWorkRect(hMon, out work, out mon))
+                        {
+                            mmi.ptMaxPosition.X = Math.Abs(work.Left - mon.Left);
+                            mmi.ptMaxPosition.Y = Math.Abs(work.Top - mon.Top);
+                            mmi.ptMaxSize.X = Math.Abs(work.Right - work.Left);
+                            mmi.ptMaxSize.Y = Math.Abs(work.Bottom - work.Top);
+                            if (mmi.ptMaxTrackSize.X < mmi.ptMaxSize.X) mmi.ptMaxTrackSize.X = mmi.ptMaxSize.X;
+                            if (mmi.ptMaxTrackSize.Y < mmi.ptMaxSize.Y) mmi.ptMaxTrackSize.Y = mmi.ptMaxSize.Y;
+                        }
                     }
                     catch { }
 
