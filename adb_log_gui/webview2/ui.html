@@ -6330,10 +6330,10 @@ body[data-navlabels="0"] .filenav-item.active::after{
               <button class="btn ghost" id="syspush-restore" onclick="sysPushRestore()" title="用最近一次备份还原原版本">还原上次</button>
             </div>
             <div class="apk-row apk-sysopt">
-              <label class="apk-chk"><input type="checkbox" id="syspush-opt-skipbackup">跳过备份</label>
-              <label class="apk-chk"><input type="checkbox" id="syspush-opt-force">强制重推</label>
-              <label class="apk-chk"><input type="checkbox" id="syspush-opt-auto">推完还原</label>
-              <label class="apk-chk"><input type="checkbox" id="syspush-opt-verity" checked>允许改verity</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-skipbackup" onchange="sysPushOptChanged('skipbackup')">跳过备份</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-force" onchange="sysPushOptChanged('force')">强制重推</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-auto" onchange="sysPushOptChanged('auto')">推完还原</label>
+              <label class="apk-chk"><input type="checkbox" id="syspush-opt-verity" checked onchange="sysPushOptChanged('verity')">允许改verity</label>
               <span class="apk-lbl" id="syspush-count">0 项</span>
             </div>
             <textarea class="apk-systx" id="syspush-targets" spellcheck="false"
@@ -17237,6 +17237,12 @@ function sysPushUpdateButtons(){
   dis('syspush-restore', _spBusy || !_online);
   ['syspush-opt-skipbackup','syspush-opt-force','syspush-opt-auto','syspush-opt-verity']
     .forEach(function(id){ var el=document.getElementById(id); if(el){ el.disabled=_spBusy; } });
+  /* 忙完恢复互斥后的禁用态（不能一律放开） */
+  if(!_spBusy){
+    var sb=document.getElementById('syspush-opt-skipbackup');
+    var ar=document.getElementById('syspush-opt-auto');
+    if(sb&&ar){ if(sb.checked){ ar.disabled=true; } else if(ar.checked){ sb.disabled=true; } }
+  }
 }
 function sysPushPick(){
   if(_spBusy) return;
@@ -17261,6 +17267,24 @@ function sysPushRestore(){
   apkOutSection('系统推包 · 还原');
   _spBusy = true; _apkBusy = true; sysPushUpdateButtons(); updateApkButtons();
   postObj({kind:'syspush',act:'restore',opt:sysPushOpt()});
+}
+/* 2026-11-28：选项互斥（之前只在"开始推包"时拦，界面上仍能同时勾）
+   「跳过备份」与「推完还原」天然冲突：没有备份就没有东西可还原。
+   勾一个自动取消并禁用另一个，避免用户以为两个都能生效。 */
+function sysPushOptChanged(which){
+  var sb=document.getElementById('syspush-opt-skipbackup');
+  var ar=document.getElementById('syspush-opt-auto');
+  if(!sb||!ar) return;
+  if(which==='skipbackup' && sb.checked){
+    ar.checked=false; ar.disabled=true;
+    toast('已勾「跳过备份」：本次没有备份，「推完还原」不可用','err');
+  }else if(which==='auto' && ar.checked){
+    sb.checked=false; sb.disabled=true;
+    toast('已勾「推完还原」：需要备份，已取消「跳过备份」','ok');
+  }else{
+    ar.disabled=false; sb.disabled=false;
+  }
+  sysPushUpdateButtons();
 }
 /* 跳过备份 + 推完还原 同时勾＝推上去就撤回，没有意义，先拦一道 */
 function checkPushOpt(){
