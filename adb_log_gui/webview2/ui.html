@@ -14562,7 +14562,7 @@ var quickGroups = [
     {name:'一键录屏', desc:'截帧录屏保存到桌面 logcat（约3fps）', cmd:':rec', toggle:true, progress:true, exp:true, cat:'采集导出'},
     // 「导出APK」已挪到「APK管理」分组（2026-11-13）：那里的对象是"选中的应用"，
     // 而不是"当前前台"。命令本身（:apk）仍然可用，只是不再占一张卡片。
-    {name:'Android日志导出', desc:'pull /log/android_log 到桌面logcat文件', cmd:':dlog', progress:true, exp:true, cat:'采集导出'},
+    {name:'导出Android日志', desc:'pull /log/android_log 到桌面logcat文件', cmd:':dlog', progress:true, exp:true, cat:'采集导出'},
     {name:'导出ANR日志', desc:'pull /data/anr 到桌面logcat文件', cmd:':anrlog', progress:true, exp:true, cat:'采集导出'},
     {name:'导出crash日志', desc:'pull /data/system/dropbox 到桌面logcat', cmd:':dropboxlog', progress:true, exp:true, cat:'采集导出'},
     {name:'PCM导出', desc:'工程模式→日志设置→audio→使能开关', cmd:':pcm', progress:true, exp:true, cat:'采集导出'},
@@ -14573,7 +14573,7 @@ var quickGroups = [
     {name:'绕过国密', desc:'设置 TSP 平台域名', cmd:'bypassgm', cat:'开关调试'},
     {name:'重启车机', desc:'adb reboot，30~60 秒后重新 :r 重连', cmd:':reboot', cat:'开关调试'},
     // ---- 应用控制 ----
-    {name:'打开TSP后台', desc:'启动 com.gac.cloud.app 后台', cmd:'tsp', cat:'应用控制'},
+    {name:'进入TSP后台', desc:'启动 com.gac.cloud.app 后台', cmd:'tsp', cat:'应用控制'},
     // T9（2026-11-19）：这张与「网联服务 › 后台入口」那张是同一个 airec 命令，
     // 用户要求「除自定义外其它模块指令不允许重复」，删这一张、保留网联服务那张。
     // airec 命令本身不丢，终端仍可直接敲 :airec。
@@ -14586,30 +14586,25 @@ var quickGroups = [
     {name:'白天模式', desc:'强制日间主题（uimode night no）', cmd:'no', cat:'主题模式'},
     {name:'自动主题模式', desc:'跟随系统（uimode night auto）', cmd:'autotheme', cat:'主题模式'},
     // R11：查系统深色模式设置。和上面三条"改"的操作放一起，方便先查再改。
-    {name:'查系统深色模式', desc:'读 day_night_auto_mode（系统自己的值）', cmd:':sysnight', cat:'主题模式'},
+    {name:'查询系统主题模式', desc:'读 day_night_auto_mode（系统自己的值）', cmd:':sysnight', cat:'主题模式'},
     // ---- 星河云环境 ----
     {name:'查询星河云环境', desc:'读 deploy / https / domain 三个属性', cmd:':env', cat:'星河云环境'},
-    {name:'切预发布环境', desc:'pre · api-pre.syncore.space:20443', cmd:':env pre', cat:'星河云环境'},
-    {name:'切现网环境', desc:'dev · api.syncore.space', cmd:':env dev', cat:'星河云环境'},
-    {name:'切测试环境', desc:'test · api-test.syncore.space:20443', cmd:':env test', cat:'星河云环境'},
+    {name:'切星河云预发布环境', desc:'pre · api-pre.syncore.space:20443', cmd:':env pre', cat:'星河云环境'},
+    {name:'切星河云现网环境', desc:'dev · api.syncore.space', cmd:':env dev', cat:'星河云环境'},
+    {name:'切星河云测试环境', desc:'test · api-test.syncore.space:20443', cmd:':env test', cat:'星河云环境'},
     // ---- 信息查询 ----
-    {name:'车机信息', desc:'车型/SOC/MCU/Android/VIN/UUID/DID/OPENID/分辨率', cmd:':car', cat:'信息查询'},
-    {name:'分辨率查询', desc:'查屏幕分辨率', cmd:':res', cat:'信息查询'},
-    {name:'UUID 查询', desc:'查 navi.uuid 属性', cmd:':uuid', cat:'信息查询'},
-    {name:'DID 查询', desc:'查 navi.did 属性', cmd:':did', cat:'信息查询'},
+    {name:'查询车机信息', desc:'车型/SOC/MCU/Android/VIN/UUID/DID/OPENID/分辨率', cmd:':car', cat:'信息查询'},
+    {name:'查询分辨率', desc:'查屏幕分辨率', cmd:':res', cat:'信息查询'},
+    {name:'查询UUID', desc:'查 navi.uuid 属性', cmd:':uuid', cat:'信息查询'},
+    {name:'查询DID', desc:'查 navi.did 属性', cmd:':did', cat:'信息查询'},
     // ---- 系统查询（A16：用户 2026-11-15 第 5 批提的 9 条，去掉 adb root）----
     // 全部走 cmds.ini（配置化，改命令不用重编译）。跑在本机的 adb server 操作
     // （version / devices / start-server / kill-server）写 `adb xxx`，
     // 不带 -s 序列号 —— 它们本来就与具体设备无关。
-    {name:'查 adb 版本', desc:'adb version（本机 adb 版本）', cmd:'adbver', cat:'系统查询'},
-    {name:'内存总览', desc:'dumpsys meminfo 前 40 行（Total PSS / 各进程占用）', cmd:'mem', cat:'系统查询'},
-    {name:'屏幕密度', desc:'wm size + wm density（分辨率与 DPI 一起看）', cmd:'screen', cat:'系统查询'},
-    {name:'屏幕参数', desc:'dumpsys window displays 前 80 行（刷新率 / 旋转 / 屏位）', cmd:'windisp', cat:'系统查询'},
-    {name:'Android ID', desc:'settings get secure android_id（单值，方便复制）', cmd:'aid', cat:'系统查询'},
-    {name:'Android 版本', desc:'getprop ro.build.version.release（单值）', cmd:'osver', cat:'系统查询'},
-    {name:'已连接设备', desc:'adb devices 全表（序列号 / 状态，可复制）', cmd:'devs', cat:'系统查询'},
-    {name:'启动 adb 服务', desc:'adb start-server（已在跑则无输出，属正常）', cmd:'adbst', cat:'系统查询'},
-    {name:'停止 adb 服务', desc:'adb kill-server（会断开日志抓取与投屏，需 :r 重连）', cmd:'adbsp', cat:'系统查询'},
+    {name:'查询 adb 版本', desc:'adb version（本机 adb 版本）', cmd:'adbver', cat:'系统查询'},
+    {name:'查询屏幕密度', desc:'wm size + wm density（分辨率与 DPI 一起看）', cmd:'screen', cat:'系统查询'},
+    {name:'查询Android ID', desc:'settings get secure android_id（单值，方便复制）', cmd:'aid', cat:'系统查询'},
+    {name:'查询Android 版本', desc:'getprop ro.build.version.release（单值）', cmd:'osver', cat:'系统查询'},
     // ---- 投屏（scrcpy）（A16：原来独立的组并进本组，分类统一「投屏」）----
     // 用户要求："删掉独立的投屏组，6 张卡并进指令执行，小标题统一为投屏"。
     // 有搜索框之后分类不再承担"找得到"的职责，扁平进本组更好搜（搜 scrcpy / 后排 都能出）。
@@ -14631,14 +14626,11 @@ var quickGroups = [
     {name:'开启触控点', desc:'show_touches = 1，点击处显示白点', cmd:'sttoucheson', cat:'显示与信息'},
     {name:'关闭触控点', desc:'show_touches = 0', cmd:'sttouchesoff', cat:'显示与信息'},
     {name:'导出 QNX 日志', desc:'/share/log → 桌面logcat\日期\qnx', cmd:':qnxlog', progress:true, exp:true, cat:'显示与信息'},
-    {name:'查看VIN', desc:'读 persist.sys.vehicle.vin', cmd:'stvin', cat:'显示与信息'},
-    {name:'网络状态-ping', desc:'ping 公网 5 个包（car_net 实测）', cmd:'stping', cat:'显示与信息'},
-    {name:'网络状态-IP', desc:'读 wlan0 地址（car_net 实测）', cmd:'stip', cat:'显示与信息'},
+    {name:'查询VIN', desc:'读 persist.sys.vehicle.vin', cmd:'stvin', cat:'显示与信息'},
     // ---- 配置入口 ----
-    {name:'打开日志设置', desc:'车机日志设置（com.gxa.car.systemlog）', cmd:'stlogset', cat:'配置入口'},
+    {name:'进入日志设置', desc:'车机日志设置（com.gxa.car.systemlog）', cmd:'stlogset', cat:'配置入口'},
     {name:'配置中心后台', desc:'space.syncore.cockpit 配置中心（网联服务同款入口）', cmd:'wsconfig', cat:'配置入口'},
-    {name:'账号助手', desc:'工程模式-助手页（SynTestUtil zhzs 实测）', cmd:'staccount', cat:'配置入口'},
-    {name:'工程模式', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stengmode', cat:'配置入口'},
+    {name:'进入工程模式（配置入口）', desc:'工程模式主页（日志设置 / PCM 开关入口）', cmd:'stengmode', cat:'配置入口'},
     // ---- 环境与校验（2026-11-22 第 12 批需求 3）----
     // 这四条都是"确认环境对不对"的只读/开关类动作。
     // 用户给的原始命令是 `adb shell getprop | findstr domain` —— findstr 是 Windows
