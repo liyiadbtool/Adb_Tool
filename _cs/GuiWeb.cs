@@ -476,6 +476,7 @@ namespace AdbLogExport.Gui
                           HTTOPLEFT = 13, HTTOPRIGHT = 14, HTBOTTOM = 15,
                           HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
         private const int WM_DPICHANGED = 0x02E0;
+        private const int WM_SIZE = 0x0005;            // 2026-11-28（D19）
         private const int WM_DISPLAYCHANGE = 0x007E;   // 2026-11-28（D19）
 
         private bool _dwmCorner = false;   // DWM 圆角是否接管（true 时不再设 region）
@@ -1014,6 +1015,22 @@ namespace AdbLogExport.Gui
                         mmi, m.LParam, false);
                     return;
                 }
+                /* 2026-11-28（D19 补）：副屏最大化仍溢出 —— 说明系统给的
+                   ptMaxSize 在副屏上仍大于工作区（无边框 + 跨屏时序）。
+                   这里在 WM_SIZE 里兜底：已是最大化且越界 → 延后一帧强纠正。
+                   用 BeginInvoke 是为了避开"在 WM_SIZE 里切状态 → 再触发 WM_SIZE"的自激。 */
+                if (m.Msg == WM_SIZE && m.WParam.ToInt32() == 2 /* SIZE_MAXIMIZED */)
+                {
+                    try
+                    {
+                        BeginInvoke((Action)delegate
+                        {
+                            if (!_closing) EnsureInsideWorkingArea(false);
+                        });
+                    }
+                    catch { }
+                }
+
                 if (m.Msg == WM_ACTIVATE)
                 {
                     // 点任务栏图标收起（兜底，见 CheckTaskbarMinimize 注释）
