@@ -602,9 +602,9 @@ BEHAVIOR = r"""
       ok('CARD 指令执行组含「导出crash日志」', allTxt.indexOf('导出crash日志') >= 0);
       ok('CARD 指令执行组含「重启车机」', allTxt.indexOf('重启车机') >= 0);
       ok('CARD 指令执行组含「查询星河云环境」', allTxt.indexOf('查询星河云环境') >= 0);
-      ok('CARD 指令执行组含「切预发布环境」', allTxt.indexOf('切预发布环境') >= 0);
-      ok('CARD 指令执行组含「切现网环境」', allTxt.indexOf('切现网环境') >= 0);
-      ok('CARD 指令执行组含「切测试环境」', allTxt.indexOf('切测试环境') >= 0);
+      ok('CARD 指令执行组含「切星河云预发布环境」', allTxt.indexOf('切星河云预发布环境') >= 0);
+      ok('CARD 指令执行组含「切星河云现网环境」', allTxt.indexOf('切星河云现网环境') >= 0);
+      ok('CARD 指令执行组含「切星河云测试环境」', allTxt.indexOf('切星河云测试环境') >= 0);
       // 2026-11-13：这四张前台相关卡片挪进了「APK管理」分组，卡片下架、命令保留
       ok('CARD 「清理前台应用」已从指令执行组下架',
          allTxt.indexOf('清理前台应用') < 0, allTxt.slice(0, 60));
@@ -745,9 +745,9 @@ BEHAVIOR = r"""
           if(quickGroups[ieIdx].items[si].cat) ieCats[quickGroups[ieIdx].items[si].cat] = 1;
         }
         var stCmdStr = ieCmds.join(' | ');
-        ok('ST 11 条 st* 命令已并入指令执行',
+        ok('ST 8 条 st* 命令已并入指令执行（2026-11-28 删除 stping/stip/staccount）',
            ['stlogall','stsyslog','sttcpdump','stxyon','stxyoff','stvin',
-            'stping','stip','stlogset','staccount','stengmode'].every(function(c){
+            'stlogset','stengmode'].every(function(c){
               return stCmdStr.indexOf(c) >= 0;
             }), stCmdStr.slice(-120));
         ok('ST 开启/关闭坐标成对',
