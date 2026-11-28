@@ -534,6 +534,11 @@ body{
      · quick-grid 回归自然高度，不再被 flex 挤压
    注意：面板不要 sticky。吸顶会让面板钉死在顶部、卡片只在底部露出一条，
    滚动时看着像"输入框不能滑动"，这正是用户反馈的第二个问题。 */
+/* 2026-11-28：隐藏分组头后，内容整体上移填掉空白 */
+.quick-body.nohd{padding-top:0;}
+.quick-body.nohd .cast-panel,
+.quick-body.nohd .apk-panel,
+.quick-body.nohd .netsim-panel{padding-top:6px;}
 .quick-scroll{
   flex:1; min-height:0;
   overflow-y:auto; overflow-x:hidden;
@@ -15425,6 +15430,19 @@ function renderQuickItems(){
   // 网络模拟（2026-11-15）：参数表单面板，与 APK 面板同一套 panel 机制
   var nsPanel = document.getElementById('netsim-panel');
   if(nsPanel) nsPanel.style.display = (g.panel === 'netsim') ? '' : 'none';
+
+  /* 2026-11-28：Scrcpy投屏 / Apk管理 / 网络模拟 这三个面板自带标题与设置项，
+     顶部的「分组名 + 搜索指令」对它们没用 —— 直接隐藏，并把内容整体上移。 */
+  try {
+    var hideHead = (g.panel === 'cast' || g.panel === 'apk' || g.panel === 'netsim');
+    var qhead = document.querySelector('.quick-head');
+    if (qhead) qhead.style.display = hideHead ? 'none' : '';
+    var qbody = document.querySelector('.quick-body');
+    if (qbody) {
+      if (hideHead) qbody.classList.add('nohd');
+      else qbody.classList.remove('nohd');
+    }
+  } catch(e) {}
 
   // 2026-11-22（第 17 批）：Scrcpy 投屏面板（含仪表区）
   var castPanel = document.getElementById('cast-panel');
