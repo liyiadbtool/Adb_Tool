@@ -996,6 +996,15 @@ namespace AdbLogExport.Gui
                         if (_icoBig != null) { m.Result = _icoBig.Handle; return; }
                     }
                 }
+                /* 2026-11-28（D19 重构）：双击标题栏、Win+↑ 会发 SC_MAXIMIZE，
+                   这里截住改成自算最大化；SC_RESTORE 同理。 */
+                if (m.Msg == 0x0112 /* WM_SYSCOMMAND */)
+                {
+                    int sc = m.WParam.ToInt32() & 0xFFF0;
+                    if (sc == 0xF030) { DoFakeMax(); return; }
+                    if (sc == 0xF120) { DoFakeRestore(); return; }
+                }
+
                 if (m.Msg == WM_GETMINMAXINFO)
                 {
                     /* 2026-11-23 最终处置：**不再自己算最大化几何**。
@@ -1347,6 +1356,53 @@ namespace AdbLogExport.Gui
         }
 
         // 最大化 / 还原后要告诉页面：最大化按钮图标要换成"还原"，边缘热区要藏起来。
+        /* ===== 2026-11-28（D19 重构）：放弃系统最大化，改"自算最大化" =====
+           系统最大化在无边框 + 多显示器场景下反复出问题（D2/D13/D18/D19 都是它）：
+           MaximizedBounds、WM_GETMINMAXINFO、DPI、任务栏位置互相影响，难以收敛。
+           这里改成：窗口永远保持 Normal，最大化 = 自己把 Bounds 设成当前显示器的工作区。
+           好处：矩形来源单一（MonitorInfo.rcWork），不再受系统最大化几何影响。 */
+        private bool _fakeMax = false;
+        private Rectangle _preMaxBounds = Rectangle.Empty;
+
+        private void DoFakeMax()
+        {
+            try
+            {
+                if (WindowState != FormWindowState.Normal) WindowState = FormWindowState.Normal;
+                if (!_fakeMax) _preMaxBounds = Bounds;
+
+                IntPtr hMon = MonitorFromWindow(Handle, MONITOR_DEFAULTTONEAREST);
+                RECT work, mon;
+                if (hMon != IntPtr.Zero && GetMonitorWorkRect(hMon, out work, out mon))
+                {
+                    _fakeMax = true;
+                    Bounds = new Rectangle(work.Left, work.Top,
+                                           Math.Abs(work.Right - work.Left),
+                                           Math.Abs(work.Bottom - work.Top));
+                    PushWinState();
+                }
+            }
+            catch { }
+        }
+
+        private void DoFakeRestore()
+        {
+            try
+            {
+                _fakeMax = false;
+                if (_preMaxBounds.Width > 200 && _preMaxBounds.Height > 200)
+                {
+                    Rectangle b = _preMaxBounds;
+                    // 目标屏工作区内夹一下，避免还原到已拔掉的显示器
+                    Rectangle wa = Screen.FromRectangle(b).WorkingArea;
+                    if (!wa.IntersectsWith(b)) b = new Rectangle(wa.Left + 60, wa.Top + 60, 1000, 700);
+                    Bounds = b;
+                }
+                PushWinState();
+            }
+            catch { }
+        }
+
         private void PushWinState()
         {
             try
@@ -1354,7 +1410,7 @@ namespace AdbLogExport.Gui
                 if (_web == null || _web.CoreWebView2 == null) return;
                 PushOnUi(
                     "{\"kind\":\"winstate\",\"max\":"
-                    + (WindowState == FormWindowState.Maximized ? "1" : "0") + "}");
+                    + ((_fakeMax || WindowState == FormWindowState.Maximized) ? "1" : "0") + "}");
             }
             catch { }
         }
@@ -2567,9 +2623,8 @@ namespace AdbLogExport.Gui
                     break;
 
                 case "winmax":
-                    WindowState = (WindowState == FormWindowState.Maximized)
-                        ? FormWindowState.Normal : FormWindowState.Maximized;
-                    PushWinState();
+                    /* 2026-11-28（D19 重构）：不再用系统最大化 */
+                    if (_fakeMax) DoFakeRestore(); else DoFakeMax();
                     break;
 
                 case "winclose":
