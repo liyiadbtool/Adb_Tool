@@ -413,6 +413,7 @@ namespace AdbLogExport.Gui
         private const int WM_SETICON = 0x0080;
         private const int WM_GETICON = 0x007F;
         private const int WM_SETTINGCHANGE = 0x001A;
+        private const int WM_SHOWWINDOW = 0x0018;   // 2026-11-28（D18）
         private const int ICON_SMALL2 = 2;
         private const int ICON_SMALL = 0;
         private const int ICON_BIG = 1;
@@ -922,6 +923,25 @@ namespace AdbLogExport.Gui
         {
             try
             {
+                /* 2026-11-28（D18）：最大化 → 最小化 → 从任务栏恢复，
+                   窗口会被重算成 Screen.Bounds（含任务栏），底部压到任务栏下。
+                   恢复必经 WM_ACTIVATE / WM_SHOWWINDOW，这里延后一帧再纠正 ——
+                   当场改尺寸会被系统随后覆盖。 */
+                if (m.Msg == WM_ACTIVATE || m.Msg == WM_SHOWWINDOW)
+                {
+                    if (WindowState == FormWindowState.Maximized && !_closing)
+                    {
+                        try
+                        {
+                            BeginInvoke((Action)delegate
+                            {
+                                if (!_closing) EnsureInsideWorkingArea(false);
+                            });
+                        }
+                        catch { }
+                    }
+                }
+
                 if (m.Msg == WM_SETTINGCHANGE)
                 {
                     /* 2026-11-27（D13）：任务栏自动隐藏/展开、任务栏高度变化
@@ -1189,7 +1209,15 @@ namespace AdbLogExport.Gui
                 bool outOfArea = b.Bottom > wa.Bottom + 1 || b.Top < wa.Top - 1
                               || b.Right > wa.Right + 1 || b.Left < wa.Left - 1;
                 if (!outOfArea && !force) return;
-                if (_fixingMax) return;          // 防止 OnResize → 切状态 → OnResize 死循环
+                /* 2026-11-28（D18）：原来这里直接 return —— 若最大化恰好发生在
+                   _fixingMax 为 true 的窗口期，这次纠正被丢弃且永不重来。
+                   改成排队重试一次。 */
+                if (_fixingMax)
+                {
+                    try { BeginInvoke((Action)delegate { if (!_closing) EnsureInsideWorkingArea(false); }); }
+                    catch { }
+                    return;
+                }
                 _fixingMax = true;
                 MaximizedBounds = wa;
                 if (WindowState == FormWindowState.Maximized)
@@ -6054,8 +6082,48 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
             bool ok = NetSim.Start(port, upRate, downRate, upDelay, downDelay, upLoss, downLoss);
             if (!ok) return;
 
+            /* 2026-11-28：实测发现 USB 连接时 PC(10.41.x) 与车机(172.16/192.168.8)
+               不同网段、ping 100% 丢包 —— 把代理指向本机 IP 等于把车机网络配断。
+               所以优先用 adb reverse 打通 127.0.0.1；只有 reverse 失败才退回局域网 IP，
+               且必须先探测可达，不可达就不写代理（宁可报错，也不要静默失败）。 */
             string ip = NetSim.LocalIp();
-            PushNetSimLog("本机局域网 IP：" + ip + "，端口 " + NetSim.Port);
+            bool revOk = false;
+            try
+            {
+                string ro = "", re = "";
+                int rc = App.AdbCall(new List<string> {
+                    "reverse", "tcp:" + NetSim.Port, "tcp:" + NetSim.Port }, out ro, out re);
+                revOk = (rc == 0);
+                PushNetSimLog(revOk
+                    ? ("已建立 adb reverse：车机 127.0.0.1:" + NetSim.Port + " → 本机")
+                    : ("adb reverse 失败：" + ((ro ?? "") + (re ?? "")).Trim()));
+            }
+            catch (Exception ex) { PushNetSimLog("adb reverse 异常：" + ex.Message); }
+
+            if (!revOk)
+            {
+                bool reach = false;
+                try
+                {
+                    string po = "", pe = "";
+                    App.ShellCall(App.CUR, "ping -c 1 -W 2 " + ip + " 2>&1", out po, out pe);
+                    reach = ((po ?? "").IndexOf("1 received") >= 0)
+                         || ((po ?? "").IndexOf("1 packets received") >= 0);
+                }
+                catch { }
+                if (!reach)
+                {
+                    PushNetSimLog("本机 IP " + ip + " 从车机不可达（不同网段 / 防火墙）");
+                    PushNetSimLog("已停止弱网模拟，避免把车机网络配断。"
+                                + "请检查 USB 连接是否正常（本工具会自动建 reverse 隧道）");
+                    try { NetSim.Stop(); } catch { }
+                    return;
+                }
+            }
+
+            string proxyHost = revOk ? "127.0.0.1" : ip;
+            PushNetSimLog("代理将指向 " + proxyHost + ":" + NetSim.Port
+                          + (revOk ? "（USB 反向隧道）" : "（局域网）"));
 
             // 把车机代理指向本机（settings put 不需要 root）
             Thread th = new Thread(new ThreadStart(delegate()
@@ -6066,8 +6134,8 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                     /* 2026-11-27：三个键一起写。
                        很多 ROM 的 App 读的是 global_http_proxy_host/port，
                        只写 http_proxy 会出现"配置完不生效" —— 正是用户反馈的现象。 */
-                    string tip = "settings put global http_proxy " + ip + ":" + NetSim.Port + "; "
-                               + "settings put global global_http_proxy_host " + ip + "; "
+                    string tip = "settings put global http_proxy " + proxyHost + ":" + NetSim.Port + "; "
+                               + "settings put global global_http_proxy_host " + proxyHost + "; "
                                + "settings put global global_http_proxy_port " + NetSim.Port;
                     App.ShellCall(App.CUR, tip, out o, out e);
 
@@ -6121,6 +6189,13 @@ private static bool RunAdbRawEx(string adbArgs, out string errText)
                     App.ShellCall(App.CUR,
                         "settings delete global http_proxy; settings delete global global_http_proxy_host; "
                         + "settings delete global global_http_proxy_port", out o, out e);
+                    try
+                    {
+                        string ro2 = "", re2 = "";
+                        App.AdbCall(new List<string> { "reverse", "--remove", "tcp:" + NetSim.Port },
+                                    out ro2, out re2);
+                    }
+                    catch { }
                     PushNetSimLog("已清除车机代理（三个键一起删）");
                 }
                 catch (Exception ex) { PushNetSimLog("清除代理失败：" + ex.Message); }

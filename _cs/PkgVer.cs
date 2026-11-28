@@ -1014,31 +1014,51 @@ namespace AdbLogExport
                 return;
             }
 
-            string o = "";
-            string e = "";
-            ShellCall(CUR, "settings get global day_night_auto_mode 2>&1", out o, out e);
-            string v = FirstLine((o + "\n" + e).Trim());
+            /* 2026-11-28：原来只读 global day_night_auto_mode，把它当成"当前主题"，
+               但那个键是"自动开关"（0/1），不是主题本身 —— 于是查询结果和屏幕不符，
+               用户判定"无效"。
+               现在两条一起读：
+                 ① cmd uimode night  → 当前主题（yes/no/auto，最权威）
+                 ② settings get secure ui_night_mode → 交叉验证（1=夜间）
+                 ③ global day_night_auto_mode → 自动开关，单独一行 */
+            string o = "", e = "";
+            ShellCall(CUR, "cmd uimode night 2>&1", out o, out e);
+            string nightLine = FirstLine((o + "\n" + e).Trim());
+            string mode = "";
+            if (nightLine.IndexOf("Night mode:", StringComparison.OrdinalIgnoreCase) >= 0)
+                mode = nightLine.Substring(nightLine.IndexOf(':') + 1).Trim();
+
+            string o2 = "", e2 = "";
+            ShellCall(CUR, "settings get secure ui_night_mode 2>&1", out o2, out e2);
+            string sec = FirstLine((o2 + "\n" + e2).Trim());
+
+            string o3 = "", e3 = "";
+            ShellCall(CUR, "settings get global day_night_auto_mode 2>&1", out o3, out e3);
+            string auto = FirstLine((o3 + "\n" + e3).Trim());
 
             CMD_OK = true;
             Console.WriteLine();
-            UseDim();
-            Console.Write("  系统主题  ");
-            UseDefault();
 
-            if (v.Length == 0 || v.Equals("null", StringComparison.OrdinalIgnoreCase))
-            {
-                UseDim();
-                Console.WriteLine("未设置（设备返回：" + (v.Length == 0 ? "空" : v) + "）");
-                UseDefault();
-                return;
-            }
-
+            UseDim(); Console.Write("  当前主题  "); UseDefault();
             UsePath();
-            if (v == "0") Console.WriteLine("日间（0）");
-            else if (v == "1") Console.WriteLine("夜间（1）");
-            else if (v == "2") Console.WriteLine("自动（2）");
-            else Console.WriteLine("设备返回：" + v);
+            if (mode.Equals("yes", StringComparison.OrdinalIgnoreCase)) Console.Write("夜间");
+            else if (mode.Equals("no", StringComparison.OrdinalIgnoreCase)) Console.Write("日间");
+            else if (mode.Equals("auto", StringComparison.OrdinalIgnoreCase)) Console.Write("自动（跟随系统）");
+            else if (sec == "1") Console.Write("夜间（secure ui_night_mode=1）");
+            else if (sec == "0") Console.Write("日间（secure ui_night_mode=0）");
+            else Console.Write("取不到（cmd uimode 无输出，secure 键为空）");
             UseDefault();
+
+            UseDim(); Console.Write("  自动开关  "); UseDefault();
+            if (auto == "1") Console.Write("已开启（1）");
+            else if (auto == "0") Console.Write("已关闭（0）");
+            else if (auto.Length == 0 || auto.Equals("null", StringComparison.OrdinalIgnoreCase))
+                Console.Write("未设置");
+            else Console.Write("设备返回：" + auto);
+            Console.WriteLine();
+
+            if (mode.Length == 0 && (sec.Length == 0 || sec.Equals("null", StringComparison.OrdinalIgnoreCase)))
+                Hint("这台设备既没有 uimode 输出也没有 secure 键，主题状态可能由厂商私有属性控制");
         }
 
         // 当前前台包名（挑 tier 最小的那条），取不到返回 ""。
