@@ -436,7 +436,9 @@ namespace AdbLogExport.Gui
         {
             try
             {
-                if (WindowState != FormWindowState.Normal) return;
+                /* 2026-11-28（D19）：原来非 Normal 直接 return，导致最大化状态下来到副屏
+                   永远用旧边界。改：任何状态都更新 MaximizedBounds（它只影响下一次
+                   进入最大化，不会当场改变窗口尺寸，安全）。 */
                 Rectangle wa = Screen.FromControl(this).WorkingArea;
                 if (MaximizedBounds != wa) MaximizedBounds = wa;
             }
@@ -474,6 +476,7 @@ namespace AdbLogExport.Gui
                           HTTOPLEFT = 13, HTTOPRIGHT = 14, HTBOTTOM = 15,
                           HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
         private const int WM_DPICHANGED = 0x02E0;
+        private const int WM_DISPLAYCHANGE = 0x007E;   // 2026-11-28（D19）
 
         private bool _dwmCorner = false;   // DWM 圆角是否接管（true 时不再设 region）
         private int _cornerDip = 8;        // 圆角半径（DIP，按 DPI 换算成像素）
@@ -1079,9 +1082,16 @@ namespace AdbLogExport.Gui
                         return;
                     }
                 }
+                if (m.Msg == WM_DISPLAYCHANGE)
+                {
+                    ScheduleScreenFix();          // 2026-11-28（D19）：分辨率/显示器变化
+                    base.WndProc(ref m);
+                    return;
+                }
                 if (m.Msg == WM_DPICHANGED)
                 {
                     // 拖到另一块 DPI 不同的屏：圆角像素半径要按新 DPI 重算
+                    ScheduleScreenFix();          // 2026-11-28（D19）：边界也要重算
                     base.WndProc(ref m);
                     ApplyWindowCorner();
                     return;
@@ -1173,6 +1183,52 @@ namespace AdbLogExport.Gui
             /* 只在正常态重算目标矩形。最大化态的越界纠正放到 WM_EXITSIZEMOVE
                与显示设置变化事件里做 —— 在 OnResize 里切状态会自激（窗口上下闪）。 */
             if (WindowState == FormWindowState.Normal) UpdateMaximizedBounds();
+        }
+
+        /* 2026-11-28（D19）：拖到副屏最大化会溢出。
+           根因：UpdateMaximizedBounds() 里有 `if (WindowState != Normal) return;`
+           —— 窗口已经是最大化状态时它直接返回，MaximizedBounds 永远停在主屏矩形。
+           这里单独做一次"允许在最大化状态下更新"的重算。 */
+        private void RecalcForScreenChange()
+        {
+            try
+            {
+                Rectangle wa = Screen.FromControl(this).WorkingArea;
+                bool changed = (MaximizedBounds != wa);
+                if (changed) MaximizedBounds = wa;
+
+                if (WindowState == FormWindowState.Maximized)
+                {
+                    Rectangle b = Bounds;
+                    bool outOfArea = b.Bottom > wa.Bottom + 1 || b.Top < wa.Top - 1
+                                  || b.Right > wa.Right + 1 || b.Left < wa.Left - 1;
+                    if (changed || outOfArea) EnsureInsideWorkingArea(true);
+                }
+                else UpdateMaximizedBounds();
+            }
+            catch { }
+        }
+
+        private System.Windows.Forms.Timer _scrTimer;
+        private void ScheduleScreenFix()
+        {
+            try
+            {
+                if (_scrTimer == null)
+                {
+                    _scrTimer = new System.Windows.Forms.Timer();
+                    _scrTimer.Interval = 200;   // 跨屏拖动会连发多条，防抖
+                    _scrTimer.Tick += delegate
+                    {
+                        _scrTimer.Stop();
+                        if (_closing) return;
+                        RecalcForScreenChange();
+                    };
+                }
+                _scrTimer.Stop();
+                _scrTimer.Start();
+            }
+            catch { }
         }
 
         /* 任务栏变化 250ms 内只纠正一次：动画期间会连发多条 WM_SETTINGCHANGE，
