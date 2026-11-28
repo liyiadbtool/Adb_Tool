@@ -199,18 +199,18 @@ ck('需求1 表头 .h-sp 宽度与分隔线一致', /\.fb-head \.h-sp\{flex:0 0 
 
 // ---- 7. 需求4：车机信息按钮 ----
 console.log('\n== 7. 需求4 车机信息按钮 ==');
-ck('指令执行组有「车机信息」卡片', /name:'车机信息'/.test(js));
-ck('车机信息卡片命令为 :car', /name:'车机信息'[^}]*cmd:':car'/.test(js));
-ck('车机信息在指令执行分组内',
+ck('指令执行组有「查询车机信息」卡片', /name:'查询车机信息'/.test(js));
+ck('查询车机信息卡片命令为 :car', /name:'查询车机信息'[^}]*cmd:':car'/.test(js));
+ck('查询车机信息在指令执行分组内',
    (function(){
-     var i = js.indexOf("name:'车机信息'");
+     var i = js.indexOf("name:'查询车机信息'");
      if (i < 0) return false;
      var g = js.indexOf("name:'指令执行'");
      var nxt = js.indexOf("{ name:'", g + 10);
      return g >= 0 && i > g && (nxt < 0 || i < nxt);
    })());
-ck('车机信息卡片带描述（九项口径）',
-   /name:'车机信息', desc:'[^']*(SOC|VIN|UUID)/.test(js));
+ck('查询车机信息卡片带描述（九项口径）',
+   /name:'查询车机信息', desc:'[^']*(SOC|VIN|UUID)/.test(js));
 
 // ---- 8. 需求·补充：删除输入框 ----
 console.log('\n== 8. 删除输入框交互 ==');
@@ -300,9 +300,9 @@ ck('需求 导出APK 卡片已下架', !/name:'导出APK'/.test(js));
 ck('需求 有 Apk管理 面板分组', /name:'Apk管理'[^}]*panel:'apk'/.test(js));
 // 星河云环境：查询 + 三套环境，四条都要在
 ck('需求 有「查询星河云环境」卡片', /name:'查询星河云环境'/.test(js));
-ck('需求 有「切预发布环境」卡片', /name:'切预发布环境'[^}]*cmd:':env pre'/.test(js));
-ck('需求 有「切现网环境」卡片', /name:'切现网环境'[^}]*cmd:':env dev'/.test(js));
-ck('需求 有「切测试环境」卡片', /name:'切测试环境'[^}]*cmd:':env test'/.test(js));
+ck('需求 有「切星河云预发布环境」卡片', /name:'切星河云预发布环境'[^}]*cmd:':env pre'/.test(js));
+ck('需求 有「切星河云现网环境」卡片', /name:'切星河云现网环境'[^}]*cmd:':env dev'/.test(js));
+ck('需求 有「切星河云测试环境」卡片', /name:'切星河云测试环境'[^}]*cmd:':env test'/.test(js));
 ck('需求 星河云环境自成一类', js.indexOf("cat:'星河云环境'") >= 0);
 // 方控：必须**独立分组**（用户原话"方控独立的页面"），不能混进指令执行
 ck('需求 方控独立成组（name 方控按键）',

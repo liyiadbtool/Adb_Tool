@@ -606,8 +606,8 @@ body{
 .qcard:hover{border-color:var(--border-strong);background:var(--surface-2);}
 .qcard:active{transform:scale(.98);}
 /* 2026-11-27（D15）：搜索结果是等高网格，给卡片最小高度避免行高抖动 */
-.qcard{ min-height: 62px; }
-.qcard .qhead{display:flex;align-items:center;gap:8px;margin-bottom:5px;min-width:0;}
+.qcard{ min-height: 62px; position:relative; }   /* 2026-11-28：齿轮绝对定位的定位上下文 */
+.qcard .qhead{display:flex;align-items:center;gap:8px;margin-bottom:5px;min-width:0;min-height:18px;padding-right:34px;}
 .qcard .qico{flex:0 0 auto;width:16px;height:16px;color:var(--text-faint);}
 .qcard .qico svg{width:16px;height:16px;display:block;}
 .qcard .qico svg.spin{animation:spin 1s linear infinite;transform-origin:center;transform-box:fill-box;}
@@ -5800,9 +5800,11 @@ body[data-navlabels="0"] .filenav-item.active::after{
 .op-lbl{font-size:12px;color:var(--text-dim);}
 .op-list{margin-top:8px;font-size:12px;color:var(--text-dim);line-height:1.7;}
 
-/* 2026-11-25：卡片⚙（导出路径），悬停才显形，避免视觉噪音 */
-.qgear{opacity:.55;margin-left:auto;flex:0 0 28px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:20px;color:var(--text-dim);cursor:pointer;position:relative;transition:opacity .12s ease,background .12s ease;}
-.qcard:hover 
+/* 2026-11-28（卡片高矮不齐）：齿轮原来参与 .qhead 的 flex 布局，
+   28px 会把标题行从 16px 顶到 28px —— 同一行"有齿轮"的卡整体高 12px。
+   改成绝对定位：不再参与行高计算，所有卡标题行统一，靠 .qhead 右侧留位避让。
+   （顺带修掉原来那行悬空选择器，它让"悬停变亮"一直失效） */
+.qgear{position:absolute;top:6px;right:6px;z-index:2;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-2);font-size:20px;color:var(--text-dim);cursor:pointer;opacity:.55;transition:opacity .12s ease,background .12s ease;}
 .qcard:hover .qgear{opacity:1;}
 .qgear:hover{color:var(--accent);background:var(--surface-2);}
 .qgear.set{opacity:.95;color:var(--accent);}   /* 2026-11-26：绿色改为强调色 */
