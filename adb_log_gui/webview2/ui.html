@@ -539,9 +539,21 @@ body{
 .quick-body.nohd .apk-panel,
 .quick-body.nohd .cast-panel,
 .quick-body.nohd .netsim-panel{
-  background:transparent;border:0;border-radius:0;margin:0;padding:10px 0 0;
+  background:transparent;border:0;border-radius:0;margin:0;
+  padding:12px 16px 16px;          /* 统一内边距：左侧与输入框、按钮同一条线 */
   overflow-y:auto;overflow-x:hidden;
 }
+/* 2026-11-28：按钮边界合理化 —— 所有行铺满可用宽度、等高、间距一致，
+   窄窗口时整行换行而不是把按钮压扁或挤出面板。 */
+.quick-body.nohd .apk-panel .apk-row{width:100%;min-height:32px;flex-wrap:wrap;gap:8px;}
+.quick-body.nohd .apk-panel .apk-row>.btn{height:32px;}
+.quick-body.nohd .apk-panel .apk-row>.spacer{margin-left:auto;}
+.quick-body.nohd .apk-panel .apk-out,
+.quick-body.nohd .apk-panel .apk-foot,
+.quick-body.nohd .apk-panel .apk-systx{width:100%;}
+.quick-body.nohd .apk-panel .apk-chk{margin-right:12px;}
+/* 「N 项」贴右边界，与上方输入框/下方输出框同一条右边线 */
+.quick-body.nohd .apk-panel #syspush-count{margin-left:auto;}
 /* 2026-11-28：隐藏分组头后，内容整体上移填掉空白 */
 .quick-body.nohd{padding-top:0;}
 .quick-body.nohd .cast-panel,
